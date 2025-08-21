@@ -1,4 +1,4 @@
-from typing import Any, Generator, List, Union
+from typing import Any, Generator, List, Optional, Union
 
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
@@ -52,22 +52,24 @@ class RagDifyService(BaseRagService):
         )
 
     # Implement BaseRagService abstract methods
-    def upload_document(self, doc_path: str, dataset_id: str, filename: str = None) -> RagDocument:
+    def upload_document(self, doc_path: str, dataset_id: str, options: Any,
+                        filename: str = None) -> RagDocument:
         """Upload a document to the knowledge base."""
-        options = DifySendDocumentOptions()
+        if not isinstance(options, DifySendDocumentOptions):
+            raise ValueError("Options must be an instance of DifySendDocumentOptions")
         response = self._dify_service.send_document(doc_path, dataset_id, options, filename)
         return self._convert_to_rag_document(response.document)
 
     def update_document(self, doc_path: str, dataset_id: str, document_id: str,
-                       options: Any, filename: str = None) -> RagDocument:
+                        options: Any, filename: str = None) -> RagDocument:
         """Update an existing document in the knowledge base."""
         if not isinstance(options, DifyUpdateDocumentOptions):
-            options = DifySendDocumentOptions()
+            raise ValueError("Options must be an instance of DifyUpdateDocumentOptions")
         response = self._dify_service.update_document(doc_path, dataset_id, document_id, options, filename)
         return self._convert_to_rag_document(response.document)
 
     def update_document_metadata(self, dataset_id: str, document_id: str,
-                                  metadata: dict) -> None:
+                                 metadata: dict) -> None:
         options = DifyUpdateDocumentsMetadataRequest(document_id=document_id, metadata_list=[])
 
         for key, value in metadata.items():
@@ -96,13 +98,14 @@ class RagDifyService(BaseRagService):
             chunks.append(chunk)
         return chunks
 
-    def chat_stream(self, query: str, user: str, **kwargs) -> Generator[
+    def chat_stream(self, query: str, conversation_id: Optional[str] = None,
+                    user: Optional[str] = None, chat_id: Optional[str] = None, **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
     ]:
         """Send a query and get streaming chat response."""
-        for response in self._dify_service.send_message_stream(query, user, **kwargs):
+        for response in self._dify_service.send_message_stream(query, user, conversation_id, **kwargs):
             if isinstance(response, DifySendMessageStreamResponse):
-                yield RagChatStreamResponse(answer=response.answer)
+                yield RagChatStreamResponse(answer=response.answer, is_from_beginning=False)
             elif isinstance(response, DifySendEndMessageStreamResponse):
                 # Convert sources to RagChunk references
                 references = []
@@ -118,7 +121,7 @@ class RagDifyService(BaseRagService):
 
                 yield RagChatEndStreamResponse(
                     session_id=response.conversation_id,
-                    references=references
+                    sources=references
                 )
 
     @staticmethod

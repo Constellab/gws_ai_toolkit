@@ -1,16 +1,16 @@
-from typing import Generator, List, Literal, Union
+from typing import Generator, List, Literal, Optional, Union
 
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
-    RagFlowAskRequest, RagFlowChat, RagFlowChatEndStreamResponse,
-    RagFlowChatStreamResponse, RagFlowChunk, RagFlowCreateChatRequest,
-    RagFlowCreateDatasetRequest, RagFlowCreateSessionRequest, RagFlowDataset,
-    RagFlowDocument, RagFlowListChatsResponse, RagFlowListDatasetsResponse,
+    RagFlowChat, RagFlowChatEndStreamResponse, RagFlowChatStreamResponse,
+    RagFlowChunk, RagFlowCreateChatRequest, RagFlowCreateDatasetRequest,
+    RagFlowCreateSessionRequest, RagFlowDataset, RagFlowDocument,
+    RagFlowListChatsResponse, RagFlowListDatasetsResponse,
     RagFlowListDocumentsResponse, RagFlowListSessionsResponse,
     RagFlowRetrieveResponse, RagFlowSendDocumentResponse, RagFlowSession,
     RagFlowUpdateChatRequest, RagFlowUpdateDatasetRequest,
     RagFlowUpdateDocumentOptions)
 from gws_core import CredentialsDataOther
-from ragflow_sdk import DataSet, Document, RAGFlow, Session
+from ragflow_sdk import Chat, DataSet, Document, RAGFlow, Session
 
 
 class RagFlowService:
@@ -431,16 +431,28 @@ class RagFlowService:
 
     ################################# SESSION MANAGEMENT #################################
 
-    def create_session(self, chat_id: str, session: RagFlowCreateSessionRequest) -> RagFlowSession:
-        """Create session using SDK."""
+    def get_chat(self, chat_id: str) -> Chat:
+        """Get chat using SDK."""
         client = self._get_client()
 
         try:
             # Get chat object
-            chats = client.list_chats()
-            chat = next((c for c in chats if c.id == chat_id), None)
-            if not chat:
+            chats = client.list_chats(id=chat_id)
+
+            if len(chats) == 0:
                 raise ValueError(f"Chat {chat_id} not found")
+
+            return chats[0]
+
+        except Exception as e:
+            raise RuntimeError(f"Error getting chat: {str(e)}") from e
+
+    def create_session(self, chat_id: str, session: RagFlowCreateSessionRequest) -> RagFlowSession:
+        """Create session using SDK."""
+
+        try:
+            # Get chat object
+            chat = self.get_chat(chat_id=chat_id)
 
             # Create session
             sdk_session = chat.create_session(name=session.name)
@@ -459,14 +471,10 @@ class RagFlowService:
 
     def list_sessions(self, chat_id: str, page: int = 1, page_size: int = 10) -> RagFlowListSessionsResponse:
         """List sessions using SDK."""
-        client = self._get_client()
 
         try:
             # Get chat object
-            chats = client.list_chats()
-            chat = next((c for c in chats if c.id == chat_id), None)
-            if not chat:
-                raise ValueError(f"Chat {chat_id} not found")
+            chat = self.get_chat(chat_id=chat_id)
 
             # List sessions
             sdk_sessions = chat.list_sessions()
@@ -498,14 +506,10 @@ class RagFlowService:
 
     def delete_sessions(self, chat_id: str, session_ids: List[str]) -> None:
         """Delete sessions using SDK."""
-        client = self._get_client()
 
         try:
             # Get chat object
-            chats = client.list_chats()
-            chat = next((c for c in chats if c.id == chat_id), None)
-            if not chat:
-                raise ValueError(f"Chat {chat_id} not found")
+            chat = self.get_chat(chat_id=chat_id)
 
             # Delete sessions
             chat.delete_sessions(ids=session_ids)
@@ -513,21 +517,34 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error deleting sessions: {str(e)}") from e
 
-    def ask(self, chat_id: str, ask_request: RagFlowAskRequest) -> Generator[Union[RagFlowChatStreamResponse, RagFlowChatEndStreamResponse], None, None]:
-        """Ask question using SDK with streaming."""
-        client = self._get_client()
+    def get_session(self, chat_id: str, session_id: str) -> Session :
+        """Get session using SDK."""
 
         try:
             # Get chat object
-            chats = client.list_chats()
-            chat = next((c for c in chats if c.id == chat_id), None)
-            if not chat:
-                raise ValueError(f"Chat {chat_id} not found")
+            chat = self.get_chat(chat_id=chat_id)
+
+            sessions = chat.list_sessions(id=session_id)  # Ensure session exists
+
+            if len(sessions) == 0:
+                raise ValueError(f"Session {session_id} not found in chat {chat_id}")
+
+            return sessions[0]
+
+
+        except Exception as e:
+            raise RuntimeError(f"Error getting session: {str(e)}") from e
+
+    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[Union[RagFlowChatStreamResponse, RagFlowChatEndStreamResponse], None, None]:
+        """Ask question using SDK with streaming."""
+        try:
+            # Get chat object
+            chat = self.get_chat(chat_id=chat_id)
 
             # Get or create session
             session: Session = None
-            if ask_request.session_id:
-                sessions = chat.list_sessions(id=ask_request.session_id)
+            if session_id:
+                sessions = chat.list_sessions(id=session_id)
                 if len(sessions) > 0:
                     session = sessions[0]
 
@@ -535,47 +552,31 @@ class RagFlowService:
                 session = chat.create_session(name="default_session")
 
             # Ask question with streaming
-            if ask_request.stream:
-                for chunk in session.ask(question=ask_request.question, stream=True):
+            for chunk in session.ask(question=query, stream=True):
+                if chunk.role == 'assistant':
+
                     if chunk.reference:
-                        print('kk')
-                    if chunk.role == 'assistant':
+                        references: List[RagFlowChunk] = []
+                        for ref in chunk.reference:
+                            references.append(RagFlowChunk(
+                                id=ref['id'],
+                                content=ref['content'],
+                                document_id=ref['document_id'],
+                                document_name=ref['document_name'],
+                                dataset_id=ref['dataset_id']
+                            ))
+                        # Final response
+                        yield RagFlowChatEndStreamResponse(
+                            session_id=session.id,
+                            message_id='',
+                            reference=references
+                        )
+                    else:
+                        yield RagFlowChatStreamResponse(
+                            answer=chunk.content,
+                            reference=[]
+                        )
 
-                        if chunk.reference:
-                            references: List[RagFlowChunk] = []
-                            for ref in chunk.reference:
-                                references.append(RagFlowChunk(
-                                    id=ref['id'],
-                                    content=ref['content'],
-                                    document_id=ref['document_id'],
-                                    document_name=ref['document_name'],
-                                    dataset_id=ref['dataset_id']
-                                ))
-                            # Final response
-                            yield RagFlowChatEndStreamResponse(
-                                session_id=session.id,
-                                message_id='',
-                                reference=references
-                            )
-                        else:
-                            yield RagFlowChatStreamResponse(
-                                answer=chunk.content,
-                                reference=[]
-                            )
-
-            else:
-                # TODO TO FIX
-                # Non-streaming response
-                response = session.ask(question=ask_request.question, stream=False)
-                yield RagFlowChatStreamResponse(
-                    answer=response.get('answer', ''),
-                    reference=response.get('reference', [])
-                )
-                yield RagFlowChatEndStreamResponse(
-                    session_id=session.id,
-                    message_id=response.get('message_id', ''),
-                    reference=response.get('reference', [])
-                )
 
         except Exception as e:
             raise RuntimeError(f"Error asking question: {str(e)}") from e

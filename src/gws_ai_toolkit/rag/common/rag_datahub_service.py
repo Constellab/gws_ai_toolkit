@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, Dict, List, Optional
 
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_core import (DataHubS3ServerService, Logger, ResourceModel,
@@ -117,7 +117,7 @@ class DatahubRagService():
         self.rag_service.delete_document(self.dataset_id, rag_document_id)
 
 
-    def get_rag_documents_to_delete(self) -> List:
+    def get_rag_documents_to_delete(self) -> List[RagDocument]:
         """List all RAG documents that are not in the datahub anymore."""
         ragflow_documents = self.rag_service.get_all_documents(self.dataset_id)
 
@@ -166,4 +166,50 @@ class DatahubRagService():
         research_search.add_has_folder_filter()
 
         return research_search.search_all()
+
+    def send_message_stream(self,
+                            query: str,
+                            conversation_id: Optional[str] = None,
+                            chat_id: Optional[str] = None,
+                            user_root_folder_ids: List[str] = None,
+                            user: str = None,
+                            inputs: Optional[Dict[str, Any]] = None):
+        """Send a message stream with folder filtering support.
+
+        This method provides backward compatibility with the DataHub-specific messaging
+        while using the abstracted RAG service underneath.
+
+        Args:
+            user_root_folder_ids: List of folder IDs to filter by
+            query: The user's query
+            user: User identifier
+            conversation_id: Optional conversation ID for context
+            inputs: Optional additional inputs
+
+        Returns:
+            Generator yielding streaming responses
+        """
+        # For backward compatibility, we need to construct the appropriate inputs
+        # that include folder filtering. This is platform-specific logic that was
+        # previously handled in the Dify-specific service.
+
+        # Prepare folder-based filtering inputs
+        filtered_inputs = inputs or {}
+
+        if user_root_folder_ids:
+            # Add folder filtering to inputs - this format depends on how the
+            # underlying RAG platform handles folder-based filtering
+            folder_filter = {}
+            for i, folder_id in enumerate(user_root_folder_ids):
+                folder_filter[f"{self.CHAT_INPUT_ACCESS_KEY}{i}"] = folder_id
+            filtered_inputs.update(folder_filter)
+
+        # Use the underlying RAG service's chat_stream method
+        return self.rag_service.chat_stream(
+            query=query,
+            user=user,
+            conversation_id=conversation_id,
+            chat_id=chat_id,
+            inputs=filtered_inputs
+        )
 

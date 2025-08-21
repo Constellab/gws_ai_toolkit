@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generator, List, Union
+from typing import Any, Generator, List, Optional, Union
 
 from gws_core import CredentialsDataOther
 
@@ -19,7 +19,7 @@ class BaseRagService(ABC):
 
     # Document Management
     @abstractmethod
-    def upload_document(self, doc_path: str, dataset_id: str, filename: str = None) -> RagDocument:
+    def upload_document(self, doc_path: str, dataset_id: str, options: Any, filename: str = None) -> RagDocument:
         """Upload a document to the knowledge base."""
         raise NotImplementedError
 
@@ -54,7 +54,12 @@ class BaseRagService(ABC):
 
     # Chat/Q&A
     @abstractmethod
-    def chat_stream(self, query: str, user: str, **kwargs) -> Generator[
+    def chat_stream(self,
+                    query: str,
+                    conversation_id: Optional[str] = None,
+                    user: Optional[str] = None,
+                    chat_id: Optional[str] = None,
+                    **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
     ]:
         """Send a query and get streaming chat response."""

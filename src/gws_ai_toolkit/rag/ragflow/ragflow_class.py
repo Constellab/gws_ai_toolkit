@@ -179,9 +179,3 @@ class RagFlowCreateSessionRequest(BaseModelDTO):
     """Request model for creating a chat session."""
     name: str
 
-
-class RagFlowAskRequest(BaseModelDTO):
-    """Request model for asking a question."""
-    question: str
-    stream: bool = True
-    session_id: Optional[str] = None

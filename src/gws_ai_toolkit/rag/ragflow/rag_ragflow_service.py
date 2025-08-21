@@ -1,4 +1,4 @@
-from typing import Any, Generator, List, Union
+from typing import Any, Generator, List, Optional, Union
 
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
@@ -6,8 +6,9 @@ from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChunk, RagDocument)
 from gws_core import CredentialsDataOther
 
-from .ragflow_class import (RagFlowChunk, RagFlowDocument,
-                            RagFlowUpdateDocumentOptions)
+from .ragflow_class import (RagFlowChatEndStreamResponse,
+                            RagFlowChatStreamResponse, RagFlowChunk,
+                            RagFlowDocument, RagFlowUpdateDocumentOptions)
 from .ragflow_service import RagFlowService
 
 
@@ -39,19 +40,20 @@ class RagRagFlowService(BaseRagService):
         )
 
     # Implement BaseRagService abstract methods
-    def upload_document(self, doc_path: str, dataset_id: str, filename: str = None) -> RagDocument:
+    def upload_document(self, doc_path: str, dataset_id: str, options: Any,
+                        filename: str = None) -> RagDocument:
         """Upload a document to the knowledge base."""
         ragflow_doc = self._ragflow_service.upload_document(doc_path, dataset_id, filename)
         return self._convert_to_rag_document(ragflow_doc)
 
     def update_document(self, doc_path: str, dataset_id: str, document_id: str,
-                       options: Any, filename: str = None) -> RagDocument:
+                        options: Any, filename: str = None) -> RagDocument:
         """Update an existing document in the knowledge base."""
         self.delete_document(dataset_id, document_id)
         return self.upload_document(doc_path, dataset_id, filename)
 
     def update_document_metadata(self, dataset_id: str, document_id: str,
-                                  metadata: dict) -> None:
+                                 metadata: dict) -> None:
         options = RagFlowUpdateDocumentOptions(meta_fields=metadata)
         self._ragflow_service.update_document(dataset_id, document_id, options)
 
@@ -69,15 +71,34 @@ class RagRagFlowService(BaseRagService):
         response = self._ragflow_service.retrieve_chunks(dataset_id, query, top_k=top_k, **kwargs)
         return [self._convert_to_rag_chunk(chunk) for chunk in response.chunks]
 
-    def chat_stream(self, query: str, user: str, **kwargs) -> Generator[
+    def chat_stream(self, query: str, conversation_id: str,
+                    user: Optional[str] = None,
+                    chat_id: Optional[str] = None, **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
     ]:
         """Send a query and get streaming chat response."""
         # RagFlow requires a chat_id, so we need to handle this differently
         # For now, we'll raise NotImplementedError as this needs additional setup
-        raise NotImplementedError(
-            "RagFlow chat_stream requires a chat_id. Use ragflow_service.ask() with a specific chat_id instead."
-        )
+        for response in self.ragflow_service.ask_stream(chat_id, query, conversation_id):
+            if isinstance(response, RagFlowChatStreamResponse):
+                yield RagChatStreamResponse(answer=response.answer, is_from_beginning=True)
+            elif isinstance(response, RagFlowChatEndStreamResponse):
+                # Convert sources to RagChunk references
+                references = []
+                if response.reference:
+                    for reference in response.reference:
+                        chunk = RagChunk(
+                            id=reference.document_id,
+                            content=reference.content,
+                            document_id=reference.document_id,
+                            document_name=reference.document_name
+                        )
+                        references.append(chunk)
+
+                yield RagChatEndStreamResponse(
+                    session_id=response.session_id,
+                    sources=references
+                )
 
     @staticmethod
     def from_credentials(credentials: CredentialsDataOther) -> 'RagRagFlowService':

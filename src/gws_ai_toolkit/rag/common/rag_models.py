@@ -25,12 +25,15 @@ class RagChunk(BaseModelDTO):
 class RagChatStreamResponse(BaseModelDTO):
     """Base class for streaming chat responses."""
     answer: str
+    # If true, the response is from the beginning of the conversation (should not concatenate)
+    # If false, the response is a continuation of the previous messages
+    is_from_beginning: bool
 
 
 class RagChatEndStreamResponse(BaseModelDTO):
     """Base class for end-of-stream chat responses."""
     session_id: str = None
-    references: List[RagChunk] = None
+    sources: List[RagChunk] = None
 
 
 class RagCredentials(BaseModelDTO):
