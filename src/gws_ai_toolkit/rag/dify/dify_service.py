@@ -7,7 +7,7 @@ from gws_ai_toolkit.rag.dify.dify_class import (
     DifyCreateDatasetMetadataResponse, DifyDatasetDocument,
     DifyDocumentChunksResponse, DifyGetDatasetMetadataResponse,
     DifyGetDatasetMetadataResponseMetadata, DifyGetDocumentsResponse,
-    DifySendDocumentOptions, DifySendDocumentResponse,
+    DifySegment, DifySendDocumentOptions, DifySendDocumentResponse,
     DifySendEndMessageStreamResponse, DifySendMessageSource,
     DifySendMessageStreamResponse, DifyUpdateDocumentOptions,
     DifyUpdateDocumentsMetadataRequest, DifyUploadFile, DifyUploadFileResponse)

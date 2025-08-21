@@ -7,7 +7,8 @@ from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagFlowDocument, RagFlowListChatsResponse, RagFlowListDatasetsResponse,
     RagFlowListDocumentsResponse, RagFlowListSessionsResponse,
     RagFlowRetrieveResponse, RagFlowSendDocumentResponse, RagFlowSession,
-    RagFlowUpdateChatRequest, RagFlowUpdateDatasetRequest)
+    RagFlowUpdateChatRequest, RagFlowUpdateDatasetRequest,
+    RagFlowUpdateDocumentOptions)
 from gws_core import CredentialsDataOther
 from ragflow_sdk import DataSet, Document, RAGFlow, Session
 
@@ -254,11 +255,17 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error getting all documents: {str(e)}") from e
 
-    def update_document(self, doc_path: str, dataset_id: str, document_id: str,
-                        filename: str = None) -> RagFlowDocument:
+    def update_document(self, dataset_id: str, document_id: str,
+                        options: RagFlowUpdateDocumentOptions) -> RagFlowDocument:
         """Update a document (limited support in SDK)."""
-        self.delete_document(dataset_id, document_id)
-        return self.upload_document(doc_path, dataset_id, filename)
+        document = self.get_document(dataset_id, document_id)
+
+        rag_doc = document.update({
+            'display_name': options.display_name,
+            'meta_fields': options.meta_fields
+        })
+
+        return self._document_to_ragflow_document(rag_doc)
 
     def delete_documents(self, dataset_id: str, document_ids: List[str]) -> None:
         """Delete documents using SDK."""

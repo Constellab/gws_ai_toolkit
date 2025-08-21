@@ -6,19 +6,6 @@ RagFlowChunkMethod = Literal['naive', 'manual', 'qa', 'table', 'paper', 'book', 
 RagFlowParserMethod = Literal['naive', 'manual', 'qa', 'table', 'paper', 'book', 'laws', 'resume']
 
 
-class RagFlowUpdateDocumentOptions(BaseModelDTO):
-    parser_method: RagFlowParserMethod = 'naive'
-    chunk_method: RagFlowChunkMethod = 'naive'
-    chunk_size: int = 1024
-    chunk_overlap: int = 128
-
-
-class RagFlowSendDocumentOptions(RagFlowUpdateDocumentOptions):
-    parser_method: RagFlowParserMethod = 'naive'
-    chunk_method: RagFlowChunkMethod = 'naive'
-    lang: str = 'English'
-
-
 class RagFlowDocument(BaseModelDTO):
     """Model for document information in the response."""
     id: str
@@ -34,6 +21,10 @@ class RagFlowSendDocumentResponse(BaseModelDTO):
     code: int
     message: str
     data: List[RagFlowDocument]
+
+class RagFlowUpdateDocumentOptions(BaseModelDTO):
+    display_name: Optional[str] = None
+    meta_fields: Optional[Dict[str, Any]] = None
 
 
 class RagFlowDataset(BaseModelDTO):
