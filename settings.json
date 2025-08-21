@@ -9,19 +9,18 @@
         "bricks": [
             {
                 "name": "gws_core",
-                "version": "0.7.0"
+                "version": "0.16.1"
             }
         ],
         "pip": [
             {
                 "source": "https://pypi.python.org/simple",
-                "packages": []
-            }
-        ],
-        "git": [
-            {
-                "source": "https://$GWS_GIT_LOGIN:$GWS_GIT_PWD@gitlab.com/.../",
-                "packages": []
+                "packages": [
+                    {
+                        "name": "ragflow-sdk",
+                        "version": "0.20.3"
+                    }
+                ]
             }
         ],
         "variables": {}
