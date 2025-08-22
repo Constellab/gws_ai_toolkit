@@ -22,6 +22,7 @@ class RagFlowSendDocumentResponse(BaseModelDTO):
     message: str
     data: List[RagFlowDocument]
 
+
 class RagFlowUpdateDocumentOptions(BaseModelDTO):
     display_name: Optional[str] = None
     meta_fields: Optional[Dict[str, Any]] = None
@@ -66,6 +67,7 @@ class RagFlowChunk(BaseModelDTO):
     document_id: str
     document_name: str
     dataset_id: str
+    score: float
 
 
 class RagFlowRetrieveResponse(BaseModelDTO):
@@ -178,4 +180,3 @@ class RagFlowUpdateChatRequest(BaseModelDTO):
 class RagFlowCreateSessionRequest(BaseModelDTO):
     """Request model for creating a chat session."""
     name: str
-

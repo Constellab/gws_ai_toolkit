@@ -331,7 +331,6 @@ class RagFlowService:
 
             # Convert to our format
 
-
             chunks = []
             for chunk in retrieved_chunks.get('chunks', []):
                 ragflow_chunk = RagFlowChunk(
@@ -517,7 +516,7 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error deleting sessions: {str(e)}") from e
 
-    def get_session(self, chat_id: str, session_id: str) -> Session :
+    def get_session(self, chat_id: str, session_id: str) -> Session:
         """Get session using SDK."""
 
         try:
@@ -531,11 +530,12 @@ class RagFlowService:
 
             return sessions[0]
 
-
         except Exception as e:
             raise RuntimeError(f"Error getting session: {str(e)}") from e
 
-    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[Union[RagFlowChatStreamResponse, RagFlowChatEndStreamResponse], None, None]:
+    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[
+            Union[RagFlowChatStreamResponse, RagFlowChatEndStreamResponse],
+            None, None]:
         """Ask question using SDK with streaming."""
         try:
             # Get chat object
@@ -563,7 +563,8 @@ class RagFlowService:
                                 content=ref['content'],
                                 document_id=ref['document_id'],
                                 document_name=ref['document_name'],
-                                dataset_id=ref['dataset_id']
+                                dataset_id=ref['dataset_id'],
+                                score=ref['vector_similarity']
                             ))
                         # Final response
                         yield RagFlowChatEndStreamResponse(
@@ -576,7 +577,6 @@ class RagFlowService:
                             answer=chunk.content,
                             reference=[]
                         )
-
 
         except Exception as e:
             raise RuntimeError(f"Error asking question: {str(e)}") from e

@@ -1,0 +1,16 @@
+{
+    "app_dir_path": "",
+    "source_ids": [],
+    "params": {
+        "chat_credentials_name": "Ragflow pre-prod",
+        "knowledge_base_credentials_name": "Ragflow pre-prod",
+        "knowledge_base_id": "6c9b6b007dc711f091c576e267429a63",
+        "chat_id": "dcd98b3e7dc911f0a2f576e267429a63",
+        "rag_provider": "ragflow",
+        "show_config_page": true,
+        "root_folder_limit": 20,
+        "filter_rag_with_user_folders": false
+    },
+    "env_type": "NONE",
+    "env_file_path": ""
+}

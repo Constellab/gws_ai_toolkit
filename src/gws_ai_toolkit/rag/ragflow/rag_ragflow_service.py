@@ -91,7 +91,8 @@ class RagRagFlowService(BaseRagService):
                             id=reference.document_id,
                             content=reference.content,
                             document_id=reference.document_id,
-                            document_name=reference.document_name
+                            document_name=reference.document_name,
+                            score=reference.score
                         )
                         references.append(chunk)
 
