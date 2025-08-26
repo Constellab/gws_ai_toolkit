@@ -4,8 +4,6 @@ from gws_reflex_main import ReflexMainState
 
 from .pages.chat_page import chat_page
 from .pages.config_page import config_page
-from .states.chat_state import ChatState
-from .states.config_state import ConfigState
 
 app = rx.App(
     theme=get_theme()

@@ -12,5 +12,6 @@
         "filter_rag_with_user_folders": false
     },
     "env_type": "NONE",
-    "env_file_path": ""
+    "env_file_path": "",
+    "requires_authentication": true
 }

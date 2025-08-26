@@ -41,29 +41,29 @@ class RagAppState(ReflexMainState):
         return self._knowledge_base_credentials
 
     @rx.var
-    def get_rag_provider(self) -> RagProvider:
+    def get_rag_provider(self) -> Optional[RagProvider]:
         """Get the RAG provider."""
         return self.get_param('rag_provider')
 
     @rx.var
     def get_knowledge_base_id(self) -> str:
         """Get the knowledge base ID."""
-        return self.get_param('knowledge_base_id')
+        return self.get_param('knowledge_base_id', '')
 
     @rx.var
     def is_filter_rag_with_user_folders(self) -> bool:
         """Check if RAG should be filtered with user folders."""
-        return self.get_param('filter_rag_with_user_folders')
+        return self.get_param('filter_rag_with_user_folders', False)
 
     @rx.var
     def get_root_folder_limit(self) -> int:
         """Get the root folder limit."""
-        return self.get_param('root_folder_limit')
+        return self.get_param('root_folder_limit', 0)
 
     @rx.var
     def get_chat_id(self) -> str:
         """Get the chat ID."""
-        return self.get_param('chat_id')
+        return self.get_param('chat_id', '')
 
     @rx.var
     def get_datahub_knowledge_rag_service(self) -> Optional[DatahubRagService]:

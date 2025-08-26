@@ -1,32 +1,68 @@
 import reflex as rx
-from ...states.config_state import ConfigState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.delete_expired_documents_dialog.delete_expired_documents_dialog_component import \
+    delete_expired_documents_dialog
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.delete_expired_documents_dialog.delete_expired_documents_dialog_state import \
+    DeleteExpiredDocumentsDialogState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.sync_all_resources_dialog.sync_all_resources_dialog_component import \
+    sync_all_resources_dialog
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.sync_all_resources_dialog.sync_all_resources_dialog_state import \
+    SyncAllResourcesDialogState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.unsync_all_resources_dialog.unsync_all_resources_dialog_component import \
+    unsync_all_resources_dialog
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.unsync_all_resources_dialog.unsync_all_resources_dialog_state import \
+    UnsyncAllResourcesDialogState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.config_state import \
+    ConfigState
 
 
 def bulk_action_buttons() -> rx.Component:
     """Buttons for bulk sync/unsync operations."""
     return rx.hstack(
-        rx.button(
-            rx.icon("sync", size=16),
-            "Sync All Resources",
-            on_click=ConfigState.show_sync_all_confirm,
-            color_scheme="blue",
-            disabled=ConfigState.is_syncing | ConfigState.is_unsyncing | ConfigState.is_deleting,
+        rx.dialog.root(
+            rx.dialog.trigger(
+                rx.button(
+                    rx.icon("sync", size=16),
+                    "Sync All Resources",
+                    color_scheme="blue",
+                    on_click=SyncAllResourcesDialogState.open_dialog,
+                )
+            ),
+            rx.dialog.content(
+                sync_all_resources_dialog(),
+            ),
+            on_open_change=SyncAllResourcesDialogState.on_sync_resource_dialog_event,
+            open=SyncAllResourcesDialogState.resources_to_sync_dialog_opened
         ),
-        rx.button(
-            rx.icon("x-circle", size=16),
-            "Unsync All Resources", 
-            on_click=ConfigState.show_unsync_all_confirm,
-            color_scheme="red",
-            variant="outline",
-            disabled=ConfigState.is_syncing | ConfigState.is_unsyncing | ConfigState.is_deleting,
+        rx.dialog.root(
+            rx.dialog.trigger(
+                rx.button(
+                    rx.icon("x-circle", size=16),
+                    "Unsync All Resources",
+                    color_scheme="red",
+                    on_click=UnsyncAllResourcesDialogState.open_dialog,
+                )
+            ),
+            rx.dialog.content(
+                unsync_all_resources_dialog(),
+            ),
+            on_open_change=UnsyncAllResourcesDialogState.on_unsync_resource_dialog_event,
+            open=UnsyncAllResourcesDialogState.resources_to_unsync_dialog_opened
         ),
-        rx.button(
-            rx.icon("trash", size=16),
-            "Delete Expired Documents",
-            on_click=ConfigState.show_delete_expired_confirm,
-            color_scheme="orange",
-            variant="outline",
-            disabled=ConfigState.is_syncing | ConfigState.is_unsyncing | ConfigState.is_deleting,
+        rx.dialog.root(
+            rx.dialog.trigger(
+                rx.button(
+                    rx.icon("trash", size=16),
+                    "Delete Expired Documents",
+                    color_scheme="orange",
+                    variant="outline",
+                    on_click=DeleteExpiredDocumentsDialogState.open_dialog,
+                )
+            ),
+            rx.dialog.content(
+                delete_expired_documents_dialog(),
+            ),
+            on_open_change=DeleteExpiredDocumentsDialogState.on_delete_documents_dialog_event,
+            open=DeleteExpiredDocumentsDialogState.documents_to_delete_dialog_opened
         ),
         spacing="3",
         wrap="wrap",
@@ -55,7 +91,6 @@ def resource_actions() -> rx.Component:
                         "Resync",
                         on_click=ConfigState.sync_selected_resource,
                         size="2",
-                        disabled=ConfigState.is_syncing,
                     ),
                     rx.button(
                         rx.icon("trash-2", size=16),
@@ -64,7 +99,6 @@ def resource_actions() -> rx.Component:
                         size="2",
                         color_scheme="red",
                         variant="outline",
-                        disabled=ConfigState.is_deleting,
                     ),
                     spacing="2",
                 ),
@@ -74,7 +108,6 @@ def resource_actions() -> rx.Component:
                     on_click=ConfigState.sync_selected_resource,
                     size="2",
                     color_scheme="blue",
-                    disabled=ConfigState.is_syncing,
                 ),
             ),
             spacing="3",

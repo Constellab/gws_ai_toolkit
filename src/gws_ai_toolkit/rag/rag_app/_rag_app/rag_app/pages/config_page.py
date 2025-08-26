@@ -1,10 +1,8 @@
 import reflex as rx
 from gws_reflex_base import render_main_container
 
-from ..components.config.progress_tracker import progress_tracker
 from ..components.config.resource_selector import resource_selector
 from ..components.config.sync_controls import sync_controls
-from ..components.shared.dialogs import confirmation_dialogs
 from ..components.shared.navigation import navigation
 
 
@@ -18,9 +16,6 @@ def config_page() -> rx.Component:
                     sync_controls(),
                     rx.divider(),
                     resource_selector(),
-                    rx.divider(),
-                    progress_tracker(),
-                    confirmation_dialogs(),
                     spacing="6",
                     align="start",
                 ),

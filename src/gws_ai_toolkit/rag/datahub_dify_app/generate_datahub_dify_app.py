@@ -24,7 +24,7 @@ class DatahubRagAppDashboard(AppConfig):
         return self.get_app_folder_from_relative_path(__file__, "_datahub_dify_app")
 
 
-@task_decorator("GenerateDatahubRagDifyApp", human_name="Generate Datahub Dify app",
+@task_decorator("GenerateDatahubRagDifyApp", human_name="[OLD] Generate Datahub Dify app",
                 style=StreamlitResource.copy_style())
 class GenerateDatahubRagDifyApp(Task):
     """
@@ -90,7 +90,7 @@ class GenerateDatahubRagDifyApp(Task):
         return {"streamlit_app": streamlit_app}
 
 
-@task_decorator("GenerateDatahubRagFlowApp", human_name="Generate Datahub Ragflow app",
+@task_decorator("GenerateDatahubRagFlowApp", human_name="[OLD] Generate Datahub Ragflow app",
                 style=StreamlitResource.copy_style())
 class GenerateDatahubRagFlowApp(Task):
     """
