@@ -9,33 +9,28 @@ def source_item(source: RagChunk) -> rx.Component:
     return rx.link(
         rx.box(
             rx.hstack(
-                rx.icon("file-text", size=16, color="blue.500"),
+                rx.icon("file-text", size=16),
                 rx.text(
                     source.document_name,
-                    font_weight="medium",
-                    font_size="sm",
+                    class_name="source-document-name"
                 ),
                 rx.spacer(),
                 rx.hstack(
                     rx.text(
                         f"Score: {source.score:.2f}",
-                        font_size="xs",
-                        color="gray.600",
                     ),
-                    rx.icon("external-link", size=12, color="blue.500"),
+                    rx.icon("external-link", size=12),
                     align="center",
                     spacing="1",
                 ),
                 align="center",
             ),
             padding="2",
-            border_radius="md",
-            _hover={"background_color": "gray.50", "cursor": "pointer"},
-            transition="background-color 0.2s ease",
         ),
         href=f"/ai-expert/{source.document_id}",
         text_decoration="none",
-        _hover={"text_decoration": "none"},
+        cursor="pointer",
+        style={":hover .source-document-name": {"text_decoration": "underline"}},
     )
 
 
@@ -45,9 +40,7 @@ def sources_display(sources: List[RagChunk]) -> rx.Component:
         sources,
         rx.accordion.root(
             rx.accordion.item(
-                header=rx.accordion.trigger(
-                    rx.text("Sources", font_size="sm", font_weight="medium"),
-                ),
+                header="Sources",
                 content=rx.accordion.content(
                     rx.vstack(
                         rx.foreach(sources, source_item),
@@ -59,6 +52,6 @@ def sources_display(sources: List[RagChunk]) -> rx.Component:
             ),
             collapsible=True,
             width="100%",
-            variant="outline"
+            variant="soft",
         ),
     )

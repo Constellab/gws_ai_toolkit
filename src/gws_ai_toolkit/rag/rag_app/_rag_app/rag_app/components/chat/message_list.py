@@ -6,26 +6,48 @@ from .sources_display import sources_display
 
 
 def message_bubble(message: ChatMessage) -> rx.Component:
-    """Create a message bubble component."""
-    return rx.box(
-        rx.text(
-            rx.cond(
-                message.role == "user",
-                "You: ",
-                "Assistant: "
+    """Create a message bubble component styled like ChatGPT."""
+    return rx.cond(
+        message.role == "user",
+        # User message - right aligned with darker background
+        rx.box(
+            rx.box(
+                rx.markdown(
+                    message.content,
+                    color="white",
+                    font_size="14px",
+                    class_name='waow'
+                ),
+                background_color="#374151",  # Darker gray for better contrast
+                padding="0px 16px",
+                border_radius="18px",
+                max_width="70%",
+                word_wrap="break-word",
+                color="white",  # Ensure text color inheritance
             ),
-            font_weight="bold",
-            margin_bottom="0.5em",
+            display="flex",
+            justify_content="flex-end",
+            margin="8px 0",
+            width="100%",
         ),
-        rx.markdown(
-            message.content,
-        ),
-        rx.cond(
-            message.sources,
-            sources_display(message.sources)
-        ),
-        margin="0.5em 0",
-        width="100%",
+        # Assistant message - left aligned without background
+        rx.box(
+            rx.box(
+                rx.markdown(
+                    message.content,
+                ),
+                rx.cond(
+                    message.sources,
+                    sources_display(message.sources)
+                ),
+                padding="12px 0",
+                word_wrap="break-word",
+            ),
+            display="flex",
+            justify_content="flex-start",
+            margin="8px 0",
+            width="100%",
+        )
     )
 
 
@@ -41,6 +63,7 @@ def streaming_indicator() -> rx.Component:
             ),
             margin="0.5em 0",
             width="100%",
+            align_items="center"
         ),
         rx.text("")
     )
@@ -61,9 +84,6 @@ def message_list() -> rx.Component:
         ),
         streaming_indicator(),
         width="100%",
-        border="1px solid",
-        border_color="gray.200",
-        border_radius="20px",
         padding='1em',
         flex="1"
     )
