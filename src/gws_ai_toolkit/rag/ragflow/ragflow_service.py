@@ -2,7 +2,7 @@ from typing import Any, Generator, List, Optional
 
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagFlowCreateChatRequest, RagFlowCreateDatasetRequest,
-    RagFlowCreateSessionRequest, RagFlowUpdateChatRequest, 
+    RagFlowCreateSessionRequest, RagFlowUpdateChatRequest,
     RagFlowUpdateDatasetRequest, RagFlowUpdateDocumentOptions)
 from gws_core import CredentialsDataOther
 from ragflow_sdk import Chat, DataSet, Document, RAGFlow, Session
@@ -132,7 +132,6 @@ class RagFlowService:
         """Upload single document using SDK."""
         response = self.upload_documents([doc_paths], dataset_id, [filename] if filename else None)
         return response[0]
-
 
     def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 10) -> List[Document]:
         """List documents using SDK."""

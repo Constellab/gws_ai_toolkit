@@ -48,7 +48,7 @@ class DatahubRagService():
         if rag_resource.is_compatible_with_rag() is False:
             raise ValueError("The resource is not compatible with Dify.")
 
-        file = rag_resource.get_file_path()
+        file = rag_resource.get_file()
 
         rag_uploaded_doc: RagDocument
         if rag_resource.is_synced_with_rag():

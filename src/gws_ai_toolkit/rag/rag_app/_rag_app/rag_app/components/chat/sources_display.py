@@ -5,23 +5,37 @@ from gws_ai_toolkit.rag.common.rag_models import RagChunk
 
 
 def source_item(source: RagChunk) -> rx.Component:
-    """Display a single source item."""
-    return rx.box(
-        rx.hstack(
-            rx.icon("file-text", size=16, color="blue.500"),
-            rx.text(
-                source.document_name,
-                font_weight="medium",
-                font_size="sm",
+    """Display a single source item with click functionality."""
+    return rx.link(
+        rx.box(
+            rx.hstack(
+                rx.icon("file-text", size=16, color="blue.500"),
+                rx.text(
+                    source.document_name,
+                    font_weight="medium",
+                    font_size="sm",
+                ),
+                rx.spacer(),
+                rx.hstack(
+                    rx.text(
+                        f"Score: {source.score:.2f}",
+                        font_size="xs",
+                        color="gray.600",
+                    ),
+                    rx.icon("external-link", size=12, color="blue.500"),
+                    align="center",
+                    spacing="1",
+                ),
+                align="center",
             ),
-            rx.spacer(),
-            rx.text(
-                f"Score: {source.score:.2f}",
-                font_size="xs",
-                color="gray.600",
-            ),
-            align="center",
+            padding="2",
+            border_radius="md",
+            _hover={"background_color": "gray.50", "cursor": "pointer"},
+            transition="background-color 0.2s ease",
         ),
+        href=f"/ai-expert/{source.document_id}",
+        text_decoration="none",
+        _hover={"text_decoration": "none"},
     )
 
 

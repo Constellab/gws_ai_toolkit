@@ -38,7 +38,8 @@ class RagDifyService(BaseRagService):
             id=dify_doc.id,
             name=dify_doc.name,
             size=dify_doc.tokens,  # Use tokens as size approximation
-            parsed_status=parsed_status
+            parsed_status=parsed_status,
+            metadata=dify_doc.meta_fields or {}
         )
 
     def _convert_to_rag_chunk(self, dify_chunk_record: DifyChunkRecord) -> RagChunk:

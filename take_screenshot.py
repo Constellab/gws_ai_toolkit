@@ -18,6 +18,7 @@ def test_reflex_app(route="/"):
 
         # Navigate to your Reflex app with the specified route
         url = f"http://localhost:8511{route}"
+        print(f"Navigating to {url}")
         page.goto(url)
 
         # Wait for page to load fully
@@ -38,6 +39,6 @@ def test_reflex_app(route="/"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Take a screenshot of the Reflex app")
     parser.add_argument("--route", "-r", default="/", help="Route to navigate to (default: /)")
-    
+
     args = parser.parse_args()
     test_reflex_app(args.route)

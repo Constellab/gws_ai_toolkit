@@ -105,7 +105,7 @@ class DatahubRagResource():
         tags = resource_tags.get_tags_by_key(self.RAG_DATASET_TAG_KEY)
         return tags[0].tag_value
 
-    def get_file_path(self) -> File:
+    def get_file(self) -> File:
         """Get the file path of the resource."""
         if not self.is_compatible_with_rag():
             raise ValueError("The resource is not compatible with RAG.")
@@ -204,8 +204,8 @@ class DatahubRagResource():
             return '## '
         return '\n\n'
 
-
     # Static factory methods
+
     @classmethod
     def from_resource_model_id(cls, resource_model_id: str):
         """Create a resource wrapper from a resource model id."""
