@@ -32,9 +32,7 @@ def sources_display(sources: List[RagChunk]) -> rx.Component:
         rx.accordion.root(
             rx.accordion.item(
                 header=rx.accordion.trigger(
-                    rx.hstack(
-                        rx.text("Sources", font_size="sm", font_weight="medium"),
-                    ),
+                    rx.text("Sources", font_size="sm", font_weight="medium"),
                 ),
                 content=rx.accordion.content(
                     rx.vstack(
@@ -47,5 +45,6 @@ def sources_display(sources: List[RagChunk]) -> rx.Component:
             ),
             collapsible=True,
             width="100%",
+            variant="outline"
         ),
     )
