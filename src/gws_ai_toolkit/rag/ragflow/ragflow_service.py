@@ -1,14 +1,9 @@
-from typing import Generator, List, Literal, Optional, Union
+from typing import Any, Generator, List, Optional
 
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
-    RagFlowChat, RagFlowChatEndStreamResponse, RagFlowChatStreamResponse,
-    RagFlowChunk, RagFlowCreateChatRequest, RagFlowCreateDatasetRequest,
-    RagFlowCreateSessionRequest, RagFlowDataset, RagFlowDocument,
-    RagFlowListChatsResponse, RagFlowListDatasetsResponse,
-    RagFlowListDocumentsResponse, RagFlowListSessionsResponse,
-    RagFlowRetrieveResponse, RagFlowSendDocumentResponse, RagFlowSession,
-    RagFlowUpdateChatRequest, RagFlowUpdateDatasetRequest,
-    RagFlowUpdateDocumentOptions)
+    RagFlowCreateChatRequest, RagFlowCreateDatasetRequest,
+    RagFlowCreateSessionRequest, RagFlowUpdateChatRequest, 
+    RagFlowUpdateDatasetRequest, RagFlowUpdateDocumentOptions)
 from gws_core import CredentialsDataOther
 from ragflow_sdk import Chat, DataSet, Document, RAGFlow, Session
 
@@ -39,7 +34,7 @@ class RagFlowService:
 
     ################################# DATASET MANAGEMENT #################################
 
-    def create_dataset(self, dataset: RagFlowCreateDatasetRequest) -> RagFlowDataset:
+    def create_dataset(self, dataset: RagFlowCreateDatasetRequest) -> DataSet:
         """Create a new dataset/knowledgebase using SDK.
 
         Parameters
@@ -49,8 +44,8 @@ class RagFlowService:
 
         Returns
         -------
-        RagFlowDataset
-            Created dataset information
+        DataSet
+            Created dataset information from SDK
         """
         client = self._get_client()
 
@@ -61,23 +56,7 @@ class RagFlowService:
                 permission=dataset.permission if hasattr(dataset, 'permission') else 'me'
             )
 
-            # Convert SDK dataset to our format
-            return RagFlowDataset(
-                id=sdk_dataset.id,
-                name=sdk_dataset.name,
-                avatar=dataset.avatar if hasattr(dataset, 'avatar') else None,
-                description=dataset.description if hasattr(dataset, 'description') else None,
-                language=dataset.language if hasattr(dataset, 'language') else 'English',
-                embedding_model=dataset.embedding_model if hasattr(dataset, 'embedding_model') else 'default',
-                permission=dataset.permission if hasattr(dataset, 'permission') else 'me',
-                parse_method=dataset.parse_method if hasattr(dataset, 'parse_method') else 'naive',
-                chunk_count=0,
-                document_count=0,
-                created_by='user',
-                tenant_id='default',
-                created_at='',
-                updated_at=''
-            )
+            return sdk_dataset
         except Exception as e:
             raise RuntimeError(f"Error creating dataset: {str(e)}") from e
 
@@ -91,46 +70,22 @@ class RagFlowService:
 
         return dk_datasets[0]
 
-    def list_datasets(self, page: int = 1, page_size: int = 10) -> RagFlowListDatasetsResponse:
+    def list_datasets(self, page: int = 1, page_size: int = 10) -> List[DataSet]:
         """List all datasets/knowledgebases using SDK."""
         client = self._get_client()
 
         try:
             sdk_datasets = client.list_datasets()
 
-            # Convert SDK datasets to our format
-            datasets = []
+            # Apply pagination
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
 
-            for sdk_dataset in sdk_datasets[start_idx:end_idx]:
-                dataset = RagFlowDataset(
-                    id=sdk_dataset.id,
-                    name=sdk_dataset.name,
-                    avatar=None,
-                    description=None,
-                    language='English',
-                    embedding_model='default',
-                    permission='me',
-                    parse_method='naive',
-                    chunk_count=getattr(sdk_dataset, 'chunk_count', 0),
-                    document_count=getattr(sdk_dataset, 'document_count', 0),
-                    created_by='user',
-                    tenant_id='default',
-                    created_at='',
-                    updated_at=''
-                )
-                datasets.append(dataset)
-
-            return RagFlowListDatasetsResponse(
-                code=0,
-                message='success',
-                data=datasets
-            )
+            return sdk_datasets[start_idx:end_idx]
         except Exception as e:
             raise RuntimeError(f"Error listing datasets: {str(e)}") from e
 
-    def update_dataset(self, dataset_id: str, updates: RagFlowUpdateDatasetRequest) -> RagFlowDataset:
+    def update_dataset(self, dataset_id: str, updates: RagFlowUpdateDatasetRequest) -> DataSet:
         """Update a dataset (limited support in SDK)."""
         # Note: SDK may have limited update support, this is a placeholder
         raise NotImplementedError("Dataset updates not fully supported in SDK")
@@ -147,7 +102,7 @@ class RagFlowService:
     ################################# DOCUMENT MANAGEMENT #################################
 
     def upload_documents(self, doc_paths: List[str], dataset_id: str,
-                         filenames: List[str] = None) -> RagFlowSendDocumentResponse:
+                         filenames: List[str] = None) -> List[Document]:
         """Upload multiple documents using SDK."""
         try:
             # Get dataset object using our helper method
@@ -167,48 +122,19 @@ class RagFlowService:
 
             # Upload documents
             ragflow_response: List[Document] = dataset.upload_documents(documents)
-            doc_response: List[RagFlowDocument] = []
-
-            for ragflow_doc in ragflow_response:
-                doc = self._document_to_ragflow_document(ragflow_doc)
-                doc_response.append(doc)
-
-            return RagFlowSendDocumentResponse(
-                code=0,
-                message='success',
-                data=doc_response
-            )
+            return ragflow_response
 
         except Exception as e:
             raise RuntimeError(f"Error uploading documents: {str(e)}") from e
 
     def upload_document(self, doc_paths: str, dataset_id: str,
-                        filename: str = None) -> RagFlowDocument:
-        """Upload multiple documents using SDK."""
+                        filename: str = None) -> Document:
+        """Upload single document using SDK."""
         response = self.upload_documents([doc_paths], dataset_id, [filename] if filename else None)
-        return response.data[0]
+        return response[0]
 
-    def _document_to_ragflow_document(self, document: Document) -> RagFlowDocument:
-        """Convert SDK Document to RagFlowDocument."""
-        parsed: Literal['DONE', 'PENDING', 'RUNNING', 'ERROR'] = None
-        if document.run == 'UNSTART':
-            parsed = 'PENDING'
-        elif document.run == 'DONE':
-            parsed = 'DONE'
-        elif document.run == 'RUNNING':
-            parsed = 'RUNNING'
-        else:  # FAIL
-            parsed = 'ERROR'
-        return RagFlowDocument(
-            id=document.id,
-            name=document.name,
-            size=document.size,
-            knowledgebase_id=document.dataset_id,
-            type=document.type,
-            parsed=parsed
-        )
 
-    def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 10) -> RagFlowListDocumentsResponse:
+    def list_documents(self, dataset_id: str, page: int = 1, page_size: int = 10) -> List[Document]:
         """List documents using SDK."""
         try:
             # Get dataset object using our helper method
@@ -217,25 +143,16 @@ class RagFlowService:
             # List documents
             sdk_documents = dataset.list_documents()
 
-            # Convert to our format with pagination
+            # Apply pagination
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
 
-            documents = []
-            for sdk_doc in sdk_documents[start_idx:end_idx]:
-                doc = self._document_to_ragflow_document(sdk_doc)
-                documents.append(doc)
-
-            return RagFlowListDocumentsResponse(
-                code=0,
-                message='success',
-                data=documents
-            )
+            return sdk_documents[start_idx:end_idx]
 
         except Exception as e:
             raise RuntimeError(f"Error listing documents: {str(e)}") from e
 
-    def get_all_documents(self, dataset_id: str) -> List[RagFlowDocument]:
+    def get_all_documents(self, dataset_id: str) -> List[Document]:
         """Get all documents using SDK."""
 
         try:
@@ -245,18 +162,13 @@ class RagFlowService:
             # List all documents
             sdk_documents = dataset.list_documents()
 
-            documents = []
-            for sdk_doc in sdk_documents:
-                doc = self._document_to_ragflow_document(sdk_doc)
-                documents.append(doc)
-
-            return documents
+            return sdk_documents
 
         except Exception as e:
             raise RuntimeError(f"Error getting all documents: {str(e)}") from e
 
     def update_document(self, dataset_id: str, document_id: str,
-                        options: RagFlowUpdateDocumentOptions) -> RagFlowDocument:
+                        options: RagFlowUpdateDocumentOptions) -> Document:
         """Update a document (limited support in SDK)."""
         document = self.get_document(dataset_id, document_id)
 
@@ -265,7 +177,7 @@ class RagFlowService:
             'meta_fields': options.meta_fields
         })
 
-        return self._document_to_ragflow_document(rag_doc)
+        return rag_doc
 
     def delete_documents(self, dataset_id: str, document_ids: List[str]) -> None:
         """Delete documents using SDK."""
@@ -315,7 +227,7 @@ class RagFlowService:
     ################################# CHUNK MANAGEMENT #################################
 
     def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5, similarity_threshold: float = 0.0,
-                        vector_similarity_weight: float = 0.3) -> RagFlowRetrieveResponse:
+                        vector_similarity_weight: float = 0.3) -> dict:
         """Retrieve chunks using SDK."""
         client = self._get_client()
 
@@ -329,32 +241,14 @@ class RagFlowService:
                 top_k=top_k
             )
 
-            # Convert to our format
-
-            chunks = []
-            for chunk in retrieved_chunks.get('chunks', []):
-                ragflow_chunk = RagFlowChunk(
-                    id=chunk.get('id', ''),
-                    content=chunk.get('content', ''),
-                    document_id=chunk.get('document_id', ''),
-                    document_name=chunk.get('document_name', ''),
-                    dataset_id=dataset_id,
-                )
-                chunks.append(ragflow_chunk)
-
-            return RagFlowRetrieveResponse(
-                code=0,
-                message='success',
-                data={'chunks': chunks},
-                chunks=chunks
-            )
+            return retrieved_chunks
 
         except Exception as e:
             raise RuntimeError(f"Error retrieving chunks: {str(e)}") from e
 
     ################################# CHAT MANAGEMENT #################################
 
-    def create_chat(self, chat: RagFlowCreateChatRequest) -> RagFlowChat:
+    def create_chat(self, chat: RagFlowCreateChatRequest) -> Chat:
         """Create chat assistant using SDK."""
         client = self._get_client()
 
@@ -365,22 +259,12 @@ class RagFlowService:
                 llm=chat.llm
             )
 
-            return RagFlowChat(
-                id=sdk_chat.id,
-                name=sdk_chat.name,
-                avatar=chat.avatar,
-                knowledgebases=chat.knowledgebases,
-                llm=chat.llm,
-                prompt=chat.prompt,
-                created_by='user',
-                created_at='',
-                updated_at=''
-            )
+            return sdk_chat
 
         except Exception as e:
             raise RuntimeError(f"Error creating chat: {str(e)}") from e
 
-    def list_chats(self, page: int = 1, page_size: int = 10) -> RagFlowListChatsResponse:
+    def list_chats(self, page: int = 1, page_size: int = 10) -> List[Chat]:
         """List chats using SDK."""
         client = self._get_client()
 
@@ -391,31 +275,12 @@ class RagFlowService:
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
 
-            chats = []
-            for sdk_chat in sdk_chats[start_idx:end_idx]:
-                chat = RagFlowChat(
-                    id=sdk_chat.id,
-                    name=sdk_chat.name,
-                    avatar=None,
-                    knowledgebases=[],
-                    llm={},
-                    prompt='',
-                    created_by='user',
-                    created_at='',
-                    updated_at=''
-                )
-                chats.append(chat)
-
-            return RagFlowListChatsResponse(
-                code=0,
-                message='success',
-                data=chats
-            )
+            return sdk_chats[start_idx:end_idx]
 
         except Exception as e:
             raise RuntimeError(f"Error listing chats: {str(e)}") from e
 
-    def update_chat(self, chat_id: str, updates: RagFlowUpdateChatRequest) -> RagFlowChat:
+    def update_chat(self, chat_id: str, updates: RagFlowUpdateChatRequest) -> Chat:
         """Update chat (limited support in SDK)."""
         raise NotImplementedError("Chat updates not supported in current SDK version")
 
@@ -446,7 +311,7 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error getting chat: {str(e)}") from e
 
-    def create_session(self, chat_id: str, session: RagFlowCreateSessionRequest) -> RagFlowSession:
+    def create_session(self, chat_id: str, session: RagFlowCreateSessionRequest) -> Session:
         """Create session using SDK."""
 
         try:
@@ -456,19 +321,12 @@ class RagFlowService:
             # Create session
             sdk_session = chat.create_session(name=session.name)
 
-            return RagFlowSession(
-                id=sdk_session.id,
-                name=sdk_session.name,
-                messages=[],
-                chat_id=chat_id,
-                created_at='',
-                updated_at=''
-            )
+            return sdk_session
 
         except Exception as e:
             raise RuntimeError(f"Error creating session: {str(e)}") from e
 
-    def list_sessions(self, chat_id: str, page: int = 1, page_size: int = 10) -> RagFlowListSessionsResponse:
+    def list_sessions(self, chat_id: str, page: int = 1, page_size: int = 10) -> List[Session]:
         """List sessions using SDK."""
 
         try:
@@ -482,23 +340,7 @@ class RagFlowService:
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
 
-            sessions = []
-            for sdk_session in sdk_sessions[start_idx:end_idx]:
-                session = RagFlowSession(
-                    id=sdk_session.id,
-                    name=sdk_session.name,
-                    messages=[],
-                    chat_id=chat_id,
-                    created_at='',
-                    updated_at=''
-                )
-                sessions.append(session)
-
-            return RagFlowListSessionsResponse(
-                code=0,
-                message='success',
-                data=sessions
-            )
+            return sdk_sessions[start_idx:end_idx]
 
         except Exception as e:
             raise RuntimeError(f"Error listing sessions: {str(e)}") from e
@@ -533,9 +375,7 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error getting session: {str(e)}") from e
 
-    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[
-            Union[RagFlowChatStreamResponse, RagFlowChatEndStreamResponse],
-            None, None]:
+    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[Any, None, None]:
         """Ask question using SDK with streaming."""
         try:
             # Get chat object
@@ -551,32 +391,9 @@ class RagFlowService:
             if not session:
                 session = chat.create_session(name="default_session")
 
-            # Ask question with streaming
+            # Ask question with streaming - return raw SDK responses
             for chunk in session.ask(question=query, stream=True):
-                if chunk.role == 'assistant':
-
-                    if chunk.reference:
-                        references: List[RagFlowChunk] = []
-                        for ref in chunk.reference:
-                            references.append(RagFlowChunk(
-                                id=ref['id'],
-                                content=ref['content'],
-                                document_id=ref['document_id'],
-                                document_name=ref['document_name'],
-                                dataset_id=ref['dataset_id'],
-                                score=ref['vector_similarity']
-                            ))
-                        # Final response
-                        yield RagFlowChatEndStreamResponse(
-                            session_id=session.id,
-                            message_id='',
-                            reference=references
-                        )
-                    else:
-                        yield RagFlowChatStreamResponse(
-                            answer=chunk.content,
-                            reference=[]
-                        )
+                yield chunk
 
         except Exception as e:
             raise RuntimeError(f"Error asking question: {str(e)}") from e

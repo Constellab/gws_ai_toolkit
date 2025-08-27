@@ -368,6 +368,49 @@ class DifyService:
             page += 1
         return documents
 
+    def get_document(self, dataset_id: str, document_id: str) -> Optional[DifyDatasetDocument]:
+        """Get a single document from a dataset.
+
+        Parameters
+        ----------
+        dataset_id : str
+            Knowledge Base ID
+        document_id : str
+            Document ID to retrieve
+
+        Returns
+        -------
+        Optional[DifyDatasetDocument]
+            The document if found, None otherwise
+
+        Raises
+        ------
+        requests.exceptions.HTTPError
+            If the API request fails
+        """
+        route = f'{self.route}/datasets/{dataset_id}/documents/{document_id}'
+
+        try:
+            response = requests.get(
+                route,
+                headers=self._get_http_headers(),
+                timeout=10
+            )
+
+            if response.status_code == 404:
+                return None
+
+            response.raise_for_status()
+            response_data = response.json()
+            return DifyDatasetDocument.from_json(response_data)
+
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                return None
+            raise RuntimeError(f"Error getting document {document_id}: {str(e)}") from e
+        except Exception as e:
+            raise RuntimeError(f"Error getting document {document_id}: {str(e)}") from e
+
     def delete_document(self, dataset_id: str, document_id: str) -> None:
         """Delete a document from a dataset.
 

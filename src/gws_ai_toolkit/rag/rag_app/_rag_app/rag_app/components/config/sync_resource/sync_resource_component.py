@@ -61,8 +61,15 @@ def search_resource():
 
 def _resource_info_section():
     return rx.cond(
-        SyncResourceState.selected_resource_info, rx.vstack(
-            rx.text(f"Selected resource: {SyncResourceState.selected_resource_info.name}", weight="bold"),
+        SyncResourceState.selected_resource_info,
+        rx.vstack(
+            rx.hstack(
+                rx.text(f"Selected resource: {SyncResourceState.selected_resource_info.name}", weight="bold"),
+                rx.button("Refresh", on_click=SyncResourceState.refresh_selected_resource),
+                align_items="center",
+            ),
+
+
             rx.cond(
                 ~SyncResourceState.is_selected_resource_compatible, rx.text(
                     "The resource is not compatible with the RAG platform.",
@@ -71,7 +78,8 @@ def _resource_info_section():
                 rx.cond(
                     SyncResourceState.is_selected_resource_synced, _synced_resource_info(),
                     _unsynced_resource_info())),
-            spacing="3"))
+            spacing="3")
+    )
 
 
 def _synced_resource_info():
@@ -80,12 +88,35 @@ def _synced_resource_info():
         rx.text(f"RAG knowledge base id: {SyncResourceState.selected_resource_dataset_id}"),
         rx.text(f"RAG document id: {SyncResourceState.selected_resource_document_id}"),
         rx.text(f"RAG sync date: {SyncResourceState.selected_resource_sync_date}"),
+        rx.cond(
+            SyncResourceState.selected_resource_document,
+            rx.vstack(
+                rx.text(f"Document name: {SyncResourceState.selected_resource_document.name}", weight="medium"),
+                rx.text(f"Parse status: {SyncResourceState.selected_resource_document.parsed_status}",
+                        style={
+                            "color": rx.match(
+                                SyncResourceState.selected_resource_document.parsed_status,
+                                ("DONE", "var(--green-11)"),
+                                ("ERROR", "var(--red-11)"),
+                                ("RUNNING", "var(--blue-11)"),
+                                "var(--amber-11)"
+                            )
+                        }),
+                spacing="1"
+            )
+        ),
         rx.hstack(
             rx.button(
                 rx.spinner(loading=SyncResourceState.send_to_rag_is_loading),
                 rx.text("Resend to RAG"),
                 on_click=SyncResourceState.send_to_rag,
                 variant="solid"
+            ),
+            rx.button(
+                rx.spinner(loading=SyncResourceState.parse_document_is_loading),
+                rx.text("Parse document"),
+                on_click=SyncResourceState.parse_document,
+                variant="outline"
             ),
             rx.alert_dialog.root(
                 rx.alert_dialog.trigger(

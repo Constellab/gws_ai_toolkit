@@ -48,20 +48,18 @@ class DatahubRagService():
         if rag_resource.is_compatible_with_rag() is False:
             raise ValueError("The resource is not compatible with Dify.")
 
-
         file = rag_resource.get_file_path()
-
 
         rag_uploaded_doc: RagDocument
         if rag_resource.is_synced_with_rag():
             # if the resource is already synced with dify, we need to update the document
-            rag_uploaded_doc = self.rag_service.update_document(file.path, self.dataset_id,
-                                                              rag_resource.get_and_check_document_id(),
-                                                              upload_options,
-                                                              filename=file.get_name())
+            rag_uploaded_doc = self.rag_service.update_document_and_parse(file.path, self.dataset_id,
+                                                                          rag_resource.get_and_check_document_id(),
+                                                                          upload_options,
+                                                                          filename=file.get_name())
         else:
-            rag_uploaded_doc = self.rag_service.upload_document(file.path, self.dataset_id, upload_options,
-                                                            filename=file.get_name())
+            rag_uploaded_doc = self.rag_service.upload_document_and_parse(file.path, self.dataset_id, upload_options,
+                                                                          filename=file.get_name())
 
         try:
 
@@ -111,11 +109,9 @@ class DatahubRagService():
         # Remove the tags from the resource
         rag_resource.unmark_resource_as_sent_to_rag()
 
-
     def delete_rag_document(self, rag_document_id: str) -> None:
         """Delete a document from the RAG platform."""
         self.rag_service.delete_document(self.dataset_id, rag_document_id)
-
 
     def get_rag_documents_to_delete(self) -> List[RagDocument]:
         """List all RAG documents that are not in the datahub anymore."""
@@ -212,4 +208,3 @@ class DatahubRagService():
             chat_id=chat_id,
             inputs=filtered_inputs
         )
-

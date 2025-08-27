@@ -1,14 +1,13 @@
-from typing import Any, Generator, List, Optional, Union
+from typing import Any, Generator, List, Literal, Optional, Union
 
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatStreamResponse,
                                                   RagChunk, RagDocument)
 from gws_core import CredentialsDataOther
+from ragflow_sdk import Document
 
-from .ragflow_class import (RagFlowChatEndStreamResponse,
-                            RagFlowChatStreamResponse, RagFlowChunk,
-                            RagFlowDocument, RagFlowUpdateDocumentOptions)
+from .ragflow_class import RagFlowUpdateDocumentOptions
 from .ragflow_service import RagFlowService
 
 
@@ -19,43 +18,28 @@ class RagRagFlowService(BaseRagService):
         super().__init__(route, api_key)
         self._ragflow_service = RagFlowService(route, api_key)
 
-    # Helper methods to convert RagFlow models to Rag models
-    def _convert_to_rag_document(self, ragflow_doc: RagFlowDocument) -> RagDocument:
-        """Convert RagFlowDocument to RagDocument."""
-        return RagDocument(
-            id=ragflow_doc.id,
-            name=ragflow_doc.name,
-            size=ragflow_doc.size,
-            parsed_status=ragflow_doc.parsed
-        )
-
-    def _convert_to_rag_chunk(self, ragflow_chunk: RagFlowChunk) -> RagChunk:
-        """Convert RagFlowChunk to RagChunk."""
-        return RagChunk(
-            id=ragflow_chunk.id,
-            content=ragflow_chunk.content,
-            document_id=ragflow_chunk.document_id,
-            document_name=ragflow_chunk.document_name,
-            score=0.0  # RagFlow chunks don't have scores in this context
-        )
-
     # Implement BaseRagService abstract methods
-    def upload_document(self, doc_path: str, dataset_id: str, options: Any,
-                        filename: str = None) -> RagDocument:
+    def upload_document_and_parse(self, doc_path: str, dataset_id: str, options: Any,
+                                  filename: str = None) -> RagDocument:
         """Upload a document to the knowledge base."""
-        ragflow_doc = self._ragflow_service.upload_document(doc_path, dataset_id, filename)
-        return self._convert_to_rag_document(ragflow_doc)
+        sdk_doc = self._ragflow_service.upload_document(doc_path, dataset_id, filename)
+        self._ragflow_service.parse_documents(dataset_id, [sdk_doc.id])
+        return self._convert_document_to_rag_document(sdk_doc)
 
-    def update_document(self, doc_path: str, dataset_id: str, document_id: str,
-                        options: Any, filename: str = None) -> RagDocument:
+    def update_document_and_parse(self, doc_path: str, dataset_id: str, document_id: str,
+                                  options: Any, filename: str = None) -> RagDocument:
         """Update an existing document in the knowledge base."""
         self.delete_document(dataset_id, document_id)
-        return self.upload_document(doc_path, dataset_id, filename)
+        return self.upload_document_and_parse(doc_path, dataset_id, filename)
 
     def update_document_metadata(self, dataset_id: str, document_id: str,
                                  metadata: dict) -> None:
         options = RagFlowUpdateDocumentOptions(meta_fields=metadata)
         self._ragflow_service.update_document(dataset_id, document_id, options)
+
+    def parse_document(self, dataset_id: str, document_id: str) -> RagDocument:
+        self._ragflow_service.parse_documents(dataset_id, [document_id])
+        return self.get_document(dataset_id, document_id)
 
     def delete_document(self, dataset_id: str, document_id: str) -> None:
         """Delete a document from the knowledge base."""
@@ -63,43 +47,60 @@ class RagRagFlowService(BaseRagService):
 
     def get_all_documents(self, dataset_id: str) -> List[RagDocument]:
         """Get all documents from a knowledge base."""
-        ragflow_documents = self._ragflow_service.get_all_documents(dataset_id)
-        return [self._convert_to_rag_document(doc) for doc in ragflow_documents]
+        sdk_documents = self._ragflow_service.get_all_documents(dataset_id)
+        return [self._convert_document_to_rag_document(doc) for doc in sdk_documents]
+
+    def get_document(self, dataset_id: str, document_id: str) -> Optional[RagDocument]:
+        """Get a document from the knowledge base."""
+        try:
+            sdk_document = self._ragflow_service.get_document(dataset_id, document_id)
+            return self._convert_document_to_rag_document(sdk_document)
+        except ValueError:
+            return None
 
     def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5, **kwargs) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
-        response = self._ragflow_service.retrieve_chunks(dataset_id, query, top_k=top_k, **kwargs)
-        return [self._convert_to_rag_chunk(chunk) for chunk in response.chunks]
+        sdk_response = self._ragflow_service.retrieve_chunks(dataset_id, query, top_k=top_k, **kwargs)
 
-    def chat_stream(self, query: str, conversation_id: str,
+        # Convert SDK response directly to RagChunk
+        chunks = []
+        for chunk in sdk_response.get('chunks', []):
+            rag_chunk = self._convert_chunk_to_rag_chunk(chunk)
+            chunks.append(rag_chunk)
+
+        return chunks
+
+    def chat_stream(self,
+                    query: str,
+                    conversation_id: Optional[str] = None,
                     user: Optional[str] = None,
-                    chat_id: Optional[str] = None, **kwargs) -> Generator[
+                    chat_id: Optional[str] = None,
+                    **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
     ]:
         """Send a query and get streaming chat response."""
         # RagFlow requires a chat_id, so we need to handle this differently
-        # For now, we'll raise NotImplementedError as this needs additional setup
-        for response in self.ragflow_service.ask_stream(chat_id, query, conversation_id):
-            if isinstance(response, RagFlowChatStreamResponse):
-                yield RagChatStreamResponse(answer=response.answer, is_from_beginning=True)
-            elif isinstance(response, RagFlowChatEndStreamResponse):
-                # Convert sources to RagChunk references
-                references = []
-                if response.reference:
-                    for reference in response.reference:
+        for sdk_chunk in self._ragflow_service.ask_stream(chat_id, query, conversation_id):
+            if sdk_chunk.role == 'assistant':
+                if sdk_chunk.reference:
+                    # Convert directly to RagChunk references
+                    rag_references = []
+                    for ref in sdk_chunk.reference:
                         chunk = RagChunk(
-                            id=reference.document_id,
-                            content=reference.content,
-                            document_id=reference.document_id,
-                            document_name=reference.document_name,
-                            score=reference.score
+                            id=ref['id'],
+                            content=ref['content'],
+                            document_id=ref['document_id'],
+                            document_name=ref['document_name'],
+                            score=ref['vector_similarity']
                         )
-                        references.append(chunk)
+                        rag_references.append(chunk)
 
-                yield RagChatEndStreamResponse(
-                    session_id=response.session_id,
-                    sources=references
-                )
+                    yield RagChatEndStreamResponse(
+                        session_id=conversation_id or 'default',
+                        sources=rag_references
+                    )
+                else:
+                    yield RagChatStreamResponse(answer=sdk_chunk.content, is_from_beginning=True)
 
     @staticmethod
     def from_credentials(credentials: CredentialsDataOther) -> 'RagRagFlowService':
@@ -116,3 +117,35 @@ class RagRagFlowService(BaseRagService):
     def ragflow_service(self) -> RagFlowService:
         """Get the underlying RagFlowService instance."""
         return self._ragflow_service
+
+    ################################### CONVERTERS #####################################
+
+    # Helper methods to convert RagFlow models to Rag models
+    def _convert_document_to_rag_document(self, document: Document) -> RagDocument:
+        """Convert SDK Document directly to RagDocument."""
+        parsed_status: Literal['DONE', 'PENDING', 'RUNNING', 'ERROR'] = None
+        if document.run == 'UNSTART':
+            parsed_status = 'PENDING'
+        elif document.run == 'DONE':
+            parsed_status = 'DONE'
+        elif document.run == 'RUNNING':
+            parsed_status = 'RUNNING'
+        else:  # FAIL
+            parsed_status = 'ERROR'
+
+        return RagDocument(
+            id=document.id,
+            name=document.name,
+            size=document.size,
+            parsed_status=parsed_status
+        )
+
+    def _convert_chunk_to_rag_chunk(self, chunk_data: dict) -> RagChunk:
+        """Convert SDK chunk data directly to RagChunk."""
+        return RagChunk(
+            id=chunk_data.get('id', ''),
+            content=chunk_data.get('content', ''),
+            document_id=chunk_data.get('document_id', ''),
+            document_name=chunk_data.get('document_name', ''),
+            score=chunk_data.get('vector_similarity', 0.0)
+        )

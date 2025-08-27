@@ -52,16 +52,16 @@ class RagDifyService(BaseRagService):
         )
 
     # Implement BaseRagService abstract methods
-    def upload_document(self, doc_path: str, dataset_id: str, options: Any,
-                        filename: str = None) -> RagDocument:
+    def upload_document_and_parse(self, doc_path: str, dataset_id: str, options: Any,
+                                  filename: str = None) -> RagDocument:
         """Upload a document to the knowledge base."""
         if not isinstance(options, DifySendDocumentOptions):
             raise ValueError("Options must be an instance of DifySendDocumentOptions")
         response = self._dify_service.send_document(doc_path, dataset_id, options, filename)
         return self._convert_to_rag_document(response.document)
 
-    def update_document(self, doc_path: str, dataset_id: str, document_id: str,
-                        options: Any, filename: str = None) -> RagDocument:
+    def update_document_and_parse(self, doc_path: str, dataset_id: str, document_id: str,
+                                  options: Any, filename: str = None) -> RagDocument:
         """Update an existing document in the knowledge base."""
         if not isinstance(options, DifyUpdateDocumentOptions):
             raise ValueError("Options must be an instance of DifyUpdateDocumentOptions")
@@ -80,6 +80,9 @@ class RagDifyService(BaseRagService):
 
         self._dify_service.update_document_metadata(dataset_id, [options])
 
+    def parse_document(self, dataset_id: str, document_id: str) -> RagDocument:
+        raise NotImplementedError("Dify does not support re-parsing documents directly.")
+
     def delete_document(self, dataset_id: str, document_id: str) -> None:
         """Delete a document from the knowledge base."""
         self._dify_service.delete_document(dataset_id, document_id)
@@ -88,6 +91,13 @@ class RagDifyService(BaseRagService):
         """Get all documents from a knowledge base."""
         dify_documents = self._dify_service.get_all_documents(dataset_id)
         return [self._convert_to_rag_document(doc) for doc in dify_documents]
+
+    def get_document(self, dataset_id: str, document_id: str) -> Optional[RagDocument]:
+        """Get a document from the knowledge base."""
+        dify_document = self._dify_service.get_document(dataset_id, document_id)
+        if dify_document is None:
+            return None
+        return self._convert_to_rag_document(dify_document)
 
     def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5, **kwargs) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""

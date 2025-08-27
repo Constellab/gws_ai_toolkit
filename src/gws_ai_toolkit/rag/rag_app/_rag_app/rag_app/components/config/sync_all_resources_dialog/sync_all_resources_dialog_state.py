@@ -70,7 +70,6 @@ class SyncAllResourcesDialogState(RagAppState):
 
     @rx.event(background=True)
     async def sync_resources_to_rag(self):
-        print("Starting sync of resources../...........................")
         async with self:
             self.sync_resource_progress = 0
             self.sync_errors = []

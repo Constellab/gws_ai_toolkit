@@ -19,20 +19,26 @@ class BaseRagService(ABC):
 
     # Document Management
     @abstractmethod
-    def upload_document(self, doc_path: str, dataset_id: str, options: Any, filename: str = None) -> RagDocument:
+    def upload_document_and_parse(
+            self, doc_path: str, dataset_id: str, options: Any, filename: str = None) -> RagDocument:
         """Upload a document to the knowledge base."""
         raise NotImplementedError
 
     @abstractmethod
-    def update_document(self, doc_path: str, dataset_id: str, document_id: str,
-                       options: Any, filename: str = None) -> RagDocument:
+    def update_document_and_parse(self, doc_path: str, dataset_id: str, document_id: str,
+                                  options: Any, filename: str = None) -> RagDocument:
         """Update an existing document in the knowledge base."""
         raise NotImplementedError
 
     @abstractmethod
     def update_document_metadata(self, dataset_id: str, document_id: str,
-                                  metadata: dict) -> None:
+                                 metadata: dict) -> None:
         """Update metadata fields of an existing document in the knowledge base."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse_document(self, dataset_id: str, document_id: str) -> RagDocument:
+        """Parse a document in the knowledge base."""
         raise NotImplementedError
 
     @abstractmethod
@@ -45,10 +51,15 @@ class BaseRagService(ABC):
         """Get all documents from a knowledge base."""
         raise NotImplementedError
 
+    @abstractmethod
+    def get_document(self, dataset_id: str, document_id: str) -> Optional[RagDocument]:
+        """Get a document from the knowledge base."""
+        raise NotImplementedError
+
     # Chunk Retrieval
     @abstractmethod
     def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5,
-                       **kwargs) -> List[RagChunk]:
+                        **kwargs) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
         raise NotImplementedError
 

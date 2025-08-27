@@ -1,11 +1,12 @@
-from typing import List
+from typing import List, Optional
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
+from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
     RagAppState
-from gws_core import BaseModelDTO, ResourceModel, ResourceSearchBuilder
-from gws_core.user.current_user_service import AuthenticateUser
+from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
+                      ResourceSearchBuilder)
 
 
 class ResourceDTO(BaseModelDTO):
@@ -22,9 +23,11 @@ class SyncResourceState(RagAppState):
 
     _resources: List[ResourceModel] = []
     _selected_resource: DatahubRagResource | None = None
+    selected_resource_document: Optional[RagDocument] = None
 
     send_to_rag_is_loading: bool = False
     delete_from_rag_is_loading: bool = False
+    parse_document_is_loading: bool = False
 
     @rx.event(background=True)
     async def set_text(self, text: str):
@@ -77,13 +80,17 @@ class SyncResourceState(RagAppState):
         return ResourceDTO(
             id=self._selected_resource.resource_model.id, name=self._selected_resource.resource_model.name)
 
-    @rx.event
-    def select_resource(self, resource_id: str):
+    @rx.event(background=True)
+    async def select_resource(self, resource_id: str):
         resource = next((r for r in self._resources if r.id == resource_id), None)
         if resource:
-            self._selected_resource = DatahubRagResource(resource)
-            self.popover_opened = False
-            self.text = resource.name
+            async with self:
+                self._selected_resource = DatahubRagResource(resource)
+                self.popover_opened = False
+                self.text = resource.name
+                self.selected_resource_document = None
+
+            await self._load_rag_document(self._selected_resource)
 
     @rx.var
     def is_selected_resource_compatible(self) -> bool:
@@ -151,8 +158,8 @@ class SyncResourceState(RagAppState):
             yield rx.toast.error(f"Failed to send resource to RAG: {e}", duration=3000)
             return
         finally:
+            await self.refresh_selected_resource()
             async with self:
-                self.refresh_selected_resource()
                 self.send_to_rag_is_loading = False
 
         yield rx.toast.success("Resource sent to RAG successfully.", duration=3000)
@@ -174,16 +181,72 @@ class SyncResourceState(RagAppState):
             yield rx.toast.error(f"Failed to delete resource from RAG: {e}", duration=3000)
             return
         finally:
+            await self.refresh_selected_resource()
             async with self:
-                self.refresh_selected_resource()
                 self.delete_from_rag_is_loading = False
 
         yield rx.toast.success("Resource deleted from RAG successfully.", duration=3000)
 
-    def refresh_selected_resource(self):
+    @rx.event(background=True)
+    async def parse_document(self):
+        """Parse the selected resource document in RAG."""
+        if not self._selected_resource or not self.is_selected_resource_synced:
+            return
+
+        async with self:
+            self.parse_document_is_loading = True
+
+        try:
+            dataset_id = self.selected_resource_dataset_id
+            document_id = self.selected_resource_document_id
+
+            if dataset_id and document_id and self.get_datahub_knowledge_rag_service:
+                with AuthenticateUser(self.get_and_check_current_user()):
+                    parsed_document = self.get_datahub_knowledge_rag_service.rag_service.parse_document(
+                        dataset_id, document_id
+                    )
+                    async with self:
+                        self.selected_resource_document = parsed_document
+        except Exception as e:
+            yield rx.toast.error(f"Failed to parse document: {e}", duration=3000)
+            return
+        finally:
+            async with self:
+                self.parse_document_is_loading = False
+
+        yield rx.toast.success("Document parsing initiated successfully.", duration=3000)
+
+    @rx.event(background=True)
+    async def refresh_selected_resource(self):
         """Refresh the selected resource information."""
         if not self._selected_resource:
             return
 
         resource = ResourceModel.get_by_id_and_check(self._selected_resource.resource_model.id)
-        self._selected_resource = DatahubRagResource(resource)
+
+        async with self:
+            self._selected_resource = DatahubRagResource(resource)
+
+        await self._load_rag_document(self._selected_resource)
+
+    async def _load_rag_document(self, selected_resource: DatahubRagResource):
+        """Load the RAG document information."""
+
+        async with self:
+            # Also refresh document info if resource is synced
+            self.selected_resource_document = None
+
+        if selected_resource.is_synced_with_rag():
+            try:
+                dataset_id = self.selected_resource_dataset_id
+                document_id = self.selected_resource_document_id
+
+                if selected_resource.get_dataset_id() and selected_resource.get_document_id() and self.get_datahub_knowledge_rag_service:
+                    document = self.get_datahub_knowledge_rag_service.rag_service.get_document(
+                        dataset_id, document_id
+                    )
+
+                    async with self:
+                        self.selected_resource_document = document
+            except Exception as e:
+                Logger.error(f"Failed to load RAG document info: {e}")
