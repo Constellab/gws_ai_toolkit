@@ -6,7 +6,7 @@ from .pages.chat_page import chat_page
 from .pages.config_page import config_page
 
 app = rx.App(
-    theme=get_theme()
+    theme=get_theme(),
 )
 
 

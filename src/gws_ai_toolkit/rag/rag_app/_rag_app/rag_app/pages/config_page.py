@@ -1,4 +1,6 @@
 import reflex as rx
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.sync_resource.sync_resource_component import \
+    search_resource
 from gws_reflex_base import render_main_container
 
 from ..components.config.resource_selector import resource_selector
@@ -15,7 +17,7 @@ def config_page() -> rx.Component:
                 rx.vstack(
                     sync_controls(),
                     rx.divider(),
-                    resource_selector(),
+                    search_resource(),
                     spacing="6",
                     align="start",
                 ),
