@@ -3,7 +3,6 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.sync_resource
     search_resource
 from gws_reflex_base import render_main_container
 
-from ..components.config.resource_selector import resource_selector
 from ..components.config.sync_controls import sync_controls
 from ..components.shared.navigation import navigation
 

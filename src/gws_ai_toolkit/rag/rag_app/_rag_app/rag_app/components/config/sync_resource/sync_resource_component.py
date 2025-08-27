@@ -44,8 +44,7 @@ def search_resource():
                         rx.scroll_area(
                             rx.vstack(
                                 rx.foreach(
-                                    SyncResourceState.resources_infos, lambda resource,
-                                    index: _show_resource(resource, index)),
+                                    SyncResourceState.resources_infos, _show_resource),
                                 spacing="0"
                             ),
                             max_height="256px",)),
