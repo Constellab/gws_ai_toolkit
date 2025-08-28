@@ -30,8 +30,3 @@ class RagServiceFactory:
             return RagRagFlowService.from_credentials(credentials)
         else:
             raise ValueError(f"Unsupported RAG provider: {provider}")
-
-    @staticmethod
-    def get_supported_providers() -> list[RagProvider]:
-        """Get list of supported RAG providers."""
-        return ["dify", "ragflow"]

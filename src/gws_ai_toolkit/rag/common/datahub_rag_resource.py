@@ -28,7 +28,7 @@ class DatahubRagResource():
 
     # Tag keys specific to RagFlow
     RAG_DOC_TAG_KEY = 'rag_document'
-    RAG_DATASET_TAG_KEY = 'rag_dataset'
+    RAG_DATASET_ID_TAG_KEY = 'rag_dataset_id'
     RAG_SYNC_TAG_KEY = 'rag_sync'
 
     def __init__(self, resource_model: ResourceModel):
@@ -96,13 +96,13 @@ class DatahubRagResource():
             raise ValueError("The resource is not sent to RAG.")
         return sync_date
 
-    def get_dataset_id(self) -> str:
-        """Get the dataset id from the resource tags."""
+    def get_dataset_base_id(self) -> str:
+        """Get the dataset base id from the resource tags."""
         resource_tags = self._get_tags()
-        if not resource_tags.has_tag_key(self.RAG_DATASET_TAG_KEY):
+        if not resource_tags.has_tag_key(self.RAG_DATASET_ID_TAG_KEY):
             raise ValueError("The resource was not sent to RAG.")
 
-        tags = resource_tags.get_tags_by_key(self.RAG_DATASET_TAG_KEY)
+        tags = resource_tags.get_tags_by_key(self.RAG_DATASET_ID_TAG_KEY)
         return tags[0].tag_value
 
     def get_file(self) -> File:
@@ -139,7 +139,7 @@ class DatahubRagResource():
         origins = TagOrigins(TagOriginType.USER, CurrentUserService.get_and_check_current_user().id)
         tags = [
             Tag(self.RAG_DOC_TAG_KEY, document_id, origins=origins),
-            Tag(self.RAG_DATASET_TAG_KEY, dataset_id, origins=origins),
+            Tag(self.RAG_DATASET_ID_TAG_KEY, dataset_id, origins=origins),
             Tag(self.RAG_SYNC_TAG_KEY, str(DateHelper.now_utc_as_milliseconds()), origins=origins)
         ]
         resource_tags.replace_tags(tags)
@@ -149,7 +149,7 @@ class DatahubRagResource():
         resource_tags = self._get_tags()
         entity_tags: List[EntityTag] = []
         entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_DOC_TAG_KEY))
-        entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_DATASET_TAG_KEY))
+        entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_DATASET_ID_TAG_KEY))
         entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_SYNC_TAG_KEY))
 
         tags = [tag.to_simple_tag() for tag in entity_tags]

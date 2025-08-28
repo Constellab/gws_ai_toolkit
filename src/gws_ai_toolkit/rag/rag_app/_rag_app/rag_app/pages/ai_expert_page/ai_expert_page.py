@@ -46,6 +46,6 @@ def ai_expert_page() -> rx.Component:
             # breadcrumb_menu(),
             generic_chat_interface(config),
             spacing="0",
-            min_height="100vh",
+            height="100vh",
         )
     )

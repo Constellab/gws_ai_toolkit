@@ -1,12 +1,14 @@
 from typing import Optional
 
 import reflex as rx
+from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
+from gws_ai_toolkit.rag.common.rag_app_service_factory import \
+    RagAppServiceFactory
+from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
+                                                 RagResourceSyncMode)
+from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
 from gws_core import Credentials, CredentialsDataOther
 from gws_reflex_main import ReflexMainState
-
-from gws_ai_toolkit.rag.common.rag_datahub_service import DatahubRagService
-from gws_ai_toolkit.rag.common.rag_enums import RagProvider
-from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
 
 
 class RagAppState(ReflexMainState):
@@ -14,7 +16,7 @@ class RagAppState(ReflexMainState):
 
     # Internal state
     _chat_credentials: Optional[CredentialsDataOther] = None
-    _knowledge_base_credentials: Optional[CredentialsDataOther] = None
+    _dataset_credentials: Optional[CredentialsDataOther] = None
 
     @rx.var
     def get_chat_credentials(self) -> Optional[CredentialsDataOther]:
@@ -29,16 +31,16 @@ class RagAppState(ReflexMainState):
         return self._chat_credentials
 
     @rx.var
-    def get_knowledge_base_credentials(self) -> Optional[CredentialsDataOther]:
-        """Get the knowledge base credentials."""
-        if not self._knowledge_base_credentials:
-            knowledge_base_credentials_name = self.get_param('knowledge_base_credentials_name')
-            if not knowledge_base_credentials_name:
+    def get_dataset_credentials(self) -> Optional[CredentialsDataOther]:
+        """Get the dataset credentials."""
+        if not self._dataset_credentials:
+            dataset_credentials_name = self.get_param('dataset_credentials_name')
+            if not dataset_credentials_name:
                 return None
-            kb_creds = Credentials.find_by_name_and_check(knowledge_base_credentials_name)
-            self._knowledge_base_credentials = kb_creds.get_data_object()
+            ds_creds = Credentials.find_by_name_and_check(dataset_credentials_name)
+            self._dataset_credentials = ds_creds.get_data_object()
 
-        return self._knowledge_base_credentials
+        return self._dataset_credentials
 
     @rx.var
     def get_rag_provider(self) -> Optional[RagProvider]:
@@ -46,19 +48,13 @@ class RagAppState(ReflexMainState):
         return self.get_param('rag_provider')
 
     @rx.var
-    def get_knowledge_base_id(self) -> str:
-        """Get the knowledge base ID."""
-        return self.get_param('knowledge_base_id', '')
+    def get_resource_sync_mode(self) -> Optional[RagResourceSyncMode]:
+        return self.get_param('resource_sync_mode')
 
     @rx.var
-    def is_filter_rag_with_user_folders(self) -> bool:
-        """Check if RAG should be filtered with user folders."""
-        return self.get_param('filter_rag_with_user_folders', False)
-
-    @rx.var
-    def get_root_folder_limit(self) -> int:
-        """Get the root folder limit."""
-        return self.get_param('root_folder_limit', 0)
+    def get_dataset_id(self) -> str:
+        """Get the dataset ID."""
+        return self.get_param('dataset_id', '')
 
     @rx.var
     def get_chat_id(self) -> str:
@@ -66,19 +62,21 @@ class RagAppState(ReflexMainState):
         return self.get_param('chat_id', '')
 
     @rx.var
-    def get_datahub_knowledge_rag_service(self) -> Optional[DatahubRagService]:
-        """Get the DataHub RAG service for knowledge base operations."""
-        provider = self.get_rag_provider
-        if not provider:
-            return None
-        rag_service = RagServiceFactory.create_service(provider, self.get_knowledge_base_credentials)
-        return DatahubRagService(rag_service, self.get_knowledge_base_id)
+    def get_dataset_rag_app_service(self) -> Optional[BaseRagAppService]:
+        """Get the DataHub RAG service for dataset operations."""
+        return self._build_rag_app_service(self.get_dataset_credentials)
 
     @rx.var
-    def get_datahub_chat_rag_service(self) -> Optional[DatahubRagService]:
+    def get_chat_rag_app_service(self) -> Optional[BaseRagAppService]:
         """Get the DataHub RAG service for chat operations."""
+        return self._build_rag_app_service(self.get_chat_credentials)
+
+    def _build_rag_app_service(self, credentials: CredentialsDataOther) -> Optional[BaseRagAppService]:
+        """Build a RAG app service."""
         provider = self.get_rag_provider
         if not provider:
             return None
-        rag_service = RagServiceFactory.create_service(provider, self.get_chat_credentials)
-        return DatahubRagService(rag_service, self.get_chat_id)
+        rag_service = RagServiceFactory.create_service(provider, credentials)
+
+        return RagAppServiceFactory.create_service(self.get_resource_sync_mode,
+                                                   rag_service, self.get_dataset_id)

@@ -62,7 +62,7 @@ class UnsyncAllResourcesDialogState(RagAppState):
             self.resources_to_unsync = []
             self.unsync_resource_progress = -1
 
-        rag_service = self.get_datahub_knowledge_rag_service
+        rag_service = self.get_dataset_rag_app_service
 
         resources_to_unsync = rag_service.get_all_synced_resources()
         async with self:
@@ -74,7 +74,7 @@ class UnsyncAllResourcesDialogState(RagAppState):
             self.unsync_resource_progress = 0
             self.unsync_errors = []
 
-        rag_service = self.get_datahub_knowledge_rag_service
+        rag_service = self.get_dataset_rag_app_service
 
         for resource in self.resources_to_unsync:
 

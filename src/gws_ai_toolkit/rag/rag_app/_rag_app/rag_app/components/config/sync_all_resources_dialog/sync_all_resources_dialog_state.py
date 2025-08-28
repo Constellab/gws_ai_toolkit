@@ -62,7 +62,7 @@ class SyncAllResourcesDialogState(RagAppState):
             self.resources_to_sync = []
             self.sync_resource_progress = -1
 
-        rag_service = self.get_datahub_knowledge_rag_service
+        rag_service = self.get_dataset_rag_app_service
 
         resources_to_sync = rag_service.get_all_resource_to_sync()
         async with self:
@@ -74,14 +74,13 @@ class SyncAllResourcesDialogState(RagAppState):
             self.sync_resource_progress = 0
             self.sync_errors = []
 
-        rag_service = self.get_datahub_knowledge_rag_service
+        rag_service = self.get_dataset_rag_app_service
 
         for resource in self.resources_to_sync:
 
             try:
                 with AuthenticateUser(self.get_and_check_current_user()):
                     rag_service.send_resource_to_rag(resource,
-                                                     set_folder_metadata=self.is_filter_rag_with_user_folders,
                                                      upload_options=None)
 
             except Exception as e:

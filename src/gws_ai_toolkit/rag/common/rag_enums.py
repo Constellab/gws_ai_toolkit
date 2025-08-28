@@ -4,6 +4,11 @@ from typing import Literal
 RagDocumentStatus = Literal['DONE', 'PENDING', 'RUNNING', 'ERROR']
 RagProvider = Literal['dify', 'ragflow']
 
+# Mode for the resource to sync with the RAG platform
+# - datahub: Sync resources from DataHub
+# - tag: Sync resources which have a specific tag
+RagResourceSyncMode = Literal['datahub', 'tag']
+
 # Common search methods (intersection of both platforms)
 RagSearchMethod = Literal['semantic_search', 'keyword_search', 'hybrid_search']
 

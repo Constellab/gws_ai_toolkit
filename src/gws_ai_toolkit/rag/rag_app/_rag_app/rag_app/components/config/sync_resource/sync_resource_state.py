@@ -112,7 +112,7 @@ class SyncResourceState(RagAppState):
         if not self._selected_resource or not self.is_selected_resource_synced:
             return ""
         try:
-            return self._selected_resource.get_dataset_id()
+            return self._selected_resource.get_dataset_base_id()
         except:
             return ""
 
@@ -147,11 +147,10 @@ class SyncResourceState(RagAppState):
             self.send_to_rag_is_loading = True
 
         try:
-            if self.get_datahub_knowledge_rag_service:
+            if self.get_dataset_rag_app_service:
                 with AuthenticateUser(self.get_and_check_current_user()):
-                    self.get_datahub_knowledge_rag_service.send_resource_to_rag(
+                    self.get_dataset_rag_app_service.send_resource_to_rag(
                         self._selected_resource,
-                        set_folder_metadata=self.is_filter_rag_with_user_folders,
                         upload_options=None
                     )
         except Exception as e:
@@ -174,9 +173,9 @@ class SyncResourceState(RagAppState):
             self.delete_from_rag_is_loading = True
 
         try:
-            if self.get_datahub_knowledge_rag_service:
+            if self.get_dataset_rag_app_service:
                 with AuthenticateUser(self.get_and_check_current_user()):
-                    self.get_datahub_knowledge_rag_service.delete_resource_from_rag(self._selected_resource)
+                    self.get_dataset_rag_app_service.delete_resource_from_rag(self._selected_resource)
         except Exception as e:
             yield rx.toast.error(f"Failed to delete resource from RAG: {e}", duration=3000)
             return
@@ -200,9 +199,10 @@ class SyncResourceState(RagAppState):
             dataset_id = self.selected_resource_dataset_id
             document_id = self.selected_resource_document_id
 
-            if dataset_id and document_id and self.get_datahub_knowledge_rag_service:
+            if dataset_id and document_id and self.get_dataset_rag_app_service:
                 with AuthenticateUser(self.get_and_check_current_user()):
-                    parsed_document = self.get_datahub_knowledge_rag_service.rag_service.parse_document(
+                    rag_service = self.get_dataset_rag_app_service.get_rag_service()
+                    parsed_document = rag_service.parse_document(
                         dataset_id, document_id
                     )
                     async with self:
@@ -241,8 +241,9 @@ class SyncResourceState(RagAppState):
                 dataset_id = self.selected_resource_dataset_id
                 document_id = self.selected_resource_document_id
 
-                if selected_resource.get_dataset_id() and selected_resource.get_document_id() and self.get_datahub_knowledge_rag_service:
-                    document = self.get_datahub_knowledge_rag_service.rag_service.get_document(
+                if selected_resource.get_dataset_base_id() and selected_resource.get_document_id() and self.get_dataset_rag_app_service:
+                    rag_service = self.get_dataset_rag_app_service.get_rag_service()
+                    document = rag_service.get_document(
                         dataset_id, document_id
                     )
 

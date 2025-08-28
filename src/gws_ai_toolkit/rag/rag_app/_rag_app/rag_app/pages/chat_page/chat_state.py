@@ -1,9 +1,6 @@
 import uuid
 from typing import List
 
-import reflex as rx
-from gws_core import Logger, SpaceService
-
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatStreamResponse,
                                                   RagChunk)
@@ -18,38 +15,12 @@ from ...states.main_state import RagAppState
 class ChatState(RagAppState, ChatStateBase):
     """State management for the chat functionality."""
 
-    root_folder_ids: List[str] = []
-
-    def _get_root_folder_ids(self) -> List[str]:
-        """Get the root folders from user access."""
-        # if not self.check_authentication():
-        #     return []
-
-        if not self.is_filter_rag_with_user_folders:
-            return []
-
-        if not self.root_folder_ids:
-            try:
-                folders = SpaceService.get_instance().get_all_current_user_root_folders()
-                if folders:
-                    self.root_folder_ids = [folder.id for folder in folders]
-            except Exception as e:
-                Logger.error(f"Error while retrieving user accessible folders: {e}")
-
-        return self.root_folder_ids
-
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from the assistant."""
 
-        datahub_rag_service = self.get_datahub_chat_rag_service
+        datahub_rag_service = self.get_chat_rag_app_service
         if not datahub_rag_service:
             return
-
-        user_folders_ids = self._get_root_folder_ids()
-
-        # Limit folders if needed
-        if len(user_folders_ids) > self.get_root_folder_limit:
-            user_folders_ids = user_folders_ids[:self.get_root_folder_limit]
 
         full_response = ""
         end_message_response = None
@@ -61,12 +32,10 @@ class ChatState(RagAppState, ChatStateBase):
 
         # Stream the response
         for chunk in datahub_rag_service.send_message_stream(
-            user_root_folder_ids=user_folders_ids,
             query=user_message,
             conversation_id=self.conversation_id,
             user=None,  # TODO handle user
             chat_id=self.get_chat_id,
-            inputs={},
         ):
             if isinstance(chunk, RagChatStreamResponse):
                 if chunk.is_from_beginning:

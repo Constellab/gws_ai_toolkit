@@ -65,7 +65,7 @@ class DeleteExpiredDocumentsDialogState(RagAppState):
             self.documents_to_delete = []
             self.delete_documents_progress = -1
 
-        rag_service = self.get_datahub_knowledge_rag_service
+        rag_service = self.get_dataset_rag_app_service
 
         documents_to_delete = rag_service.get_rag_documents_to_delete()
         async with self:
@@ -78,7 +78,7 @@ class DeleteExpiredDocumentsDialogState(RagAppState):
             self.delete_documents_progress = 0
             self.delete_errors = []
 
-        rag_service = self.get_datahub_knowledge_rag_service
+        rag_service = self.get_dataset_rag_app_service
 
         for document in self.documents_to_delete:
             try:
