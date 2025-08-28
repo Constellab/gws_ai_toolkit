@@ -3,13 +3,14 @@ import uuid
 from typing import Optional
 
 import reflex as rx
-from openai import OpenAI
-
 from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatStateBase
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
     ChatMessage
+from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
+                      ShareLinkEntityType, ShareLinkService)
+from openai import OpenAI
 
 from ...states.main_state import RagAppState
 
@@ -19,7 +20,6 @@ class AiExpertState(RagAppState, ChatStateBase):
 
     # Document context
     current_doc_id: str = ""
-    document_name: str = ""
     openai_file_id: Optional[str] = None
 
     _current_rag_resource: Optional[DatahubRagResource] = None
@@ -28,11 +28,6 @@ class AiExpertState(RagAppState, ChatStateBase):
     title = "AI Expert"
     placeholder_text = "Ask about this document..."
     empty_state_message = "Start asking questions about this document"
-
-    @rx.var
-    def get_document_title(self) -> str:
-        """Get the document title for display"""
-        return f"AI Expert: {self.document_name}" if self.document_name else "AI Expert"
 
     def load_resource_from_url(self):
         """Handle page load - get resource ID from router state"""
@@ -79,7 +74,7 @@ class AiExpertState(RagAppState, ChatStateBase):
 
             self._current_rag_resource = rag_resource
 
-            self.document_name = rag_resource.resource_model.name
+            self.subtitle = rag_resource.resource_model.name
 
         except Exception as e:
             error_message = ChatMessage(
@@ -187,3 +182,20 @@ When answering questions:
 - Provide thorough, helpful explanations
 
 The user is asking questions specifically about this document, so focus your responses on the document's content and context."""
+
+    @rx.event
+    async def redirect_to_document(self):
+        """Redirect the user to an external URL."""
+
+        # Generate a public share link for the document
+        generate_link_dto = GenerateShareLinkDTO.get_1_hour_validity(
+            entity_id=self._current_rag_resource.get_id(),
+            entity_type=ShareLinkEntityType.RESOURCE
+        )
+
+        with AuthenticateUser(self.get_and_check_current_user()):
+            share_link = ShareLinkService.get_or_create_valid_public_share_link(generate_link_dto)
+
+        if share_link:
+            # Redirect the user to the share link URL
+            return rx.redirect(share_link.get_public_link(), is_external=True)

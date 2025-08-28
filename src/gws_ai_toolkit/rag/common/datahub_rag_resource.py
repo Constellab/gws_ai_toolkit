@@ -204,6 +204,10 @@ class DatahubRagResource():
             return '## '
         return '\n\n'
 
+    def get_id(self) -> str:
+        """Get the ID of the resource."""
+        return self.resource_model.id
+
     # Static factory methods
 
     @classmethod

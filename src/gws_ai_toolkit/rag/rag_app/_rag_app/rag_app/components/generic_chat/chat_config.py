@@ -1,10 +1,9 @@
 import uuid
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Type
+from typing import Callable, List, Optional, Type
 
 import reflex as rx
-
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
     ChatMessage
@@ -21,6 +20,7 @@ class ChatStateBase(rx.State, mixin=True):
 
     # UI Configuration
     title: str = "AI Chat"
+    subtitle: Optional[str] = None
     placeholder_text: str = "Ask something..."
     empty_state_message: str = "Start talking to the AI"
     clear_button_text: str = "Clear History"
@@ -100,3 +100,6 @@ class ChatConfig:
 
     # State configuration - this is the only customizable part
     state: Type[ChatStateBase]
+
+    # Add custom button on top right of the header
+    header_buttons: Callable[[], List[rx.Component]] | None = None
