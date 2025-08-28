@@ -1,8 +1,8 @@
 from typing import List, Optional
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
     RagAppState
 from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
@@ -22,7 +22,7 @@ class SyncResourceState(RagAppState):
     hover_index: int = 0
 
     _resources: List[ResourceModel] = []
-    _selected_resource: DatahubRagResource | None = None
+    _selected_resource: RagResource | None = None
     selected_resource_document: Optional[RagDocument] = None
 
     send_to_rag_is_loading: bool = False
@@ -85,7 +85,7 @@ class SyncResourceState(RagAppState):
         resource = next((r for r in self._resources if r.id == resource_id), None)
         if resource:
             async with self:
-                self._selected_resource = DatahubRagResource(resource)
+                self._selected_resource = RagResource(resource)
                 self.popover_opened = False
                 self.text = resource.name
                 self.selected_resource_document = None
@@ -225,11 +225,11 @@ class SyncResourceState(RagAppState):
         resource = ResourceModel.get_by_id_and_check(self._selected_resource.resource_model.id)
 
         async with self:
-            self._selected_resource = DatahubRagResource(resource)
+            self._selected_resource = RagResource(resource)
 
         await self._load_rag_document(self._selected_resource)
 
-    async def _load_rag_document(self, selected_resource: DatahubRagResource):
+    async def _load_rag_document(self, selected_resource: RagResource):
         """Load the RAG document information."""
 
         async with self:

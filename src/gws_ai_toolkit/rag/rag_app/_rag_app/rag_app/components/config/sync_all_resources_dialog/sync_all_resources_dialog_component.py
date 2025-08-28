@@ -9,7 +9,7 @@ def _sync_pending() -> rx.Component:
 
         rx.text(
             f"Are you sure you want to sync all {SyncAllResourcesDialogState.count_resources_to_sync} resources?",
-            size="3"
+            size="4", margin_bottom="1em"
         ),
         rx.hstack(
             rx.button(
@@ -57,6 +57,13 @@ def sync_all_resources_dialog() -> rx.Component:
     """Dialog for syncing all resources."""
     return rx.vstack(
         rx.dialog.title("Sync All Resources"),
+        rx.callout(
+            rx.markdown(
+                SyncAllResourcesDialogState.get_compatible_resource_explanation,
+                style={'p,ul': {'margin-top': '0', 'margin-bottom': '0'}},
+            ),
+            margin_bottom="1em"
+        ),
         rx.cond(SyncAllResourcesDialogState.has_loaded_resources_to_sync,
                 _dialog_content(),
                 rx.hstack(

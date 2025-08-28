@@ -3,13 +3,11 @@ import uuid
 from typing import Optional
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatStateBase
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
     ChatMessage
-from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
-                      ShareLinkEntityType, ShareLinkService)
 from openai import OpenAI
 
 from ...states.main_state import RagAppState
@@ -22,7 +20,7 @@ class AiExpertState(RagAppState, ChatStateBase):
     current_doc_id: str = ""
     openai_file_id: Optional[str] = None
 
-    _current_rag_resource: Optional[DatahubRagResource] = None
+    _current_rag_resource: Optional[RagResource] = None
 
     # UI configuration
     title = "AI Expert"
@@ -61,10 +59,10 @@ class AiExpertState(RagAppState, ChatStateBase):
             # Try to load the resource using document_id first
             rag_resource = None
             try:
-                rag_resource = DatahubRagResource.from_document_id(rag_doc_id)
+                rag_resource = RagResource.from_document_id(rag_doc_id)
             except:
                 # If that fails, try to load from resource id
-                rag_resource = DatahubRagResource.from_resource_model_id(rag_doc_id)
+                rag_resource = RagResource.from_resource_model_id(rag_doc_id)
 
             if not rag_resource:
                 raise ValueError(f"Resource with ID {rag_doc_id} not found")
@@ -183,26 +181,22 @@ When answering questions:
 
 The user is asking questions specifically about this document, so focus your responses on the document's content and context."""
 
-    @rx.event
-    async def redirect_to_document(self):
-        """Redirect the user to an external URL."""
-
-        # Generate a public share link for the document
-        generate_link_dto = GenerateShareLinkDTO.get_1_hour_validity(
-            entity_id=self._current_rag_resource.get_id(),
-            entity_type=ShareLinkEntityType.RESOURCE
-        )
-
-        with AuthenticateUser(self.get_and_check_current_user()):
-            share_link = ShareLinkService.get_or_create_valid_public_share_link(generate_link_dto)
-
-        if share_link:
-            # Redirect the user to the share link URL
-            return rx.redirect(share_link.get_public_link(), is_external=True)
-
     @rx.var
     def document_name(self) -> str:
         """Get the document name for the AI Expert"""
         if self._current_rag_resource:
             return self._current_rag_resource.resource_model.name
         return ''
+
+    @rx.var
+    def get_resource_id(self) -> str:
+        """Get the resource ID for the AI Expert"""
+        if self._current_rag_resource:
+            return self._current_rag_resource.get_id()
+        return ''
+
+    @rx.event
+    def open_current_resource_doc(self):
+        """Open the current resource document."""
+        if self._current_rag_resource:
+            return self.open_document_from_resource(self._current_rag_resource.get_id())

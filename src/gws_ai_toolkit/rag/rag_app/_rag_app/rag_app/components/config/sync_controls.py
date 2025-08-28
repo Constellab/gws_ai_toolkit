@@ -19,7 +19,7 @@ def bulk_action_buttons() -> rx.Component:
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
-                    rx.icon("sync", size=16),
+                    rx.icon("refresh-cw", size=16),
                     "Sync All Resources",
                     color_scheme="blue",
                     on_click=SyncAllResourcesDialogState.open_dialog,
@@ -34,7 +34,7 @@ def bulk_action_buttons() -> rx.Component:
         rx.dialog.root(
             rx.dialog.trigger(
                 rx.button(
-                    rx.icon("x-circle", size=16),
+                    rx.icon("refresh-cw-off", size=16),
                     "Unsync All Resources",
                     color_scheme="red",
                     on_click=UnsyncAllResourcesDialogState.open_dialog,

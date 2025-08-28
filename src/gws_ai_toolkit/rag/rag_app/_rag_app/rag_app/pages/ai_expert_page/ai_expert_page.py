@@ -14,7 +14,7 @@ from .ai_expert_state import AiExpertState
 def ai_expert_header_buttons() -> List[rx.Component]:
     """Header buttons for the AI Expert page."""
     return [
-        rx.button("View document", on_click=AiExpertState.redirect_to_document,
+        rx.button("View document", on_click=lambda: AiExpertState.open_current_resource_doc,
                   variant='outline', cursor="pointer"),
     ]
 

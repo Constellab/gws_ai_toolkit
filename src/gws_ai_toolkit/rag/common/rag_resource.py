@@ -12,10 +12,10 @@ from .rag_enums import (RAG_COMMON_MAX_FILE_SIZE_MB,
                         RAG_COMMON_SUPPORTED_EXTENSIONS)
 
 
-class DatahubRagResource():
+class RagResource():
     """
-    Base class for DataHub resource wrappers that manage links
-    between the datahub and RAG platforms.
+    Resource wrappers that manage links
+    between the data lab and RAG platforms.
     """
 
     resource_model: ResourceModel
@@ -217,7 +217,7 @@ class DatahubRagResource():
         return cls(resource_model)
 
     @classmethod
-    def from_document_id(cls, document_id: str) -> Optional['DatahubRagResource']:
+    def from_document_id(cls, document_id: str) -> Optional['RagResource']:
         """Create a resource wrapper from a platform document id."""
         research_search = ResourceSearchBuilder()
         research_search.add_tag_filter(Tag(cls.RAG_DOC_TAG_KEY, document_id))

@@ -1,7 +1,7 @@
 from typing import List, Literal
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
     RagAppState
 from gws_core import AuthenticateUser
@@ -10,7 +10,7 @@ from gws_core import AuthenticateUser
 class SyncAllResourcesDialogState(RagAppState):
     """State management for the sync all resources dialog functionality."""
 
-    resources_to_sync: List[DatahubRagResource] = []
+    resources_to_sync: List[RagResource] = []
     resources_to_sync_dialog_opened: bool = False
     sync_resource_progress: int = -1
     sync_errors: List[str] = []
@@ -90,3 +90,10 @@ class SyncAllResourcesDialogState(RagAppState):
 
             async with self:
                 self.sync_resource_progress += 1
+
+    @rx.var
+    def get_compatible_resource_explanation(self) -> str:
+        rag_service = self.get_dataset_rag_app_service
+        if not rag_service:
+            return ""
+        return rag_service.get_compatible_resource_explanation()

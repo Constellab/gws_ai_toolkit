@@ -5,7 +5,7 @@ from gws_core import Logger, ResourceModel
 from pyparsing import abstractmethod
 
 from .base_rag_service import BaseRagService
-from .datahub_rag_resource import DatahubRagResource
+from .rag_resource import RagResource
 
 
 class BaseRagAppService():
@@ -29,12 +29,21 @@ class BaseRagAppService():
         The resource are then filtered to keep only compatible resources
         """
 
+    def get_compatible_resource_explanation(self) -> str:
+        """Get a text explaining how the filtration is done.
+        """
+        return f"""To be compatible with the Rag, the resource must:
+- Be a File
+- Be in one of the format : {RagResource.SUPPORTED_FILE_EXTENSIONS}
+- Be smaller than {RagResource.MAX_FILE_SIZE_MB} MB
+        """
+
     @abstractmethod
     def get_chat_default_filters(self) -> Dict[str, Any]:
         """Get the default inputs for the chat. This can be used to filter chat response.
         """
 
-    def send_resource_to_rag(self, rag_resource: DatahubRagResource, upload_options: Any) -> None:
+    def send_resource_to_rag(self, rag_resource: RagResource, upload_options: Any) -> None:
         """Send a resource to the RAG platform for processing.
 
         This method is responsible for sending a DatahubRagResource to the RAG platform
@@ -91,7 +100,7 @@ class BaseRagAppService():
             self.rag_service.delete_document(self.dataset_id, rag_uploaded_doc.id)
             raise e
 
-    def get_document_metadata_before_sync(self, rag_resource: DatahubRagResource) -> Dict[str, str]:
+    def get_document_metadata_before_sync(self, rag_resource: RagResource) -> Dict[str, str]:
         """Method than can be overrided that is called before syncing a document.
         The returned metadata are set in the rag document
         """
@@ -99,7 +108,7 @@ class BaseRagAppService():
             self.CONSTELLAB_RESOURCE_ID_METADATA_KEY: rag_resource.resource_model.id
         }
 
-    def delete_resource_from_rag(self, rag_resource: DatahubRagResource) -> None:
+    def delete_resource_from_rag(self, rag_resource: RagResource) -> None:
         """Delete a resource from the RAG platform."""
         if rag_resource.is_synced_with_rag() is False:
             raise ValueError("The resource is not synced with RagFlow.")
@@ -124,33 +133,33 @@ class BaseRagAppService():
         document_to_delete = []
         for ragflow_document in ragflow_documents:
             # Check if the resource is compatible with RagFlow
-            ragflow_resource = DatahubRagResource.from_document_id(ragflow_document.id)
+            ragflow_resource = RagResource.from_document_id(ragflow_document.id)
             if ragflow_resource is None:
                 document_to_delete.append(ragflow_document)
 
         return document_to_delete
 
     # Common methods
-    def get_all_resource_to_sync(self) -> List[DatahubRagResource]:
+    def get_all_resource_to_sync(self) -> List[RagResource]:
         """Get all resources to sync with the platform."""
         resource_models = self.get_all_resources_to_send_to_rag()
 
         datahub_resources = []
         for resource_model in resource_models:
-            resource = DatahubRagResource(resource_model)
+            resource = RagResource(resource_model)
 
             if resource.is_compatible_with_rag() and not resource.is_up_to_date_in_rag():
                 datahub_resources.append(resource)
 
         return datahub_resources
 
-    def get_all_synced_resources(self) -> List[DatahubRagResource]:
+    def get_all_synced_resources(self) -> List[RagResource]:
         """Get all resources synced with the platform."""
         resource_models = self.get_all_resources_to_send_to_rag()
 
         datahub_resources = []
         for resource_model in resource_models:
-            resource = DatahubRagResource(resource_model)
+            resource = RagResource(resource_model)
             if resource.is_synced_with_rag():
                 datahub_resources.append(resource)
 

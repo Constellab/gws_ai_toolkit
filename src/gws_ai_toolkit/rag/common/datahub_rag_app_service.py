@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
-from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.dify.rag_dify_service import RagDifyService
 from gws_core import (DataHubS3ServerService, ResourceModel,
                       ResourceSearchBuilder, SpaceService)
@@ -74,7 +74,7 @@ class DatahubRagAppService(BaseRagAppService):
 
         return folder_filters
 
-    def get_document_metadata_before_sync(self, rag_resource: DatahubRagResource) -> Dict[str, Any]:
+    def get_document_metadata_before_sync(self, rag_resource: RagResource) -> Dict[str, Any]:
         metadata = super().get_document_metadata_before_sync(rag_resource)
 
         # Add the root folder of the document as metadata
@@ -84,3 +84,13 @@ class DatahubRagAppService(BaseRagAppService):
         metadata[self.ROOT_FOLDER_ID_METADATA_KEY] = root_folder.id
 
         return metadata
+
+    def get_compatible_resource_explanation(self) -> str:
+        """Get a text explaining how the filtration is done.
+        """
+        text = super().get_compatible_resource_explanation()
+        s3_service = DataHubS3ServerService.get_instance()
+        text += f"\n- Have the tag '{s3_service.get_datahub_tag()}'"
+        text += "\n- Be in a folder"
+        text += "\n- Not be archived"
+        return text

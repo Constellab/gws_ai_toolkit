@@ -5,8 +5,11 @@ from typing import Callable, List, Optional, Type
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
     ChatMessage
+from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
+                      ShareLinkEntityType, ShareLinkService)
 
 
 class ChatStateBase(rx.State, mixin=True):
@@ -23,7 +26,15 @@ class ChatStateBase(rx.State, mixin=True):
     subtitle: Optional[str] = None
     placeholder_text: str = "Ask something..."
     empty_state_message: str = "Start talking to the AI"
-    clear_button_text: str = "Clear History"
+    clear_button_text: str = "New chat"
+
+    @abstractmethod
+    async def call_ai_chat(self, user_message: str) -> None:
+        """Handle user message and call AI chat service.
+
+        Args:
+            user_message (str): The message from the user
+        """
 
     @rx.event(background=True)
     async def submit_input_form(self, form_data: dict) -> None:
@@ -81,9 +92,6 @@ class ChatStateBase(rx.State, mixin=True):
                 self.chat_messages.append(self.current_response_message)
                 self.current_response_message = None
 
-    @abstractmethod
-    async def call_ai_chat(self, user_message: str) -> None: ...
-
     def set_conversation_id(self, conversation_id: str) -> None:
         self.conversation_id = conversation_id
 
@@ -92,6 +100,32 @@ class ChatStateBase(rx.State, mixin=True):
         self.chat_messages = []
         self.current_response_message = None
         self.conversation_id = None
+
+    @rx.event
+    def open_document(self, rag_document_id: str):
+        """Redirect the user to an external URL."""
+
+        rag_resource = RagResource.from_document_id(rag_document_id)
+        if not rag_resource:
+            raise ValueError(f"Resource with ID {rag_document_id} not found")
+        return self.open_document_from_resource(rag_resource.get_id())
+
+    @rx.event
+    def open_document_from_resource(self, resource_id: str):
+        """Redirect the user to an external URL."""
+
+        # Generate a public share link for the document
+        generate_link_dto = GenerateShareLinkDTO.get_1_hour_validity(
+            entity_id=resource_id,
+            entity_type=ShareLinkEntityType.RESOURCE
+        )
+
+        with AuthenticateUser(self.get_and_check_current_user()):
+            share_link = ShareLinkService.get_or_create_valid_public_share_link(generate_link_dto)
+
+        if share_link:
+            # Redirect the user to the share link URL
+            return rx.redirect(share_link.get_public_link(), is_external=True)
 
 
 @dataclass
@@ -103,3 +137,5 @@ class ChatConfig:
 
     # Add custom button on top right of the header
     header_buttons: Callable[[], List[rx.Component]] | None = None
+
+    sources_component: Callable[[List[RagChunk], ChatStateBase], rx.Component] | None = None

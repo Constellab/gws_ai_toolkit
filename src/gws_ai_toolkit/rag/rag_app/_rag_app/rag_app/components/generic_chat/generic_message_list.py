@@ -2,11 +2,11 @@ import reflex as rx
 
 from .chat_config import ChatConfig
 from .generic_chat_class import ChatMessage
-from .generic_sources_list import sources_list
 
 
-def generic_message_bubble(message: ChatMessage) -> rx.Component:
+def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
     """Generic message bubble - uses chat page styling"""
+
     return rx.cond(
         message.role == "user",
         # User message - right aligned with darker background (exact same as chat page)
@@ -38,7 +38,9 @@ def generic_message_bubble(message: ChatMessage) -> rx.Component:
                 ),
                 rx.cond(
                     message.sources,
-                    sources_list(message.sources)
+                    rx.box(
+                        config.sources_component(message.sources, config.state) if config.sources_component else None
+                    )
                 ),
                 padding="12px 0",
                 word_wrap="break-word",
@@ -75,12 +77,12 @@ def generic_message_list(config: ChatConfig) -> rx.Component:
     return rx.auto_scroll(
         rx.foreach(
             config.state.chat_messages,
-            generic_message_bubble
+            lambda message: generic_message_bubble(message, config)
         ),
         # Display current response message separately
         rx.cond(
             config.state.current_response_message,
-            generic_message_bubble(config.state.current_response_message),
+            generic_message_bubble(config.state.current_response_message, config),
             rx.text("")
         ),
         generic_streaming_indicator(config.state),

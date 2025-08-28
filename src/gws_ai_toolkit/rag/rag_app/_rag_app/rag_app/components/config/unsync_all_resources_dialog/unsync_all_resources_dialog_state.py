@@ -1,7 +1,7 @@
 from typing import List, Literal
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
     RagAppState
 from gws_core import AuthenticateUser
@@ -10,7 +10,7 @@ from gws_core import AuthenticateUser
 class UnsyncAllResourcesDialogState(RagAppState):
     """State management for the unsync all resources dialog functionality."""
 
-    resources_to_unsync: List[DatahubRagResource] = []
+    resources_to_unsync: List[RagResource] = []
     resources_to_unsync_dialog_opened: bool = False
     unsync_resource_progress: int = -1
     unsync_errors: List[str] = []
