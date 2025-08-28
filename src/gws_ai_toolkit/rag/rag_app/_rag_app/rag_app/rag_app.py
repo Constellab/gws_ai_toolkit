@@ -2,10 +2,10 @@ import reflex as rx
 from gws_reflex_base import add_unauthorized_page, get_theme
 from gws_reflex_main import ReflexMainState
 
-from .pages.ai_expert_page import ai_expert_page
-from .pages.chat_page import chat_page
+from .pages.ai_expert_page.ai_expert_page import ai_expert_page
+from .pages.ai_expert_page.ai_expert_state import AiExpertState
+from .pages.chat_page.chat_page import chat_page
 from .pages.config_page import config_page
-from .states.ai_expert_state import AiExpertState
 
 app = rx.App(
     theme=get_theme(),

@@ -1,15 +1,15 @@
-
 import reflex as rx
 
-from ...states.chat_state import ChatMessage, ChatState
-from .sources_display import sources_display
+from .chat_config import ChatConfig
+from .generic_chat_class import ChatMessage
+from .generic_sources_list import sources_list
 
 
-def message_bubble(message: ChatMessage) -> rx.Component:
-    """Create a message bubble component styled like ChatGPT."""
+def generic_message_bubble(message: ChatMessage) -> rx.Component:
+    """Generic message bubble - uses chat page styling"""
     return rx.cond(
         message.role == "user",
-        # User message - right aligned with darker background
+        # User message - right aligned with darker background (exact same as chat page)
         rx.box(
             rx.box(
                 rx.markdown(
@@ -18,19 +18,19 @@ def message_bubble(message: ChatMessage) -> rx.Component:
                     font_size="14px",
                     class_name='waow'
                 ),
-                background_color="#374151",  # Darker gray for better contrast
+                background_color="#374151",
                 padding="0px 16px",
                 border_radius="18px",
                 max_width="70%",
                 word_wrap="break-word",
-                color="white",  # Ensure text color inheritance
+                color="white",
             ),
             display="flex",
             justify_content="flex-end",
             margin="8px 0",
             width="100%",
         ),
-        # Assistant message - left aligned without background
+        # Assistant message - left aligned without background (exact same as chat page)
         rx.box(
             rx.box(
                 rx.markdown(
@@ -38,7 +38,7 @@ def message_bubble(message: ChatMessage) -> rx.Component:
                 ),
                 rx.cond(
                     message.sources,
-                    sources_display(message.sources)
+                    sources_list(message.sources)
                 ),
                 padding="12px 0",
                 word_wrap="break-word",
@@ -51,10 +51,10 @@ def message_bubble(message: ChatMessage) -> rx.Component:
     )
 
 
-def streaming_indicator() -> rx.Component:
-    """Show loading indicator when streaming."""
+def generic_streaming_indicator(state_class) -> rx.Component:
+    """Generic streaming indicator - same as chat page"""
     return rx.cond(
-        ChatState.is_streaming,
+        state_class.is_streaming,
         rx.box(
             rx.hstack(
                 rx.spinner(),
@@ -69,21 +69,23 @@ def streaming_indicator() -> rx.Component:
     )
 
 
-def message_list() -> rx.Component:
-    """Component to display the list of chat messages."""
+def generic_message_list(config: ChatConfig) -> rx.Component:
+    """Generic message list - uses chat page layout"""
+
     return rx.auto_scroll(
         rx.foreach(
-            ChatState.display_messages,
-            message_bubble
+            config.state.chat_messages,
+            generic_message_bubble
         ),
         # Display current response message separately
         rx.cond(
-            ChatState.current_response_display,
-            message_bubble(ChatState.current_response_display),
+            config.state.current_response_message,
+            generic_message_bubble(config.state.current_response_message),
             rx.text("")
         ),
-        streaming_indicator(),
+        generic_streaming_indicator(config.state),
         width="100%",
         padding='1em',
-        flex="1"
+        flex="1",
+        class_name='super-scroll'
     )

@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.mypy-type-checker",
+    "ms-python.pylint",
+    "ms-python.autopep8",
+    "ms-toolsai.jupyter",
+    "mhutchie.git-graph"
+    ]
+}

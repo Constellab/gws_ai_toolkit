@@ -1,42 +1,33 @@
 import os
 import uuid
-from typing import List, Optional
+from typing import Optional
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
 from openai import OpenAI
 
-from .chat_state import ChatMessage
-from .main_state import RagAppState
+from gws_ai_toolkit.rag.common.datahub_rag_resource import DatahubRagResource
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
+    ChatStateBase
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
+    ChatMessage
+
+from ...states.main_state import RagAppState
 
 
-class AiExpertState(RagAppState):
+class AiExpertState(RagAppState, ChatStateBase):
     """State management for the AI Expert functionality - specialized chat for a specific document."""
-
-    # Chat state
-    chat_messages: List[ChatMessage] = []
-    current_message: str = ""
-    is_streaming: bool = False
-    conversation_id: Optional[str] = None
 
     # Document context
     current_doc_id: str = ""
-    _current_rag_resource: Optional[DatahubRagResource] = None
     document_name: str = ""
     openai_file_id: Optional[str] = None
 
-    # Current response message being streamed
-    current_response_message: Optional[ChatMessage] = None
+    _current_rag_resource: Optional[DatahubRagResource] = None
 
-    @rx.var
-    def display_messages(self) -> List[ChatMessage]:
-        """Get messages for UI display excluding current streaming message"""
-        return self.chat_messages
-
-    @rx.var
-    def current_response_display(self) -> Optional[ChatMessage]:
-        """Get the current response message for separate display"""
-        return self.current_response_message
+    # UI configuration
+    title = "AI Expert"
+    placeholder_text = "Ask about this document..."
+    empty_state_message = "Start asking questions about this document"
 
     @rx.var
     def get_document_title(self) -> str:
@@ -100,82 +91,9 @@ class AiExpertState(RagAppState):
 
             self.chat_messages.append(error_message)
 
-    async def update_current_response_message(self, message: ChatMessage) -> None:
-        """Set the current streaming response message"""
-        async with self:
-            self.current_response_message = message
-
-    async def close_current_message(self):
-        """Close the current streaming message and add it to the chat history"""
-        async with self:
-            if self.current_response_message:
-                self.chat_messages.append(self.current_response_message)
-                self.current_response_message = None
-
-    async def handle_output_text_delta(self, event):
-        """Handle response.output_text.delta event"""
-        text = event.delta
-
-        current_message: Optional[ChatMessage] = None
-
-        async with self:
-            current_message = self.current_response_message
-
-        if current_message:
-            async with self:
-                current_message.content += text
-        else:
-            # Create new message if none exists
-            new_message = ChatMessage(
-                role="assistant",
-                content=text,
-                id=str(uuid.uuid4()),
-                sources=[]
-            )
-            await self.update_current_response_message(new_message)
-
-    @rx.event(background=True)
-    async def add_user_message(self, form_data: dict):
-        """Add a user message to the chat history and get AI response."""
-        if not self.check_authentication():
-            return
-
-        content = form_data.get("message", "").strip()
-        if not content:
-            return
-
-        # Add user message
-        message = ChatMessage(
-            role="user",
-            content=content,
-            id=str(uuid.uuid4()),
-            sources=[]
-        )
-
-        async with self:
-            self.chat_messages.append(message)
-            self.current_message = content
-            self.is_streaming = True
-
-        # Get AI response
-        try:
-            await self.get_ai_response(content)
-        except Exception as e:
-            error_message = ChatMessage(
-                role="assistant",
-                content=f"Error: {str(e)}",
-                id=str(uuid.uuid4()),
-                sources=[]
-            )
-            await self.update_current_response_message(error_message)
-            await self.close_current_message()
-        finally:
-            async with self:
-                self.is_streaming = False
-                self.current_message = ""
-
-    async def get_ai_response(self, message: str):
+    async def call_ai_chat(self, user_message: str):
         """Get streaming response from OpenAI about the document"""
+
         client = self._get_openai_client()
 
         uploaded_file_id = await self.upload_file_to_openai()
@@ -186,7 +104,7 @@ class AiExpertState(RagAppState):
         with client.responses.stream(
             model="gpt-4o",
             instructions=system_prompt,
-            input=[{"role": "user", "content": [{"type": "input_text", "text": message}]}],
+            input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
             temperature=0.7,
             tools=[{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}}],
             previous_response_id=self.conversation_id,
@@ -211,7 +129,29 @@ class AiExpertState(RagAppState):
             final_response = stream.get_final_response()
             if final_response and hasattr(final_response, 'id') and not self.conversation_id:
                 async with self:
-                    self.conversation_id = final_response.id
+                    self.set_conversation_id(final_response.id)
+
+    async def handle_output_text_delta(self, event):
+        """Handle response.output_text.delta event"""
+        text = event.delta
+
+        current_message: Optional[ChatMessage] = None
+
+        async with self:
+            current_message = self.current_response_message
+
+        if current_message:
+            async with self:
+                current_message.content += text
+        else:
+            # Create new message if none exists
+            new_message = ChatMessage(
+                role="assistant",
+                content=text,
+                id=str(uuid.uuid4()),
+                sources=[]
+            )
+            await self.update_current_response_message(new_message)
 
     async def upload_file_to_openai(self) -> str:
         """Upload the document file to OpenAI and return file ID"""
@@ -247,14 +187,3 @@ When answering questions:
 - Provide thorough, helpful explanations
 
 The user is asking questions specifically about this document, so focus your responses on the document's content and context."""
-
-    @rx.event
-    def clear_chat(self):
-        """Clear the chat history."""
-        if not self.check_authentication():
-            return
-
-        self.chat_messages = []
-        self.current_response_message = None
-        self.current_message = ""
-        self.conversation_id = None

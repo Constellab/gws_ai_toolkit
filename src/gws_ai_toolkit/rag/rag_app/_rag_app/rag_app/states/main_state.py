@@ -1,12 +1,12 @@
 from typing import Optional
 
 import reflex as rx
+from gws_core import Credentials, CredentialsDataOther
+from gws_reflex_main import ReflexMainState
+
 from gws_ai_toolkit.rag.common.rag_datahub_service import DatahubRagService
 from gws_ai_toolkit.rag.common.rag_enums import RagProvider
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
-from gws_core.credentials.credentials import Credentials
-from gws_core.credentials.credentials_type import CredentialsDataOther
-from gws_reflex_main import ReflexMainState
 
 
 class RagAppState(ReflexMainState):

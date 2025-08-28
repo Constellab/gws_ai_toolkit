@@ -1,6 +1,7 @@
 from typing import List
 
 import reflex as rx
+
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
 
 
@@ -34,7 +35,7 @@ def source_item(source: RagChunk) -> rx.Component:
     )
 
 
-def sources_display(sources: List[RagChunk]) -> rx.Component:
+def sources_list(sources: List[RagChunk]) -> rx.Component:
     """Component to display sources in an expandable section."""
     return rx.cond(
         sources,

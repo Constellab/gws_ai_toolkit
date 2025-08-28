@@ -1,10 +1,10 @@
 
 import streamlit as st
+from gws_core import Credentials, CredentialsDataOther
+
 from gws_ai_toolkit.rag.common.rag_datahub_service import DatahubRagService
 from gws_ai_toolkit.rag.common.rag_enums import RagProvider
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
-from gws_core.credentials.credentials import Credentials
-from gws_core.credentials.credentials_type import CredentialsDataOther
 
 
 class DatahubRagAppState:
@@ -89,7 +89,6 @@ class DatahubRagAppState:
         provider = cls.get_rag_provider()
         rag_service = RagServiceFactory.create_service(provider, cls.get_chat_credentials())
         return DatahubRagService(rag_service, cls.get_knowledge_base_id())
-
 
     @classmethod
     def is_filter_rag_with_user_folders(cls) -> bool:
