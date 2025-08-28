@@ -78,9 +78,10 @@ All RAG services implement the `BaseRagService` abstract class with these key me
   - Code changes will automatically refresh
 - Important: After completing all development work or capturing screenshots, terminate the RAG application process
 
-### Take Screenshot
-- To take a screen shot of the app, use the `xvfb-run python take_screenshot.py` (in root folder of project) script.
-- When taking a screenshot, check the logs of app run process to see if there are any errors 
+### Test app in browser
+- To take a screen shot of the app and check browser console, use the `xvfb-run python take_screenshot.py` (in root folder of project) script.
+- When taking a screenshot, check the logs of app (backend) run process to see if there are any errors 
 - Optionally specify a route: `xvfb-run python take_screenshot.py --route [ROUTE]` like `/config`
 - Default route is "/" if no route is specified
 - It generates a screenshot `app_screenshot.png` (in root folder of project)
+- It generates a console logs file `console_logs.txt` (in root folder of project)

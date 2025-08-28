@@ -199,3 +199,10 @@ The user is asking questions specifically about this document, so focus your res
         if share_link:
             # Redirect the user to the share link URL
             return rx.redirect(share_link.get_public_link(), is_external=True)
+
+    @rx.var
+    def document_name(self) -> str:
+        """Get the document name for the AI Expert"""
+        if self._current_rag_resource:
+            return self._current_rag_resource.resource_model.name
+        return ''

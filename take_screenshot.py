@@ -16,6 +16,10 @@ def test_reflex_app(route="/"):
         # Create a new page
         page = browser.new_page()
 
+        # Setup console log listener
+        console_logs = []
+        page.on("console", lambda msg: console_logs.append(f"{msg.type}: {msg.text}"))
+
         # Navigate to your Reflex app with the specified route
         url = f"http://localhost:8511{route}"
         print(f"Navigating to {url}")
@@ -32,10 +36,22 @@ def test_reflex_app(route="/"):
         page.screenshot(path=screenshot_path)
         print(f"Screenshot saved to {screenshot_path}")
 
+        # Print collected console logs
+        print("\nBrowser Console Logs:")
+        for log in console_logs:
+            print(log)
+
+        # Optionally save console logs to a file
+        log_path = os.path.join(current_dir, "console_logs.txt")
+        with open(log_path, "w") as f:
+            f.write("\n".join(console_logs))
+        print(f"Console logs saved to {log_path}")
+
         # Close browser
         browser.close()
 
 
+# use xvfb-run python take_screenshot.py --route [ROUTE] to run
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Take a screenshot of the Reflex app")
     parser.add_argument("--route", "-r", default="/", help="Route to navigate to (default: /)")

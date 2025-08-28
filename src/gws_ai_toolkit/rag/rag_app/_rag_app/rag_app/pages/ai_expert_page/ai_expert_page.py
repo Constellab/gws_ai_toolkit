@@ -19,6 +19,20 @@ def ai_expert_header_buttons() -> List[rx.Component]:
     ]
 
 
+def breadcrumb_menu() -> rx.Component:
+    return rx.hstack(
+        rx.link(rx.text("AI Chat"), cursor="pointer", href="/"),
+        rx.text(" / "),
+        rx.text("AI Expert"),
+        rx.text(" / "),
+        rx.text(AiExpertState.document_name),
+        align="center",
+        align_items="center",
+        margin_inline="auto",
+        margin_top="5px"
+    )
+
+
 def ai_expert_page() -> rx.Component:
     """AI Expert page component for document-specific chat."""
     config = ChatConfig(
@@ -29,6 +43,7 @@ def ai_expert_page() -> rx.Component:
     return render_main_container(
         rx.vstack(
             navigation(),
+            # breadcrumb_menu(),
             generic_chat_interface(config),
             spacing="0",
             min_height="100vh",
