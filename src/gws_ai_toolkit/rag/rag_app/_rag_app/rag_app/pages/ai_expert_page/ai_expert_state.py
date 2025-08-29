@@ -1,14 +1,17 @@
+import io
 import os
+import tempfile
 import uuid
-from typing import Optional
+from typing import Optional, Union
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatStateBase
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
-    ChatMessage
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
+    ChatMessage, ChatMessageCode, ChatMessageImage, ChatMessageText)
 from openai import OpenAI
+from PIL import Image
 
 from ...states.main_state import RagAppState
 
@@ -75,14 +78,12 @@ class AiExpertState(RagAppState, ChatStateBase):
             self.subtitle = rag_resource.resource_model.name
 
         except Exception as e:
-            error_message = ChatMessage(
-                role="assistant",
+            error_message = self.create_text_message(
                 content=f"Error loading document: {str(e)}",
-                id=str(uuid.uuid4()),
-                sources=[]
+                role="assistant"
             )
 
-            self.chat_messages.append(error_message)
+            self.add_message(error_message)
 
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from OpenAI about the document"""
@@ -108,6 +109,10 @@ class AiExpertState(RagAppState, ChatStateBase):
                 # Route events to specific handler methods
                 if event.type == "response.output_text.delta":
                     await self.handle_output_text_delta(event)
+                elif event.type == "response.code_interpreter_call_code.delta":
+                    await self.handle_code_interpreter_call_code_delta(event)
+                elif event.type == "response.output_text_annotation.added":
+                    await self.handle_output_text_annotation_added(event)
                 elif event.type == "response.output_item.added":
                     await self.close_current_message()
                 elif event.type == "response.output_item.done":
@@ -131,20 +136,59 @@ class AiExpertState(RagAppState, ChatStateBase):
         current_message: Optional[ChatMessage] = None
 
         async with self:
-            current_message = self.current_response_message
+            current_message = self._current_response_message
 
-        if current_message:
+        if current_message and current_message.type == "text":
             async with self:
                 current_message.content += text
         else:
-            # Create new message if none exists
-            new_message = ChatMessage(
-                role="assistant",
+            # Create new text message if none exists or if current is different type
+            new_message = self.create_text_message(
                 content=text,
-                id=str(uuid.uuid4()),
-                sources=[]
+                role="assistant"
             )
             await self.update_current_response_message(new_message)
+
+    async def handle_code_interpreter_call_code_delta(self, event):
+        """Handle response.code_interpreter_call_code.delta event"""
+        code = event.delta
+
+        current_message: Optional[ChatMessage] = None
+
+        async with self:
+            current_message = self._current_response_message
+
+        if current_message and current_message.type == "code":
+            async with self:
+                current_message.content += code
+        else:
+            # Create new code message if none exists or if current is different type
+            new_message = self.create_code_message(
+                content=code,
+                role="assistant"
+            )
+            await self.update_current_response_message(new_message)
+
+    async def handle_output_text_annotation_added(self, event):
+        """Handle response.output_text_annotation.added event"""
+        annotation = event.annotation
+
+        # Extract file from annotation
+        if isinstance(annotation, dict) and 'file_id' in annotation and 'filename' in annotation:
+            try:
+                client = self._get_openai_client()
+                file_message = await self.extract_file_from_response(
+                    annotation['file_id'], annotation['filename'], client,
+                    container_id=annotation.get('container_id'))
+                await self.update_current_response_message(file_message)
+
+            except Exception as e:
+                # Create error message if image loading fails
+                error_message = self.create_text_message(
+                    content=f"[Error loading image: {str(e)}]",
+                    role="assistant"
+                )
+                await self.update_current_response_message(error_message)
 
     async def upload_file_to_openai(self) -> str:
         """Upload the document file to OpenAI and return file ID"""
@@ -166,6 +210,40 @@ class AiExpertState(RagAppState, ChatStateBase):
             self.openai_file_id = uploaded_file.id
 
         return uploaded_file.id
+
+    async def extract_file_from_response(
+            self, file_id: str, filename: str, client: OpenAI, container_id: str = None) -> Union[ChatMessageImage, ChatMessageText]:
+        """Extract file from OpenAI response - handles images and other files"""
+
+        file_data_binary = None
+        try:
+            if file_id.startswith('cfile_') and container_id:
+                # Container file - use containers API
+                file_data_binary = client.containers.files.content.retrieve(file_id, container_id=container_id)
+            else:
+                # Regular file - use files API
+                file_data_binary = client.files.content(file_id)
+
+            # Check file extension to determine handling
+            file_extension = os.path.splitext(filename)[1].lower()
+
+            # Handle image files
+            if file_extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']:
+                image_data = Image.open(io.BytesIO(file_data_binary.content))
+                return self.create_image_message(
+                    data=image_data,
+                    content="",  # No text content for pure images
+                    role="assistant"
+                )
+            else:
+                # Handle other file types as text messages
+                return self.create_text_message(
+                    content=f"📄 File '{filename}' has been generated.",
+                    role="assistant"
+                )
+
+        except Exception as e:
+            raise ValueError(f"Error downloading file {file_id}: {str(e)}")
 
     def _get_system_prompt(self, uploaded_file_id: str) -> str:
         """Get the system prompt for the AI expert"""

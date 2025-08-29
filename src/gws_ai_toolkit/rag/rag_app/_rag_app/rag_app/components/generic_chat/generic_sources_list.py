@@ -11,35 +11,27 @@ def source_item(source: RagChunk, state: ChatStateBase) -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.icon("file-text", size=16),
-            rx.text(
-                source.document_name,
-            ),
+            rx.text(source.document_name, size="1",),
             rx.spacer(),
-            rx.text(
-                f"Score: {source.score:.2f}",
-            ),
-            rx.link(
-                rx.button(
-                    rx.icon("bot", size=16),
-                    'Open AI Expert',
-                    cursor="pointer",
-                    size="1",
-                    variant="outline",
+            rx.text(f"Score: {source.score:.2f}", size="1",),
+            rx.menu.root(
+                rx.menu.trigger(
+                    rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost")
                 ),
-                href=f"/ai-expert/{source.document_id}",
+                rx.menu.content(
+                    rx.menu.item(
+                        rx.icon("bot", size=16),
+                        "Open AI Expert", on_click=lambda: state.open_ai_expert(source.document_id)
+                    ),
+                    rx.menu.item(
+                        rx.icon("external-link", size=16),
+                        "Open document", on_click=lambda: state.open_document(source.document_id)
+                    ),
+                ),
+                flex_shrink="0"
             ),
-            rx.button(
-                rx.icon("external-link", size=16),
-                'View document',
-                cursor="pointer",
-                on_click=lambda: state.open_document(source.document_id),
-                size="1",
-                variant="outline",
-            ),
-            align_items="center"
-        ),
-        padding="2",
-    )
+            align_items="center",),
+        padding="2",)
 
 
 def generic_sources_list(sources: List[RagChunk], state: ChatStateBase) -> rx.Component:

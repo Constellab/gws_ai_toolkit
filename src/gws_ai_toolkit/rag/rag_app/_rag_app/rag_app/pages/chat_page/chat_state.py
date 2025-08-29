@@ -6,8 +6,8 @@ from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChunk)
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatStateBase
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
-    ChatMessage
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
+    ChatMessage, ChatMessageText)
 
 from ...states.main_state import RagAppState
 
@@ -41,7 +41,7 @@ class ChatState(RagAppState, ChatStateBase):
                 if chunk.is_from_beginning:
                     full_response = chunk.answer
                     # Create new message for streaming
-                    current_assistant_message = ChatMessage(
+                    current_assistant_message = ChatMessageText(
                         role="assistant",
                         content=full_response,
                         id=str(uuid.uuid4()),
