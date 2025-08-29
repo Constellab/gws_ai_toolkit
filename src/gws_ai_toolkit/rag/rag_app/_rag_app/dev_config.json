@@ -8,7 +8,8 @@
         "chat_id": "dcd98b3e7dc911f0a2f576e267429a63",
         "rag_provider": "ragflow",
         "resource_sync_mode": "tag",
-        "show_config_page": true
+        "show_config_page": true,
+        "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/app_config.json"
     },
     "env_type": "NONE",
     "env_file_path": "",

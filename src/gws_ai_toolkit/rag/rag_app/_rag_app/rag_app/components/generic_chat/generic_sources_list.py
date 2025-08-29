@@ -16,7 +16,11 @@ def source_item(source: RagChunk, state: ChatStateBase) -> rx.Component:
             rx.text(f"Score: {source.score:.2f}", size="1",),
             rx.menu.root(
                 rx.menu.trigger(
-                    rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost")
+                    rx.button(
+                        rx.icon("ellipsis-vertical", size=16),
+                        variant="ghost",
+                        cursor='pointer'
+                    )
                 ),
                 rx.menu.content(
                     rx.menu.item(

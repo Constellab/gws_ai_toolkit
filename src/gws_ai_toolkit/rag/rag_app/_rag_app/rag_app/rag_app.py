@@ -1,4 +1,6 @@
 import reflex as rx
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
+    AppConfigState
 from gws_reflex_base import add_unauthorized_page, get_theme
 from gws_reflex_main import ReflexMainState
 
@@ -13,14 +15,17 @@ app = rx.App(
 
 
 # Chat page (index)
-@rx.page(route="/", on_load=ReflexMainState.on_load)
+AppConfigState.set_loader_from_param('configuration_file_path')
+
+
+@rx.page(route="/", on_load=[ReflexMainState.on_load])
 def index():
     """Main chat page."""
     return chat_page()
 
 
 # Configuration page - only show if enabled in params
-@rx.page(route="/config", on_load=ReflexMainState.on_load)
+@rx.page(route="/config", on_load=[ReflexMainState.on_load])
 def config():
     """Configuration page for managing RAG resources."""
     return config_page()

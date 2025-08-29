@@ -1,15 +1,18 @@
 import io
 import os
-import tempfile
-import uuid
 from typing import Optional, Union
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config import \
+    AiExpertConfig
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
+    AppConfigState
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatStateBase
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
-    ChatMessage, ChatMessageCode, ChatMessageImage, ChatMessageText)
+    ChatMessage, ChatMessageImage, ChatMessageText)
+from gws_core.core.utils.logger import Logger
 from openai import OpenAI
 from PIL import Image
 
@@ -29,6 +32,9 @@ class AiExpertState(RagAppState, ChatStateBase):
     title = "AI Expert"
     placeholder_text = "Ask about this document..."
     empty_state_message = "Start asking questions about this document"
+
+    # Form state for configuration
+    form_system_prompt: str = ""
 
     def load_resource_from_url(self):
         """Handle page load - get resource ID from router state"""
@@ -78,6 +84,7 @@ class AiExpertState(RagAppState, ChatStateBase):
             self.subtitle = rag_resource.resource_model.name
 
         except Exception as e:
+            Logger.log_exception_stack_trace(e)
             error_message = self.create_text_message(
                 content=f"Error loading document: {str(e)}",
                 role="assistant"
@@ -92,7 +99,10 @@ class AiExpertState(RagAppState, ChatStateBase):
 
         uploaded_file_id = await self.upload_file_to_openai()
 
-        system_prompt = self._get_system_prompt(uploaded_file_id)
+        async with self:
+            # must be used within async with self, becaue it uses selg.get_state
+            expert_config = await self._get_config()
+        system_prompt = expert_config.system_prompt.replace(expert_config.prompt_file_id_placeholder, uploaded_file_id)
 
         # Create streaming response using new Responses API
         with client.responses.stream(
@@ -183,6 +193,7 @@ class AiExpertState(RagAppState, ChatStateBase):
                 await self.update_current_response_message(file_message)
 
             except Exception as e:
+                Logger.log_exception_stack_trace(e)
                 # Create error message if image loading fails
                 error_message = self.create_text_message(
                     content=f"[Error loading image: {str(e)}]",
@@ -243,21 +254,14 @@ class AiExpertState(RagAppState, ChatStateBase):
                 )
 
         except Exception as e:
+            Logger.log_exception_stack_trace(e)
             raise ValueError(f"Error downloading file {file_id}: {str(e)}")
 
-    def _get_system_prompt(self, uploaded_file_id: str) -> str:
+    @rx.var
+    async def system_prompt(self) -> str:
         """Get the system prompt for the AI expert"""
-        return f"""You are an AI expert assistant specialized in analyzing and answering questions about the document "{uploaded_file_id}".
-
-You have access to the full content of this document and can provide detailed, accurate answers based on the information contained within it.
-
-When answering questions:
-- Use only the document content to support your answers
-- Be specific and cite relevant sections when possible
-- If something is not covered in the document, clearly state this
-- Provide thorough, helpful explanations
-
-The user is asking questions specifically about this document, so focus your responses on the document's content and context."""
+        expert_config = await self._get_config()
+        return expert_config.system_prompt
 
     @rx.var
     def document_name(self) -> str:
@@ -278,3 +282,40 @@ The user is asking questions specifically about this document, so focus your res
         """Open the current resource document."""
         if self._current_rag_resource:
             return self.open_document_from_resource(self._current_rag_resource.get_id())
+
+    async def _get_config(self) -> AiExpertConfig:
+        app_config_state = await self.get_state(AppConfigState)
+        return await app_config_state.get_config_section('ai_expert_page', AiExpertConfig)
+
+    @rx.var
+    async def prompt_file_id_placeholder_readonly(self) -> str:
+        """Get the prompt file ID placeholder for readonly display"""
+        expert_config = await self._get_config()
+        return expert_config.prompt_file_id_placeholder
+
+    @rx.event
+    async def handle_config_form_submit(self, form_data: dict):
+        """Handle the configuration form submission"""
+        try:
+            # Get the new system prompt from form data
+            new_system_prompt = form_data.get('system_prompt', '').strip()
+
+            if not new_system_prompt:
+                return
+
+            # Get current config
+            current_config = await self._get_config()
+
+            # Create new config with updated system prompt
+            new_config = AiExpertConfig(
+                prompt_file_id_placeholder=current_config.prompt_file_id_placeholder,
+                system_prompt=new_system_prompt
+            )
+
+            # Update the config in AppConfigState
+            app_config_state = await self.get_state(AppConfigState)
+            return await app_config_state.update_config_section('ai_expert_page', new_config)
+
+        except Exception as e:
+            Logger.log_exception_stack_trace(e)
+            return rx.toast.error(f"Error updating config: {e}")
