@@ -147,9 +147,10 @@ class SyncResourceState(RagAppState):
             self.send_to_rag_is_loading = True
 
         try:
-            if self.get_dataset_rag_app_service:
-                with AuthenticateUser(self.get_and_check_current_user()):
-                    self.get_dataset_rag_app_service.send_resource_to_rag(
+            rag_service = await self.get_dataset_rag_app_service
+            if rag_service:
+                with AuthenticateUser(await self.get_and_check_current_user()):
+                    rag_service.send_resource_to_rag(
                         self._selected_resource,
                         upload_options=None
                     )
@@ -157,7 +158,7 @@ class SyncResourceState(RagAppState):
             yield rx.toast.error(f"Failed to send resource to RAG: {e}", duration=3000)
             return
         finally:
-            await self.refresh_selected_resource()
+            await self.refresh_selected_resource
             async with self:
                 self.send_to_rag_is_loading = False
 
@@ -173,14 +174,15 @@ class SyncResourceState(RagAppState):
             self.delete_from_rag_is_loading = True
 
         try:
-            if self.get_dataset_rag_app_service:
-                with AuthenticateUser(self.get_and_check_current_user()):
-                    self.get_dataset_rag_app_service.delete_resource_from_rag(self._selected_resource)
+            rag_service = await self.get_dataset_rag_app_service
+            if rag_service:
+                with AuthenticateUser(await self.get_and_check_current_user()):
+                    rag_service.delete_resource_from_rag(self._selected_resource)
         except Exception as e:
             yield rx.toast.error(f"Failed to delete resource from RAG: {e}", duration=3000)
             return
         finally:
-            await self.refresh_selected_resource()
+            await self.refresh_selected_resource
             async with self:
                 self.delete_from_rag_is_loading = False
 
@@ -199,9 +201,10 @@ class SyncResourceState(RagAppState):
             dataset_id = self.selected_resource_dataset_id
             document_id = self.selected_resource_document_id
 
-            if dataset_id and document_id and self.get_dataset_rag_app_service:
-                with AuthenticateUser(self.get_and_check_current_user()):
-                    rag_service = self.get_dataset_rag_app_service.get_rag_service()
+            rag_app_service = await self.get_dataset_rag_app_service
+            if dataset_id and document_id and rag_app_service:
+                with AuthenticateUser(await self.get_and_check_current_user()):
+                    rag_service = rag_app_service.get_rag_service()
                     parsed_document = rag_service.parse_document(
                         dataset_id, document_id
                     )
@@ -241,8 +244,9 @@ class SyncResourceState(RagAppState):
                 dataset_id = self.selected_resource_dataset_id
                 document_id = self.selected_resource_document_id
 
-                if selected_resource.get_dataset_base_id() and selected_resource.get_document_id() and self.get_dataset_rag_app_service:
-                    rag_service = self.get_dataset_rag_app_service.get_rag_service()
+                rag_app_service = await self.get_dataset_rag_app_service
+                if selected_resource.get_dataset_base_id() and selected_resource.get_document_id() and rag_app_service:
+                    rag_service = rag_app_service.get_rag_service()
                     document = rag_service.get_document(
                         dataset_id, document_id
                     )

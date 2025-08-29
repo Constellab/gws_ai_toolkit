@@ -19,10 +19,10 @@ class RagAppState(ReflexMainState):
     _dataset_credentials: Optional[CredentialsDataOther] = None
 
     @rx.var
-    def get_chat_credentials(self) -> Optional[CredentialsDataOther]:
+    async def get_chat_credentials(self) -> Optional[CredentialsDataOther]:
         """Get the chat credentials."""
         if not self._chat_credentials:
-            chat_credentials_name = self.get_param('chat_credentials_name')
+            chat_credentials_name = await self.get_param('chat_credentials_name')
             if not chat_credentials_name:
                 return None
             chat_creds = Credentials.find_by_name_and_check(chat_credentials_name)
@@ -31,10 +31,10 @@ class RagAppState(ReflexMainState):
         return self._chat_credentials
 
     @rx.var
-    def get_dataset_credentials(self) -> Optional[CredentialsDataOther]:
+    async def get_dataset_credentials(self) -> Optional[CredentialsDataOther]:
         """Get the dataset credentials."""
         if not self._dataset_credentials:
-            dataset_credentials_name = self.get_param('dataset_credentials_name')
+            dataset_credentials_name = await self.get_param('dataset_credentials_name')
             if not dataset_credentials_name:
                 return None
             ds_creds = Credentials.find_by_name_and_check(dataset_credentials_name)
@@ -43,40 +43,42 @@ class RagAppState(ReflexMainState):
         return self._dataset_credentials
 
     @rx.var
-    def get_rag_provider(self) -> Optional[RagProvider]:
+    async def get_rag_provider(self) -> Optional[RagProvider]:
         """Get the RAG provider."""
-        return self.get_param('rag_provider')
+        return await self.get_param('rag_provider')
 
     @rx.var
-    def get_resource_sync_mode(self) -> Optional[RagResourceSyncMode]:
-        return self.get_param('resource_sync_mode')
+    async def get_resource_sync_mode(self) -> Optional[RagResourceSyncMode]:
+        return await self.get_param('resource_sync_mode')
 
     @rx.var
-    def get_dataset_id(self) -> str:
+    async def get_dataset_id(self) -> str:
         """Get the dataset ID."""
-        return self.get_param('dataset_id', '')
+        return await self.get_param('dataset_id', '')
 
     @rx.var
-    def get_chat_id(self) -> str:
+    async def get_chat_id(self) -> str:
         """Get the chat ID."""
-        return self.get_param('chat_id', '')
+        return await self.get_param('chat_id', '')
 
     @rx.var
-    def get_dataset_rag_app_service(self) -> Optional[BaseRagAppService]:
+    async def get_dataset_rag_app_service(self) -> Optional[BaseRagAppService]:
         """Get the DataHub RAG service for dataset operations."""
-        return self._build_rag_app_service(self.get_dataset_credentials)
+        credentials = await self.get_dataset_credentials
+        return await self._build_rag_app_service(credentials)
 
     @rx.var
-    def get_chat_rag_app_service(self) -> Optional[BaseRagAppService]:
+    async def get_chat_rag_app_service(self) -> Optional[BaseRagAppService]:
         """Get the DataHub RAG service for chat operations."""
-        return self._build_rag_app_service(self.get_chat_credentials)
+        credentials = await self.get_chat_credentials
+        return await self._build_rag_app_service(credentials)
 
-    def _build_rag_app_service(self, credentials: CredentialsDataOther) -> Optional[BaseRagAppService]:
+    async def _build_rag_app_service(self, credentials: CredentialsDataOther) -> Optional[BaseRagAppService]:
         """Build a RAG app service."""
-        provider = self.get_rag_provider
+        provider = await self.get_rag_provider
         if not provider:
             return None
         rag_service = RagServiceFactory.create_service(provider, credentials)
 
-        return RagAppServiceFactory.create_service(self.get_resource_sync_mode,
-                                                   rag_service, self.get_dataset_id)
+        return RagAppServiceFactory.create_service(await self.get_resource_sync_mode,
+                                                   rag_service, await self.get_dataset_id)

@@ -4,7 +4,7 @@ from typing import Awaitable, Callable, Type
 
 import reflex as rx
 from gws_core import BaseModelDTO
-from gws_reflex_base import ReflexMainStateBase2
+from gws_reflex_main import ReflexMainState
 
 
 class AppConfigState(rx.State):
@@ -15,7 +15,7 @@ class AppConfigState(rx.State):
     # Required properties
     _config: dict
 
-    _config_file_path: str = ''
+    _config_file_path: str = '/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/app_config.json'
 
     _loader: Callable[[rx.State], Awaitable[str]] = None
 
@@ -28,7 +28,7 @@ class AppConfigState(rx.State):
     def set_loader_from_param(cls, param_name: str) -> None:
         """Set the loader function to get the config file path from a parameter."""
         async def loader(state: 'AppConfigState'):
-            base_state = await state.get_state(ReflexMainStateBase2)
+            base_state = await state.get_state(ReflexMainState)
             return await base_state.get_param(param_name)
 
         cls._loader = loader

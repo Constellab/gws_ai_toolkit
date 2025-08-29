@@ -6,8 +6,8 @@ from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChunk)
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatStateBase
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
-    ChatMessage, ChatMessageText)
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
+    ChatMessageText
 
 from ...states.main_state import RagAppState
 
@@ -18,7 +18,7 @@ class ChatState(RagAppState, ChatStateBase):
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from the assistant."""
 
-        datahub_rag_service = self.get_chat_rag_app_service
+        datahub_rag_service = await self.get_chat_rag_app_service
         if not datahub_rag_service:
             return
 
@@ -35,7 +35,7 @@ class ChatState(RagAppState, ChatStateBase):
             query=user_message,
             conversation_id=self.conversation_id,
             user=None,  # TODO handle user
-            chat_id=self.get_chat_id,
+            chat_id=await self.get_chat_id,
         ):
             if isinstance(chunk, RagChatStreamResponse):
                 if chunk.is_from_beginning:

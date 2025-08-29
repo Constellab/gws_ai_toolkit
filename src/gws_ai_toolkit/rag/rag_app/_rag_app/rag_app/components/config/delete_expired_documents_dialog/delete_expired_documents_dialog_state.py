@@ -58,14 +58,14 @@ class DeleteExpiredDocumentsDialogState(RagAppState):
 
     async def load_documents_to_delete(self):
         """Load documents to delete."""
-        if not self.check_authentication():
+        if not await self.check_authentication():
             raise Exception("User not authenticated")
 
         async with self:
             self.documents_to_delete = []
             self.delete_documents_progress = -1
 
-        rag_service = self.get_dataset_rag_app_service
+        rag_service = await self.get_dataset_rag_app_service
 
         documents_to_delete = rag_service.get_rag_documents_to_delete()
         async with self:
@@ -78,11 +78,11 @@ class DeleteExpiredDocumentsDialogState(RagAppState):
             self.delete_documents_progress = 0
             self.delete_errors = []
 
-        rag_service = self.get_dataset_rag_app_service
+        rag_service = await self.get_dataset_rag_app_service
 
         for document in self.documents_to_delete:
             try:
-                with AuthenticateUser(self.get_and_check_current_user()):
+                with AuthenticateUser(await self.get_and_check_current_user()):
                     rag_service.delete_rag_document(document.id)
 
             except Exception as e:

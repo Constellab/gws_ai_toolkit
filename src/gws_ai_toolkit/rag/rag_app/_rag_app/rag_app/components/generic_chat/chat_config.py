@@ -165,16 +165,16 @@ class ChatStateBase(rx.State, mixin=True):
         return rx.redirect(f"/ai-expert/{rag_document_id}")
 
     @rx.event
-    def open_document(self, rag_document_id: str):
+    async def open_document(self, rag_document_id: str):
         """Redirect the user to an external URL."""
 
         rag_resource = RagResource.from_document_id(rag_document_id)
         if not rag_resource:
             raise ValueError(f"Resource with ID {rag_document_id} not found")
-        return self.open_document_from_resource(rag_resource.get_id())
+        return await self.open_document_from_resource(rag_resource.get_id())
 
     @rx.event
-    def open_document_from_resource(self, resource_id: str):
+    async def open_document_from_resource(self, resource_id: str):
         """Redirect the user to an external URL."""
 
         # Generate a public share link for the document
@@ -183,7 +183,7 @@ class ChatStateBase(rx.State, mixin=True):
             entity_type=ShareLinkEntityType.RESOURCE
         )
 
-        with AuthenticateUser(self.get_and_check_current_user()):
+        with AuthenticateUser(await self.get_and_check_current_user()):
             share_link = ShareLinkService.get_or_create_valid_public_share_link(generate_link_dto)
 
         if share_link:

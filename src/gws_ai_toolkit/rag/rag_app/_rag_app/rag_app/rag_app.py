@@ -2,7 +2,6 @@ import reflex as rx
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
     AppConfigState
 from gws_reflex_base import add_unauthorized_page, get_theme
-from gws_reflex_main import ReflexMainState
 
 from .pages.ai_expert_page.ai_expert_page import ai_expert_page
 from .pages.ai_expert_page.ai_expert_state import AiExpertState
@@ -18,21 +17,21 @@ app = rx.App(
 AppConfigState.set_loader_from_param('configuration_file_path')
 
 
-@rx.page(route="/", on_load=[ReflexMainState.on_load])
+@rx.page(route="/")
 def index():
     """Main chat page."""
     return chat_page()
 
 
 # Configuration page - only show if enabled in params
-@rx.page(route="/config", on_load=[ReflexMainState.on_load])
+@rx.page(route="/config")
 def config():
     """Configuration page for managing RAG resources."""
     return config_page()
 
 
 # AI Expert page - document-specific chat
-@rx.page(route="/ai-expert/[rag_doc_id]", on_load=[ReflexMainState.on_load, AiExpertState.load_resource_from_url])
+@rx.page(route="/ai-expert/[rag_doc_id]", on_load=[AiExpertState.load_resource_from_url])
 def ai_expert():
     """AI Expert page for document-specific chat."""
     return ai_expert_page()

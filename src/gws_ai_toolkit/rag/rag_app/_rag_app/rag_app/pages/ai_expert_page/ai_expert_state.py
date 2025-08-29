@@ -36,7 +36,7 @@ class AiExpertState(RagAppState, ChatStateBase):
     # Form state for configuration
     form_system_prompt: str = ""
 
-    def load_resource_from_url(self):
+    async def load_resource_from_url(self):
         """Handle page load - get resource ID from router state"""
         # The rag_doc_id should be automatically set by Reflex from the [rag_doc_id] route parameter
         # Access the dynamic route parameter directly - Reflex makes it available as self.rag_doc_id
@@ -47,7 +47,7 @@ class AiExpertState(RagAppState, ChatStateBase):
             self.clear_chat()
 
         if rag_doc_id and str(rag_doc_id).strip():
-            self.load_resource(str(rag_doc_id))
+            await self.load_resource(str(rag_doc_id))
 
     def _get_openai_client(self) -> OpenAI:
         """Get OpenAI client with API key"""
@@ -56,9 +56,9 @@ class AiExpertState(RagAppState, ChatStateBase):
             raise ValueError("OpenAI API key is not set")
         return OpenAI(api_key=api_key)
 
-    def load_resource(self, rag_doc_id: str):
+    async def load_resource(self, rag_doc_id: str):
         """Load the resource from DataHub and prepare for chat"""
-        if not self.check_authentication():
+        if not await self.check_authentication():
             return
 
         try:
@@ -83,10 +83,26 @@ class AiExpertState(RagAppState, ChatStateBase):
 
             self.subtitle = rag_resource.resource_model.name
 
-        except Exception as e:
+        except FileNotFoundError as e:
+            Logger.log_exception_stack_trace(e)
+            error_message = self.create_text_message(
+                content=f"Document not found: {str(e)}",
+                role="assistant"
+            )
+
+            self.add_message(error_message)
+        except ValueError as e:
             Logger.log_exception_stack_trace(e)
             error_message = self.create_text_message(
                 content=f"Error loading document: {str(e)}",
+                role="assistant"
+            )
+
+            self.add_message(error_message)
+        except Exception as e:
+            Logger.log_exception_stack_trace(e)
+            error_message = self.create_text_message(
+                content=f"Unexpected error: {str(e)}",
                 role="assistant"
             )
 
@@ -192,11 +208,19 @@ class AiExpertState(RagAppState, ChatStateBase):
                     container_id=annotation.get('container_id'))
                 await self.update_current_response_message(file_message)
 
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 Logger.log_exception_stack_trace(e)
                 # Create error message if image loading fails
                 error_message = self.create_text_message(
                     content=f"[Error loading image: {str(e)}]",
+                    role="assistant"
+                )
+                await self.update_current_response_message(error_message)
+            except Exception as e:
+                Logger.log_exception_stack_trace(e)
+                # Create error message for unexpected errors
+                error_message = self.create_text_message(
+                    content=f"[Unexpected error loading image: {str(e)}]",
                     role="assistant"
                 )
                 await self.update_current_response_message(error_message)
@@ -282,6 +306,7 @@ class AiExpertState(RagAppState, ChatStateBase):
         """Open the current resource document."""
         if self._current_rag_resource:
             return self.open_document_from_resource(self._current_rag_resource.get_id())
+        return None
 
     async def _get_config(self) -> AiExpertConfig:
         app_config_state = await self.get_state(AppConfigState)
@@ -316,6 +341,9 @@ class AiExpertState(RagAppState, ChatStateBase):
             app_config_state = await self.get_state(AppConfigState)
             return await app_config_state.update_config_section('ai_expert_page', new_config)
 
+        except (ValueError, KeyError) as e:
+            Logger.log_exception_stack_trace(e)
+            return rx.toast.error(f"Configuration error: {e}")
         except Exception as e:
             Logger.log_exception_stack_trace(e)
-            return rx.toast.error(f"Error updating config: {e}")
+            return rx.toast.error(f"Unexpected error updating config: {e}")

@@ -55,14 +55,14 @@ class SyncAllResourcesDialogState(RagAppState):
 
     async def load_resources_to_sync(self):
         """Load resources to sync."""
-        if not self.check_authentication():
+        if not await self.check_authentication():
             raise Exception("User not authenticated")
 
         async with self:
             self.resources_to_sync = []
             self.sync_resource_progress = -1
 
-        rag_service = self.get_dataset_rag_app_service
+        rag_service = await self.get_dataset_rag_app_service
 
         resources_to_sync = rag_service.get_all_resource_to_sync()
         async with self:
@@ -74,12 +74,12 @@ class SyncAllResourcesDialogState(RagAppState):
             self.sync_resource_progress = 0
             self.sync_errors = []
 
-        rag_service = self.get_dataset_rag_app_service
+        rag_service = await self.get_dataset_rag_app_service
 
         for resource in self.resources_to_sync:
 
             try:
-                with AuthenticateUser(self.get_and_check_current_user()):
+                with AuthenticateUser(await self.get_and_check_current_user()):
                     rag_service.send_resource_to_rag(resource,
                                                      upload_options=None)
 
@@ -92,8 +92,8 @@ class SyncAllResourcesDialogState(RagAppState):
                 self.sync_resource_progress += 1
 
     @rx.var
-    def get_compatible_resource_explanation(self) -> str:
-        rag_service = self.get_dataset_rag_app_service
+    async def get_compatible_resource_explanation(self) -> str:
+        rag_service = await self.get_dataset_rag_app_service
         if not rag_service:
             return ""
         return rag_service.get_compatible_resource_explanation()

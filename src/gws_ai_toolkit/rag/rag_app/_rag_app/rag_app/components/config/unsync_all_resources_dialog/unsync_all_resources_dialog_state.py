@@ -55,14 +55,14 @@ class UnsyncAllResourcesDialogState(RagAppState):
 
     async def load_resources_to_unsync(self):
         """Load resources to unsync."""
-        if not self.check_authentication():
+        if not await self.check_authentication():
             raise Exception("User not authenticated")
 
         async with self:
             self.resources_to_unsync = []
             self.unsync_resource_progress = -1
 
-        rag_service = self.get_dataset_rag_app_service
+        rag_service = await self.get_dataset_rag_app_service
 
         resources_to_unsync = rag_service.get_all_synced_resources()
         async with self:
@@ -74,12 +74,12 @@ class UnsyncAllResourcesDialogState(RagAppState):
             self.unsync_resource_progress = 0
             self.unsync_errors = []
 
-        rag_service = self.get_dataset_rag_app_service
+        rag_service = await self.get_dataset_rag_app_service
 
         for resource in self.resources_to_unsync:
 
             try:
-                with AuthenticateUser(self.get_and_check_current_user()):
+                with AuthenticateUser(await self.get_and_check_current_user()):
                     rag_service.delete_resource_from_rag(resource)
 
             except Exception as e:
