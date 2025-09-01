@@ -3,20 +3,21 @@ import os
 from typing import Optional, Union
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config import \
-    AiExpertConfig
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
-    AppConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
-    ChatStateBase
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
-    ChatMessage, ChatMessageImage, ChatMessageText)
 from gws_core.core.utils.logger import Logger
 from openai import OpenAI
 from PIL import Image
 
-from ...states.main_state import RagAppState
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config import \
+    AiExpertConfig
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config_state import \
+    AiExpertConfigState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
+    ChatStateBase
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
+    ChatMessage, ChatMessageImage, ChatMessageText)
+
+from ...states.rag_main_state import RagAppState
 
 
 class AiExpertState(RagAppState, ChatStateBase):
@@ -27,6 +28,7 @@ class AiExpertState(RagAppState, ChatStateBase):
     openai_file_id: Optional[str] = None
 
     _current_rag_resource: Optional[RagResource] = None
+    _document_chunks_text: Optional[str] = None
 
     # UI configuration
     title = "AI Expert"
@@ -45,6 +47,7 @@ class AiExpertState(RagAppState, ChatStateBase):
         if self.current_doc_id and self.current_doc_id != rag_doc_id:
             # Reset chat if loading a different document
             self.clear_chat()
+            self._document_chunks_text = None
 
         if rag_doc_id and str(rag_doc_id).strip():
             await self.load_resource(str(rag_doc_id))
@@ -113,24 +116,46 @@ class AiExpertState(RagAppState, ChatStateBase):
 
         client = self._get_openai_client()
 
-        uploaded_file_id = await self.upload_file_to_openai()
-
         async with self:
             # must be used within async with self, becaue it uses selg.get_state
             expert_config = await self._get_config()
-        system_prompt = expert_config.system_prompt.replace(expert_config.prompt_file_id_placeholder, uploaded_file_id)
 
-        # Create streaming response using new Responses API
+        instructions: str = None
+        tools: list = []
+
+        if expert_config.mode == 'full_file':
+            # Full file mode - upload file and use code interpreter
+            uploaded_file_id = await self.upload_file_to_openai()
+            system_prompt = expert_config.system_prompt.replace(
+                expert_config.prompt_file_placeholder, uploaded_file_id)
+
+            instructions = system_prompt
+            tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}}]
+
+        else:
+            # Text chunk mode - get document chunks and include in prompt
+            document_chunks = await self.get_document_chunks_text()
+            document_name = self._current_rag_resource.resource_model.name if self._current_rag_resource else "document"
+
+            # Replace the placeholder with document name and include chunks
+            system_prompt_with_chunks = expert_config.system_prompt.replace(
+                expert_config.prompt_file_placeholder,
+                f"{document_name}\n\nDocument content (first 100 chunks):\n{document_chunks}\n [END OF DOCUMENT]"
+            )
+
+            instructions = system_prompt_with_chunks
+
+        # Create streaming response without code interpreter
         with client.responses.stream(
             model="gpt-4o",
-            instructions=system_prompt,
+            instructions=instructions,
             input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
             temperature=0.7,
-            tools=[{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}}],
             previous_response_id=self.conversation_id,
+            tools=tools,
         ) as stream:
 
-            # Process streaming events
+            # Process streaming events (common for both modes)
             for event in stream:
                 # Route events to specific handler methods
                 if event.type == "response.output_text.delta":
@@ -225,10 +250,50 @@ class AiExpertState(RagAppState, ChatStateBase):
                 )
                 await self.update_current_response_message(error_message)
 
+    async def get_document_chunks_text(self) -> str:
+        """Get the first 100 chunks of the document as text"""
+
+        if self._document_chunks_text:
+            return self._document_chunks_text
+
+        try:
+            rag_app_service = await self.get_dataset_rag_app_service
+            if not rag_app_service:
+                return "RAG service not available"
+
+            # Get the document ID from the resource
+            document_id = self._current_rag_resource.get_document_id()
+
+            # Get the first 100 chunks
+            chunks = rag_app_service.rag_service.get_document_chunks(
+                dataset_id=rag_app_service.dataset_id,
+                document_id=document_id,
+                page=1,
+                limit=100
+            )
+
+            if len(chunks) == 0:
+                raise ValueError("No chunks found for this document")
+
+            # Combine chunk contents into text
+            chunk_texts = []
+            for chunk in chunks:
+                chunk_texts.append(chunk.content)
+
+            self._document_chunks_text = "\n".join(chunk_texts)
+            return self._document_chunks_text
+
+        except Exception as e:
+            Logger.log_exception_stack_trace(e)
+            return f"Error retrieving document chunks: {str(e)}"
+
     async def upload_file_to_openai(self) -> str:
         """Upload the document file to OpenAI and return file ID"""
         if self.openai_file_id:
             return self.openai_file_id
+
+        if not self._current_rag_resource:
+            raise ValueError("No resource loaded")
 
         client = self._get_openai_client()
 
@@ -246,8 +311,8 @@ class AiExpertState(RagAppState, ChatStateBase):
 
         return uploaded_file.id
 
-    async def extract_file_from_response(
-            self, file_id: str, filename: str, client: OpenAI, container_id: str = None) -> Union[ChatMessageImage, ChatMessageText]:
+    async def extract_file_from_response(self, file_id: str, filename: str, client: OpenAI,
+                                         container_id: Optional[str] = None) -> Union[ChatMessageImage, ChatMessageText]:
         """Extract file from OpenAI response - handles images and other files"""
 
         file_data_binary = None
@@ -282,12 +347,6 @@ class AiExpertState(RagAppState, ChatStateBase):
             raise ValueError(f"Error downloading file {file_id}: {str(e)}")
 
     @rx.var
-    async def system_prompt(self) -> str:
-        """Get the system prompt for the AI expert"""
-        expert_config = await self._get_config()
-        return expert_config.system_prompt
-
-    @rx.var
     def document_name(self) -> str:
         """Get the document name for the AI Expert"""
         if self._current_rag_resource:
@@ -309,41 +368,5 @@ class AiExpertState(RagAppState, ChatStateBase):
         return None
 
     async def _get_config(self) -> AiExpertConfig:
-        app_config_state = await self.get_state(AppConfigState)
-        return await app_config_state.get_config_section('ai_expert_page', AiExpertConfig)
-
-    @rx.var
-    async def prompt_file_id_placeholder_readonly(self) -> str:
-        """Get the prompt file ID placeholder for readonly display"""
-        expert_config = await self._get_config()
-        return expert_config.prompt_file_id_placeholder
-
-    @rx.event
-    async def handle_config_form_submit(self, form_data: dict):
-        """Handle the configuration form submission"""
-        try:
-            # Get the new system prompt from form data
-            new_system_prompt = form_data.get('system_prompt', '').strip()
-
-            if not new_system_prompt:
-                return
-
-            # Get current config
-            current_config = await self._get_config()
-
-            # Create new config with updated system prompt
-            new_config = AiExpertConfig(
-                prompt_file_id_placeholder=current_config.prompt_file_id_placeholder,
-                system_prompt=new_system_prompt
-            )
-
-            # Update the config in AppConfigState
-            app_config_state = await self.get_state(AppConfigState)
-            return await app_config_state.update_config_section('ai_expert_page', new_config)
-
-        except (ValueError, KeyError) as e:
-            Logger.log_exception_stack_trace(e)
-            return rx.toast.error(f"Configuration error: {e}")
-        except Exception as e:
-            Logger.log_exception_stack_trace(e)
-            return rx.toast.error(f"Unexpected error updating config: {e}")
+        app_config_state = await self.get_state(AiExpertConfigState)
+        return await app_config_state._get_config()

@@ -1,10 +1,11 @@
 from typing import List, Literal
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
-    RagAppState
 from gws_core import AuthenticateUser
+
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.rag_main_state import \
+    RagAppState
 
 
 class UnsyncAllResourcesDialogState(RagAppState):

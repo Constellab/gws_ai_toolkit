@@ -6,7 +6,7 @@ from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
 
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.rag_main_state import \
     RagAppState
 
 

@@ -4,7 +4,7 @@ import reflex as rx
 from gws_core import AuthenticateUser, Logger
 
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.rag_main_state import \
     RagAppState
 
 

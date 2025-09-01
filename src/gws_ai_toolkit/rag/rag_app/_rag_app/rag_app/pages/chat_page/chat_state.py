@@ -9,7 +9,7 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_co
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
     ChatMessageText
 
-from ...states.main_state import RagAppState
+from ...states.rag_main_state import RagAppState
 
 
 class ChatState(RagAppState, ChatStateBase):
