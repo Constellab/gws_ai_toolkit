@@ -34,3 +34,9 @@ The user is asking questions specifically about this document, so focus your res
     # 'text_chunk' basic chat call where the document content (as text) is integrated in the prompt
     # 'full_file' mode where the file is uploaded and the AI has access to the original file to answer
     mode: Literal['text_chunk', 'full_file'] = 'full_file'
+
+    # OpenAI model to use for chat
+    model: str = 'gpt-4o'
+
+    # Temperature for the AI model (0.0 to 2.0)
+    temperature: float = 0.7

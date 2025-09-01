@@ -147,10 +147,10 @@ class AiExpertState(RagAppState, ChatStateBase):
 
         # Create streaming response without code interpreter
         with client.responses.stream(
-            model="gpt-4o",
+            model=expert_config.model,
             instructions=instructions,
             input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
-            temperature=0.7,
+            temperature=expert_config.temperature,
             previous_response_id=self.conversation_id,
             tools=tools,
         ) as stream:

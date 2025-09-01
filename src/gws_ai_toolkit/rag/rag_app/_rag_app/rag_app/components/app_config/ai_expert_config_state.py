@@ -34,19 +34,44 @@ class AiExpertConfigState(rx.State):
         expert_config = await self._get_config()
         return expert_config.prompt_file_placeholder
 
+    @rx.var
+    async def model(self) -> str:
+        """Get the model for the AI expert"""
+        expert_config = await self._get_config()
+        return expert_config.model
+
+    @rx.var
+    async def temperature(self) -> float:
+        """Get the temperature for the AI expert"""
+        expert_config = await self._get_config()
+        return expert_config.temperature
+
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):
-        """Handle the combined configuration form submission (mode and system prompt)"""
+        """Handle the combined configuration form submission (mode, system prompt, model, and temperature)"""
         try:
             # Get the new values from form data
             new_mode = form_data.get('mode', '').strip()
             new_system_prompt = form_data.get('system_prompt', '').strip()
+            new_model = form_data.get('model', '').strip()
+            new_temperature_str = form_data.get('temperature', '').strip()
 
             if not new_system_prompt:
                 return rx.toast.error("System prompt cannot be empty")
 
             if not new_mode or new_mode not in ['text_chunk', 'full_file']:
                 return rx.toast.error("Invalid mode selected")
+
+            if not new_model:
+                return rx.toast.error("Model cannot be empty")
+
+            # Validate temperature
+            try:
+                new_temperature = float(new_temperature_str)
+                if new_temperature < 0.0 or new_temperature > 2.0:
+                    return rx.toast.error("Temperature must be between 0.0 and 2.0")
+            except ValueError:
+                return rx.toast.error("Temperature must be a valid number")
 
             # Get current config
             current_config = await self._get_config()
@@ -59,7 +84,9 @@ class AiExpertConfigState(rx.State):
             new_config = AiExpertConfig(
                 prompt_file_placeholder=current_config.prompt_file_placeholder,
                 system_prompt=new_system_prompt,
-                mode=new_mode
+                mode=new_mode,
+                model=new_model,
+                temperature=new_temperature
             )
 
             # Update the config in AppConfigState

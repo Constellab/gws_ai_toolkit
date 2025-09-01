@@ -38,6 +38,32 @@ def show_ai_expert_config_section():
                         spacing="2",
                         margin_left="2"
                     ),
+                    rx.heading("Model Configuration", size="4", margin_top="4"),
+                    rx.text("OpenAI model to use for AI responses:", color="gray"),
+                    rx.input(
+                        placeholder="Enter model name (e.g., gpt-4o, gpt-4o-mini)...",
+                        name="model",
+                        default_value=AiExpertConfigState.model,
+                        width="100%",
+                    ),
+                    
+                    rx.heading("Temperature", size="4", margin_top="4"),
+                    rx.text("Controls randomness: 0.0 = focused, 2.0 = creative", color="gray"),
+                    rx.input(
+                        placeholder="0.7",
+                        name="temperature",
+                        default_value=rx.cond(
+                            AiExpertConfigState.temperature,
+                            AiExpertConfigState.temperature.to(str),
+                            "0.7"
+                        ),
+                        type="number",
+                        min=0.0,
+                        max=2.0,
+                        step=0.1,
+                        width="100%",
+                    ),
+
                     rx.heading("System prompt", size="4", margin_top="4"),
                     rx.text(f"Use '{AiExpertConfigState.prompt_file_id_placeholder}' placeholder."),
                     rx.text_area(
@@ -45,7 +71,7 @@ def show_ai_expert_config_section():
                         name="system_prompt",
                         default_value=AiExpertConfigState.system_prompt,
                         resize="vertical",
-                        rows="20",
+                        rows="15",
                         width="100%",
                     ),
                     rx.button(
