@@ -1,11 +1,12 @@
 from typing import Any, Generator, List, Optional
 
+from gws_core import CredentialsDataOther
+from ragflow_sdk import Chat, Chunk, DataSet, Document, RAGFlow, Session
+
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagFlowCreateChatRequest, RagFlowCreateDatasetRequest,
     RagFlowCreateSessionRequest, RagFlowUpdateChatRequest,
     RagFlowUpdateDatasetRequest, RagFlowUpdateDocumentOptions)
-from gws_core import CredentialsDataOther
-from ragflow_sdk import Chat, DataSet, Document, RAGFlow, Session
 
 
 class RagFlowService:
@@ -244,6 +245,23 @@ class RagFlowService:
 
         except Exception as e:
             raise RuntimeError(f"Error retrieving chunks: {str(e)}") from e
+
+    def get_document_chunks(self, dataset_id: str, document_id: str,
+                            keyword: Optional[str] = None,
+                            page: int = 1,
+                            limit: int = 20) -> List[Chunk]:
+        """Get chunks for a specific document using SDK."""
+        try:
+            # Get document object
+            document = self.get_document(dataset_id, document_id)
+
+            # Retrieve chunks for the document
+            retrieved_chunks = document.list_chunks(keywords=keyword, page=page, page_size=limit)
+
+            return retrieved_chunks
+
+        except Exception as e:
+            raise RuntimeError(f"Error retrieving document chunks: {str(e)}") from e
 
     ################################# CHAT MANAGEMENT #################################
 

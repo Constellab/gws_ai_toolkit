@@ -1,7 +1,8 @@
 import reflex as rx
+from gws_reflex_base import add_unauthorized_page, get_theme
+
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
     AppConfigState
-from gws_reflex_base import add_unauthorized_page, get_theme
 
 from .pages.ai_expert_page.ai_expert_page import ai_expert_page
 from .pages.ai_expert_page.ai_expert_state import AiExpertState
@@ -11,6 +12,7 @@ from .pages.resource_page import resource_page
 
 app = rx.App(
     theme=get_theme(),
+    stylesheets=["/style.css"],
 )
 
 

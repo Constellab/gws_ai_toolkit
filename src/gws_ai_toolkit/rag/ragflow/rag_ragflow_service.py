@@ -1,11 +1,12 @@
 from typing import Any, Generator, List, Literal, Optional, Union
 
+from gws_core import CredentialsDataOther
+from ragflow_sdk import Chunk, Document
+
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatStreamResponse,
                                                   RagChunk, RagDocument)
-from gws_core import CredentialsDataOther
-from ragflow_sdk import Document
 
 from .ragflow_class import RagFlowUpdateDocumentOptions
 from .ragflow_service import RagFlowService
@@ -65,10 +66,15 @@ class RagRagFlowService(BaseRagService):
         # Convert SDK response directly to RagChunk
         chunks = []
         for chunk in sdk_response.get('chunks', []):
-            rag_chunk = self._convert_chunk_to_rag_chunk(chunk)
+            rag_chunk = self._convert_search_chunk_to_rag_chunk(chunk)
             chunks.append(rag_chunk)
 
         return chunks
+
+    def get_document_chunks(self, dataset_id: str, document_id: str, keyword: str | None = None,
+                            page: int = 1, limit: int = 20) -> List[RagChunk]:
+        response = self._ragflow_service.get_document_chunks(dataset_id, document_id, keyword, page, limit)
+        return [self._convert_chunk_to_rag_chunk(chunk) for chunk in response]
 
     def chat_stream(self,
                     query: str,
@@ -123,6 +129,7 @@ class RagRagFlowService(BaseRagService):
     # Helper methods to convert RagFlow models to Rag models
     def _convert_document_to_rag_document(self, document: Document) -> RagDocument:
         """Convert SDK Document directly to RagDocument."""
+
         parsed_status: Literal['DONE', 'PENDING', 'RUNNING', 'ERROR'] = None
         if document.run == 'UNSTART':
             parsed_status = 'PENDING'
@@ -140,7 +147,7 @@ class RagRagFlowService(BaseRagService):
             parsed_status=parsed_status
         )
 
-    def _convert_chunk_to_rag_chunk(self, chunk_data: dict) -> RagChunk:
+    def _convert_search_chunk_to_rag_chunk(self, chunk_data: dict) -> RagChunk:
         """Convert SDK chunk data directly to RagChunk."""
         return RagChunk(
             id=chunk_data.get('id', ''),
@@ -148,4 +155,14 @@ class RagRagFlowService(BaseRagService):
             document_id=chunk_data.get('document_id', ''),
             document_name=chunk_data.get('document_name', ''),
             score=chunk_data.get('vector_similarity', 0.0)
+        )
+
+    def _convert_chunk_to_rag_chunk(self, chunk: Chunk) -> RagChunk:
+        """Convert SDK chunk data directly to RagChunk."""
+        return RagChunk(
+            id=chunk.id,
+            content=chunk.content,
+            document_id=chunk.document_id,
+            document_name=chunk.document_name,
+            score=chunk.vector_similarity
         )

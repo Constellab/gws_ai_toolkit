@@ -60,7 +60,7 @@ def sync_all_resources_dialog() -> rx.Component:
         rx.callout(
             rx.markdown(
                 SyncAllResourcesDialogState.get_compatible_resource_explanation,
-                style={'p,ul': {'margin-top': '0', 'margin-bottom': '0'}},
+                class_name='dense-markdown',
             ),
             margin_bottom="1em"
         ),

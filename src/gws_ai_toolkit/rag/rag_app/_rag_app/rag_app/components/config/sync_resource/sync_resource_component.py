@@ -1,4 +1,7 @@
 import reflex as rx
+
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.document_chunks.document_chunks_component import (
+    document_chunks_dialog, load_chunks_button)
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.sync_resource.sync_resource_state import (
     ResourceDTO, SyncResourceState)
 
@@ -55,6 +58,9 @@ def search_resource():
 
         _resource_info_section(),
 
+        # Chunks dialog (available for all resources)
+        document_chunks_dialog(),
+
         spacing="4"
     )
 
@@ -65,7 +71,7 @@ def _resource_info_section():
         rx.vstack(
             rx.hstack(
                 rx.text(f"Selected resource: {SyncResourceState.selected_resource_info.name}", weight="bold"),
-                rx.button("Refresh", on_click=SyncResourceState.refresh_selected_resource),
+                rx.button("Refresh", on_click=SyncResourceState.refresh_selected_resource, cursor="pointer"),
                 align_items="center",
             ),
 
@@ -110,28 +116,39 @@ def _synced_resource_info():
                 rx.spinner(loading=SyncResourceState.send_to_rag_is_loading),
                 rx.text("Resend to RAG"),
                 on_click=SyncResourceState.send_to_rag,
-                variant="solid"
+                variant="solid",
+                cursor="pointer"
             ),
             rx.button(
                 rx.spinner(loading=SyncResourceState.parse_document_is_loading),
                 rx.text("Parse document"),
                 on_click=SyncResourceState.parse_document,
-                variant="outline"
+                variant="outline",
+                cursor="pointer"
+            ),
+            load_chunks_button(
+                SyncResourceState.selected_resource_dataset_id,
+                SyncResourceState.selected_resource_document_id
             ),
             rx.alert_dialog.root(
                 rx.alert_dialog.trigger(
                     rx.button(
                         rx.spinner(loading=SyncResourceState.delete_from_rag_is_loading),
-                        "Delete from RAG", color_scheme="red")),
+                        "Delete from RAG", color_scheme="red", cursor="pointer",)),
                 rx.alert_dialog.content(
                     rx.alert_dialog.title("Delete from RAG"),
                     rx.alert_dialog.description(
                         "Are you sure? This resource will be deleted from the RAG platform.",),
                     rx.flex(
-                        rx.alert_dialog.cancel(rx.button("Cancel"),),
+                        rx.alert_dialog.cancel(rx.button("Cancel", cursor="pointer")),
                         rx.alert_dialog.action(
                             rx.button(
-                                "Delete from RAG", on_click=SyncResourceState.delete_from_rag, color_scheme="red"),),
+                                "Delete from RAG",
+                                on_click=SyncResourceState.delete_from_rag,
+                                color_scheme="red",
+                                cursor="pointer"
+                            ),
+                        ),
                         spacing="3",),),),
             spacing="2"),
         spacing="2")
@@ -144,7 +161,8 @@ def _unsynced_resource_info():
             rx.spinner(loading=SyncResourceState.send_to_rag_is_loading),
             rx.text("Send to RAG"),
             on_click=SyncResourceState.send_to_rag,
-            variant="solid"
+            variant="solid",
+            cursor="pointer"
         ),
         spacing="2"
     )

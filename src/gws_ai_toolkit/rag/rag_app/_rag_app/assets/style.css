@@ -1,0 +1,17 @@
+.dense-markdown{
+    line-height: 1;
+}
+
+.dense-markdown h1,
+.dense-markdown h2,
+.dense-markdown h3,
+.dense-markdown h4,
+.dense-markdown h5,
+.dense-markdown h6,
+.dense-markdown p,
+.dense-markdown ul,
+.dense-markdown ol,
+.dense-markdown li {
+    margin-top: 0;
+    margin-bottom: 0;
+}

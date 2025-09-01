@@ -109,6 +109,11 @@ class RagDifyService(BaseRagService):
             chunks.append(chunk)
         return chunks
 
+    def get_document_chunks(self, dataset_id: str, document_id: str, keyword: str | None = None,
+                            page: int = 1, limit: int = 20) -> List[RagChunk]:
+        response = self._dify_service.get_document_chunks(dataset_id, document_id, keyword, page, limit)
+        return [self._convert_to_rag_chunk(chunk) for chunk in response]
+
     def chat_stream(self, query: str, conversation_id: Optional[str] = None,
                     user: Optional[str] = None, chat_id: Optional[str] = None, **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
@@ -126,7 +131,8 @@ class RagDifyService(BaseRagService):
                             id=source.document_id,
                             content='',  # Dify sources don't include content
                             document_id=source.document_id,
-                            document_name=source.document_name
+                            document_name=source.document_name,
+                            score=source.score
                         )
                         references.append(chunk)
 

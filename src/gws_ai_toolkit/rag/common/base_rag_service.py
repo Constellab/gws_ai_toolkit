@@ -63,6 +63,15 @@ class BaseRagService(ABC):
         """Retrieve relevant chunks from the knowledge base."""
         raise NotImplementedError
 
+    # Document Chunk Retrieval
+    @abstractmethod
+    def get_document_chunks(self, dataset_id: str, document_id: str,
+                            keyword: Optional[str] = None,
+                            page: int = 1,
+                            limit: int = 20) -> List[RagChunk]:
+        """Get chunks for a specific document using SDK."""
+        raise NotImplementedError
+
     # Chat/Q&A
     @abstractmethod
     def chat_stream(self,

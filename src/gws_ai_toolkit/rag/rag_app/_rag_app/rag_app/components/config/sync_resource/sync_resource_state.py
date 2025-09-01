@@ -1,12 +1,13 @@
 from typing import List, Optional
 
 import reflex as rx
+from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
+                      ResourceSearchBuilder)
+
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.main_state import \
     RagAppState
-from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
-                      ResourceSearchBuilder)
 
 
 class ResourceDTO(BaseModelDTO):
@@ -158,7 +159,7 @@ class SyncResourceState(RagAppState):
             yield rx.toast.error(f"Failed to send resource to RAG: {e}", duration=3000)
             return
         finally:
-            await self.refresh_selected_resource
+            await self.refresh_selected_resource()
             async with self:
                 self.send_to_rag_is_loading = False
 
