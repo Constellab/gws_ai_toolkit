@@ -1,6 +1,7 @@
 
 
 import reflex as rx
+
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.pages.ai_expert_page.ai_expert_state import \
     AiExpertState
 
@@ -13,15 +14,15 @@ def show_ai_expert_config_section():
         # Configuration modification form
         rx.vstack(
             rx.heading("System prompt", size="4"),
-            rx.text("Prompt File ID Placeholder:", weight="bold"),
+            rx.text("Use '[FILE_ID]' placeholder."),
             rx.form(
                 rx.vstack(
                     rx.text_area(
                         placeholder="Enter new system prompt...",
                         name="system_prompt",
                         default_value=AiExpertState.system_prompt,
-                        resize="both",
-                        rows="8",
+                        resize="vertical",
+                        rows="20",
                         width="100%",
                     ),
                     rx.button(

@@ -1,11 +1,9 @@
 import reflex as rx
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config_component import \
-    show_ai_expert_config_section
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.sync_resource.sync_resource_component import \
-    search_resource
 from gws_reflex_base import render_main_container
 
-from ..components.config.sync_controls import sync_controls
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config_component import \
+    show_ai_expert_config_section
+
 from ..components.shared.navigation import navigation
 
 
@@ -16,17 +14,15 @@ def config_page() -> rx.Component:
             navigation(),
             rx.container(
                 rx.vstack(
-                    sync_controls(),
-                    rx.divider(),
-                    search_resource(),
+                    rx.heading("Configuration", size="8", mb="4"),
                     show_ai_expert_config_section(),
                     spacing="6",
                     align="start",
                 ),
-                max_width="1200px",
-                p="4",
+                width="100%",
             ),
             spacing="0",
             min_height="100vh",
+            width="100%"
         )
     )

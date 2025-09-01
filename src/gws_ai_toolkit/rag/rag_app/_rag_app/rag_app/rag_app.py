@@ -7,6 +7,7 @@ from .pages.ai_expert_page.ai_expert_page import ai_expert_page
 from .pages.ai_expert_page.ai_expert_state import AiExpertState
 from .pages.chat_page.chat_page import chat_page
 from .pages.config_page import config_page
+from .pages.resource_page import resource_page
 
 app = rx.App(
     theme=get_theme(),
@@ -23,10 +24,17 @@ def index():
     return chat_page()
 
 
-# Configuration page - only show if enabled in params
+# Resource page - for resource and sync management
+@rx.page(route="/resource")
+def resource():
+    """Resource page for managing RAG resources and sync."""
+    return resource_page()
+
+
+# Configuration page - for AI Expert configurations
 @rx.page(route="/config")
 def config():
-    """Configuration page for managing RAG resources."""
+    """Configuration page for AI Expert settings."""
     return config_page()
 
 

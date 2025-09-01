@@ -17,6 +17,7 @@ def navigation() -> rx.Component:
     return rx.box(
         rx.hstack(
             navbar_link("Chat", "message-circle", "/"),
+            navbar_link("Resources", "database", "/resource"),
             navbar_link("Config", "settings", "/config"),
             spacing="5",
             align_items="center",

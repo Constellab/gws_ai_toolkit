@@ -53,6 +53,7 @@ All RAG services implement the `BaseRagService` abstract class with these key me
 ### Routes
 - `/` - That chat page and the main entry point of the Reflex app
 - `/ai-expert/:resourceId` - Page to chat with an AI with the full document. For test use `/ai-expert/b53fa872832a11f0ad1876d532997ab1`
+- `/resource` - Page to manage resources and sync with the knowledge base
 - `/config` - Configuration page
 
 ### Development best practises
