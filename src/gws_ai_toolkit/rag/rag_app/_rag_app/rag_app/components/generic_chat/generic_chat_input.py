@@ -1,18 +1,18 @@
 import reflex as rx
 
-from .chat_config import ChatConfig
+from .chat_config import ChatConfig, ChatStateBase
 
 
-def generic_chat_input(config: ChatConfig) -> rx.Component:
+def generic_chat_input(state: ChatStateBase) -> rx.Component:
     """Generic input component - uses chat page styling"""
 
     return rx.form(
         rx.hstack(
             rx.input(
-                placeholder=config.state.placeholder_text,
+                placeholder=state.placeholder_text,
                 name="message",
                 flex="1",
-                disabled=config.state.is_streaming,
+                disabled=state.is_streaming,
                 border_radius="24px",
                 style={'input': {'padding-inline': '12px'}},
                 size="3"
@@ -20,7 +20,7 @@ def generic_chat_input(config: ChatConfig) -> rx.Component:
             rx.button(
                 rx.icon("send", size=18),
                 type="submit",
-                disabled=config.state.is_streaming,
+                disabled=state.is_streaming,
                 cursor="pointer",
                 variant="ghost",
                 padding="8px",
@@ -31,6 +31,6 @@ def generic_chat_input(config: ChatConfig) -> rx.Component:
             spacing="5",
             align_items="center"
         ),
-        on_submit=config.state.submit_input_form,
+        on_submit=state.submit_input_form,
         reset_on_submit=True,
     )

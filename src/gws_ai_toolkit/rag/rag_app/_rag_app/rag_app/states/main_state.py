@@ -1,14 +1,15 @@
 from typing import Optional
 
 import reflex as rx
+from gws_core import Credentials, CredentialsDataOther
+from gws_reflex_main import ReflexMainState
+
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import \
     RagAppServiceFactory
 from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
                                                  RagResourceSyncMode)
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
-from gws_core import Credentials, CredentialsDataOther
-from gws_reflex_main import ReflexMainState
 
 
 class RagAppState(ReflexMainState):
@@ -60,6 +61,10 @@ class RagAppState(ReflexMainState):
     async def get_chat_id(self) -> str:
         """Get the chat ID."""
         return await self.get_param('chat_id', '')
+
+    @rx.var
+    def super(self) -> int:
+        return 7
 
     @rx.var
     async def get_dataset_rag_app_service(self) -> Optional[BaseRagAppService]:

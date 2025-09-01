@@ -4,19 +4,18 @@ from dataclasses import dataclass
 from typing import Callable, List, Optional, Type
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.rag_models import RagChunk
-from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
-    AppConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
-    ChatMessage, ChatMessageCode, ChatMessageImage, ChatMessageText)
 from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
                       ShareLinkEntityType, ShareLinkService)
 from gws_core.core.utils.logger import Logger
 from PIL import Image
 
+from gws_ai_toolkit.rag.common.rag_models import RagChunk
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
+    ChatMessage, ChatMessageCode, ChatMessageImage, ChatMessageText)
 
-class ChatStateBase(rx.State, mixin=True):
+
+class ChatStateBase(rx.ComponentState, mixin=True):
     """Protocol defining the interface that any chat state must implement"""
 
     # Required properties

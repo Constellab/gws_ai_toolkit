@@ -1,11 +1,13 @@
 import reflex as rx
 
-from .chat_config import ChatConfig, ChatStateBase
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.pages.chat_page.chat_state import \
+    ChatState
+
 from .generic_chat_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageImage, ChatMessageText)
 
 
-def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
+def generic_message_bubble(message: ChatMessage, state: ChatState) -> rx.Component:
     """Generic message bubble - uses chat page styling with support for different message types"""
 
     return rx.cond(
@@ -33,7 +35,7 @@ def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Compo
                 rx.cond(
                     message.sources,
                     rx.box(
-                        config.sources_component(message.sources, config.state) if config.sources_component else None
+                        state.__source_components__(message.sources, state) if state.__source_components__ else None
                     )
                 ),
                 padding="12px 0",
@@ -48,7 +50,7 @@ def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Compo
     )
 
 
-def generic_streaming_indicator(state_class: ChatStateBase) -> rx.Component:
+def generic_streaming_indicator(state_class: ChatState) -> rx.Component:
     """Generic streaming indicator - same as chat page"""
     return rx.cond(
         state_class.is_streaming,
@@ -66,21 +68,21 @@ def generic_streaming_indicator(state_class: ChatStateBase) -> rx.Component:
     )
 
 
-def generic_message_list(config: ChatConfig) -> rx.Component:
+def generic_message_list(state: ChatState) -> rx.Component:
     """Generic message list - uses chat page layout"""
 
     return rx.auto_scroll(
         rx.foreach(
-            config.state.messages_to_display,
-            lambda message: generic_message_bubble(message, config)
+            state.messages_to_display,
+            lambda message: generic_message_bubble(message, state)
         ),
         # Display current response message separately
         rx.cond(
-            config.state.current_response_message,
-            generic_message_bubble(config.state.current_response_message, config),
+            state.current_response_message,
+            generic_message_bubble(state.current_response_message, state),
             rx.text("")
         ),
-        generic_streaming_indicator(config.state),
+        generic_streaming_indicator(state),
         width="100%",
         padding='1em',
         flex="1",

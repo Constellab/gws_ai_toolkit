@@ -41,10 +41,10 @@ def config():
 
 
 # AI Expert page - document-specific chat
-@rx.page(route="/ai-expert/[rag_doc_id]", on_load=[AiExpertState.load_resource_from_url])
-def ai_expert():
+# @rx.page(route="/ai-expert/[rag_doc_id]", on_load=[AiExpertState.load_resource_from_url])
+# def ai_expert():
     """AI Expert page for document-specific chat."""
-    return ai_expert_page()
+    # return ai_expert_page()
 
 
 # Add the unauthorized page to the app.

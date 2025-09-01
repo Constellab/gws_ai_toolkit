@@ -3,6 +3,10 @@ import os
 from typing import Optional, Union
 
 import reflex as rx
+from gws_core.core.utils.logger import Logger
+from openai import OpenAI
+from PIL import Image
+
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config import \
     AiExpertConfig
@@ -12,14 +16,9 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_co
     ChatStateBase
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
     ChatMessage, ChatMessageImage, ChatMessageText)
-from gws_core.core.utils.logger import Logger
-from openai import OpenAI
-from PIL import Image
-
-from ...states.main_state import RagAppState
 
 
-class AiExpertState(RagAppState, ChatStateBase):
+class AiExpertState(ChatStateBase, rx.State):
     """State management for the AI Expert functionality - specialized chat for a specific document."""
 
     # Document context
@@ -58,8 +57,6 @@ class AiExpertState(RagAppState, ChatStateBase):
 
     async def load_resource(self, rag_doc_id: str):
         """Load the resource from DataHub and prepare for chat"""
-        if not await self.check_authentication():
-            return
 
         try:
 

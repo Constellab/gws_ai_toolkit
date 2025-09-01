@@ -1,6 +1,9 @@
 import uuid
-from typing import List
+from typing import Callable, List
 
+import reflex as rx
+
+from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatStreamResponse,
                                                   RagChunk)
@@ -12,13 +15,50 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic
 from ...states.main_state import RagAppState
 
 
-class ChatState(RagAppState, ChatStateBase):
+class ChatState(ChatStateBase):
     """State management for the chat functionality."""
+
+    _rag_app_service: BaseRagAppService
+    chat_id: str
+
+    __source_components__: Callable[[List[RagChunk], ChatStateBase], rx.Component] | None
+
+    @classmethod
+    def get_component(cls, **props):
+        """Get the chat component with the current state."""
+        from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_interface import \
+            generic_chat_interface
+        props.pop('chat_rag_app_service')
+        chat_id = props.pop('chat_id', cls.chat_id)
+        print('BBBBBBBBBBBBBBBB', chat_id)
+        cls.__source_components__ = props.pop('sources_component', None)
+
+        return generic_chat_interface(cls)
+
+    @classmethod
+    def build_component(
+            cls,
+            chat_rag_app_service: BaseRagAppService,
+            chat_id: str,
+            sources_component: Callable[[List[RagChunk],
+                                         ChatStateBase],
+                                        rx.Component] | None = None) -> rx.Component:
+        """Build the chat component with the current state."""
+        return cls.create(
+            chat_rag_app_service=chat_rag_app_service,
+            chat_id=chat_id,
+            sources_component=sources_component
+        )
 
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from the assistant."""
 
-        datahub_rag_service = await self.get_chat_rag_app_service
+        state: RagAppState
+        async with self:
+            state = await self.get_state(RagAppState)
+
+        print('AAAAAAAAAAAAAAAAAAAAAAAAAA', self.chat_id)
+        datahub_rag_service = await state.get_chat_rag_app_service
         if not datahub_rag_service:
             return
 
@@ -35,7 +75,7 @@ class ChatState(RagAppState, ChatStateBase):
             query=user_message,
             conversation_id=self.conversation_id,
             user=None,  # TODO handle user
-            chat_id=await self.get_chat_id,
+            chat_id=await state.get_chat_id,
         ):
             if isinstance(chunk, RagChatStreamResponse):
                 if chunk.is_from_beginning:
