@@ -39,7 +39,7 @@ class AppConfigState(rx.State):
         if not self._config_file_path:
             if not AppConfigState._loader:
                 raise ValueError("Loader function is not set. Please call AppConfigState.set_loader")
-            self._config_file_path = await AppConfigState._loader(self)
+            self._config_file_path = await AppConfigState._loader(self) or ''
 
         return self._config_file_path
 
@@ -74,7 +74,7 @@ class AppConfigState(rx.State):
         return rx.toast.success("Configuration updated successfully.")
 
     def _load_config_file(self, config_file_path: str) -> dict:
-        if not os.path.exists(config_file_path):
+        if not config_file_path or not os.path.exists(config_file_path):
             return {}
 
         try:

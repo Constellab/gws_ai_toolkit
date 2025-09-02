@@ -2,10 +2,10 @@ from typing import cast
 
 from gws_ai_toolkit.rag.common.rag_enums import RagResourceSyncMode
 from gws_core import (AppConfig, AppType, BoolParam, ConfigParams, ConfigSpecs,
-                      CredentialsDataOther, CredentialsParam, File, FileHelper,
-                      InputSpec, InputSpecs, OutputSpec, OutputSpecs,
-                      ReflexResource, StrParam, Task, TaskInputs, TaskOutputs,
-                      Utils, app_decorator, task_decorator)
+                      CredentialsDataOther, CredentialsParam, File, InputSpec,
+                      InputSpecs, OutputSpec, OutputSpecs, ReflexResource,
+                      StrParam, Task, TaskInputs, TaskOutputs, Utils,
+                      app_decorator, task_decorator)
 
 
 @app_decorator("RagAppAppConfig", app_type=AppType.REFLEX,
