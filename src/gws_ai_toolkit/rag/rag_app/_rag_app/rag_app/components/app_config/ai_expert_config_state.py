@@ -142,3 +142,7 @@ class AiExpertConfigState(rx.State):
 
     def on_mode_change(self, new_mode: AiExpertChatMode):
         self.current_form_mode = new_mode
+
+    @rx.var
+    def show_max_chunk_config(self) -> bool:
+        return self.current_form_mode == "relevant_chunks" or self.current_form_mode == "full_text_chunk"

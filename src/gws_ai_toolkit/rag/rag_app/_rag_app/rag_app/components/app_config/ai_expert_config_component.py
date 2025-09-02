@@ -45,12 +45,12 @@ def show_ai_expert_config_section():
                         margin_left="2"
                     ),
 
+
                     # Conditional field for chunk count when relevant_chunks mode is selected
                     rx.cond(
-                        AiExpertConfigState.current_form_mode == "relevant_chunks",
+                        AiExpertConfigState.show_max_chunk_config,
                         rx.vstack(
-                            rx.heading("Chunk Count", size="4", margin_top="4"),
-                            rx.text("Number of relevant chunks to retrieve (1-100):", color="gray"),
+                            rx.text("Max number of chunks (1-100):", color="gray"),
                             rx.input(
                                 placeholder="5",
                                 name="max_chunks",

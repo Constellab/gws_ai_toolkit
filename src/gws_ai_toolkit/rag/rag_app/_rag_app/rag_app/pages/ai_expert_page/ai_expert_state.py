@@ -28,7 +28,7 @@ class AiExpertState(RagAppState, ChatStateBase):
     openai_file_id: Optional[str] = None
 
     _current_rag_resource: Optional[RagResource] = None
-    _document_chunks_text: Optional[str] = None
+    _document_chunks_text: dict[int, str] = {}
 
     # UI configuration
     title = "AI Expert"
@@ -47,7 +47,7 @@ class AiExpertState(RagAppState, ChatStateBase):
         if self.current_doc_id and self.current_doc_id != rag_doc_id:
             # Reset chat if loading a different document
             self.clear_chat()
-            self._document_chunks_text = None
+            self._document_chunks_text = {}
 
         if rag_doc_id and str(rag_doc_id).strip():
             await self.load_resource(str(rag_doc_id))
@@ -147,7 +147,7 @@ class AiExpertState(RagAppState, ChatStateBase):
 
         else:
             # Full text chunk mode - get all document chunks and include in prompt
-            document_chunks = await self.get_document_chunks_text()
+            document_chunks = await self.get_document_chunks_text(expert_config.max_chunks)
             document_name = self._current_rag_resource.resource_model.name if self._current_rag_resource else "document"
 
             # Replace the placeholder with document name and include chunks
@@ -158,7 +158,6 @@ class AiExpertState(RagAppState, ChatStateBase):
 
             instructions = system_prompt_with_chunks
 
-        print(instructions)
         # Create streaming response without code interpreter
         with client.responses.stream(
             model=expert_config.model,
@@ -264,11 +263,11 @@ class AiExpertState(RagAppState, ChatStateBase):
                 )
                 await self.update_current_response_message(error_message)
 
-    async def get_document_chunks_text(self) -> str:
-        """Get the first 100 chunks of the document as text"""
+    async def get_document_chunks_text(self, max_chunks: int = 100) -> str:
+        """Get the first max_chunks chunks of the document as text"""
 
-        if self._document_chunks_text:
-            return self._document_chunks_text
+        if max_chunks in self._document_chunks_text:
+            return self._document_chunks_text[max_chunks]
 
         rag_app_service = await self.get_dataset_rag_app_service
         if not rag_app_service:
@@ -277,12 +276,12 @@ class AiExpertState(RagAppState, ChatStateBase):
         # Get the document ID from the resource
         document_id = self._current_rag_resource.get_document_id()
 
-        # Get the first 100 chunks
+        # Get the first max_chunks chunks
         chunks = rag_app_service.rag_service.get_document_chunks(
             dataset_id=rag_app_service.dataset_id,
             document_id=document_id,
             page=1,
-            limit=100
+            limit=max_chunks
         )
 
         if len(chunks) == 0:
@@ -294,8 +293,8 @@ class AiExpertState(RagAppState, ChatStateBase):
             chunk_texts.append(chunk.content)
 
         async with self:
-            self._document_chunks_text = "\n".join(chunk_texts)
-        return self._document_chunks_text
+            self._document_chunks_text[max_chunks] = "\n".join(chunk_texts)
+        return self._document_chunks_text[max_chunks]
 
     async def get_relevant_document_chunks_text(self, user_question: str, max_chunks: int = 5) -> str:
         """Get the most relevant chunks based on the user's question"""
