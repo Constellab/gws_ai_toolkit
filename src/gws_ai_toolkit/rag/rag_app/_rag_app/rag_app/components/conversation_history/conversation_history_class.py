@@ -23,12 +23,12 @@ class ConversationHistory(BaseModelDTO):
             if message.id not in existing_ids:
                 self.messages.append(message)
                 existing_ids.add(message.id)
-        
+
         # Update label if it's empty and we have a user message
         if not self.label:
-            self._update_label()
-    
-    def _update_label(self) -> None:
+            self.update_label()
+
+    def update_label(self) -> None:
         """Update the label with the first 100 characters of the first user question."""
         for message in self.messages:
             if message.role == "user" and message.content:
@@ -59,7 +59,7 @@ class ConversationHistory(BaseModelDTO):
                 json_['timestamp'] = datetime.now()
         elif 'timestamp' not in json_:
             json_['timestamp'] = datetime.now()
-        
+
         return super().from_json(json_)
 
 
@@ -68,6 +68,7 @@ class ConversationFullHistory(BaseModelDTO):
 
     def add_conversation(self, new_conversation: ConversationHistory) -> None:
         """Add or update a conversation in the full history, avoiding duplicates based on conversation_id."""
+        new_conversation.update_label()  # Ensure label is updated
         # Check if conversation already exists
         conversation = self.get_conversation_by_id(new_conversation.conversation_id)
 

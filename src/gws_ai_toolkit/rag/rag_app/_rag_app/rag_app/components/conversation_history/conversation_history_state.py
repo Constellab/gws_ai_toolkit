@@ -7,7 +7,8 @@ import reflex as rx
 from gws_core.core.utils.logger import Logger
 
 from ..generic_chat.generic_chat_class import ChatMessage
-from .conversation_history_class import ConversationHistory, ConversationFullHistory
+from .conversation_history_class import (ConversationFullHistory,
+                                         ConversationHistory)
 
 
 class ConversationHistoryState(rx.State):
@@ -21,9 +22,7 @@ class ConversationHistoryState(rx.State):
             with open(self.HISTORY_FILE_PATH, 'r', encoding='utf-8') as file:
                 try:
                     data = json.load(file)
-                    conversations_data = data.get("conversations", [])
-                    conversations = [ConversationHistory.from_json(conv) for conv in conversations_data]
-                    return ConversationFullHistory(conversations=conversations)
+                    return ConversationFullHistory.from_json(data)
                 except json.JSONDecodeError as e:
                     Logger.log_exception_stack_trace(e)
                     return ConversationFullHistory(conversations=[])
@@ -59,32 +58,15 @@ class ConversationHistoryState(rx.State):
         try:
             full_history = self._load_history()
 
-            # Clean up messages for storage (remove large data)
-            cleaned_messages = []
-            for message in messages:
-                # Create a copy to avoid modifying the original
-                message_copy = ChatMessage(
-                    role=message.role,
-                    type=message.type,
-                    content=message.content,
-                    id=message.id,
-                    sources=[],  # Remove sources to keep file size manageable
-                    data=None    # Remove image data to keep file size manageable
-                )
-                cleaned_messages.append(message_copy)
-
             # Create new conversation object
             new_conversation = ConversationHistory(
                 conversation_id=conversation_id,
                 timestamp=datetime.now(),
                 configuration=configuration,
-                messages=cleaned_messages,
+                messages=messages,
                 mode=mode,
                 label=""  # Will be set automatically when messages are added
             )
-            
-            # Update label based on first user message
-            new_conversation._update_label()
 
             # Add conversation to full history (handles duplicates internally)
             full_history.add_conversation(new_conversation)

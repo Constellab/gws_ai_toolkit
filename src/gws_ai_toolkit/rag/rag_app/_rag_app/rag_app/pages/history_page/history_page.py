@@ -7,6 +7,8 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.conversation_history
     ConversationHistory
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatConfig
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.config_dialog import \
+    config_dialog
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_sources_list import \
     generic_sources_list
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.read_only_chat_interface import \
@@ -163,8 +165,18 @@ def conversations_sidebar() -> rx.Component:
     )
 
 
-def _header_buttons(_) -> List[rx.Component]:
-    return []
+def _header_buttons(state: ReadOnlyChatState) -> List[rx.Component]:
+
+    return [
+        rx.button(
+            rx.icon("settings", size=16),
+            "Configuration",
+            variant="outline",
+            size="2",
+            cursor="pointer",
+            on_click=state.open_config_dialog
+        )
+    ]
 
 
 def conversation_display() -> rx.Component:
@@ -179,7 +191,10 @@ def conversation_display() -> rx.Component:
         rx.cond(
             HistoryPageState.selected_conversation_id,
             # Show selected conversation
-            read_only_chat_interface(config),
+            rx.fragment(
+                read_only_chat_interface(config),
+                config_dialog(config.state),
+            ),
             # Show empty state when no conversation selected
             rx.box(
                 rx.icon("message-square", size=64, color=rx.color("gray", 6)),
