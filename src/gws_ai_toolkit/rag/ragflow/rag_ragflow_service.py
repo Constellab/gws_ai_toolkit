@@ -59,14 +59,17 @@ class RagRagFlowService(BaseRagService):
         except ValueError:
             return None
 
-    def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5, **kwargs) -> List[RagChunk]:
+    def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5,
+                        document_ids: List[str] | None = None,
+                        **kwargs) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
-        sdk_response = self._ragflow_service.retrieve_chunks(dataset_id, query, top_k=top_k, **kwargs)
+        sdk_response = self._ragflow_service.retrieve_chunks(
+            dataset_id, query, top_k=top_k, document_ids=document_ids, **kwargs)
 
         # Convert SDK response directly to RagChunk
         chunks = []
-        for chunk in sdk_response.get('chunks', []):
-            rag_chunk = self._convert_search_chunk_to_rag_chunk(chunk)
+        for chunk in sdk_response:
+            rag_chunk = self._convert_chunk_to_rag_chunk(chunk)
             chunks.append(rag_chunk)
 
         return chunks
@@ -145,16 +148,6 @@ class RagRagFlowService(BaseRagService):
             name=document.name,
             size=document.size,
             parsed_status=parsed_status
-        )
-
-    def _convert_search_chunk_to_rag_chunk(self, chunk_data: dict) -> RagChunk:
-        """Convert SDK chunk data directly to RagChunk."""
-        return RagChunk(
-            id=chunk_data.get('id', ''),
-            content=chunk_data.get('content', ''),
-            document_id=chunk_data.get('document_id', ''),
-            document_name=chunk_data.get('document_name', ''),
-            score=chunk_data.get('vector_similarity', 0.0)
         )
 
     def _convert_chunk_to_rag_chunk(self, chunk: Chunk) -> RagChunk:

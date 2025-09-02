@@ -227,7 +227,8 @@ class RagFlowService:
     ################################# CHUNK MANAGEMENT #################################
 
     def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5, similarity_threshold: float = 0.0,
-                        vector_similarity_weight: float = 0.3) -> dict:
+                        vector_similarity_weight: float = 0.3,
+                        document_ids: List[str] | None = None) -> List[Chunk]:
         """Retrieve chunks using SDK."""
         client = self._get_client()
 
@@ -238,7 +239,8 @@ class RagFlowService:
                 dataset_ids=[dataset_id],
                 similarity_threshold=similarity_threshold,
                 vector_similarity_weight=vector_similarity_weight,
-                top_k=top_k
+                top_k=top_k,
+                document_ids=document_ids
             )
 
             return retrieved_chunks
@@ -247,7 +249,7 @@ class RagFlowService:
             raise RuntimeError(f"Error retrieving chunks: {str(e)}") from e
 
     def get_document_chunks(self, dataset_id: str, document_id: str,
-                            keyword: Optional[str] = None,
+                            keyword: str = "",
                             page: int = 1,
                             limit: int = 20) -> List[Chunk]:
         """Get chunks for a specific document using SDK."""

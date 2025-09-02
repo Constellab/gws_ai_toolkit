@@ -6,6 +6,8 @@ from typing import Callable, List, Literal
 import reflex as rx
 from gws_core import BaseModelDTO
 
+AiExpertChatMode = Literal['full_text_chunk', 'relevant_chunks', 'full_file']
+
 
 @dataclass
 class AiExpertConfigUI:
@@ -31,9 +33,13 @@ When answering questions:
 The user is asking questions specifically about this document, so focus your responses on the document's content and context."""
 
     # Mode for the call to AI
-    # 'text_chunk' basic chat call where the document content (as text) is integrated in the prompt
+    # 'full_text_chunk' basic chat call where the document content (all chunks as text) is integrated in the prompt
+    # 'relevant_chunks' retrieves only the most relevant chunks based on the user's question
     # 'full_file' mode where the file is uploaded and the AI has access to the original file to answer
-    mode: Literal['text_chunk', 'full_file'] = 'full_file'
+    mode: AiExpertChatMode = 'full_file'
+
+    # Number of chunks to retrieve for relevant_chunks mode (1-100)
+    max_chunks: int = 5
 
     # OpenAI model to use for chat
     model: str = 'gpt-4o'

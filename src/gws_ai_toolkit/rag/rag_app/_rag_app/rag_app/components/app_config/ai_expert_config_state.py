@@ -1,8 +1,10 @@
+from typing import cast
+
 import reflex as rx
 from gws_core.core.utils.logger import Logger
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config import \
-    AiExpertConfig
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config import (
+    AiExpertChatMode, AiExpertConfig)
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
     AppConfigState
 
@@ -10,11 +12,12 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_confi
 class AiExpertConfigState(rx.State):
     """State management for the AI Expert functionality - specialized chat for a specific document."""
 
-    current_form_mode: str = 'full_file'
+    current_form_mode: AiExpertChatMode = 'full_file'
 
     async def _get_config(self) -> AiExpertConfig:
         app_config_state = await self.get_state(AppConfigState)
-        return await app_config_state.get_config_section('ai_expert_page', AiExpertConfig)
+        config = await app_config_state.get_config_section('ai_expert_page', AiExpertConfig)
+        return cast(AiExpertConfig, config)
 
     @rx.var
     async def current_mode(self) -> str:
@@ -46,6 +49,12 @@ class AiExpertConfigState(rx.State):
         expert_config = await self._get_config()
         return expert_config.temperature
 
+    @rx.var
+    async def max_chunks(self) -> int:
+        """Get the max chunks for the AI expert"""
+        expert_config = await self._get_config()
+        return expert_config.max_chunks
+
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):
         """Handle the combined configuration form submission (mode, system prompt, model, and temperature)"""
@@ -55,11 +64,12 @@ class AiExpertConfigState(rx.State):
             new_system_prompt = form_data.get('system_prompt', '').strip()
             new_model = form_data.get('model', '').strip()
             new_temperature_str = form_data.get('temperature', '').strip()
+            new_max_chunks_str = form_data.get('max_chunks', '').strip()
 
             if not new_system_prompt:
                 return rx.toast.error("System prompt cannot be empty")
 
-            if not new_mode or new_mode not in ['text_chunk', 'full_file']:
+            if not new_mode or new_mode not in ['full_text_chunk', 'relevant_chunks', 'full_file']:
                 return rx.toast.error("Invalid mode selected")
 
             if not new_model:
@@ -72,6 +82,26 @@ class AiExpertConfigState(rx.State):
                     return rx.toast.error("Temperature must be between 0.0 and 2.0")
             except ValueError:
                 return rx.toast.error("Temperature must be a valid number")
+
+            # Validate max_chunks (only required for relevant_chunks mode)
+            new_max_chunks = 5  # default value
+            if new_mode == 'relevant_chunks':
+                if not new_max_chunks_str:
+                    return rx.toast.error("Chunk count is required for relevant chunks mode")
+                try:
+                    new_max_chunks = int(new_max_chunks_str)
+                    if new_max_chunks < 1 or new_max_chunks > 100:
+                        return rx.toast.error("Chunk count must be between 1 and 100")
+                except ValueError:
+                    return rx.toast.error("Chunk count must be a valid number")
+            elif new_max_chunks_str:
+                # If max_chunks is provided for other modes, validate it but use it
+                try:
+                    new_max_chunks = int(new_max_chunks_str)
+                    if new_max_chunks < 1 or new_max_chunks > 100:
+                        return rx.toast.error("Chunk count must be between 1 and 100")
+                except ValueError:
+                    return rx.toast.error("Chunk count must be a valid number")
 
             # Get current config
             current_config = await self._get_config()
@@ -86,7 +116,8 @@ class AiExpertConfigState(rx.State):
                 system_prompt=new_system_prompt,
                 mode=new_mode,
                 model=new_model,
-                temperature=new_temperature
+                temperature=new_temperature,
+                max_chunks=new_max_chunks
             )
 
             # Update the config in AppConfigState
@@ -105,3 +136,9 @@ class AiExpertConfigState(rx.State):
         except Exception as e:
             Logger.log_exception_stack_trace(e)
             return rx.toast.error(f"Unexpected error updating configuration: {e}")
+
+    async def on_form_mount(self):
+        self.current_form_mode = await self.current_mode
+
+    def on_mode_change(self, new_mode: AiExpertChatMode):
+        self.current_form_mode = new_mode

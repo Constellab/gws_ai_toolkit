@@ -59,6 +59,7 @@ class BaseRagService(ABC):
     # Chunk Retrieval
     @abstractmethod
     def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5,
+                        document_ids: List[str] | None = None,
                         **kwargs) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
         raise NotImplementedError

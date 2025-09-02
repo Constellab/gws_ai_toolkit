@@ -132,8 +132,21 @@ class AiExpertState(RagAppState, ChatStateBase):
             instructions = system_prompt
             tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}}]
 
+        elif expert_config.mode == 'relevant_chunks':
+            # Relevant chunks mode - get only relevant chunks based on user question
+            document_chunks = await self.get_relevant_document_chunks_text(user_message, expert_config.max_chunks)
+            document_name = self._current_rag_resource.resource_model.name if self._current_rag_resource else "document"
+
+            # Replace the placeholder with document name and include chunks
+            system_prompt_with_chunks = expert_config.system_prompt.replace(
+                expert_config.prompt_file_placeholder,
+                f"{document_name}\n{document_chunks}"
+            )
+
+            instructions = system_prompt_with_chunks
+
         else:
-            # Text chunk mode - get document chunks and include in prompt
+            # Full text chunk mode - get all document chunks and include in prompt
             document_chunks = await self.get_document_chunks_text()
             document_name = self._current_rag_resource.resource_model.name if self._current_rag_resource else "document"
 
@@ -143,10 +156,9 @@ class AiExpertState(RagAppState, ChatStateBase):
                 f"{document_name}\n{document_chunks}"
             )
 
-            print(system_prompt_with_chunks)
-
             instructions = system_prompt_with_chunks
 
+        print(instructions)
         # Create streaming response without code interpreter
         with client.responses.stream(
             model=expert_config.model,
@@ -258,37 +270,60 @@ class AiExpertState(RagAppState, ChatStateBase):
         if self._document_chunks_text:
             return self._document_chunks_text
 
-        try:
-            rag_app_service = await self.get_dataset_rag_app_service
-            if not rag_app_service:
-                return "RAG service not available"
+        rag_app_service = await self.get_dataset_rag_app_service
+        if not rag_app_service:
+            return "RAG service not available"
 
-            # Get the document ID from the resource
-            document_id = self._current_rag_resource.get_document_id()
+        # Get the document ID from the resource
+        document_id = self._current_rag_resource.get_document_id()
 
-            # Get the first 100 chunks
-            chunks = rag_app_service.rag_service.get_document_chunks(
-                dataset_id=rag_app_service.dataset_id,
-                document_id=document_id,
-                page=1,
-                limit=100
-            )
+        # Get the first 100 chunks
+        chunks = rag_app_service.rag_service.get_document_chunks(
+            dataset_id=rag_app_service.dataset_id,
+            document_id=document_id,
+            page=1,
+            limit=100
+        )
 
-            if len(chunks) == 0:
-                raise ValueError("No chunks found for this document")
+        if len(chunks) == 0:
+            raise ValueError("No chunks found for this document")
 
-            # Combine chunk contents into text
-            chunk_texts = []
-            for chunk in chunks:
-                chunk_texts.append(chunk.content)
+        # Combine chunk contents into text
+        chunk_texts = []
+        for chunk in chunks:
+            chunk_texts.append(chunk.content)
 
-            async with self:
-                self._document_chunks_text = "\n".join(chunk_texts)
-            return self._document_chunks_text
+        async with self:
+            self._document_chunks_text = "\n".join(chunk_texts)
+        return self._document_chunks_text
 
-        except Exception as e:
-            Logger.log_exception_stack_trace(e)
-            return f"Error retrieving document chunks: {str(e)}"
+    async def get_relevant_document_chunks_text(self, user_question: str, max_chunks: int = 5) -> str:
+        """Get the most relevant chunks based on the user's question"""
+
+        rag_app_service = await self.get_dataset_rag_app_service
+        if not rag_app_service:
+            return "RAG service not available"
+
+        # Get the document ID from the resource
+        document_id = self._current_rag_resource.get_document_id()
+
+        # Retrieve relevant chunks using the user's question
+        chunks = rag_app_service.rag_service.retrieve_chunks(
+            dataset_id=rag_app_service.dataset_id,
+            query=user_question,
+            top_k=max_chunks,
+            document_ids=[document_id]
+        )
+
+        if len(chunks) == 0:
+            raise ValueError("No relevant chunks found for this question")
+
+        # Combine chunk contents into text
+        chunk_texts = []
+        for chunk in chunks:
+            chunk_texts.append(chunk.content)
+
+        return "\n".join(chunk_texts)
 
     async def upload_file_to_openai(self) -> str:
         """Upload the document file to OpenAI and return file ID"""

@@ -100,8 +100,11 @@ class RagDifyService(BaseRagService):
             return None
         return self._convert_to_rag_document(dify_document)
 
-    def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5, **kwargs) -> List[RagChunk]:
+    def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5,
+                        document_ids: List[str] | None = None, **kwargs) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
+        if document_ids is not None:
+            raise NotImplementedError("Filtering by document_ids is not supported in DifyService.")
         response = self._dify_service.search_chunks(dataset_id, query, top_k=top_k, **kwargs)
         chunks = []
         for record in response.records:
