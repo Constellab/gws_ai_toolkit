@@ -1,8 +1,9 @@
 from typing import List
 
 import reflex as rx
+
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
     ChatStateBase
 
 

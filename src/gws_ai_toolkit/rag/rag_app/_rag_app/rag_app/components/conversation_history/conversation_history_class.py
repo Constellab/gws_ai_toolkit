@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 from gws_core import BaseModelDTO
@@ -8,7 +9,7 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic
 
 class ConversationHistory(BaseModelDTO):
     conversation_id: str
-    timestamp: str
+    timestamp: datetime
     configuration: dict
     messages: List[ChatMessage]
     mode: str
@@ -38,6 +39,28 @@ class ConversationHistory(BaseModelDTO):
                     label_text += "..."
                 self.label = label_text
                 break
+
+    def to_json_dict(self) -> dict:
+        """Convert to JSON dict with proper datetime serialization."""
+        data = super().to_json_dict()
+        # Convert datetime to ISO string for JSON storage
+        data['timestamp'] = self.timestamp.isoformat()
+        return data
+
+    @classmethod
+    def from_json(cls, json_: dict) -> 'ConversationHistory':
+        """Create from JSON dict with proper datetime deserialization."""
+        # Convert ISO string back to datetime
+        if 'timestamp' in json_ and isinstance(json_['timestamp'], str):
+            try:
+                json_['timestamp'] = datetime.fromisoformat(json_['timestamp'])
+            except ValueError:
+                # Fallback to current time if parsing fails
+                json_['timestamp'] = datetime.now()
+        elif 'timestamp' not in json_:
+            json_['timestamp'] = datetime.now()
+        
+        return super().from_json(json_)
 
 
 class ConversationFullHistory(BaseModelDTO):

@@ -76,7 +76,7 @@ class ConversationHistoryState(rx.State):
             # Create new conversation object
             new_conversation = ConversationHistory(
                 conversation_id=conversation_id,
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(),
                 configuration=configuration,
                 messages=cleaned_messages,
                 mode=mode,

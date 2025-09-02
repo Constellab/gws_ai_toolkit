@@ -1,21 +1,27 @@
 from typing import List
 
 import reflex as rx
+from gws_reflex_base import render_main_container
+
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
     ChatConfig
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
+    ChatStateBase
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_header import \
+    header_refresh_button
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_interface import \
     generic_chat_interface
-from gws_reflex_base import render_main_container
 
 from ...components.shared.navigation import navigation
 from .ai_expert_state import AiExpertState
 
 
-def ai_expert_header_buttons() -> List[rx.Component]:
+def ai_expert_header_buttons(state: ChatStateBase) -> List[rx.Component]:
     """Header buttons for the AI Expert page."""
     return [
         rx.button("View document", on_click=lambda: AiExpertState.open_current_resource_doc,
                   variant='outline', cursor="pointer"),
+        header_refresh_button(state)
     ]
 
 

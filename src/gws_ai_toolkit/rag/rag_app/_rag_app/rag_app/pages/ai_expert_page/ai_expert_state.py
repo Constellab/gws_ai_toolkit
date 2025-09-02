@@ -12,7 +12,7 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert
     AiExpertConfig
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config_state import \
     AiExpertConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
     ChatStateBase
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
     ChatMessage, ChatMessageImage, ChatMessageText)
@@ -194,7 +194,6 @@ class AiExpertState(RagAppState, ChatStateBase):
             if final_response and hasattr(final_response, 'id') and not self.conversation_id:
                 async with self:
                     self.set_conversation_id(final_response.id)
-
 
     async def handle_output_text_delta(self, event):
         """Handle response.output_text.delta event"""
@@ -410,19 +409,19 @@ class AiExpertState(RagAppState, ChatStateBase):
     async def _get_config(self) -> AiExpertConfig:
         app_config_state = await self.get_state(AiExpertConfigState)
         return await app_config_state._get_config()
-    
+
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""
         await super().close_current_message()
         # Save conversation after message is added to history
-        try:
-            expert_config = await self._get_config()
-            await self._save_conversation_to_history(expert_config)
-        except Exception as e:
-            Logger.log_exception_stack_trace(e)
+        await self._save_conversation_to_history()
 
-    async def _save_conversation_to_history(self, expert_config: AiExpertConfig):
+    async def _save_conversation_to_history(self):
         """Save current conversation to history with AI Expert configuration."""
+
+        expert_config: AiExpertConfig
+        async with self:
+            expert_config = await self._get_config()
 
         # Build configuration dictionary with AI Expert specific settings
         configuration = {

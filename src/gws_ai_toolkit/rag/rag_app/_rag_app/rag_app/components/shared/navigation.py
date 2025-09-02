@@ -19,6 +19,7 @@ def navigation() -> rx.Component:
             navbar_link("Chat", "message-circle", "/"),
             navbar_link("Resources", "database", "/resource"),
             navbar_link("Config", "settings", "/config"),
+            navbar_link("History", "clock", "/history"),
             spacing="5",
             align_items="center",
         ),

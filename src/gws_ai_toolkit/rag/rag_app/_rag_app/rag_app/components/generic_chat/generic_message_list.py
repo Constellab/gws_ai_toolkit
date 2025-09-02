@@ -1,6 +1,9 @@
 import reflex as rx
 
-from .chat_config import ChatConfig, ChatStateBase
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
+    ChatConfig
+
+from .chat_state_base import ChatStateBase
 from .generic_chat_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageImage, ChatMessageText)
 

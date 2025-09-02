@@ -8,6 +8,8 @@ from .pages.ai_expert_page.ai_expert_page import ai_expert_page
 from .pages.ai_expert_page.ai_expert_state import AiExpertState
 from .pages.chat_page.chat_page import chat_page
 from .pages.config_page import config_page
+from .pages.history_page.history_page import history_page
+from .pages.history_page.history_page_state import HistoryPageState
 from .pages.resource_page import resource_page
 
 app = rx.App(
@@ -38,6 +40,13 @@ def resource():
 def config():
     """Configuration page for AI Expert settings."""
     return config_page()
+
+
+# History page - for conversation history
+@rx.page(route="/history", on_load=HistoryPageState.load_conversations)
+def history():
+    """History page for viewing conversation history."""
+    return history_page()
 
 
 # AI Expert page - document-specific chat
