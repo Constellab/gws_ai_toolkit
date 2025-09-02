@@ -140,8 +140,10 @@ class AiExpertState(RagAppState, ChatStateBase):
             # Replace the placeholder with document name and include chunks
             system_prompt_with_chunks = expert_config.system_prompt.replace(
                 expert_config.prompt_file_placeholder,
-                f"{document_name}\n\nDocument content (first 100 chunks):\n{document_chunks}\n [END OF DOCUMENT]"
+                f"{document_name}\n{document_chunks}"
             )
+
+            print(system_prompt_with_chunks)
 
             instructions = system_prompt_with_chunks
 
@@ -280,7 +282,8 @@ class AiExpertState(RagAppState, ChatStateBase):
             for chunk in chunks:
                 chunk_texts.append(chunk.content)
 
-            self._document_chunks_text = "\n".join(chunk_texts)
+            async with self:
+                self._document_chunks_text = "\n".join(chunk_texts)
             return self._document_chunks_text
 
         except Exception as e:
