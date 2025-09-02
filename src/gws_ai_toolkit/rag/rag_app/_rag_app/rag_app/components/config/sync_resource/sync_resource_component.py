@@ -115,6 +115,7 @@ def _synced_resource_info():
             rx.button(
                 rx.spinner(loading=SyncResourceState.send_to_rag_is_loading),
                 rx.text("Resend to RAG"),
+                disabled=SyncResourceState.send_to_rag_is_loading,
                 on_click=SyncResourceState.send_to_rag,
                 variant="solid",
                 cursor="pointer"
@@ -122,6 +123,7 @@ def _synced_resource_info():
             rx.button(
                 rx.spinner(loading=SyncResourceState.parse_document_is_loading),
                 rx.text("Parse document"),
+                disabled=SyncResourceState.parse_document_is_loading,
                 on_click=SyncResourceState.parse_document,
                 variant="outline",
                 cursor="pointer"
@@ -134,7 +136,12 @@ def _synced_resource_info():
                 rx.alert_dialog.trigger(
                     rx.button(
                         rx.spinner(loading=SyncResourceState.delete_from_rag_is_loading),
-                        "Delete from RAG", color_scheme="red", cursor="pointer",)),
+                        "Delete from RAG",
+                        disabled=SyncResourceState.delete_from_rag_is_loading,
+                        color_scheme="red",
+                        cursor="pointer"
+                    )
+                ),
                 rx.alert_dialog.content(
                     rx.alert_dialog.title("Delete from RAG"),
                     rx.alert_dialog.description(
@@ -160,6 +167,7 @@ def _unsynced_resource_info():
         rx.button(
             rx.spinner(loading=SyncResourceState.send_to_rag_is_loading),
             rx.text("Send to RAG"),
+            disabled=SyncResourceState.send_to_rag_is_loading,
             on_click=SyncResourceState.send_to_rag,
             variant="solid",
             cursor="pointer"

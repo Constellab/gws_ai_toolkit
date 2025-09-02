@@ -159,7 +159,7 @@ class SyncResourceState(RagAppState):
             yield rx.toast.error(f"Failed to send resource to RAG: {e}", duration=3000)
             return
         finally:
-            await self.refresh_selected_resource()
+            await self._refresh_selected_resource()
             async with self:
                 self.send_to_rag_is_loading = False
 
@@ -183,7 +183,7 @@ class SyncResourceState(RagAppState):
             yield rx.toast.error(f"Failed to delete resource from RAG: {e}", duration=3000)
             return
         finally:
-            await self.refresh_selected_resource
+            await self._refresh_selected_resource()
             async with self:
                 self.delete_from_rag_is_loading = False
 
@@ -223,6 +223,9 @@ class SyncResourceState(RagAppState):
     @rx.event(background=True)
     async def refresh_selected_resource(self):
         """Refresh the selected resource information."""
+        await self._refresh_selected_resource()
+
+    async def _refresh_selected_resource(self):
         if not self._selected_resource:
             return
 

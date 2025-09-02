@@ -1,11 +1,12 @@
 from typing import cast
 
-from gws_ai_toolkit.rag.common.rag_enums import RagResourceSyncMode
 from gws_core import (AppConfig, AppType, BoolParam, ConfigParams, ConfigSpecs,
                       CredentialsDataOther, CredentialsParam, File, InputSpec,
                       InputSpecs, OutputSpec, OutputSpecs, ReflexResource,
                       StrParam, Task, TaskInputs, TaskOutputs, Utils,
                       app_decorator, task_decorator)
+
+from gws_ai_toolkit.rag.common.rag_enums import RagResourceSyncMode
 
 
 @app_decorator("RagAppAppConfig", app_type=AppType.REFLEX,
@@ -88,6 +89,10 @@ class GenerateDatahubRagDifyApp(Task):
         reflex_resource.set_app_config(RagAppAppConfig())
         reflex_resource.name = "DataHub RAG app"
 
+        # TODO to remove
+        # For the test, we disable the authentication
+        reflex_resource.set_requires_authentication(False)
+
         return {"streamlit_app": reflex_resource}
 
 
@@ -151,5 +156,9 @@ class GenerateDatahubRagFlowApp(Task):
 
         reflex_resource.set_app_config(RagAppAppConfig())
         reflex_resource.name = "DataHub RAG app"
+
+        # TODO to remove
+        # For the test, we disable the authentication
+        reflex_resource.set_requires_authentication(False)
 
         return {"streamlit_app": reflex_resource}
