@@ -4,16 +4,17 @@ from dataclasses import dataclass
 from typing import Callable, List, Optional, Type
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.rag_models import RagChunk
-from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
-    AppConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
-    ChatMessage, ChatMessageCode, ChatMessageImage, ChatMessageText)
 from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
                       ShareLinkEntityType, ShareLinkService)
 from gws_core.core.utils.logger import Logger
 from PIL import Image
+
+from gws_ai_toolkit.rag.common.rag_models import RagChunk
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.conversation_history.conversation_history_state import \
+    ConversationHistoryState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
+    ChatMessage, ChatMessageCode, ChatMessageImage, ChatMessageText)
 
 
 class ChatStateBase(rx.State, mixin=True):
@@ -116,6 +117,7 @@ class ChatStateBase(rx.State, mixin=True):
 
     def set_conversation_id(self, conversation_id: str) -> None:
         self.conversation_id = conversation_id
+        print('Conversation ID set to:', conversation_id)
 
     @rx.event
     def clear_chat(self) -> None:
@@ -189,6 +191,25 @@ class ChatStateBase(rx.State, mixin=True):
         if share_link:
             # Redirect the user to the share link URL
             return rx.redirect(share_link.get_public_link(), is_external=True)
+
+    async def save_conversation_to_history(self, mode: str, configuration: dict):
+        """Save the current conversation to history with the given configuration."""
+        if not self.conversation_id or not self._chat_messages:
+            return
+
+        try:
+            history_state: ConversationHistoryState
+            async with self:
+                history_state = await self.get_state(ConversationHistoryState)
+            history_state.add_conversation(
+                conversation_id=self.conversation_id,
+                messages=self._chat_messages,
+                mode=mode,
+                configuration=configuration
+            )
+        except Exception as e:
+            Logger.error(f"Error saving conversation to history: {e}")
+            Logger.log_exception_stack_trace(e)
 
 
 @dataclass

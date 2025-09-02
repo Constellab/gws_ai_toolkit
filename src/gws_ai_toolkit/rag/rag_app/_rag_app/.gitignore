@@ -5,3 +5,6 @@ __pycache__/
 *.py[cod]
 assets/external/
 uploaded_files/
+
+app_configuration.json
+history.json

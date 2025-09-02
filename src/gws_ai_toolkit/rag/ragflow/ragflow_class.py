@@ -55,3 +55,11 @@ class RagFlowUpdateChatRequest(BaseModelDTO):
 class RagFlowCreateSessionRequest(BaseModelDTO):
     """Request model for creating a chat session."""
     name: str
+
+
+class RagflowAskStreamResponse(BaseModelDTO):
+    """Response model for streaming chat responses."""
+    content: str
+    role: Literal['user', 'assistant']
+    reference: List[dict] | None = None
+    session_id: str

@@ -77,3 +77,14 @@ class ChatState(RagAppState, ChatStateBase):
 
         # Update final message with sources if we have them
         await self.update_current_message_sources(sources)
+
+    async def close_current_message(self):
+        """Close the current streaming message and add it to the chat history, then save to conversation history."""
+        await super().close_current_message()
+        # Save conversation after message is added to history
+        await self._save_conversation_to_history()
+
+    async def _save_conversation_to_history(self):
+        """Save current conversation to history with configuration."""
+
+        await self.save_conversation_to_history("RAG", {})

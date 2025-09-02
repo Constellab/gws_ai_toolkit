@@ -17,17 +17,17 @@ class AppConfigState(rx.State):
 
     _config_file_path: str = ''
 
-    _loader: Callable[[rx.State], Awaitable[str]] = None
+    _loader: Callable[['rx.State'], Awaitable[str]] = None
 
     @classmethod
-    def set_loader(cls, loader: Callable[[rx.State], Awaitable[str]]) -> None:
+    def set_loader(cls, loader: Callable[['AppConfigState'], Awaitable[str]]) -> None:
         """Set the loader function to get the path of the config file."""
         cls._loader = loader
 
     @classmethod
     def set_loader_from_param(cls, param_name: str) -> None:
         """Set the loader function to get the config file path from a parameter."""
-        async def loader(state: 'AppConfigState'):
+        async def loader(state: 'AppConfigState') -> str:
             base_state = await state.get_state(ReflexMainState)
             return await base_state.get_param(param_name)
 

@@ -89,12 +89,12 @@ class RagRagFlowService(BaseRagService):
     ]:
         """Send a query and get streaming chat response."""
         # RagFlow requires a chat_id, so we need to handle this differently
-        for sdk_chunk in self._ragflow_service.ask_stream(chat_id, query, conversation_id):
-            if sdk_chunk.role == 'assistant':
-                if sdk_chunk.reference:
+        for answer in self._ragflow_service.ask_stream(chat_id, query, conversation_id):
+            if answer.role == 'assistant':
+                if answer.reference:
                     # Convert directly to RagChunk references
                     rag_references = []
-                    for ref in sdk_chunk.reference:
+                    for ref in answer.reference:
                         chunk = RagChunk(
                             id=ref['id'],
                             content=ref['content'],
@@ -105,11 +105,11 @@ class RagRagFlowService(BaseRagService):
                         rag_references.append(chunk)
 
                     yield RagChatEndStreamResponse(
-                        session_id=conversation_id or 'default',
+                        session_id=answer.session_id,
                         sources=rag_references
                     )
                 else:
-                    yield RagChatStreamResponse(answer=sdk_chunk.content, is_from_beginning=True)
+                    yield RagChatStreamResponse(answer=answer.content, is_from_beginning=True)
 
     @staticmethod
     def from_credentials(credentials: CredentialsDataOther) -> 'RagRagFlowService':

@@ -32,8 +32,8 @@ class RagChatStreamResponse(BaseModelDTO):
 
 class RagChatEndStreamResponse(BaseModelDTO):
     """Base class for end-of-stream chat responses."""
-    session_id: str = None
-    sources: List[RagChunk] = None
+    session_id: str
+    sources: List[RagChunk]
 
 
 class RagCredentials(BaseModelDTO):

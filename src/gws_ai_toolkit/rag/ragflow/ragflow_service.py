@@ -4,9 +4,10 @@ from gws_core import CredentialsDataOther
 from ragflow_sdk import Chat, Chunk, DataSet, Document, RAGFlow, Session
 
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
-    RagFlowCreateChatRequest, RagFlowCreateDatasetRequest,
-    RagFlowCreateSessionRequest, RagFlowUpdateChatRequest,
-    RagFlowUpdateDatasetRequest, RagFlowUpdateDocumentOptions)
+    RagflowAskStreamResponse, RagFlowCreateChatRequest,
+    RagFlowCreateDatasetRequest, RagFlowCreateSessionRequest,
+    RagFlowUpdateChatRequest, RagFlowUpdateDatasetRequest,
+    RagFlowUpdateDocumentOptions)
 
 
 class RagFlowService:
@@ -394,7 +395,7 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error getting session: {str(e)}") from e
 
-    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[Any, None, None]:
+    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[RagflowAskStreamResponse, None, None]:
         """Ask question using SDK with streaming."""
         try:
             # Get chat object
@@ -408,11 +409,16 @@ class RagFlowService:
                     session = sessions[0]
 
             if not session:
-                session = chat.create_session(name="default_session")
+                session = chat.create_session(name=query)
 
             # Ask question with streaming - return raw SDK responses
-            for chunk in session.ask(question=query, stream=True):
-                yield chunk
+            for answer in session.ask(question=query, stream=True):
+                yield RagflowAskStreamResponse(
+                    content=answer.content,
+                    role=answer.role,
+                    reference=answer.reference,
+                    session_id=session.id
+                )
 
         except Exception as e:
             raise RuntimeError(f"Error asking question: {str(e)}") from e
