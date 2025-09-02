@@ -3,7 +3,7 @@ from json import dump, load
 from typing import Awaitable, Callable, Type
 
 import reflex as rx
-from gws_core import BaseModelDTO
+from gws_core import BaseModelDTO, Logger
 from gws_reflex_main import ReflexMainState
 
 
@@ -15,7 +15,7 @@ class AppConfigState(rx.State):
     # Required properties
     _config: dict
 
-    _config_file_path: str = '/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/app_config.json'
+    _config_file_path: str = ''
 
     _loader: Callable[[rx.State], Awaitable[str]] = None
 
@@ -81,7 +81,8 @@ class AppConfigState(rx.State):
             with open(config_file_path, 'r', encoding='utf-8') as file:
                 return load(file)
         except Exception as e:
-            raise ValueError(f"Error reading config file: {e}")
+            Logger.error(f"Error reading config file: {e}")
+            return {}
 
     def _save_config_file(self, config: dict, config_file_path: str) -> None:
         if not config:
