@@ -69,7 +69,7 @@ def generic_streaming_indicator(state_class: ChatStateBase) -> rx.Component:
 def generic_message_list(config: ChatConfig) -> rx.Component:
     """Generic message list - uses chat page layout"""
 
-    return rx.auto_scroll(
+    return rx.box(
         rx.foreach(
             config.state.messages_to_display,
             lambda message: generic_message_bubble(message, config)
@@ -84,7 +84,6 @@ def generic_message_list(config: ChatConfig) -> rx.Component:
         width="100%",
         padding='1em',
         flex="1",
-        class_name='super-scroll'
     )
 
 
