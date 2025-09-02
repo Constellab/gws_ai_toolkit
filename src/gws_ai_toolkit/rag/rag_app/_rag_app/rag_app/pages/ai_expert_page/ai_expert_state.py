@@ -398,10 +398,10 @@ class AiExpertState(RagAppState, ChatStateBase):
         return ''
 
     @rx.event
-    def open_current_resource_doc(self):
+    async def open_current_resource_doc(self):
         """Open the current resource document."""
         if self._current_rag_resource:
-            return self.open_document_from_resource(self._current_rag_resource.get_id())
+            return await self.open_document_from_resource(self._current_rag_resource.get_id())
         return None
 
     async def _get_config(self) -> AiExpertConfig:
