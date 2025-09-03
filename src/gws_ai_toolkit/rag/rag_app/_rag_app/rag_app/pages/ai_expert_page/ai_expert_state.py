@@ -17,8 +17,6 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_st
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
     ChatMessage, ChatMessageImage, ChatMessageText)
 
-from ...components.conversation_history.conversation_history_state import \
-    ConversationHistoryState
 from ...states.rag_main_state import RagAppState
 
 

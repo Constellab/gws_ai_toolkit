@@ -8,7 +8,7 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_co
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
     ChatStateBase
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_header import \
-    header_refresh_button
+    header_clear_chat_button
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_interface import \
     generic_chat_interface
 
@@ -19,24 +19,16 @@ from .ai_expert_state import AiExpertState
 def ai_expert_header_buttons(state: ChatStateBase) -> List[rx.Component]:
     """Header buttons for the AI Expert page."""
     return [
-        rx.button("View document", on_click=lambda: AiExpertState.open_current_resource_doc,
-                  variant='outline', cursor="pointer"),
-        header_refresh_button(state)
+        rx.button(
+            rx.icon('file', size=16),
+            "View document",
+            on_click=lambda: AiExpertState.open_current_resource_doc,
+            variant='outline',
+            cursor="pointer",
+            size="2",
+        ),
+        header_clear_chat_button(state)
     ]
-
-
-def breadcrumb_menu() -> rx.Component:
-    return rx.hstack(
-        rx.link(rx.text("AI Chat"), cursor="pointer", href="/"),
-        rx.text(" / "),
-        rx.text("AI Expert"),
-        rx.text(" / "),
-        rx.text(AiExpertState.document_name),
-        align="center",
-        align_items="center",
-        margin_inline="auto",
-        margin_top="5px"
-    )
 
 
 def ai_expert_page() -> rx.Component:
@@ -49,7 +41,6 @@ def ai_expert_page() -> rx.Component:
     return render_main_container(
         rx.vstack(
             navigation(),
-            # breadcrumb_menu(),
             generic_chat_interface(config),
             spacing="0",
             height="100vh",

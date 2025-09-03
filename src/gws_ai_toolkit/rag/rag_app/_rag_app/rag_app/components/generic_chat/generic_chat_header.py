@@ -8,7 +8,7 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_st
 from .chat_config import ChatConfig
 
 
-def header_refresh_button(state: ChatStateBase) -> rx.Component:
+def header_clear_chat_button(state: ChatStateBase) -> rx.Component:
     return rx.button(
         rx.icon("refresh-cw", size=16),
         state.clear_button_text,
@@ -25,7 +25,7 @@ def generic_chat_header(config: ChatConfig) -> rx.Component:
     header_buttons: List[rx.Component] = []
     if config.header_buttons is None:
         # default value
-        header_buttons = [header_refresh_button(config.state)]
+        header_buttons = [header_clear_chat_button(config.state)]
     else:
         header_buttons = config.header_buttons(config.state)
 
