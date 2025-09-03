@@ -19,14 +19,14 @@ from .ai_expert_state import AiExpertState
 def ai_expert_header_buttons(state: ChatStateBase) -> List[rx.Component]:
     """Header buttons for the AI Expert page."""
     return [
-        rx.button(
-            rx.icon('file', size=16),
-            "View document",
-            on_click=lambda: AiExpertState.open_current_resource_doc,
-            variant='outline',
-            cursor="pointer",
-            size="2",
-        ),
+        # rx.button(
+        #     rx.icon('file', size=16),
+        #     "View document",
+        #     on_click=lambda: AiExpertState.open_current_resource_doc,
+        #     variant='outline',
+        #     cursor="pointer",
+        #     size="2",
+        # ),
         header_clear_chat_button(state)
     ]
 

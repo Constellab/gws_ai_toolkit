@@ -28,10 +28,10 @@ def source_item(source: RagChatSource, state: ChatStateBase) -> rx.Component:
                         rx.icon("bot", size=16),
                         "Open AI Expert", on_click=lambda: state.open_ai_expert(source.document_id)
                     ),
-                    rx.menu.item(
-                        rx.icon("external-link", size=16),
-                        "Open document", on_click=lambda: state.open_document(source.document_id)
-                    ),
+                    #     rx.menu.item(
+                    #         rx.icon("external-link", size=16),
+                    #         "Open document", on_click=lambda: state.open_document(source.document_id)
+                    #     ),
                 ),
                 flex_shrink="0"
             ),
