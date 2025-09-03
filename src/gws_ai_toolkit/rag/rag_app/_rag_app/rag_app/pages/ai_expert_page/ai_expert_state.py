@@ -7,20 +7,21 @@ from gws_core.core.utils.logger import Logger
 from openai import OpenAI
 from PIL import Image
 
+from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_config import \
     AiExpertConfig
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.ai_expert_config_state import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_config_state import \
     AiExpertConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
-    ChatStateBase
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import (
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_message_class import (
     ChatMessage, ChatMessageImage, ChatMessageText)
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_state_base import \
+    ChatStateBase
 
 from ...states.rag_main_state import RagAppState
 
 
-class AiExpertState(RagAppState, ChatStateBase):
+class AiExpertState(ChatStateBase, rx.State):
     """State management for the AI Expert functionality - specialized chat for a specific document."""
 
     # Document context
@@ -269,9 +270,9 @@ class AiExpertState(RagAppState, ChatStateBase):
         if max_chunks in self._document_chunks_text:
             return self._document_chunks_text[max_chunks]
 
-        rag_app_service = await self.get_dataset_rag_app_service
-        if not rag_app_service:
-            return "RAG service not available"
+        rag_app_service: BaseRagAppService
+        async with self:
+            rag_app_service = await self._get_rag_app_service()
 
         # Get the document ID from the resource
         document_id = self._current_rag_resource.get_document_id()
@@ -299,9 +300,9 @@ class AiExpertState(RagAppState, ChatStateBase):
     async def get_relevant_document_chunks_text(self, user_question: str, max_chunks: int = 5) -> str:
         """Get the most relevant chunks based on the user's question"""
 
-        rag_app_service = await self.get_dataset_rag_app_service
-        if not rag_app_service:
-            return "RAG service not available"
+        rag_app_service: BaseRagAppService
+        async with self:
+            rag_app_service = await self._get_rag_app_service()
 
         # Get the document ID from the resource
         document_id = self._current_rag_resource.get_document_id()
@@ -434,3 +435,10 @@ class AiExpertState(RagAppState, ChatStateBase):
 
         # Save conversation to history after response is completed
         await self.save_conversation_to_history("ai_expert", configuration)
+
+    async def _get_rag_app_service(self) -> BaseRagAppService:
+        """Get the RAG app service instance."""
+        state: RagAppState = await self.get_state(RagAppState)
+        rag_app_service = await state.get_dataset_rag_app_service
+        if not rag_app_service:
+            raise ValueError("RAG service not available")

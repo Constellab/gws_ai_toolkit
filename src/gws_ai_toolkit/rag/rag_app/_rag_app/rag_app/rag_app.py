@@ -1,10 +1,15 @@
 import reflex as rx
 from gws_reflex_base import add_unauthorized_page, get_theme
+from gws_reflex_main import ReflexMainState
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.core.app_config_state import \
     AppConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.conversation_history.conversation_history_state import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_state import \
     ConversationHistoryState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.rag_chat.config.rag_config_state import (
+    RagConfigState, RagConfigStateConfig)
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.rag_main_state import \
+    RagAppState
 
 from .pages.ai_expert_page.ai_expert_page import ai_expert_page
 from .pages.ai_expert_page.ai_expert_state import AiExpertState
@@ -20,9 +25,31 @@ app = rx.App(
 )
 
 
+def set_loader_from_param(param_name: str):
+    """Set the loader function to get the config file path from a parameter."""
+    async def loader(state: 'AppConfigState') -> str:
+        base_state = await state.get_state(RagAppState)
+        return await base_state.get_param(param_name)
+
+    return loader
+
+
+async def _load_config(state: rx.State) -> RagConfigStateConfig:
+    """Load the RAG configuration."""
+    base_state = await state.get_state(RagAppState)
+    params = await base_state.get_params()
+    return RagConfigStateConfig(
+        rag_provider=params.get("rag_provider"),
+        dataset_id=params.get("dataset_id"),
+        resource_sync_mode=params.get("resource_sync_mode"),
+        credentials_name=params.get("dataset_credentials_name"),
+    )
+
+
 # Chat page (index)
-AppConfigState.set_loader_from_param('configuration_file_path')
-ConversationHistoryState.set_loader_from_param('history_file_path')
+AppConfigState.set_loader(set_loader_from_param('configuration_file_path'))
+ConversationHistoryState.set_loader(set_loader_from_param('history_file_path'))
+RagConfigState.set_loader(_load_config)
 
 
 @rx.page(route="/")

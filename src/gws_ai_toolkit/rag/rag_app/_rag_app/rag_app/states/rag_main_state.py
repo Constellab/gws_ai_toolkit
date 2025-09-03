@@ -11,7 +11,7 @@ from gws_core import Credentials, CredentialsDataOther
 from gws_reflex_main import ReflexMainState
 
 
-class RagAppState(ReflexMainState):
+class RagAppState(ReflexMainState, rx.State):
     """Main state for the RAG application with authentication and credential management."""
 
     # Internal state

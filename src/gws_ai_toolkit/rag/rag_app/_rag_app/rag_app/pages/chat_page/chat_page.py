@@ -1,11 +1,11 @@
 import reflex as rx
 from gws_reflex_base import render_main_container
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_config import \
     ChatConfig
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_interface import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.generic_chat_interface import \
     generic_chat_interface
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_sources_list import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.generic_sources_list import \
     generic_sources_list
 
 from ...components.shared.navigation import navigation

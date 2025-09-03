@@ -1,4 +1,5 @@
 
+from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.datahub_rag_app_service import \
     DatahubRagAppService
 from gws_ai_toolkit.rag.common.tag_rag_app_service import TagRagAppService
@@ -13,7 +14,7 @@ class RagAppServiceFactory:
     @staticmethod
     def create_service(resource_mode: RagResourceSyncMode,
                        rag_service: BaseRagService,
-                       dataset_id: str) -> BaseRagService:
+                       dataset_id: str) -> BaseRagAppService:
         """Create the appropriate RAG app service based on RagResourceMode.
 
         Args:
@@ -22,7 +23,7 @@ class RagAppServiceFactory:
             dataset_id: The dataset ID to use
 
         Returns:
-            BaseRagService: Instance of the appropriate service
+            BaseRagAppService: Instance of the appropriate service
 
         Raises:
             ValueError: If provider is not supported

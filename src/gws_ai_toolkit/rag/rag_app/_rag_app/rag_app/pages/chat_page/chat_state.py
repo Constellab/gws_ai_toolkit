@@ -1,24 +1,30 @@
 import uuid
 from typing import List
 
+import reflex as rx
+
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatSource,
                                                   RagChatStreamResponse)
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
-    ChatStateBase
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_message_class import \
     ChatMessageText
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_state_base import \
+    ChatStateBase
 
 from ...states.rag_main_state import RagAppState
 
 
-class ChatState(RagAppState, ChatStateBase):
+class ChatState(ChatStateBase, rx.State):
     """State management for the chat functionality."""
 
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from the assistant."""
 
-        datahub_rag_service = await self.get_chat_rag_app_service
+        rag_app_state: RagAppState
+        async with self:
+            rag_app_state = await self.get_state(RagAppState)
+
+        datahub_rag_service = await rag_app_state.get_chat_rag_app_service
         if not datahub_rag_service:
             return
 
@@ -35,7 +41,7 @@ class ChatState(RagAppState, ChatStateBase):
             query=user_message,
             conversation_id=self.conversation_id,
             user=None,  # TODO handle user
-            chat_id=await self.get_chat_id,
+            chat_id=await rag_app_state.get_chat_id,
         ):
             if isinstance(chunk, RagChatStreamResponse):
                 if chunk.is_from_beginning:

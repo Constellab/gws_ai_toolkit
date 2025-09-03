@@ -73,6 +73,7 @@ config = rx.Config(
     app_name="rag_app",
     plugins=[rx.plugins.SitemapPlugin()],
     # [START_AUTO_CODE]
-    api_url=api_url
+    api_url=api_url,
+
     # [END_AUTO_CODE]
 )

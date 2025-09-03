@@ -3,20 +3,20 @@ from typing import List
 import reflex as rx
 from gws_reflex_base import render_main_container
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.conversation_history.conversation_history_class import \
-    ConversationHistory
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_config import \
-    ChatConfig
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.config_dialog import \
-    config_dialog
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_sources_list import \
-    generic_sources_list
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.read_only_chat_interface import \
-    read_only_chat_interface
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.read_only_chat_state import \
-    ReadOnlyChatState
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.shared.navigation import \
     navigation
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_config import \
+    ChatConfig
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.generic_sources_list import \
+    generic_sources_list
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_class import \
+    ConversationHistory
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.history_config_dialog import \
+    history_config_dialog
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.read_only_chat.read_only_chat_interface import \
+    read_only_chat_interface
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.read_only_chat.read_only_chat_state import \
+    ReadOnlyChatState
 
 from .history_page_state import HistoryPageState
 
@@ -193,7 +193,7 @@ def conversation_display() -> rx.Component:
             # Show selected conversation
             rx.fragment(
                 read_only_chat_interface(config),
-                config_dialog(config.state),
+                history_config_dialog(config.state),
             ),
             # Show empty state when no conversation selected
             rx.box(

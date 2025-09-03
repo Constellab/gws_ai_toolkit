@@ -1,9 +1,11 @@
 import reflex as rx
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.config.sync_resource.sync_resource_component import \
-    search_resource
 from gws_reflex_base import render_main_container
 
-from ..components.config.sync_controls import sync_controls
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.rag_chat.config.rag_config_file_bulk import \
+    rag_config_file_bulk
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.rag_chat.config.sync_resource.sync_resource_component import \
+    search_resource
+
 from ..components.shared.navigation import navigation
 
 
@@ -15,7 +17,7 @@ def resource_page() -> rx.Component:
             rx.container(
                 rx.vstack(
                     rx.heading("Resource Management", size="8", mb="4"),
-                    sync_controls(),
+                    rag_config_file_bulk(),
                     rx.divider(),
                     search_resource(),
                     spacing="6",
