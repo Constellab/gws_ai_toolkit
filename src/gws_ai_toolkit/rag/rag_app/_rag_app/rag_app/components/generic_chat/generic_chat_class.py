@@ -1,8 +1,9 @@
 from typing import Any, List, Literal, Optional
 
-from gws_ai_toolkit.rag.common.rag_models import RagChunk
 from gws_core import BaseModelDTO
 from PIL import Image
+
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 
 class ChatMessage(BaseModelDTO):
@@ -10,7 +11,7 @@ class ChatMessage(BaseModelDTO):
     type: Literal["text", "image", "code"]
     content: Any
     id: str
-    sources: Optional[List[RagChunk]] = []
+    sources: Optional[List[RagChatSource]] = []
     data: Optional[Image.Image] = None  # For image messages
 
     class Config:

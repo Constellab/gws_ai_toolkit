@@ -93,21 +93,17 @@ class RagRagFlowService(BaseRagService):
             if answer.role == 'assistant':
                 if answer.reference:
                     # Convert directly to RagChunk references
-                    rag_references = []
+                    chat_end = RagChatEndStreamResponse(session_id=answer.session_id)
                     for ref in answer.reference:
-                        chunk = RagChunk(
-                            id=ref['id'],
-                            content=ref['content'],
+                        chat_end.add_source(
                             document_id=ref['document_id'],
                             document_name=ref['document_name'],
-                            score=ref['vector_similarity']
+                            chunk_id=ref['id'],
+                            chunk_score=ref['vector_similarity'],
+                            chunk_content=ref['content']
                         )
-                        rag_references.append(chunk)
 
-                    yield RagChatEndStreamResponse(
-                        session_id=answer.session_id,
-                        sources=rag_references
-                    )
+                    yield chat_end
                 else:
                     yield RagChatStreamResponse(answer=answer.content, is_from_beginning=True)
 

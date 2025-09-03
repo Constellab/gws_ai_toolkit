@@ -8,7 +8,7 @@ from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
 from gws_core.core.utils.logger import Logger
 from PIL import Image
 
-from gws_ai_toolkit.rag.common.rag_models import RagChunk
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource, RagChunk
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.conversation_history.conversation_history_state import \
     ConversationHistoryState
@@ -101,7 +101,7 @@ class ChatStateBase(rx.State, mixin=True):
         async with self:
             self._current_response_message = message
 
-    async def update_current_message_sources(self, sources: List[RagChunk]) -> None:
+    async def update_current_message_sources(self, sources: List[RagChatSource]) -> None:
         """Update the sources of the current streaming message"""
         async with self:
             if self._current_response_message:
@@ -116,7 +116,6 @@ class ChatStateBase(rx.State, mixin=True):
 
     def set_conversation_id(self, conversation_id: str) -> None:
         self.conversation_id = conversation_id
-        print('Conversation ID set to:', conversation_id)
 
     @rx.event
     def clear_chat(self) -> None:
@@ -126,7 +125,7 @@ class ChatStateBase(rx.State, mixin=True):
 
     # Helper methods to create different message types
     def create_text_message(
-            self, content: str, role: str = "assistant", sources: Optional[List[RagChunk]] = None) -> ChatMessageText:
+            self, content: str, role: str = "assistant", sources: Optional[List[RagChatSource]] = None) -> ChatMessageText:
         """Create a text message"""
         return ChatMessageText(
             id=str(uuid.uuid4()),
@@ -136,7 +135,7 @@ class ChatStateBase(rx.State, mixin=True):
         )
 
     def create_code_message(
-            self, content: str, role: str = "assistant", sources: Optional[List[RagChunk]] = None) -> ChatMessageCode:
+            self, content: str, role: str = "assistant", sources: Optional[List[RagChatSource]] = None) -> ChatMessageCode:
         """Create a code message"""
         return ChatMessageCode(
             id=str(uuid.uuid4()),
@@ -146,7 +145,7 @@ class ChatStateBase(rx.State, mixin=True):
         )
 
     def create_image_message(self, data: Image.Image, content: str = "", role: str = "assistant",
-                             sources: Optional[List[RagChunk]] = None) -> ChatMessageImage:
+                             sources: Optional[List[RagChatSource]] = None) -> ChatMessageImage:
         """Create an image message"""
         return ChatMessageImage(
             id=str(uuid.uuid4()),
@@ -200,7 +199,7 @@ class ChatStateBase(rx.State, mixin=True):
             history_state: ConversationHistoryState
             async with self:
                 history_state = await self.get_state(ConversationHistoryState)
-            history_state.add_conversation(
+            await history_state.add_conversation(
                 conversation_id=self.conversation_id,
                 messages=self._chat_messages,
                 mode=mode,

@@ -2,12 +2,12 @@ from typing import List
 
 import reflex as rx
 
-from gws_ai_toolkit.rag.common.rag_models import RagChunk
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
     ChatStateBase
 
 
-def source_item(source: RagChunk, state: ChatStateBase) -> rx.Component:
+def source_item(source: RagChatSource, state: ChatStateBase) -> rx.Component:
     """Display a single source item with click functionality."""
     return rx.box(
         rx.hstack(
@@ -39,7 +39,7 @@ def source_item(source: RagChunk, state: ChatStateBase) -> rx.Component:
         padding="2",)
 
 
-def generic_sources_list(sources: List[RagChunk], state: ChatStateBase) -> rx.Component:
+def generic_sources_list(sources: List[RagChatSource], state: ChatStateBase) -> rx.Component:
     """Component to display sources in an expandable section."""
     return rx.cond(
         sources,

@@ -127,22 +127,18 @@ class RagDifyService(BaseRagService):
                 yield RagChatStreamResponse(answer=response.answer, is_from_beginning=False)
             elif isinstance(response, DifySendEndMessageStreamResponse):
                 # Convert sources to RagChunk references
-                references = []
+                chat_end = RagChatEndStreamResponse(session_id=response.conversation_id)
                 if response.sources:
                     for source in response.sources:
-                        chunk = RagChunk(
-                            id=source.document_id,
-                            content='',  # Dify sources don't include content
+                        chat_end.add_source(
                             document_id=source.document_id,
                             document_name=source.document_name,
-                            score=source.score
+                            chunk_id='',
+                            chunk_score=source.score,
+                            chunk_content=None
                         )
-                        references.append(chunk)
 
-                yield RagChatEndStreamResponse(
-                    session_id=response.conversation_id,
-                    sources=references
-                )
+                yield chat_end
 
     @staticmethod
     def from_credentials(credentials: CredentialsDataOther) -> 'RagDifyService':

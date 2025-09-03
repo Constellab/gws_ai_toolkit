@@ -2,8 +2,8 @@ import uuid
 from typing import List
 
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
-                                                  RagChatStreamResponse,
-                                                  RagChunk)
+                                                  RagChatSource,
+                                                  RagChatStreamResponse)
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.chat_state_base import \
     ChatStateBase
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.generic_chat.generic_chat_class import \
@@ -59,7 +59,7 @@ class ChatState(RagAppState, ChatStateBase):
 
         # Process the final response
         session_id = None
-        sources: List[RagChunk] = []
+        sources: List[RagChatSource] = []
 
         if end_message_response:
             if isinstance(end_message_response, RagChatStreamResponse):
@@ -67,9 +67,7 @@ class ChatState(RagAppState, ChatStateBase):
             elif isinstance(end_message_response, RagChatEndStreamResponse):
                 session_id = end_message_response.session_id
                 if end_message_response.sources:
-                    for source in end_message_response.sources:
-                        if source.document_id not in [s.document_id for s in sources]:
-                            sources.append(source)
+                    sources = end_message_response.sources
 
             async with self:
                 if session_id:

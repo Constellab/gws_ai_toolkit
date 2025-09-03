@@ -3,6 +3,8 @@ from gws_reflex_base import add_unauthorized_page, get_theme
 
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.app_config.app_config_state import \
     AppConfigState
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.conversation_history.conversation_history_state import \
+    ConversationHistoryState
 
 from .pages.ai_expert_page.ai_expert_page import ai_expert_page
 from .pages.ai_expert_page.ai_expert_state import AiExpertState
@@ -20,6 +22,7 @@ app = rx.App(
 
 # Chat page (index)
 AppConfigState.set_loader_from_param('configuration_file_path')
+ConversationHistoryState.set_loader_from_param('history_file_path')
 
 
 @rx.page(route="/")
