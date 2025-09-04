@@ -3,10 +3,11 @@ from typing import List
 import reflex as rx
 
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+
 from .chat_state_base import ChatStateBase
 
 
-def source_item(source: RagChatSource, state: ChatStateBase) -> rx.Component:
+def _source_item(source: RagChatSource, state: ChatStateBase) -> rx.Component:
     """Display a single source item with click functionality."""
     return rx.box(
         rx.hstack(
@@ -38,7 +39,7 @@ def source_item(source: RagChatSource, state: ChatStateBase) -> rx.Component:
         padding="2",)
 
 
-def generic_sources_list(sources: List[RagChatSource], state: ChatStateBase) -> rx.Component:
+def sources_list_component(sources: List[RagChatSource], state: ChatStateBase) -> rx.Component:
     """Component to display sources in an expandable section."""
     return rx.cond(
         sources,
@@ -47,7 +48,7 @@ def generic_sources_list(sources: List[RagChatSource], state: ChatStateBase) -> 
                 header="Sources",
                 content=rx.accordion.content(
                     rx.vstack(
-                        rx.foreach(sources, lambda source: source_item(source, state)),
+                        rx.foreach(sources, lambda source: _source_item(source, state)),
                         spacing="2",
                         align="stretch",
                     ),

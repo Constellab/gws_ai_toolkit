@@ -1,32 +1,45 @@
 import uuid
-from typing import List
+from typing import Awaitable, Callable, List
 
 import reflex as rx
+from gws_core import BaseModelDTO
 
+from gws_ai_toolkit.rag.common.rag_enums import RagProvider
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatSource,
                                                   RagChatStreamResponse)
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_message_class import \
-    ChatMessageText
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_state_base import \
-    ChatStateBase
 
-from ...states.rag_main_state import RagAppState
+from ..chat_base.chat_message_class import ChatMessageText
+from ..chat_base.chat_state_base import ChatStateBase
+from ..rag_chat.config.rag_config_state import RagConfigState
 
 
-class ChatState(ChatStateBase, rx.State):
-    """State management for the chat functionality."""
+class RagChatStateConfig(BaseModelDTO):
+    rag_provider: RagProvider
+    chat_id: str
+    credentials_name: str
+
+
+class RagChatState(ChatStateBase, rx.State):
+    """State management for the rag chat functionality."""
+
+    _loader: Callable[[rx.State], Awaitable[RagChatStateConfig]] | None = None
+
+    @classmethod
+    def set_loader(cls, loader: Callable[[rx.State], Awaitable[RagChatStateConfig]]) -> None:
+        """Set the loader function to get the path of the config file."""
+        cls._loader = loader
 
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from the assistant."""
 
-        rag_app_state: RagAppState
+        rag_app_state: RagConfigState
         async with self:
-            rag_app_state = await self.get_state(RagAppState)
+            rag_app_state = await self.get_state(RagConfigState)
 
-        datahub_rag_service = await rag_app_state.get_chat_rag_app_service
+        datahub_rag_service = await rag_app_state.get_chat_rag_app_service()
         if not datahub_rag_service:
-            return
+            raise ValueError("RAG chat service not available")
 
         full_response = ""
         end_message_response = None
@@ -37,11 +50,14 @@ class ChatState(ChatStateBase, rx.State):
         # user_id = current_user.id if current_user else "anonymous"
 
         # Stream the response
+        chat_id = await rag_app_state.get_chat_id()
+        if not chat_id:
+            raise ValueError("Chat ID is not configured")
         for chunk in datahub_rag_service.send_message_stream(
             query=user_message,
             conversation_id=self.conversation_id,
             user=None,  # TODO handle user
-            chat_id=await rag_app_state.get_chat_id,
+            chat_id=chat_id,
         ):
             if isinstance(chunk, RagChatStreamResponse):
                 if chunk.is_from_beginning:

@@ -5,8 +5,13 @@ import reflex as rx
 from .ai_expert_config_state import AiExpertConfigState
 
 
-def show_ai_expert_config_section():
-    """Show the AI Expert configuration section."""
+def ai_expert_config_component() -> rx.Component:
+    """Component to configure AI Expert settings.
+    It uses the AiExpertConfigState for state management.
+
+    Returns:
+        _type_: rx.Component: The AI Expert configuration component.
+    """
     return rx.vstack(
         rx.heading("AI Expert Configuration"),
 

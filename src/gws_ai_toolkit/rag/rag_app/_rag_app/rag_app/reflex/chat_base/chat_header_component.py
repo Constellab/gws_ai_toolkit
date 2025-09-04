@@ -2,12 +2,11 @@ from typing import List
 
 import reflex as rx
 
+from .chat_config import ChatConfig
 from .chat_state_base import ChatStateBase
 
-from .chat_config import ChatConfig
 
-
-def header_clear_chat_button(state: ChatStateBase) -> rx.Component:
+def header_clear_chat_button_component(state: ChatStateBase) -> rx.Component:
     return rx.button(
         rx.icon("refresh-cw", size=16),
         state.clear_button_text,
@@ -18,13 +17,13 @@ def header_clear_chat_button(state: ChatStateBase) -> rx.Component:
     )
 
 
-def generic_chat_header(config: ChatConfig) -> rx.Component:
+def chat_header_component(config: ChatConfig) -> rx.Component:
     """Generic header component - uses chat page style"""
 
     header_buttons: List[rx.Component] = []
     if config.header_buttons is None:
         # default value
-        header_buttons = [header_clear_chat_button(config.state)]
+        header_buttons = [header_clear_chat_button_component(config.state)]
     else:
         header_buttons = config.header_buttons(config.state)
 

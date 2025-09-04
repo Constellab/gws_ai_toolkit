@@ -1,27 +1,17 @@
 from typing import List
 
 import reflex as rx
-from gws_reflex_base import render_main_container
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.components.shared.navigation import \
-    navigation
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_config import \
-    ChatConfig
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.generic_sources_list import \
-    generic_sources_list
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_class import \
-    ConversationHistory
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.history_config_dialog import \
-    history_config_dialog
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.read_only_chat.read_only_chat_interface import \
-    read_only_chat_interface
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.read_only_chat.read_only_chat_state import \
-    ReadOnlyChatState
-
-from .history_page_state import HistoryPageState
+from ..chat_base.chat_config import ChatConfig
+from ..chat_base.sources_list_component import sources_list_component
+from ..read_only_chat.read_only_chat_interface import read_only_chat_component
+from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
+from .conversation_history_class import ConversationHistory
+from .history_config_dialog import history_config_dialog
+from .history_state import HistoryState
 
 
-def conversation_item(conversation: ConversationHistory) -> rx.Component:
+def _conversation_item(conversation: ConversationHistory) -> rx.Component:
     """Individual conversation item component."""
 
     # Format mode display
@@ -66,29 +56,29 @@ def conversation_item(conversation: ConversationHistory) -> rx.Component:
         border_radius="8px",
         cursor="pointer",
         border=rx.cond(
-            HistoryPageState.selected_conversation_id == conversation.conversation_id,
+            HistoryState.selected_conversation_id == conversation.conversation_id,
             f"2px solid {rx.color('accent', 8)}",
             f"1px solid {rx.color('gray', 6)}"
         ),
         background_color=rx.cond(
-            HistoryPageState.selected_conversation_id == conversation.conversation_id,
+            HistoryState.selected_conversation_id == conversation.conversation_id,
             rx.color("accent", 3),
             "white"
         ),
         _hover={
             "background_color": rx.cond(
-                HistoryPageState.selected_conversation_id == conversation.conversation_id,
+                HistoryState.selected_conversation_id == conversation.conversation_id,
                 rx.color("accent", 4),
                 rx.color("gray", 2)
             ),
         },
-        on_click=lambda: HistoryPageState.select_conversation(conversation.conversation_id),
+        on_click=lambda: HistoryState.select_conversation(conversation.conversation_id),
         margin_bottom="8px",
         width="100%",
     )
 
 
-def conversations_sidebar() -> rx.Component:
+def _conversations_sidebar() -> rx.Component:
     """Left sidebar with conversation list."""
     return rx.box(
         rx.vstack(
@@ -99,17 +89,18 @@ def conversations_sidebar() -> rx.Component:
                     rx.icon("refresh-cw", size=16),
                     variant="ghost",
                     size="2",
-                    on_click=HistoryPageState.load_conversations,
+                    on_click=HistoryState.load_conversations,
                     cursor="pointer",
                 ),
                 width="100%",
                 align_items="center",
-                margin_bottom="16px"
+                margin_bottom="1em",
+                padding_inline="1em",
             ),
 
             # Loading state
             rx.cond(
-                HistoryPageState.is_loading,
+                HistoryState.is_loading,
                 rx.box(
                     rx.spinner(size="3"),
                     rx.text("Loading conversations...", size="2", color=rx.color("gray", 11)),
@@ -118,19 +109,20 @@ def conversations_sidebar() -> rx.Component:
                 ),
                 # Content when not loading
                 rx.cond(
-                    HistoryPageState.has_conversations,
+                    HistoryState.has_conversations,
                     # Show conversations list
-                    rx.auto_scroll(
-                        rx.vstack(
-                            rx.foreach(
-                                HistoryPageState.conversations,
-                                conversation_item
-                            ),
-                            spacing="0",
-                            width="100%",
+                    rx.vstack(
+                        rx.foreach(
+                            HistoryState.conversations,
+                            _conversation_item
                         ),
+                        spacing="0",
                         width="100%",
-                        max_height="calc(100vh - 200px)",
+                        padding_inline="1em",
+                        # max height 100% with scroll
+                        flex="1",
+                        min_height="0",
+                        overflow_y="auto",
                     ),
                     # Show empty state
                     rx.box(
@@ -158,7 +150,8 @@ def conversations_sidebar() -> rx.Component:
         ),
         width="350px",
         height="100%",
-        padding="20px",
+        padding_top="1em",
+        padding_bottom="1em",
         border_right=f"1px solid {rx.color('gray', 6)}",
         background_color=rx.color("gray", 1),
         overflow="hidden",
@@ -179,20 +172,20 @@ def _header_buttons(state: ReadOnlyChatState) -> List[rx.Component]:
     ]
 
 
-def conversation_display() -> rx.Component:
+def _conversation_display() -> rx.Component:
     """Right side conversation display."""
     config = ChatConfig(
         state=ReadOnlyChatState,
-        sources_component=generic_sources_list,
+        sources_component=sources_list_component,
         header_buttons=_header_buttons
     )
 
     return rx.box(
         rx.cond(
-            HistoryPageState.selected_conversation_id,
+            HistoryState.selected_conversation_id,
             # Show selected conversation
             rx.fragment(
-                read_only_chat_interface(config),
+                read_only_chat_component(config),
                 history_config_dialog(config.state),
             ),
             # Show empty state when no conversation selected
@@ -216,25 +209,16 @@ def conversation_display() -> rx.Component:
         ),
         flex="1",
         height="100%",
-        overflow="hidden",
+        display="flex",
     )
 
 
-def history_page() -> rx.Component:
-    """History page component."""
-    return render_main_container(
-        rx.vstack(
-            navigation(),
-            rx.hstack(
-                conversations_sidebar(),
-                conversation_display(),
-                spacing="0",
-                width="100%",
-                height="calc(100vh - 60px)",  # Account for navigation height
-                overflow="hidden"
-            ),
-            spacing="0",
-            width="100%",
-            height="100vh",
-        )
+def history_component():
+    return rx.hstack(
+        _conversations_sidebar(),
+        _conversation_display(),
+        spacing="0",
+        width="100%",
+        flex="1",
+        min_height="0",
     )

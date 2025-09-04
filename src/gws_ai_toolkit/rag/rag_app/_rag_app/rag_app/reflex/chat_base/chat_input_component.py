@@ -3,7 +3,7 @@ import reflex as rx
 from .chat_config import ChatConfig
 
 
-def generic_chat_input(config: ChatConfig) -> rx.Component:
+def chat_input_component(config: ChatConfig) -> rx.Component:
     """Generic input component - uses chat page styling"""
 
     return rx.form(

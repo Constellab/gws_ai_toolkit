@@ -1,17 +1,17 @@
 import reflex as rx
 
 from .chat_config import ChatConfig
-from .generic_chat_header import generic_chat_header
-from .generic_chat_input import generic_chat_input
-from .generic_message_list import generic_message_list
+from .chat_header_component import chat_header_component
+from .chat_input_component import chat_input_component
+from .messages_list_component import chat_messages_list_component
 
 
 def _chat_with_messages(config: ChatConfig) -> rx.Component:
     """Chat interface with messages - fixed input at bottom"""
     return rx.box(
         rx.vstack(
-            generic_chat_header(config),
-            generic_message_list(config),
+            chat_header_component(config),
+            chat_messages_list_component(config),
             width="100%",
             max_width="800px",
             margin="auto",
@@ -21,7 +21,7 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
         # Fixed input at bottom
         rx.box(
             rx.box(
-                generic_chat_input(config),
+                chat_input_component(config),
                 background_color="white",
                 border_radius="48px",
                 padding="12px 28px 12px 24px",
@@ -49,7 +49,7 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
 def _empty_chat(config: ChatConfig) -> rx.Component:
     """Chat interface when there are no messages"""
     return rx.vstack(
-        generic_chat_header(config),
+        chat_header_component(config),
         rx.box(flex="1"),  # Spacer to push input to center
         rx.heading(
             config.state.empty_state_message,
@@ -59,7 +59,7 @@ def _empty_chat(config: ChatConfig) -> rx.Component:
             width="100%"
         ),
         rx.box(
-            generic_chat_input(config),
+            chat_input_component(config),
             width="100%",
             max_width="800px",
             margin="auto",
@@ -72,7 +72,7 @@ def _empty_chat(config: ChatConfig) -> rx.Component:
     )
 
 
-def generic_chat_interface(config: ChatConfig) -> rx.Component:
+def chat_component(config: ChatConfig) -> rx.Component:
     """Generic chat interface using chat page layout - only state is configurable"""
 
     # Use exact same layout as chat page
@@ -89,14 +89,11 @@ def generic_chat_interface(config: ChatConfig) -> rx.Component:
             width="100%",
             max_width="800px",
             margin="auto",
-            padding="1em",
             flex="1",
             position="relative",
             display="flex",
             flex_direction="column"
         ),
-
-        class_name='super-scroll-2',
         width="100%",
         flex="1",
         display="flex",

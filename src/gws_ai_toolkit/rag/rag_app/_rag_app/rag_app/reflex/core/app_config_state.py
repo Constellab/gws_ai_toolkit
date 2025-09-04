@@ -38,6 +38,13 @@ class AppConfigState(rx.State):
     async def config_file_path(self) -> str:
         """Get the configuration file path."""
         if not self._config_file_path:
+            if AppConfigState._loader:
+                self._config_file_path = await AppConfigState._loader(self)
+            else:
+                Logger.warning(
+                    "AppConfigState loader is not set. Using default configuration. This is normal during compilation")
+                return ''
+
             if not AppConfigState._loader:
                 raise ValueError("Loader function is not set. Please call AppConfigState.set_loader")
             self._config_file_path = await AppConfigState._loader(self) or ''
@@ -49,6 +56,8 @@ class AppConfigState(rx.State):
 
         if not self._config:
             config_file_path = await self.config_file_path
+            if not config_file_path:
+                return {}
             self._config = self._load_config_file(config_file_path)
 
         return self._config

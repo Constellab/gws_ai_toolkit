@@ -76,7 +76,6 @@ class DeleteExpiredDocumentsDialogState(rx.State):
 
     @rx.event(background=True)
     async def delete_expired_documents_from_rag(self):
-        print("Starting deletion of expired documents...")
         config_state: RagConfigState
         async with self:
             self.delete_documents_progress = 0

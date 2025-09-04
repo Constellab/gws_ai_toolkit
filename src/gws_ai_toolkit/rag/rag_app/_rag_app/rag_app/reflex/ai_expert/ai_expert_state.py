@@ -9,16 +9,13 @@ from PIL import Image
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_config import \
-    AiExpertConfig
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_config_state import \
-    AiExpertConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_message_class import (
-    ChatMessage, ChatMessageImage, ChatMessageText)
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_state_base import \
-    ChatStateBase
 
-from ...states.rag_main_state import RagAppState
+from ..chat_base.chat_message_class import (ChatMessage, ChatMessageImage,
+                                            ChatMessageText)
+from ..chat_base.chat_state_base import ChatStateBase
+from ..rag_chat.config.rag_config_state import RagConfigState
+from .ai_expert_config import AiExpertConfig
+from .ai_expert_config_state import AiExpertConfigState
 
 
 class AiExpertState(ChatStateBase, rx.State):
@@ -62,9 +59,6 @@ class AiExpertState(ChatStateBase, rx.State):
 
     async def load_resource(self, rag_doc_id: str):
         """Load the resource from DataHub and prepare for chat"""
-        if not await self.check_authentication():
-            return
-
         try:
 
             self.current_doc_id = rag_doc_id
@@ -438,7 +432,8 @@ class AiExpertState(ChatStateBase, rx.State):
 
     async def _get_rag_app_service(self) -> BaseRagAppService:
         """Get the RAG app service instance."""
-        state: RagAppState = await self.get_state(RagAppState)
-        rag_app_service = await state.get_dataset_rag_app_service
+        state: RagConfigState = await self.get_state(RagConfigState)
+        rag_app_service = await state.get_dataset_rag_app_service()
         if not rag_app_service:
             raise ValueError("RAG service not available")
+        return rag_app_service

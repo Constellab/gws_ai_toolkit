@@ -1,13 +1,12 @@
 import reflex as rx
 
 from .chat_config import ChatConfig
-
 from .chat_message_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageImage, ChatMessageText)
 from .chat_state_base import ChatStateBase
 
 
-def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
+def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
     """Generic message bubble - uses chat page styling with support for different message types"""
 
     return rx.cond(
@@ -15,7 +14,7 @@ def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Compo
         # User message - right aligned with darker background (exact same as chat page)
         rx.box(
             rx.box(
-                render_message_content(message),
+                _message_content(message),
                 background_color="var(--accent-10)",
                 padding="0px 16px",
                 border_radius="18px",
@@ -31,7 +30,7 @@ def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Compo
         # Assistant message - left aligned without background (exact same as chat page)
         rx.box(
             rx.box(
-                render_message_content(message),
+                _message_content(message),
                 rx.cond(
                     message.sources,
                     rx.box(
@@ -50,7 +49,7 @@ def generic_message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Compo
     )
 
 
-def generic_streaming_indicator(state_class: ChatStateBase) -> rx.Component:
+def _streaming_indicator(state_class: ChatStateBase) -> rx.Component:
     """Generic streaming indicator - same as chat page"""
     return rx.cond(
         state_class.is_streaming,
@@ -68,40 +67,40 @@ def generic_streaming_indicator(state_class: ChatStateBase) -> rx.Component:
     )
 
 
-def generic_message_list(config: ChatConfig) -> rx.Component:
+def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     """Generic message list - uses chat page layout"""
 
     return rx.box(
         rx.foreach(
             config.state.messages_to_display,
-            lambda message: generic_message_bubble(message, config)
+            lambda message: _message_bubble(message, config)
         ),
         # Display current response message separately
         rx.cond(
             config.state.current_response_message,
-            generic_message_bubble(config.state.current_response_message, config),
+            _message_bubble(config.state.current_response_message, config),
             rx.text("")
         ),
-        generic_streaming_indicator(config.state),
+        _streaming_indicator(config.state),
         width="100%",
         padding='1em',
         flex="1",
     )
 
 
-def render_message_content(message: ChatMessage) -> rx.Component:
+def _message_content(message: ChatMessage) -> rx.Component:
     """Render message content based on message type"""
 
     return rx.match(
         message.type,
-        ("text", render_text_content(message)),
-        ("image", render_image_content(message)),
-        ("code", render_code_content(message)),
+        ("text", _text_content(message)),
+        ("image", _image_content(message)),
+        ("code", _code_content(message)),
         rx.text(f"Unsupported message type {message.type}.")
     )
 
 
-def render_text_content(message: ChatMessageText) -> rx.Component:
+def _text_content(message: ChatMessageText) -> rx.Component:
     """Render text message content"""
     return rx.markdown(
         message.content,
@@ -109,7 +108,7 @@ def render_text_content(message: ChatMessageText) -> rx.Component:
     )
 
 
-def render_image_content(message: ChatMessageImage) -> rx.Component:
+def _image_content(message: ChatMessageImage) -> rx.Component:
     """Render image message content"""
     return rx.vstack(
         rx.cond(
@@ -131,7 +130,7 @@ def render_image_content(message: ChatMessageImage) -> rx.Component:
     )
 
 
-def render_code_content(message: ChatMessageCode) -> rx.Component:
+def _code_content(message: ChatMessageCode) -> rx.Component:
     """Render code message content"""
     return rx.code_block(
         message.content,

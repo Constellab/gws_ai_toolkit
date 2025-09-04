@@ -10,9 +10,10 @@ from PIL import Image
 
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from .chat_message_class import (
-    ChatMessage, ChatMessageCode, ChatMessageImage, ChatMessageText)
+
 from ..history.conversation_history_state import ConversationHistoryState
+from .chat_message_class import (ChatMessage, ChatMessageCode,
+                                 ChatMessageImage, ChatMessageText)
 
 
 class ChatStateBase(rx.State, mixin=True):

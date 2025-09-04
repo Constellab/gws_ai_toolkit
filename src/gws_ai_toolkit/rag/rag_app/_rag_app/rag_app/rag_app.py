@@ -1,23 +1,16 @@
+
 import reflex as rx
 from gws_reflex_base import add_unauthorized_page, get_theme
-from gws_reflex_main import ReflexMainState
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.core.app_config_state import \
-    AppConfigState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_state import \
-    ConversationHistoryState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.rag_chat.config.rag_config_state import (
-    RagConfigState, RagConfigStateConfig)
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.navigation import navigation
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.rag_main_state import \
     RagAppState
 
-from .pages.ai_expert_page.ai_expert_page import ai_expert_page
-from .pages.ai_expert_page.ai_expert_state import AiExpertState
-from .pages.chat_page.chat_page import chat_page
-from .pages.config_page import config_page
-from .pages.history_page.history_page import history_page
-from .pages.history_page.history_page_state import HistoryPageState
-from .pages.resource_page import resource_page
+from .reflex import (AiExpertState, AppConfigState, ConversationHistoryState,
+                     HistoryState, RagConfigState, RagConfigStateConfig,
+                     ai_expert_component, ai_expert_config_component,
+                     history_component, rag_chat_component,
+                     rag_config_component)
 
 app = rx.App(
     theme=get_theme(),
@@ -40,9 +33,11 @@ async def _load_config(state: rx.State) -> RagConfigStateConfig:
     params = await base_state.get_params()
     return RagConfigStateConfig(
         rag_provider=params.get("rag_provider"),
-        dataset_id=params.get("dataset_id"),
         resource_sync_mode=params.get("resource_sync_mode"),
-        credentials_name=params.get("dataset_credentials_name"),
+        dataset_id=params.get("dataset_id"),
+        dataset_credentials_name=params.get("dataset_credentials_name"),
+        chat_id=params.get("chat_id"),
+        chat_credentials_name=params.get("chat_credentials_name"),
     )
 
 
@@ -52,28 +47,81 @@ ConversationHistoryState.set_loader(set_loader_from_param('history_file_path'))
 RagConfigState.set_loader(_load_config)
 
 
+def page_component(content: rx.Component) -> rx.Component:
+    """Wrap the page content with navigation and layout."""
+    return rx.vstack(
+        navigation(),
+        rx.box(
+            content,
+            display="flex",
+            width="100%",
+            flex="1",
+            padding="1em",
+            min_height="0",
+        ),
+        spacing="0",
+        width="100%",
+        height="100vh",
+    )
+
+
+def rag_chat_page() -> rx.Component:
+    """RAG Chat page component."""
+    return page_component(
+        rag_chat_component()
+    )
+
+
+def ai_expert_page() -> rx.Component:
+    """AI Expert page component for document-specific chat."""
+    return page_component(
+        ai_expert_component()
+    )
+
+
+def history_page() -> rx.Component:
+    """History page component."""
+    return page_component(
+        history_component()
+    )
+
+
+def rag_config_page() -> rx.Component:
+    """RAG Configuration page component."""
+    return page_component(
+        rag_config_component()
+    )
+
+
+def ai_expert_config_page() -> rx.Component:
+    """AI Expert Configuration page component."""
+    return page_component(
+        ai_expert_config_component()
+    )
+
+
 @rx.page(route="/")
 def index():
     """Main chat page."""
-    return chat_page()
+    return rag_chat_page()
 
 
 # Resource page - for resource and sync management
 @rx.page(route="/resource")
-def resource():
+def rag_config():
     """Resource page for managing RAG resources and sync."""
-    return resource_page()
+    return rag_config_page()
 
 
 # Configuration page - for AI Expert configurations
 @rx.page(route="/config")
-def config():
+def config_page():
     """Configuration page for AI Expert settings."""
-    return config_page()
+    return ai_expert_config_page()
 
 
 # History page - for conversation history
-@rx.page(route="/history", on_load=HistoryPageState.load_conversations)
+@rx.page(route="/history", on_load=HistoryState.load_conversations)
 def history():
     """History page for viewing conversation history."""
     return history_page()

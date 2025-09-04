@@ -2,7 +2,7 @@
 from typing import Awaitable, Callable, Optional, cast
 
 import reflex as rx
-from gws_core import BaseModelDTO, Credentials, CredentialsDataOther
+from gws_core import BaseModelDTO, Credentials, CredentialsDataOther, Logger
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import \
@@ -14,9 +14,11 @@ from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
 
 class RagConfigStateConfig(BaseModelDTO):
     rag_provider: RagProvider
-    dataset_id: str
     resource_sync_mode: RagResourceSyncMode
-    credentials_name: str
+    dataset_id: Optional[str]
+    dataset_credentials_name: Optional[str]
+    chat_id: Optional[str]
+    chat_credentials_name: Optional[str]
 
 
 class RagConfigState(rx.State):
@@ -36,9 +38,19 @@ class RagConfigState(rx.State):
     async def _get_config(self) -> RagConfigStateConfig:
         """Get the RAG configuration."""
         if not self._config:
-            if not RagConfigState._loader:
-                raise ValueError("Loader function is not set. Please call RagConfigState.set_loader")
-            self._config = await RagConfigState._loader(self)
+            if RagConfigState._loader:
+                self._config = await RagConfigState._loader(self)
+            else:
+                Logger.warning(
+                    "RagConfigState loader is not set. Using default configuration. This is normal during compilation")
+                return RagConfigStateConfig(
+                    rag_provider='ragflow',
+                    resource_sync_mode='tag',
+                    dataset_id=None,
+                    chat_id=None,
+                    dataset_credentials_name=None,
+                    chat_credentials_name=None,
+                )
 
         return self._config
 
@@ -46,22 +58,37 @@ class RagConfigState(rx.State):
         """Get the RAG provider."""
         return self._config.rag_provider
 
-    async def get_dataset_id(self) -> str:
+    async def get_dataset_id(self) -> Optional[str]:
         """Get the dataset ID."""
         return self._config.dataset_id
+
+    async def get_chat_id(self) -> Optional[str]:
+        """Get the chat ID."""
+        return self._config.chat_id
 
     async def get_resource_sync_mode(self) -> RagResourceSyncMode:
         """Get the resource sync mode."""
         return self._config.resource_sync_mode
 
-    async def get_credentials(self) -> Optional[CredentialsDataOther]:
+    async def get_dataset_credentials(self) -> Optional[CredentialsDataOther]:
         """Get the dataset credentials."""
         if not self._credentials:
             config = await self._get_config()
-            if not config.credentials_name:
+            if not config.dataset_credentials_name:
                 return None
-            ds_creds = Credentials.find_by_name_and_check(config.credentials_name)
+            ds_creds = Credentials.find_by_name_and_check(config.dataset_credentials_name)
             self._credentials = cast(CredentialsDataOther, ds_creds.get_data_object())
+
+        return self._credentials
+
+    async def get_chat_credentials(self) -> Optional[CredentialsDataOther]:
+        """Get the chat credentials."""
+        if not self._credentials:
+            config = await self._get_config()
+            if not config.chat_credentials_name:
+                return None
+            chat_creds = Credentials.find_by_name_and_check(config.chat_credentials_name)
+            self._credentials = cast(CredentialsDataOther, chat_creds.get_data_object())
 
         return self._credentials
 
@@ -71,7 +98,14 @@ class RagConfigState(rx.State):
 
     async def get_dataset_rag_app_service(self) -> Optional[BaseRagAppService]:
         """Get the DataHub RAG service for dataset operations."""
-        credentials = await self.get_credentials()
+        credentials = await self.get_dataset_credentials()
+        if not credentials:
+            return None
+        return await self._build_rag_app_service(credentials)
+
+    async def get_chat_rag_app_service(self) -> Optional[BaseRagAppService]:
+        """Get the DataHub RAG service for chat operations."""
+        credentials = await self.get_chat_credentials()
         if not credentials:
             return None
         return await self._build_rag_app_service(credentials)

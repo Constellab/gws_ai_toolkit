@@ -2,15 +2,12 @@ from typing import List, Optional
 
 import reflex as rx
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_class import \
-    ConversationHistory
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_state import \
-    ConversationHistoryState
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex.read_only_chat.read_only_chat_state import \
-    ReadOnlyChatState
+from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
+from .conversation_history_class import ConversationHistory
+from .conversation_history_state import ConversationHistoryState
 
 
-class HistoryPageState(rx.State):
+class HistoryState(rx.State):
     """State management for the history page."""
 
     # List of conversations to display in the left panel
