@@ -8,7 +8,24 @@ from .conversation_history_state import ConversationHistoryState
 
 
 class HistoryState(rx.State):
-    """State management for the history page."""
+    """State management for conversation history browsing interface.
+    
+    This state class manages the history page functionality, handling conversation
+    loading, selection, and display. It coordinates between the conversation list
+    sidebar and the read-only conversation display panel.
+    
+    Key Features:
+        - Conversation list loading and management
+        - Conversation selection and highlighting
+        - Integration with read-only chat display
+        - Loading state management
+        - Error handling for history operations
+        
+    State Attributes:
+        conversations (List[ConversationHistory]): All available conversations
+        selected_conversation_id (Optional[str]): Currently selected conversation
+        is_loading (bool): Loading state for conversation fetching
+    """
 
     # List of conversations to display in the left panel
     conversations: List[ConversationHistory] = []

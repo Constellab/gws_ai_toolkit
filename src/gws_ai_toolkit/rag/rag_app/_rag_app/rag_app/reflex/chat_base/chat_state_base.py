@@ -17,7 +17,43 @@ from .chat_message_class import (ChatMessage, ChatMessageCode,
 
 
 class ChatStateBase(rx.State, mixin=True):
-    """Protocol defining the interface that any chat state must implement"""
+    """Abstract base class for all chat state implementations.
+    
+    This class provides the foundation for all chat functionality in the application,
+    defining the common interface, state management, and core methods that all chat
+    implementations must provide. It handles message management, streaming responses,
+    user interactions, and conversation persistence.
+    
+    Key Features:
+        - Abstract interface for AI chat integration
+        - Message management and display
+        - Streaming response handling
+        - Form submission and validation
+        - Conversation history integration
+        - Error handling and user feedback
+        - Configurable UI properties
+        
+    State Attributes:
+        _chat_messages (List[ChatMessage]): Complete message history
+        _current_response_message (Optional[ChatMessage]): Currently streaming message
+        is_streaming (bool): Flag indicating if AI is currently responding
+        conversation_id (Optional[str]): Unique ID for conversation continuity
+        
+    UI Configuration:
+        title (str): Chat interface title
+        subtitle (Optional[str]): Optional subtitle text
+        placeholder_text (str): Input field placeholder
+        empty_state_message (str): Message shown when chat is empty
+        clear_button_text (str): Text for clear chat button
+        show_chat_code_block (bool): Whether to display code blocks
+        
+    Abstract Methods:
+        call_ai_chat(user_message): Must be implemented by subclasses to handle AI calls
+        
+    Usage:
+        Subclass this to create specific chat implementations like RAG chat or AI Expert.
+        Implement call_ai_chat() to integrate with your specific AI service.
+    """
 
     # Required properties
     _chat_messages: List[ChatMessage]

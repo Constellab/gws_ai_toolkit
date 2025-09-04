@@ -22,7 +22,22 @@ class RagConfigStateConfig(BaseModelDTO):
 
 
 class RagConfigState(rx.State):
-    """State to configure the RAG (Retrieval-Augmented Generation) settings.
+    """State management for RAG configuration and service integration.
+    
+    This state class manages the configuration of RAG services, handling provider
+    settings, credentials, dataset connections, and service instantiation. It serves
+    as the central point for RAG system configuration and provides service instances
+    to other components.
+    
+    Key Responsibilities:
+        - RAG provider configuration (Dify, RagFlow)
+        - Credentials management for external services
+        - Dataset and chat service configuration
+        - Service factory integration
+        - Resource synchronization mode settings
+        
+    The state uses a loader pattern for configuration and provides methods to
+    instantiate configured RAG services for use throughout the application.
     """
 
     _config: RagConfigStateConfig

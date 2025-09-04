@@ -9,8 +9,21 @@ from gws_core import BaseModelDTO, Logger
 
 
 class AppConfigState(rx.State):
-    """State class for managing the app configuration.
-    And it stores the configuration in a json file.
+    """Application configuration management state.
+    
+    This state class manages the application-wide configuration system,
+    handling loading, saving, and accessing configuration data from JSON files.
+    It provides a centralized configuration management system for all app settings.
+    
+    Features:
+        - JSON file-based configuration storage
+        - Dynamic configuration loading with custom loaders
+        - Section-based configuration management
+        - Type-safe configuration access
+        - Automatic serialization and deserialization
+        
+    The state uses a loader pattern to determine the configuration file path,
+    allowing different deployment scenarios and parameter-based configuration.
     """
 
     # Required properties

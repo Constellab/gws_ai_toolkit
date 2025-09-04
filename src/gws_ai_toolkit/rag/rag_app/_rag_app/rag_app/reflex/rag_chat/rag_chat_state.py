@@ -21,7 +21,25 @@ class RagChatStateConfig(BaseModelDTO):
 
 
 class RagChatState(ChatStateBase, rx.State):
-    """State management for the rag chat functionality."""
+    """State management for RAG (Retrieval Augmented Generation) chat functionality.
+    
+    This state class implements the main RAG chat system, providing intelligent
+    conversations enhanced with document knowledge from indexed sources. It integrates
+    with various RAG providers (Dify, RagFlow) and handles streaming responses with
+    source citations.
+    
+    Key Features:
+        - RAG-enhanced conversation with document knowledge
+        - Streaming AI responses with real-time updates
+        - Source citation and document references
+        - Integration with multiple RAG providers
+        - Conversation history and persistence
+        - Error handling and fallback mechanisms
+        
+    The state connects to configured RAG services and processes user queries
+    by retrieving relevant document chunks and generating contextual responses
+    with proper source attribution.
+    """
 
     _loader: Callable[[rx.State], Awaitable[RagChatStateConfig]] | None = None
 

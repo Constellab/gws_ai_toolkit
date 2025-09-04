@@ -8,7 +8,22 @@ from ..history.conversation_history_class import ConversationHistory
 
 
 class ReadOnlyChatState(ChatStateBase, rx.State):
-    """Read-only chat state for displaying historical conversations."""
+    """State management for read-only conversation display.
+    
+    This state class extends ChatStateBase to provide read-only viewing of
+    historical conversations. It prevents user input while maintaining full
+    message display functionality with proper styling and source citations.
+    
+    Key Features:
+        - Read-only conversation display
+        - Historical message rendering
+        - Configuration dialog integration
+        - Disabled user input handling
+        - Source citation display
+        
+    The state is initialized with historical conversation data and provides
+    viewing capabilities without allowing new messages or interactions.
+    """
 
     # Override UI configuration for read-only mode
     title: str = "Conversation History"

@@ -6,11 +6,35 @@ from .ai_expert_config_state import AiExpertConfigState
 
 
 def ai_expert_config_component() -> rx.Component:
-    """Component to configure AI Expert settings.
-    It uses the AiExpertConfigState for state management.
-
+    """AI Expert configuration interface component.
+    
+    This component provides a comprehensive form-based interface for configuring
+    all AI Expert settings including processing modes, AI model parameters, and
+    system prompts. It offers real-time validation and user-friendly explanations
+    for each configuration option.
+    
+    Features:
+        - Interactive mode selection (full_text_chunk, relevant_chunks, full_file)
+        - Dynamic form fields that show/hide based on selected mode
+        - Model and temperature configuration with validation
+        - System prompt editing with placeholder validation
+        - Chunk count configuration for relevant_chunks mode
+        - Real-time form validation and error feedback
+        - Success/error toast notifications
+        
+    The component uses AiExpertConfigState for state management, which handles:
+        - Configuration loading and saving
+        - Form validation and submission
+        - Dynamic field visibility based on mode selection
+        - Integration with the application configuration system
+        
     Returns:
-        _type_: rx.Component: The AI Expert configuration component.
+        rx.Component: Complete configuration interface with form fields, validation,
+            explanatory text, and submission handling for all AI Expert settings.
+            
+    Example:
+        config_ui = ai_expert_config_component()
+        # Renders a full configuration form with all AI Expert settings
     """
     return rx.vstack(
         rx.heading("AI Expert Configuration"),

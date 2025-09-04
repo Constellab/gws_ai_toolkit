@@ -6,11 +6,12 @@ from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.navigation import navigation
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.rag_main_state import \
     RagAppState
 
-from .reflex import (AiExpertState, AppConfigState, ConversationHistoryState,
-                     HistoryState, RagConfigState, RagConfigStateConfig,
-                     ai_expert_component, ai_expert_config_component,
-                     history_component, rag_chat_component,
-                     rag_config_component)
+from .reflex import (AiExpertState, AppConfigState, ChatConfig,
+                     ConversationHistoryState, HistoryState, RagChatState,
+                     RagConfigState, RagConfigStateConfig, ai_expert_component,
+                     ai_expert_config_component, history_component,
+                     rag_chat_component, rag_config_component,
+                     sources_list_component)
 
 app = rx.App(
     theme=get_theme(),
@@ -67,8 +68,14 @@ def page_component(content: rx.Component) -> rx.Component:
 
 def rag_chat_page() -> rx.Component:
     """RAG Chat page component."""
+    chat_config = ChatConfig(
+        state=RagChatState,
+        sources_component=sources_list_component,
+        left_section=rx.box(rx.text("Left Section"), bg="gray.100", height="100%"),
+    )
+
     return page_component(
-        rag_chat_component()
+        rag_chat_component(chat_config)
     )
 
 

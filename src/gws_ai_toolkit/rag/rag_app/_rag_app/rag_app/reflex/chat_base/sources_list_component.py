@@ -8,7 +8,19 @@ from .chat_state_base import ChatStateBase
 
 
 def _source_item(source: RagChatSource, state: ChatStateBase) -> rx.Component:
-    """Display a single source item with click functionality."""
+    """Individual source item with document info and action menu.
+    
+    Renders a single source citation with document name, relevance score,
+    and dropdown menu for actions like opening in AI Expert or viewing
+    the original document.
+    
+    Args:
+        source (RagChatSource): Source citation with document metadata
+        state (ChatStateBase): Chat state for handling actions
+        
+    Returns:
+        rx.Component: Formatted source item with name, score, and actions menu
+    """
     return rx.box(
         rx.hstack(
             rx.icon("file-text", size=16),
@@ -40,7 +52,31 @@ def _source_item(source: RagChatSource, state: ChatStateBase) -> rx.Component:
 
 
 def sources_list_component(sources: List[RagChatSource], state: ChatStateBase) -> rx.Component:
-    """Component to display sources in an expandable section."""
+    """Expandable sources panel for RAG chat responses.
+    
+    This component displays source documents and citations for RAG-enhanced
+    chat responses, providing users with transparency about the information
+    sources and enabling navigation to source documents or AI Expert analysis.
+    
+    Features:
+        - Expandable accordion interface for space efficiency
+        - Source document names and relevance scores
+        - Action menu for each source (AI Expert, Open Document)
+        - Professional styling with icons and proper spacing
+        - Conditional display (only shows when sources exist)
+        
+    Args:
+        sources (List[RagChatSource]): List of source citations from RAG response
+        state (ChatStateBase): Chat state for handling source interactions
+        
+    Returns:
+        rx.Component: Conditional accordion component displaying sources with
+            action menus, or empty component if no sources provided.
+            
+    Example:
+        sources_panel = sources_list_component(rag_sources, chat_state)
+        # Shows expandable "Sources" section with clickable source items
+    """
     return rx.cond(
         sources,
         rx.accordion.root(

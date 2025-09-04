@@ -8,7 +8,31 @@ from .ai_expert_config import AiExpertChatMode, AiExpertConfig
 
 
 class AiExpertConfigState(rx.State):
-    """State management for the AI Expert functionality - specialized chat for a specific document."""
+    """State management for AI Expert configuration interface.
+    
+    This state class manages the configuration form for AI Expert functionality,
+    handling user interactions, form validation, and configuration persistence.
+    It provides a bridge between the UI configuration form and the application's
+    configuration system.
+    
+    The state manages:
+        - Form field values and validation
+        - Dynamic field visibility based on mode selection
+        - Configuration loading from and saving to the application config
+        - Form submission handling with error management
+        - Real-time updates for reactive form elements
+        
+    Key Features:
+        - Async configuration loading and saving
+        - Form validation with user-friendly error messages
+        - Dynamic form behavior (fields show/hide based on selections)
+        - Integration with AppConfigState for persistence
+        - Toast notifications for user feedback
+        
+    Attributes:
+        current_form_mode (AiExpertChatMode): Currently selected mode in the form,
+            used for dynamic field visibility and validation.
+    """
 
     current_form_mode: AiExpertChatMode = 'full_file'
 

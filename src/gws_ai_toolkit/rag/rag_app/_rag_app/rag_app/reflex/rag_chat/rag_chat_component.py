@@ -7,14 +7,45 @@ from ..chat_base.sources_list_component import sources_list_component
 
 
 def rag_chat_component(chat_config: ChatConfig | None = None) -> rx.Component:
-    """RAG Chat component for document-specific chat.
-    It uses the RagChatState for state management.
-
+    """RAG Chat component for Retrieval Augmented Generation conversations.
+    
+    This component provides a complete chat interface that integrates with RAG services
+    to enable conversations with knowledge from indexed documents. It supports streaming
+    responses, source citations, and real-time interaction with the configured RAG provider
+    (Dify or RagFlow).
+    
+    Features:
+        - Real-time streaming chat with RAG-enhanced responses
+        - Source document citations and references
+        - Message history persistence
+        - Configurable RAG provider integration
+        - Responsive UI with message list and input components
+        
+    The component uses RagChatState for state management, which handles:
+        - Communication with RAG services
+        - Message streaming and display
+        - Source document retrieval and display
+        - Configuration management
+    
     Args:
-        chat_config (ChatConfig | None, optional): Custom ChatConfig to override the defaults. Defaults to None.
+        chat_config (ChatConfig | None, optional): Custom ChatConfig to override the defaults.
+            If None, creates a default configuration with RagChatState and sources_list_component.
+            The ChatConfig allows customization of the state class and UI components used.
 
     Returns:
-        rx.Component: The RAG Chat component.
+        rx.Component: The complete RAG Chat component including message list, input field,
+            and source references panel.
+            
+    Example:
+        # Use with default configuration
+        component = rag_chat_component()
+        
+        # Use with custom configuration
+        custom_config = ChatConfig(
+            state=RagChatState,
+            sources_component=custom_sources_component
+        )
+        component = rag_chat_component(custom_config)
     """
 
     if not chat_config:

@@ -19,7 +19,39 @@ from .ai_expert_config_state import AiExpertConfigState
 
 
 class AiExpertState(ChatStateBase, rx.State):
-    """State management for the AI Expert functionality - specialized chat for a specific document."""
+    """State management for AI Expert - specialized document-focused chat functionality.
+    
+    This state class manages the complete AI Expert workflow, providing intelligent
+    conversation capabilities focused on a specific document. It integrates with
+    OpenAI's API to provide document analysis, question answering, and interactive
+    exploration of document content using multiple processing modes.
+    
+    Key Features:
+        - Document-specific chat with full context awareness
+        - Multiple processing modes (full_file, relevant_chunks, full_text_chunk)
+        - OpenAI integration with streaming responses
+        - File upload to OpenAI for advanced analysis
+        - Document chunk retrieval and processing
+        - Conversation history persistence
+        - Error handling and user feedback
+        
+    Processing Modes:
+        - full_file: Uploads entire document to OpenAI with code interpreter access
+        - relevant_chunks: Retrieves only most relevant document chunks for the query
+        - full_text_chunk: Includes all document chunks as text in the AI prompt
+        
+    State Attributes:
+        current_doc_id (str): ID of the currently loaded document
+        openai_file_id (Optional[str]): OpenAI file ID when document is uploaded
+        _current_rag_resource (Optional[RagResource]): Loaded document resource
+        _document_chunks_text (dict[int, str]): Cached document chunks by max_chunks
+        
+    Inherits from ChatStateBase providing:
+        - Message management and streaming
+        - Chat history and persistence  
+        - UI state management (title, placeholder, etc.)
+        - Common chat functionality
+    """
 
     # Document context
     current_doc_id: str = ""
@@ -418,13 +450,13 @@ class AiExpertState(ChatStateBase, rx.State):
 
         # Build configuration dictionary with AI Expert specific settings
         configuration = {
-            "expert_mode": expert_config.mode if expert_config.mode else None,
-            "model": expert_config.model if expert_config.model else None,
-            "temperature": expert_config.temperature if expert_config.temperature else None,
-            "document_id": self.current_doc_id if self.current_doc_id else None,
-            "document_name": self.document_name if self.document_name else None,
-            "system_prompt": expert_config.system_prompt if expert_config.system_prompt else None,
-            "max_chunks": expert_config.max_chunks if hasattr(expert_config, 'max_chunks') else None,
+            "expert_mode": expert_config.mode,
+            "model": expert_config.model,
+            "temperature": expert_config.temperature,
+            "document_id": self.current_doc_id,
+            "document_name": self.document_name,
+            "system_prompt": expert_config.system_prompt,
+            "max_chunks": expert_config.max_chunks,
         }
 
         # Save conversation to history after response is completed
