@@ -65,9 +65,6 @@ class DeleteExpiredDocumentsDialogState(rx.State):
             self.delete_documents_progress = -1
             config_state = await self.get_state(RagConfigState)
 
-        if not await config_state.check_authentication():
-            raise Exception("User not authenticated")
-
         rag_service = await config_state.get_dataset_rag_app_service()
 
         documents_to_delete = rag_service.get_rag_documents_to_delete()

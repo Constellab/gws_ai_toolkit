@@ -204,7 +204,8 @@ def _conversation_display() -> rx.Component:
                 align_items="center",
                 justify_content="center",
                 height="100%",
-                text_align="center"
+                text_align="center",
+                width="100%",
             )
         ),
         flex="1",

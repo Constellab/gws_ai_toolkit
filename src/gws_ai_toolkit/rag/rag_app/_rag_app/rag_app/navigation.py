@@ -17,7 +17,7 @@ def navigation() -> rx.Component:
     return rx.box(
         rx.hstack(
             navbar_link("Chat", "message-circle", "/"),
-            navbar_link("Resources", "database", "/resource"),
+            navbar_link("Resources", "database", "/rag-config"),
             navbar_link("Config", "settings", "/config"),
             navbar_link("History", "clock", "/history"),
             spacing="5",

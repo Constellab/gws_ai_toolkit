@@ -3,7 +3,7 @@ import reflex as rx
 from gws_reflex_base import add_unauthorized_page, get_theme
 
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.navigation import navigation
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.states.rag_main_state import \
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.rag_main_state import \
     RagAppState
 
 from .reflex import (AiExpertState, AppConfigState, ConversationHistoryState,
@@ -107,7 +107,7 @@ def index():
 
 
 # Resource page - for resource and sync management
-@rx.page(route="/resource")
+@rx.page(route="/rag-config")
 def rag_config():
     """Resource page for managing RAG resources and sync."""
     return rag_config_page()

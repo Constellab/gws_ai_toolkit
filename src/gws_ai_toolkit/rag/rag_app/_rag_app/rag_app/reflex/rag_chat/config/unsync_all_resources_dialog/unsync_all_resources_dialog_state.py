@@ -62,9 +62,6 @@ class UnsyncAllResourcesDialogState(rx.State):
             self.unsync_resource_progress = -1
             config_state = await self.get_state(RagConfigState)
 
-        if not await config_state.check_authentication():
-            raise Exception("User not authenticated")
-
         rag_service = await config_state.get_dataset_rag_app_service()
 
         resources_to_unsync = rag_service.get_all_synced_resources()

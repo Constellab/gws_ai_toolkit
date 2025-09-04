@@ -7,11 +7,8 @@ import reflex as rx
 from gws_core.core.utils.logger import Logger
 
 from ..chat_base.chat_message_class import ChatMessage
-
 from .conversation_history_class import (ConversationFullHistory,
                                          ConversationHistory)
-
-# from gws_reflex_main import ReflexMainState
 
 
 class ConversationHistoryState(rx.State):
