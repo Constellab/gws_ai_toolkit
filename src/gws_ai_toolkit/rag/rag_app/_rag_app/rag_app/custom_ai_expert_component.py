@@ -1,10 +1,13 @@
 
+from typing import Type
+
 import reflex as rx
 
-from .custom_ai_expert_state import CustomAiExpertState, ResourceDTO
+from .custom_ai_expert_state import AssociatedResourceState, ResourceDTO
+from .reflex import ChatStateBase
 
 
-def _resource_item(resource: ResourceDTO, state: CustomAiExpertState) -> rx.Component:
+def _resource_item(resource: ResourceDTO, state: AssociatedResourceState) -> rx.Component:
     """Individual resource item with document info and action menu.
 
     Renders a single resource with document name and dropdown menu
@@ -67,7 +70,7 @@ def _resource_item(resource: ResourceDTO, state: CustomAiExpertState) -> rx.Comp
     )
 
 
-def custom_left_sidebar(state: CustomAiExpertState) -> rx.Component:
+def custom_left_sidebar(_: ChatStateBase, state: Type[AssociatedResourceState]) -> rx.Component:
     """Left sidebar component with associated documents list."""
     return rx.box(
         rx.cond(
@@ -84,4 +87,5 @@ def custom_left_sidebar(state: CustomAiExpertState) -> rx.Component:
             ),
         ),
         padding="4",
+        on_mount=state.load_linked_resources,
     )

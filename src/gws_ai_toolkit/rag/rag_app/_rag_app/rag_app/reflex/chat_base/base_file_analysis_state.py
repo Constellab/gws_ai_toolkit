@@ -12,7 +12,7 @@ from .chat_message_class import ChatMessage, ChatMessageImage, ChatMessageText
 from .chat_state_base import ChatStateBase
 
 
-class BaseFileAnalysisState(ChatStateBase):
+class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
     """Abstract base class for file-based AI analysis (documents, tables, etc.)
 
     This class provides the foundation for all file analysis functionality,
@@ -99,34 +99,12 @@ class BaseFileAnalysisState(ChatStateBase):
         """
         pass
 
-    async def load_resource_from_url(self):
-        """Handle page load - get resource ID from router state"""
-        # Get the dynamic route parameter - different subclasses may use different parameter names
-        resource_id = self.object_id if hasattr(self, 'object_id') else None
-
-        if self.current_file_id and self.current_file_id != resource_id:
-            # Reset chat if loading a different file
-            self.clear_chat()
-
-        if resource_id and str(resource_id).strip():
-            await self.load_resource(str(resource_id))
-
     def _get_openai_client(self) -> OpenAI:
         """Get OpenAI client with API key"""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OpenAI API key is not set")
         return OpenAI(api_key=api_key)
-
-    async def load_resource(self, resource_id: str):
-        """Load the file resource from DataHub and prepare for chat"""
-        self.current_file_id = resource_id
-
-        # Load the resource model directly
-        resource_model = self._load_resource_from_id(resource_id)
-
-        self._current_resource_model = resource_model
-        self.subtitle = resource_model.name
 
     async def handle_output_text_delta(self, event):
         """Handle response.output_text.delta event"""
@@ -203,12 +181,13 @@ class BaseFileAnalysisState(ChatStateBase):
         if self.openai_file_id:
             return self.openai_file_id
 
-        if not self._current_resource_model:
+        resource_model = await self.get_current_resource_model()
+        if not resource_model:
             raise ValueError("No resource loaded")
 
         client = self._get_openai_client()
 
-        file = cast(File, self._current_resource_model.get_resource())
+        file = cast(File, resource_model.get_resource())
 
         # Upload file to OpenAI
         with open(file.path, "rb") as f:
@@ -260,8 +239,9 @@ class BaseFileAnalysisState(ChatStateBase):
     @rx.event
     async def open_current_resource_file(self):
         """Open the current resource file."""
-        if self._current_resource_model:
-            return await self.open_document_from_resource(self._current_resource_model.id)
+        resource_model = await self.get_current_resource_model()
+        if resource_model:
+            return await self.open_document_from_resource(resource_model.id)
         return None
 
     async def close_current_message(self):
@@ -276,17 +256,40 @@ class BaseFileAnalysisState(ChatStateBase):
         async with self:
             config = await self.get_config()
 
+        resource = await self.get_current_resource_model()
+
         # Build configuration dictionary with analysis-specific settings
         configuration = {
             "analysis_type": self.get_analysis_type(),
-            "resource_id": self._current_resource_model.id,
-            "file_name": self._current_resource_model.name,
+            "resource_id": resource.id,
+            "file_name": resource.name,
             "config": config.to_json_dict()
         }
 
         # Save conversation to history after response is completed
         await self.save_conversation_to_history(self.get_analysis_type(), configuration)
 
-    def get_current_resource_model(self) -> Optional[ResourceModel]:
+    async def get_current_resource_model(self) -> Optional[ResourceModel]:
         """Get the currently loaded resource model."""
+        if not self._current_resource_model:
+            self._current_resource_model = await self._load_resource_from_url()
+
         return self._current_resource_model
+
+    async def _load_resource_from_url(self) -> Optional[ResourceModel]:
+        """Handle page load - get resource ID from router state"""
+        # Get the dynamic route parameter - different subclasses may use different parameter names
+        resource_id = self.object_id if hasattr(self, 'object_id') else None
+
+        if self.current_file_id and self.current_file_id != resource_id:
+            # Reset chat if loading a different file
+            self.clear_chat()
+
+        if resource_id and str(resource_id).strip():
+            self.current_file_id = resource_id
+            resource_model = self._load_resource_from_id(resource_id)
+
+            self.subtitle = resource_model.name
+            return resource_model
+
+        return None

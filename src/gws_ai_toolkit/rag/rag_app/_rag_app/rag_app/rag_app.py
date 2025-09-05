@@ -3,13 +3,14 @@ from gws_reflex_base import add_unauthorized_page, get_theme
 
 from .config_page import combined_config_page
 from .custom_ai_expert_component import custom_left_sidebar
-from .custom_ai_expert_state import CustomAiExpertState
+from .custom_ai_expert_state import (CustomAssociatedResourceAiExpertState,
+                                     CustomAssociatedResourceAiTableState)
 # Import custom states to let reflex instantiate them
 from .custom_states import (CustomAppConfigState,
                             CustomConversationHistoryState,
                             CustomRagConfigState)
 from .navigation import navigation
-from .reflex import (AiTableState, ChatConfig, HistoryState,
+from .reflex import (AiExpertState, AiTableState, ChatConfig, HistoryState,
                      ai_expert_component,
                      ai_expert_header_default_buttons_component,
                      ai_table_component, history_component, rag_chat_component,
@@ -75,13 +76,13 @@ def history():
 
 
 # AI Expert page - document-specific chat
-@rx.page(route="/ai-expert/[object_id]", on_load=[CustomAiExpertState.load_resource_from_url])
+@rx.page(route="/ai-expert/[object_id]", on_load=[AiExpertState.load_resource_from_url])
 def ai_expert():
     """AI Expert page for document-specific chat."""
     config = ChatConfig(
-        state=CustomAiExpertState,
+        state=AiExpertState,
         header_buttons=ai_expert_header_default_buttons_component,
-        left_section=custom_left_sidebar
+        left_section=lambda x: custom_left_sidebar(x, CustomAssociatedResourceAiExpertState)
     )
     return page_component(
         ai_expert_component(config)
@@ -89,11 +90,16 @@ def ai_expert():
 
 
 # AI Table page - Excel/CSV-specific data analysis
-@rx.page(route="/ai-table/[object_id]", on_load=[AiTableState.load_resource_from_url])
+@rx.page(route="/ai-table/[object_id]")
 def ai_table():
     """AI Table page for Excel/CSV data analysis."""
+    config = ChatConfig(
+        state=AiTableState,
+        header_buttons=ai_expert_header_default_buttons_component,
+        left_section=lambda x: custom_left_sidebar(x, CustomAssociatedResourceAiTableState)
+    )
     return page_component(
-        ai_table_component()
+        ai_table_component(config)
     )
 
 

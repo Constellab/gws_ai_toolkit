@@ -1,13 +1,16 @@
 
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import List
 
 import reflex as rx
-from gws_core import BaseModelDTO, Logger, ResourceModel, ResourceSearchBuilder
+from gws_core import (BaseModelDTO, EntityTagList, Logger, ResourceModel,
+                      ResourceSearchBuilder, TagEntityType)
 
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
-from .reflex import AiExpertState
+from .reflex import AiExpertState, AiTableState
+from .reflex.chat_base.base_file_analysis_state import BaseFileAnalysisState
 
 
 @dataclass
@@ -24,26 +27,35 @@ class ResourceDTO(BaseModelDTO):
     is_excel: bool = False
 
 
-class CustomAiExpertState(AiExpertState):
+class AssociatedResourceState(rx.State, mixin=True):
 
     _linked_resources: List[FullResourceDTO] = []
 
-    async def load_resource_from_url(self):
-        print('Loading resource from URL in CustomAiExpertState')
-        parent_state = await self.get_state(AiExpertState)
+    @abstractmethod
+    async def get_file_state(self) -> BaseFileAnalysisState:
+        """Get the file analysis state instance."""
+        pass
 
-        await parent_state.load_resource_from_url()
+    async def load_linked_resources(self) -> None:
 
-        current_resource = parent_state.get_current_rag_resource()
-        if not current_resource:
-            Logger.warning("No resource found in URL")
+        if self._linked_resources:
             return
 
-        resource_tags = current_resource.get_tags()
+        file_state = await self.get_file_state()
 
-        study_tags = resource_tags.get_tags_by_key("study")
+        resource = await file_state.get_current_resource_model()
+
+        if not resource:
+            Logger.warning("No resource found in state")
+            # self._linked_resources = []
+            return
+
+        tags = EntityTagList.find_by_entity(TagEntityType.RESOURCE, resource.id)
+
+        study_tags = tags.get_tags_by_key("study")
         if not study_tags:
             Logger.warning("No study tag found on resource")
+            # self._linked_resources = []
             return
 
         study_tag = study_tags[0].to_simple_tag()
@@ -64,7 +76,7 @@ class CustomAiExpertState(AiExpertState):
         self._linked_resources = linked_resources
 
     @rx.var
-    def linked_resources_data(self) -> List[ResourceDTO]:
+    async def linked_resources_data(self) -> List[ResourceDTO]:
         return [
             ResourceDTO(
                 id=res.rag_resource.get_id(),
@@ -87,4 +99,19 @@ class CustomAiExpertState(AiExpertState):
     @rx.event
     async def open_document_from_resource(self, resource_id: str):
         """Redirect the user to an external URL for a specific resource."""
-        return await super().open_document_from_resource(resource_id)
+        ai_expert_state = await self.get_file_state()
+        return await ai_expert_state.open_document_from_resource(resource_id)
+
+
+class CustomAssociatedResourceAiExpertState(AssociatedResourceState, rx.State):
+    """Custom AI Expert state with associated resource functionality."""
+
+    async def get_file_state(self) -> BaseFileAnalysisState:
+        return await self.get_state(AiExpertState)
+
+
+class CustomAssociatedResourceAiTableState(AssociatedResourceState, rx.State):
+    """Custom AI Table state with associated resource functionality."""
+
+    async def get_file_state(self) -> BaseFileAnalysisState:
+        return await self.get_state(AiTableState)

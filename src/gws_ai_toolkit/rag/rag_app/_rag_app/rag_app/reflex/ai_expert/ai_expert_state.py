@@ -1,18 +1,12 @@
-import io
-import os
-from typing import Optional, Union
+from typing import Optional
 
 import reflex as rx
-from gws_core import File, Logger, ResourceModel
-from openai import OpenAI
-from PIL import Image
+from gws_core import ResourceModel
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
 from ..chat_base.base_file_analysis_state import BaseFileAnalysisState
-from ..chat_base.chat_message_class import (ChatMessage, ChatMessageImage,
-                                            ChatMessageText)
 from ..rag_chat.config.rag_config_state import RagConfigState
 from .ai_expert_config import AiExpertConfig
 from .ai_expert_config_state import AiExpertConfigState
@@ -103,7 +97,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
                 self._document_chunks_text = {}
 
         # Call parent implementation which handles the common loading logic
-        await super().load_resource_from_url()
+        await super()._load_resource_from_url()
 
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from OpenAI about the document with AI Expert specific modes"""

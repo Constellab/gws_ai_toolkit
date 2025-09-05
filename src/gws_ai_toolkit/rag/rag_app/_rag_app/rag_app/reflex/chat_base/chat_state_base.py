@@ -17,7 +17,7 @@ from .chat_message_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageImage, ChatMessageText)
 
 
-class ChatStateBase(ReflexMainState, mixin=True):
+class ChatStateBase(ReflexMainState, rx.State, mixin=True):
     """Abstract base class for all chat state implementations.
 
     This class provides the foundation for all chat functionality in the application,
@@ -241,7 +241,7 @@ class ChatStateBase(ReflexMainState, mixin=True):
                     messages=self._chat_messages,
                     mode=mode,
                     configuration=configuration
-                ) >
+                )
         except Exception as e:
             Logger.error(f"Error saving conversation to history: {e}")
             Logger.log_exception_stack_trace(e)
