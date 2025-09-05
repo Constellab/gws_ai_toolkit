@@ -6,6 +6,7 @@ import reflex as rx
 from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
                       ShareLinkEntityType, ShareLinkService)
 from gws_core.core.utils.logger import Logger
+from gws_reflex_main import ReflexMainState
 from PIL import Image
 
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
@@ -16,14 +17,14 @@ from .chat_message_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageImage, ChatMessageText)
 
 
-class ChatStateBase(rx.State, mixin=True):
+class ChatStateBase(ReflexMainState, mixin=True):
     """Abstract base class for all chat state implementations.
-    
+
     This class provides the foundation for all chat functionality in the application,
     defining the common interface, state management, and core methods that all chat
     implementations must provide. It handles message management, streaming responses,
     user interactions, and conversation persistence.
-    
+
     Key Features:
         - Abstract interface for AI chat integration
         - Message management and display
@@ -32,13 +33,13 @@ class ChatStateBase(rx.State, mixin=True):
         - Conversation history integration
         - Error handling and user feedback
         - Configurable UI properties
-        
+
     State Attributes:
         _chat_messages (List[ChatMessage]): Complete message history
         _current_response_message (Optional[ChatMessage]): Currently streaming message
         is_streaming (bool): Flag indicating if AI is currently responding
         conversation_id (Optional[str]): Unique ID for conversation continuity
-        
+
     UI Configuration:
         title (str): Chat interface title
         subtitle (Optional[str]): Optional subtitle text
@@ -46,10 +47,10 @@ class ChatStateBase(rx.State, mixin=True):
         empty_state_message (str): Message shown when chat is empty
         clear_button_text (str): Text for clear chat button
         show_chat_code_block (bool): Whether to display code blocks
-        
+
     Abstract Methods:
         call_ai_chat(user_message): Must be implemented by subclasses to handle AI calls
-        
+
     Usage:
         Subclass this to create specific chat implementations like RAG chat or AI Expert.
         Implement call_ai_chat() to integrate with your specific AI service.
@@ -234,13 +235,13 @@ class ChatStateBase(rx.State, mixin=True):
         try:
             history_state: ConversationHistoryState
             async with self:
-                history_state = await self.get_state(ConversationHistoryState)
-            await history_state.add_conversation(
-                conversation_id=self.conversation_id,
-                messages=self._chat_messages,
-                mode=mode,
-                configuration=configuration
-            )
+                history_state = await ConversationHistoryState.get_instance(self)
+                await history_state.add_conversation(
+                    conversation_id=self.conversation_id,
+                    messages=self._chat_messages,
+                    mode=mode,
+                    configuration=configuration
+                ) >
         except Exception as e:
             Logger.error(f"Error saving conversation to history: {e}")
             Logger.log_exception_stack_trace(e)

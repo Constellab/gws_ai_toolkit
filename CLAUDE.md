@@ -65,6 +65,7 @@ All RAG services implement the `BaseRagService` abstract class with these key me
     - `chat/chat_state.py` (state management)
 - Use state management effectively to handle application state
 - Keep UI components reusable and maintainable
+- All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import ai_expert_config_component` instead of `from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex import ai_expert_config_component`
 
 ### Start RAG app
 - Run the RAG app locally: `gws reflex run-dev src/gws_ai_toolkit/rag/rag_app/_rag_app/dev_config.json` 

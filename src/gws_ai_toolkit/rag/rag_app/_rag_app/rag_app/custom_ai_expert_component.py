@@ -1,8 +1,7 @@
 
 import reflex as rx
 
-from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.custom_ai_expert_state import (
-    CustomAiExpertState, ResourceDTO)
+from .custom_ai_expert_state import CustomAiExpertState, ResourceDTO
 
 
 def _resource_item(resource: ResourceDTO, state: CustomAiExpertState) -> rx.Component:
@@ -54,7 +53,8 @@ def _resource_item(resource: ResourceDTO, state: CustomAiExpertState) -> rx.Comp
                         resource.is_excel,
                         rx.menu.item(
                             rx.icon("table", size=16),
-                            "Open excel AI Expert",
+                            "Open Excel AI Table",
+                            on_click=lambda: state.open_ai_table_from_resource(resource.id),
                             cursor='pointer'
                         ),
                     )

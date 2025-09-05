@@ -80,6 +80,11 @@ class CustomAiExpertState(AiExpertState):
         return rx.redirect(f"/ai-expert/{resource_id}")
 
     @rx.event
+    def open_ai_table_from_resource(self, resource_id: str):
+        """Redirect the user to the AI Table page for a specific Excel/CSV resource."""
+        return rx.redirect(f"/ai-table/{resource_id}")
+
+    @rx.event
     async def open_document_from_resource(self, resource_id: str):
         """Redirect the user to an external URL for a specific resource."""
         return await super().open_document_from_resource(resource_id)

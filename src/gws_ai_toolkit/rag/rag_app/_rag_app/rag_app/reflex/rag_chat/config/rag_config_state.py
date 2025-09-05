@@ -1,8 +1,8 @@
-
-from typing import Awaitable, Callable, Optional, cast
+from abc import abstractmethod
+from typing import Optional, cast
 
 import reflex as rx
-from gws_core import BaseModelDTO, Credentials, CredentialsDataOther, Logger
+from gws_core import BaseModelDTO, Credentials, CredentialsDataOther
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import \
@@ -10,6 +10,8 @@ from gws_ai_toolkit.rag.common.rag_app_service_factory import \
 from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
                                                  RagResourceSyncMode)
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
+
+from ...core.utils import Utils
 
 
 class RagConfigStateConfig(BaseModelDTO):
@@ -21,7 +23,7 @@ class RagConfigStateConfig(BaseModelDTO):
     chat_credentials_name: Optional[str]
 
 
-class RagConfigState(rx.State):
+class RagConfigState(rx.State, mixin=True):
     """State management for RAG configuration and service integration.
     
     This state class manages the configuration of RAG services, handling provider
@@ -36,59 +38,48 @@ class RagConfigState(rx.State):
         - Service factory integration
         - Resource synchronization mode settings
         
-    The state uses a loader pattern for configuration and provides methods to
+    The state uses a mixin pattern for configuration and provides methods to
     instantiate configured RAG services for use throughout the application.
     """
 
-    _config: RagConfigStateConfig
+    _rag_config: RagConfigStateConfig
     _credentials: CredentialsDataOther
 
-    _loader: Callable[[rx.State], Awaitable[RagConfigStateConfig]] | None = None
+    @abstractmethod
+    async def _get_rag_config_data(self) -> RagConfigStateConfig:
+        """Override this method to specify how to get RAG configuration."""
+        pass
 
-    @classmethod
-    def set_loader(cls, loader: Callable[[rx.State], Awaitable[RagConfigStateConfig]]) -> None:
-        """Set the loader function to get the path of the config file."""
-        cls._loader = loader
-
-    async def _get_config(self) -> RagConfigStateConfig:
+    async def get_rag_config(self) -> RagConfigStateConfig:
         """Get the RAG configuration."""
-        if not self._config:
-            if RagConfigState._loader:
-                self._config = await RagConfigState._loader(self)
-            else:
-                Logger.warning(
-                    "RagConfigState loader is not set. Using default configuration. This is normal during compilation")
-                return RagConfigStateConfig(
-                    rag_provider='ragflow',
-                    resource_sync_mode='tag',
-                    dataset_id=None,
-                    chat_id=None,
-                    dataset_credentials_name=None,
-                    chat_credentials_name=None,
-                )
-
-        return self._config
+        if not self._rag_config:
+            self._rag_config = await self._get_rag_config_data()
+        return self._rag_config
 
     async def get_rag_provider(self) -> RagProvider:
         """Get the RAG provider."""
-        return self._config.rag_provider
+        config = await self.get_rag_config()
+        return config.rag_provider
 
     async def get_dataset_id(self) -> Optional[str]:
         """Get the dataset ID."""
-        return self._config.dataset_id
+        config = await self.get_rag_config()
+        return config.dataset_id
 
     async def get_chat_id(self) -> Optional[str]:
         """Get the chat ID."""
-        return self._config.chat_id
+        config = await self.get_rag_config()
+        return config.chat_id
 
     async def get_resource_sync_mode(self) -> RagResourceSyncMode:
         """Get the resource sync mode."""
-        return self._config.resource_sync_mode
+        config = await self.get_rag_config()
+        return config.resource_sync_mode
 
     async def get_dataset_credentials(self) -> Optional[CredentialsDataOther]:
         """Get the dataset credentials."""
         if not self._credentials:
-            config = await self._get_config()
+            config = await self.get_rag_config()
             if not config.dataset_credentials_name:
                 return None
             ds_creds = Credentials.find_by_name_and_check(config.dataset_credentials_name)
@@ -99,7 +90,7 @@ class RagConfigState(rx.State):
     async def get_chat_credentials(self) -> Optional[CredentialsDataOther]:
         """Get the chat credentials."""
         if not self._credentials:
-            config = await self._get_config()
+            config = await self.get_rag_config()
             if not config.chat_credentials_name:
                 return None
             chat_creds = Credentials.find_by_name_and_check(config.chat_credentials_name)
@@ -109,7 +100,7 @@ class RagConfigState(rx.State):
 
     def set_config(self, config: RagConfigStateConfig):
         """Set the RAG configuration."""
-        self._config = config
+        self._rag_config = config
 
     async def get_dataset_rag_app_service(self) -> Optional[BaseRagAppService]:
         """Get the DataHub RAG service for dataset operations."""
@@ -132,5 +123,18 @@ class RagConfigState(rx.State):
             return None
         rag_service = RagServiceFactory.create_service(provider, credentials)
 
+        dataset_id = await self.get_dataset_id()
         return RagAppServiceFactory.create_service(await self.get_resource_sync_mode(),
-                                                   rag_service, await self.get_dataset_id())
+                                                   rag_service, dataset_id or "")
+
+    @staticmethod
+    async def get_instance(state: rx.State) -> 'RagConfigState':
+        """Get the RagConfigState instance from any state."""
+
+        config_state = await Utils.get_first_state_of_type(state, RagConfigState)
+
+        if config_state:
+            return config_state
+        else:
+            raise ValueError(
+                "RagConfigState subclass not found. You must define a subclass of RagConfigState in your app to configure it.")

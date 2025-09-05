@@ -1,7 +1,7 @@
 from typing import cast
 
 import reflex as rx
-from gws_core.core.utils.logger import Logger
+from gws_core import Logger
 
 from ..core.app_config_state import AppConfigState
 from .ai_expert_config import AiExpertChatMode, AiExpertConfig
@@ -9,26 +9,26 @@ from .ai_expert_config import AiExpertChatMode, AiExpertConfig
 
 class AiExpertConfigState(rx.State):
     """State management for AI Expert configuration interface.
-    
+
     This state class manages the configuration form for AI Expert functionality,
     handling user interactions, form validation, and configuration persistence.
     It provides a bridge between the UI configuration form and the application's
     configuration system.
-    
+
     The state manages:
         - Form field values and validation
         - Dynamic field visibility based on mode selection
         - Configuration loading from and saving to the application config
         - Form submission handling with error management
         - Real-time updates for reactive form elements
-        
+
     Key Features:
         - Async configuration loading and saving
         - Form validation with user-friendly error messages
         - Dynamic form behavior (fields show/hide based on selections)
         - Integration with AppConfigState for persistence
         - Toast notifications for user feedback
-        
+
     Attributes:
         current_form_mode (AiExpertChatMode): Currently selected mode in the form,
             used for dynamic field visibility and validation.
@@ -36,50 +36,51 @@ class AiExpertConfigState(rx.State):
 
     current_form_mode: AiExpertChatMode = 'full_file'
 
-    async def _get_config(self) -> AiExpertConfig:
-        app_config_state = await self.get_state(AppConfigState)
+    async def get_config(self) -> AiExpertConfig:
+        app_config_state = await AppConfigState.get_config_state(self)
         config = await app_config_state.get_config_section('ai_expert_page', AiExpertConfig)
         return cast(AiExpertConfig, config)
 
     @rx.var
     async def current_mode(self) -> str:
         """Get the current mode for the AI expert"""
-        expert_config = await self._get_config()
+        expert_config = await self.get_config()
         return expert_config.mode
 
     @rx.var
     async def system_prompt(self) -> str:
         """Get the system prompt for the AI expert"""
-        expert_config = await self._get_config()
+        expert_config = await self.get_config()
         return expert_config.system_prompt
 
     @rx.var
     async def prompt_file_id_placeholder(self) -> str:
         """Get the prompt file ID placeholder for readonly display"""
-        expert_config = await self._get_config()
+        expert_config = await self.get_config()
         return expert_config.prompt_file_placeholder
 
     @rx.var
     async def model(self) -> str:
         """Get the model for the AI expert"""
-        expert_config = await self._get_config()
+        expert_config = await self.get_config()
         return expert_config.model
 
     @rx.var
     async def temperature(self) -> float:
         """Get the temperature for the AI expert"""
-        expert_config = await self._get_config()
+        expert_config = await self.get_config()
         return expert_config.temperature
 
     @rx.var
     async def max_chunks(self) -> int:
         """Get the max chunks for the AI expert"""
-        expert_config = await self._get_config()
+        expert_config = await self.get_config()
         return expert_config.max_chunks
 
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):
         """Handle the combined configuration form submission (mode, system prompt, model, and temperature)"""
+        print("Saving the config")
         try:
             # Get the new values from form data
             new_mode = form_data.get('mode', '').strip()
@@ -126,7 +127,7 @@ class AiExpertConfigState(rx.State):
                     return rx.toast.error("Chunk count must be a valid number")
 
             # Get current config
-            current_config = await self._get_config()
+            current_config = await self.get_config()
 
             if current_config.prompt_file_placeholder not in new_system_prompt:
                 return rx.toast.error(
@@ -143,7 +144,8 @@ class AiExpertConfigState(rx.State):
             )
 
             # Update the config in AppConfigState
-            app_config_state = await self.get_state(AppConfigState)
+
+            app_config_state = await AppConfigState.get_config_state(self)
             result = await app_config_state.update_config_section('ai_expert_page', new_config)
 
             # Show success message

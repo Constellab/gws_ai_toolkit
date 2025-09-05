@@ -147,7 +147,7 @@ class SyncResourceState(rx.State):
         config_state: RagConfigState
         async with self:
             self.send_to_rag_is_loading = True
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         try:
             rag_service = await config_state.get_dataset_rag_app_service()
@@ -177,7 +177,7 @@ class SyncResourceState(rx.State):
         config_state: RagConfigState
         async with self:
             self.delete_from_rag_is_loading = True
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         try:
             rag_service = await config_state.get_dataset_rag_app_service()
@@ -204,7 +204,7 @@ class SyncResourceState(rx.State):
         config_state: RagConfigState
         async with self:
             self.parse_document_is_loading = True
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         try:
             dataset_id = self.selected_resource_dataset_id
@@ -252,7 +252,7 @@ class SyncResourceState(rx.State):
         async with self:
             # Also refresh document info if resource is synced
             self.selected_resource_document = None
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         if selected_resource.is_synced_with_rag():
             dataset_id = self.selected_resource_dataset_id

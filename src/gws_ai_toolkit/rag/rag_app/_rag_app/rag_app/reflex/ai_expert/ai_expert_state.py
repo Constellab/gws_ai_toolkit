@@ -3,22 +3,22 @@ import os
 from typing import Optional, Union
 
 import reflex as rx
-from gws_core.core.utils.logger import Logger
+from gws_core import File, Logger, ResourceModel
 from openai import OpenAI
 from PIL import Image
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
+from ..chat_base.base_file_analysis_state import BaseFileAnalysisState
 from ..chat_base.chat_message_class import (ChatMessage, ChatMessageImage,
                                             ChatMessageText)
-from ..chat_base.chat_state_base import ChatStateBase
 from ..rag_chat.config.rag_config_state import RagConfigState
 from .ai_expert_config import AiExpertConfig
 from .ai_expert_config_state import AiExpertConfigState
 
 
-class AiExpertState(ChatStateBase, rx.State):
+class AiExpertState(BaseFileAnalysisState, rx.State):
     """State management for AI Expert - specialized document-focused chat functionality.
 
     This state class manages the complete AI Expert workflow, providing intelligent
@@ -53,10 +53,8 @@ class AiExpertState(ChatStateBase, rx.State):
         - Common chat functionality
     """
 
-    # Document context
-    current_doc_id: str = ""
-    openai_file_id: Optional[str] = None
-
+    # Document-specific context (inherits current_file_id from BaseFileAnalysisState)
+    current_doc_id: str = ""  # Kept for backwards compatibility, will sync with current_file_id
     _current_rag_resource: Optional[RagResource] = None
     _document_chunks_text: dict[int, str] = {}
 
@@ -68,101 +66,63 @@ class AiExpertState(ChatStateBase, rx.State):
     # Form state for configuration
     form_system_prompt: str = ""
 
+    # Implementation of abstract methods from BaseFileAnalysisState
+    def validate_resource(self, resource: ResourceModel) -> bool:
+        """Validate if file is compatible with AI Expert analysis"""
+        # For AI Expert, we use RagResource which handles compatibility
+        rag_resource = RagResource(resource)
+        return rag_resource.is_compatible_with_rag()
+
+    async def get_config(self) -> AiExpertConfig:
+        """Get AI Expert configuration"""
+        app_config_state = await self.get_state(AiExpertConfigState)
+        return await app_config_state.get_config()
+
+    def get_analysis_type(self) -> str:
+        """Return analysis type for history saving"""
+        return "ai_expert"
+
+    def _load_resource_from_id(self, resource_id: str) -> ResourceModel:
+        # try to load from rag document id
+        rag_resource = RagResource.from_document_id(resource_id)
+        if not rag_resource:
+            # If that fails, try to load from resource id
+            rag_resource = RagResource.from_resource_model_id(resource_id)
+
+        if not rag_resource:
+            raise ValueError("Resource not found or not linked to RAG document")
+
+        return rag_resource.resource_model
+
     async def load_resource_from_url(self):
         """Handle page load - get resource ID from router state"""
-        # The rag_doc_id should be automatically set by Reflex from the [rag_doc_id] route parameter
-        # Access the dynamic route parameter directly - Reflex makes it available as self.rag_doc_id
-        rag_doc_id = self.rag_doc_id if hasattr(self, 'rag_doc_id') else ""
+        # Clear document chunks cache when loading a new resource
+        if hasattr(self, 'rag_doc_id'):
+            rag_doc_id = self.rag_doc_id
+            if self.current_doc_id and self.current_doc_id != rag_doc_id:
+                self._document_chunks_text = {}
 
-        if self.current_doc_id and self.current_doc_id != rag_doc_id:
-            # Reset chat if loading a different document
-            self.clear_chat()
-            self._document_chunks_text = {}
-
-        if rag_doc_id and str(rag_doc_id).strip():
-            await self.load_resource(str(rag_doc_id))
-
-    def _get_openai_client(self) -> OpenAI:
-        """Get OpenAI client with API key"""
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OpenAI API key is not set")
-        return OpenAI(api_key=api_key)
-
-    async def load_resource(self, rag_doc_id: str):
-        """Load the resource from DataHub and prepare for chat"""
-        try:
-
-            self.current_doc_id = rag_doc_id
-
-            # Try to load the resource using document_id first
-            rag_resource = None
-
-            rag_resource = RagResource.from_document_id(rag_doc_id)
-            if not rag_resource:
-                # If that fails, try to load from resource id
-                rag_resource = RagResource.from_resource_model_id(rag_doc_id)
-
-            if not rag_resource:
-                raise ValueError(f"Resource with ID {rag_doc_id} not found")
-
-            if not rag_resource.is_compatible_with_rag():
-                raise ValueError("Resource is not compatible with RAG")
-
-            self._current_rag_resource = rag_resource
-
-            self.subtitle = rag_resource.resource_model.name
-
-        except FileNotFoundError as e:
-            Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
-                content=f"Document not found: {str(e)}",
-                role="assistant"
-            )
-
-            self.add_message(error_message)
-        except ValueError as e:
-            Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
-                content=f"Error loading document: {str(e)}",
-                role="assistant"
-            )
-
-            self.add_message(error_message)
-        except Exception as e:
-            Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
-                content=f"Unexpected error: {str(e)}",
-                role="assistant"
-            )
-
-            self.add_message(error_message)
+        # Call parent implementation which handles the common loading logic
+        await super().load_resource_from_url()
 
     async def call_ai_chat(self, user_message: str):
-        """Get streaming response from OpenAI about the document"""
-
+        """Get streaming response from OpenAI about the document with AI Expert specific modes"""
         client = self._get_openai_client()
 
         async with self:
-            # must be used within async with self, becaue it uses selg.get_state
-            expert_config = await self._get_config()
+            expert_config = await self.get_config()
 
         instructions: str = None
         tools: list = []
 
         if expert_config.mode == 'full_file':
-            # Full file mode - upload file and use code interpreter
-            uploaded_file_id = await self.upload_file_to_openai()
-            system_prompt = expert_config.system_prompt.replace(
-                expert_config.prompt_file_placeholder, uploaded_file_id)
-
-            instructions = system_prompt
-            tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}}]
+            # Full file mode - use base class implementation
+            return await super().call_ai_chat(user_message)
 
         elif expert_config.mode == 'relevant_chunks':
             # Relevant chunks mode - get only relevant chunks based on user question
             document_chunks = await self.get_relevant_document_chunks_text(user_message, expert_config.max_chunks)
-            document_name = self._current_rag_resource.resource_model.name if self._current_rag_resource else "document"
+            document_name = self._current_resource_model.name
 
             # Replace the placeholder with document name and include chunks
             system_prompt_with_chunks = expert_config.system_prompt.replace(
@@ -175,7 +135,7 @@ class AiExpertState(ChatStateBase, rx.State):
         else:
             # Full text chunk mode - get all document chunks and include in prompt
             document_chunks = await self.get_document_chunks_text(expert_config.max_chunks)
-            document_name = self._current_rag_resource.resource_model.name if self._current_rag_resource else "document"
+            document_name = self._current_resource_model.name
 
             # Replace the placeholder with document name and include chunks
             system_prompt_with_chunks = expert_config.system_prompt.replace(
@@ -185,7 +145,7 @@ class AiExpertState(ChatStateBase, rx.State):
 
             instructions = system_prompt_with_chunks
 
-        # Create streaming response without code interpreter
+        # For non-full_file modes, create streaming response without code interpreter
         with client.responses.stream(
             model=expert_config.model,
             instructions=instructions,
@@ -220,75 +180,7 @@ class AiExpertState(ChatStateBase, rx.State):
                 async with self:
                     self.set_conversation_id(final_response.id)
 
-    async def handle_output_text_delta(self, event):
-        """Handle response.output_text.delta event"""
-        text = event.delta
-
-        current_message: Optional[ChatMessage] = None
-
-        async with self:
-            current_message = self._current_response_message
-
-        if current_message and current_message.type == "text":
-            async with self:
-                current_message.content += text
-        else:
-            # Create new text message if none exists or if current is different type
-            new_message = self.create_text_message(
-                content=text,
-                role="assistant"
-            )
-            await self.update_current_response_message(new_message)
-
-    async def handle_code_interpreter_call_code_delta(self, event):
-        """Handle response.code_interpreter_call_code.delta event"""
-        code = event.delta
-
-        current_message: Optional[ChatMessage] = None
-
-        async with self:
-            current_message = self._current_response_message
-
-        if current_message and current_message.type == "code":
-            async with self:
-                current_message.content += code
-        else:
-            # Create new code message if none exists or if current is different type
-            new_message = self.create_code_message(
-                content=code,
-                role="assistant"
-            )
-            await self.update_current_response_message(new_message)
-
-    async def handle_output_text_annotation_added(self, event):
-        """Handle response.output_text_annotation.added event"""
-        annotation = event.annotation
-
-        # Extract file from annotation
-        if isinstance(annotation, dict) and 'file_id' in annotation and 'filename' in annotation:
-            try:
-                client = self._get_openai_client()
-                file_message = await self.extract_file_from_response(
-                    annotation['file_id'], annotation['filename'], client,
-                    container_id=annotation.get('container_id'))
-                await self.update_current_response_message(file_message)
-
-            except (OSError, ValueError) as e:
-                Logger.log_exception_stack_trace(e)
-                # Create error message if image loading fails
-                error_message = self.create_text_message(
-                    content=f"[Error loading image: {str(e)}]",
-                    role="assistant"
-                )
-                await self.update_current_response_message(error_message)
-            except Exception as e:
-                Logger.log_exception_stack_trace(e)
-                # Create error message for unexpected errors
-                error_message = self.create_text_message(
-                    content=f"[Unexpected error loading image: {str(e)}]",
-                    role="assistant"
-                )
-                await self.update_current_response_message(error_message)
+    # Event handlers are inherited from BaseFileAnalysisState - no need to duplicate
 
     async def get_document_chunks_text(self, max_chunks: int = 100) -> str:
         """Get the first max_chunks chunks of the document as text"""
@@ -301,7 +193,7 @@ class AiExpertState(ChatStateBase, rx.State):
             rag_app_service = await self._get_rag_app_service()
 
         # Get the document ID from the resource
-        document_id = self._current_rag_resource.get_document_id()
+        document_id = self.get_current_rag_resource().get_document_id()
 
         # Get the first max_chunks chunks
         chunks = rag_app_service.rag_service.get_document_chunks(
@@ -331,7 +223,7 @@ class AiExpertState(ChatStateBase, rx.State):
             rag_app_service = await self._get_rag_app_service()
 
         # Get the document ID from the resource
-        document_id = self._current_rag_resource.get_document_id()
+        document_id = self.get_current_rag_resource().get_document_id()
 
         # Retrieve relevant chunks using the user's question
         chunks = rag_app_service.rag_service.retrieve_chunks(
@@ -351,17 +243,17 @@ class AiExpertState(ChatStateBase, rx.State):
 
         return "\n".join(chunk_texts)
 
+    # Override upload_file_to_openai to work with RagResource
     async def upload_file_to_openai(self) -> str:
         """Upload the document file to OpenAI and return file ID"""
         if self.openai_file_id:
             return self.openai_file_id
 
-        if not self._current_rag_resource:
+        if not self.get_current_rag_resource():
             raise ValueError("No resource loaded")
 
         client = self._get_openai_client()
-
-        file = self._current_rag_resource.get_file()
+        file = self.get_current_rag_resource().get_file()
 
         # Upload file to OpenAI
         with open(file.path, "rb") as f:
@@ -375,101 +267,16 @@ class AiExpertState(ChatStateBase, rx.State):
 
         return uploaded_file.id
 
-    async def extract_file_from_response(self, file_id: str, filename: str, client: OpenAI,
-                                         container_id: Optional[str] = None) -> Union[ChatMessageImage, ChatMessageText]:
-        """Extract file from OpenAI response - handles images and other files"""
-
-        file_data_binary = None
-        try:
-            if file_id.startswith('cfile_') and container_id:
-                # Container file - use containers API
-                file_data_binary = client.containers.files.content.retrieve(file_id, container_id=container_id)
-            else:
-                # Regular file - use files API
-                file_data_binary = client.files.content(file_id)
-
-            # Check file extension to determine handling
-            file_extension = os.path.splitext(filename)[1].lower()
-
-            # Handle image files
-            if file_extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']:
-                image_data = Image.open(io.BytesIO(file_data_binary.content))
-                return self.create_image_message(
-                    data=image_data,
-                    content="",  # No text content for pure images
-                    role="assistant"
-                )
-            else:
-                # Handle other file types as text messages
-                return self.create_text_message(
-                    content=f"📄 File '{filename}' has been generated.",
-                    role="assistant"
-                )
-
-        except Exception as e:
-            Logger.log_exception_stack_trace(e)
-            raise ValueError(f"Error downloading file {file_id}: {str(e)}")
-
-    @rx.var
-    def document_name(self) -> str:
-        """Get the document name for the AI Expert"""
-        if self._current_rag_resource:
-            return self._current_rag_resource.resource_model.name
-        return ''
-
-    @rx.var
-    def get_resource_id(self) -> str:
-        """Get the resource ID for the AI Expert"""
-        if self._current_rag_resource:
-            return self._current_rag_resource.get_id()
-        return ''
-
-    @rx.event
-    async def open_current_resource_doc(self):
-        """Open the current resource document."""
-        if self._current_rag_resource:
-            return await self.open_document_from_resource(self._current_rag_resource.get_id())
-        return None
-
-    async def _get_config(self) -> AiExpertConfig:
-        app_config_state = await self.get_state(AiExpertConfigState)
-        return await app_config_state._get_config()
-
-    async def close_current_message(self):
-        """Close the current streaming message and add it to the chat history, then save to conversation history."""
-        await super().close_current_message()
-        # Save conversation after message is added to history
-        await self._save_conversation_to_history()
-
-    async def _save_conversation_to_history(self):
-        """Save current conversation to history with AI Expert configuration."""
-
-        expert_config: AiExpertConfig
-        async with self:
-            expert_config = await self._get_config()
-
-        # Build configuration dictionary with AI Expert specific settings
-        configuration = {
-            "expert_mode": expert_config.mode,
-            "model": expert_config.model,
-            "temperature": expert_config.temperature,
-            "document_id": self.current_doc_id,
-            "document_name": self.document_name,
-            "system_prompt": expert_config.system_prompt,
-            "max_chunks": expert_config.max_chunks,
-        }
-
-        # Save conversation to history after response is completed
-        await self.save_conversation_to_history("ai_expert", configuration)
-
     async def _get_rag_app_service(self) -> BaseRagAppService:
         """Get the RAG app service instance."""
-        state: RagConfigState = await self.get_state(RagConfigState)
+        state: RagConfigState = await RagConfigState.get_instance(self)
         rag_app_service = await state.get_dataset_rag_app_service()
         if not rag_app_service:
             raise ValueError("RAG service not available")
         return rag_app_service
 
     def get_current_rag_resource(self) -> Optional[RagResource]:
-        """Get the currently loaded RAG resource."""
+        """Get the currently loaded RagResource"""
+        if not self._current_rag_resource:
+            self._current_rag_resource = RagResource(self._current_resource_model)
         return self._current_rag_resource

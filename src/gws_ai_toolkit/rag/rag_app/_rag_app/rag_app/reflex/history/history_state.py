@@ -9,18 +9,18 @@ from .conversation_history_state import ConversationHistoryState
 
 class HistoryState(rx.State):
     """State management for conversation history browsing interface.
-    
+
     This state class manages the history page functionality, handling conversation
     loading, selection, and display. It coordinates between the conversation list
     sidebar and the read-only conversation display panel.
-    
+
     Key Features:
         - Conversation list loading and management
         - Conversation selection and highlighting
         - Integration with read-only chat display
         - Loading state management
         - Error handling for history operations
-        
+
     State Attributes:
         conversations (List[ConversationHistory]): All available conversations
         selected_conversation_id (Optional[str]): Currently selected conversation
@@ -42,7 +42,7 @@ class HistoryState(rx.State):
         self.is_loading = True
 
         try:
-            history_state: ConversationHistoryState = await self.get_state(ConversationHistoryState)
+            history_state: ConversationHistoryState = await ConversationHistoryState.get_instance(self)
 
             full_history = await history_state.get_conversation_history()
             conversations = full_history.get_all_conversations()

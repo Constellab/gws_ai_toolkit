@@ -1,27 +1,28 @@
 import os
+from abc import abstractmethod
 from json import dump, load
-from typing import Awaitable, Callable, Type
+from typing import Type
 
 import reflex as rx
 from gws_core import BaseModelDTO, Logger
 
-# from gws_reflex_main import ReflexMainState
+from .utils import Utils
 
 
-class AppConfigState(rx.State):
+class AppConfigState(rx.State, mixin=True):
     """Application configuration management state.
-    
+
     This state class manages the application-wide configuration system,
     handling loading, saving, and accessing configuration data from JSON files.
     It provides a centralized configuration management system for all app settings.
-    
+
     Features:
         - JSON file-based configuration storage
         - Dynamic configuration loading with custom loaders
         - Section-based configuration management
         - Type-safe configuration access
         - Automatic serialization and deserialization
-        
+
     The state uses a loader pattern to determine the configuration file path,
     allowing different deployment scenarios and parameter-based configuration.
     """
@@ -31,44 +32,20 @@ class AppConfigState(rx.State):
 
     _config_file_path: str = ''
 
-    _loader: Callable[['rx.State'], Awaitable[str]] = None
+    @abstractmethod
+    async def _get_config_file_path(self) -> str:
+        pass
 
-    @classmethod
-    def set_loader(cls, loader: Callable[['AppConfigState'], Awaitable[str]]) -> None:
-        """Set the loader function to get the path of the config file."""
-        cls._loader = loader
-
-    # @classmethod
-    # def set_loader_from_param(cls, param_name: str) -> None:
-    #     """Set the loader function to get the config file path from a parameter."""
-    #     async def loader(state: 'AppConfigState') -> str:
-    #         base_state = await state.get_state(ReflexMainState)
-    #         return await base_state.get_param(param_name)
-
-    #     cls._loader = loader
-
-    @rx.var()
-    async def config_file_path(self) -> str:
-        """Get the configuration file path."""
+    async def get_config_file_path(self) -> str:
         if not self._config_file_path:
-            if AppConfigState._loader:
-                self._config_file_path = await AppConfigState._loader(self)
-            else:
-                Logger.warning(
-                    "AppConfigState loader is not set. Using default configuration. This is normal during compilation")
-                return ''
-
-            if not AppConfigState._loader:
-                raise ValueError("Loader function is not set. Please call AppConfigState.set_loader")
-            self._config_file_path = await AppConfigState._loader(self) or ''
-
+            self._config_file_path = await self._get_config_file_path()
         return self._config_file_path
 
     async def config(self) -> dict:
         """Get the current app configuration."""
 
         if not self._config:
-            config_file_path = await self.config_file_path
+            config_file_path = await self.get_config_file_path()
             if not config_file_path:
                 return {}
             self._config = self._load_config_file(config_file_path)
@@ -85,7 +62,7 @@ class AppConfigState(rx.State):
         """Update the app configuration."""
         self._config = new_config
 
-        config_file_path = await self.config_file_path
+        config_file_path = await self.get_config_file_path()
         self._save_config_file(new_config, config_file_path)
 
     async def update_config_section(self, key: str, new_data: BaseModelDTO):
@@ -111,8 +88,23 @@ class AppConfigState(rx.State):
         if not config:
             return
 
+        if not config_file_path:
+            raise ValueError("Config file path is not set.")
+
         try:
             with open(config_file_path, 'w', encoding='utf-8') as file:
                 dump(config, file)
         except Exception as e:
             raise ValueError(f"Error writing config file: {e}")
+
+    @staticmethod
+    async def get_config_state(state: rx.State) -> 'AppConfigState':
+        """Get the AppConfigState instance from any state."""
+
+        config_state = await Utils.get_first_state_of_type(state, AppConfigState)
+
+        if config_state:
+            return config_state
+        else:
+            raise ValueError(
+                "AppConfigState subclass not found. You must define a subclass of AppConfigState in your app to configure it.")

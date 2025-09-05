@@ -3,8 +3,6 @@ import reflex as rx
 from gws_reflex_base import (add_unauthorized_page, get_theme,
                              render_main_container)
 
-from gws_ai_toolkit._reflex import ChatStateBase
-
 app = rx.App(
     theme=get_theme()
 )
@@ -18,7 +16,7 @@ def index():
     # If the state is not initialized, a loading spinner will be shown.
     return render_main_container(rx.box(
         rx.heading("Reflex app", font_size="2em"),
-
+        rx.text("This is the main page of the Reflex app."),
     ))
 
 

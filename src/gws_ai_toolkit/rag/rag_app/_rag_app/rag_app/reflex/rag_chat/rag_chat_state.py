@@ -1,10 +1,8 @@
 import uuid
-from typing import Awaitable, Callable, List
+from typing import List
 
 import reflex as rx
-from gws_core import BaseModelDTO
 
-from gws_ai_toolkit.rag.common.rag_enums import RagProvider
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatSource,
                                                   RagChatStreamResponse)
@@ -14,20 +12,14 @@ from ..chat_base.chat_state_base import ChatStateBase
 from ..rag_chat.config.rag_config_state import RagConfigState
 
 
-class RagChatStateConfig(BaseModelDTO):
-    rag_provider: RagProvider
-    chat_id: str
-    credentials_name: str
-
-
 class RagChatState(ChatStateBase, rx.State):
     """State management for RAG (Retrieval Augmented Generation) chat functionality.
-    
+
     This state class implements the main RAG chat system, providing intelligent
     conversations enhanced with document knowledge from indexed sources. It integrates
     with various RAG providers (Dify, RagFlow) and handles streaming responses with
     source citations.
-    
+
     Key Features:
         - RAG-enhanced conversation with document knowledge
         - Streaming AI responses with real-time updates
@@ -35,25 +27,18 @@ class RagChatState(ChatStateBase, rx.State):
         - Integration with multiple RAG providers
         - Conversation history and persistence
         - Error handling and fallback mechanisms
-        
+
     The state connects to configured RAG services and processes user queries
     by retrieving relevant document chunks and generating contextual responses
     with proper source attribution.
     """
-
-    _loader: Callable[[rx.State], Awaitable[RagChatStateConfig]] | None = None
-
-    @classmethod
-    def set_loader(cls, loader: Callable[[rx.State], Awaitable[RagChatStateConfig]]) -> None:
-        """Set the loader function to get the path of the config file."""
-        cls._loader = loader
 
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from the assistant."""
 
         rag_app_state: RagConfigState
         async with self:
-            rag_app_state = await self.get_state(RagConfigState)
+            rag_app_state = await RagConfigState.get_instance(self)
 
         datahub_rag_service = await rag_app_state.get_chat_rag_app_service()
         if not datahub_rag_service:

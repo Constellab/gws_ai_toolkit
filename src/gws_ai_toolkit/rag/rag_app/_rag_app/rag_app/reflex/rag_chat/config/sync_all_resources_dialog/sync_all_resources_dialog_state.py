@@ -60,7 +60,7 @@ class SyncAllResourcesDialogState(rx.State):
         async with self:
             self.resources_to_sync = []
             self.sync_resource_progress = -1
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
@@ -74,7 +74,7 @@ class SyncAllResourcesDialogState(rx.State):
         async with self:
             self.sync_resource_progress = 0
             self.sync_errors = []
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
@@ -95,7 +95,7 @@ class SyncAllResourcesDialogState(rx.State):
 
     @rx.var
     async def get_compatible_resource_explanation(self) -> str:
-        config_state = await self.get_state(RagConfigState)
+        config_state = await RagConfigState.get_instance(self)
         rag_service = await config_state.get_dataset_rag_app_service()
         if not rag_service:
             return ""

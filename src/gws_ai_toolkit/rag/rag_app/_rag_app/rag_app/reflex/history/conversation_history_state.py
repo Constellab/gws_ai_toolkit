@@ -1,52 +1,38 @@
 import json
 import os
+from abc import abstractmethod
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import reflex as rx
 from gws_core.core.utils.logger import Logger
 
 from ..chat_base.chat_message_class import ChatMessage
+from ..core.utils import Utils
 from .conversation_history_class import (ConversationFullHistory,
                                          ConversationHistory)
 
 
-class ConversationHistoryState(rx.State):
+class ConversationHistoryState(rx.State, mixin=True):
     """State management for conversation history storage."""
 
     _history_file_path: str = ''
 
-    _loader: Callable[['rx.State'], Awaitable[str]] = None
+    @abstractmethod
+    async def _get_history_file_path_param(self) -> str:
+        """Get the parameter name for history file path."""
+        pass
 
-    @classmethod
-    def set_loader(cls, loader: Callable[['ConversationHistoryState'], Awaitable[str]]) -> None:
-        """Set the loader function to get the path of the history file."""
-        cls._loader = loader
-
-    # @classmethod
-    # def set_loader_from_param(cls, param_name: str) -> None:
-    #     """Set the loader function to get the history file path from a parameter."""
-    #     async def loader(state: 'ConversationHistoryState') -> str:
-    #         base_state = await state.get_state(ReflexMainState)
-    #         return await base_state.get_param(param_name)
-
-    #     cls._loader = loader
-
-    @rx.var()
-    async def history_file_path(self) -> str:
+    async def get_history_file_path(self) -> str:
         """Get the history file path."""
         if not self._history_file_path:
-            if not ConversationHistoryState._loader:
-                # don't raise an error for the compilation
-                return ''
-                # raise ValueError("Loader function is not set. Please call ConversationHistoryState.set_loader")
-            self._history_file_path = await ConversationHistoryState._loader(self) or ''
+            self._history_file_path = await self._get_history_file_path_param()
 
         return self._history_file_path
 
     async def _load_history(self) -> ConversationFullHistory:
         """Load conversation history from JSON file."""
-        history_file_path = await self.history_file_path
+        history_file_path = await self.get_history_file_path()
         if history_file_path and os.path.exists(history_file_path):
             with open(history_file_path, 'r', encoding='utf-8') as file:
                 try:
@@ -60,7 +46,7 @@ class ConversationHistoryState(rx.State):
     async def _save_history(self, full_history: ConversationFullHistory) -> None:
         """Save conversation history to JSON file."""
         try:
-            history_file_path = await self.history_file_path
+            history_file_path = await self.get_history_file_path()
             if not history_file_path:
                 return
 
@@ -145,3 +131,15 @@ class ConversationHistoryState(rx.State):
             await self._save_history(empty_history)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
+
+    @staticmethod
+    async def get_instance(state: rx.State) -> 'ConversationHistoryState':
+        """Get the ConversationHistoryState instance from any state."""
+
+        config_state = await Utils.get_first_state_of_type(state, ConversationHistoryState)
+
+        if config_state:
+            return config_state
+        else:
+            raise ValueError(
+                "ConversationHistoryState subclass not found. You must define a subclass of ConversationHistoryState in your app to configure it.")

@@ -2,12 +2,12 @@ from typing import List
 
 import reflex as rx
 
-from ...reflex.ai_expert.ai_expert_state import AiExpertState
 from ..chat_base.chat_component import chat_component
 from ..chat_base.chat_config import ChatConfig
 from ..chat_base.chat_header_component import \
     header_clear_chat_button_component
 from ..chat_base.chat_state_base import ChatStateBase
+from .ai_expert_state import AiExpertState
 
 
 def ai_expert_header_default_buttons_component(state: ChatStateBase) -> List[rx.Component]:
@@ -35,7 +35,7 @@ def ai_expert_header_default_buttons_component(state: ChatStateBase) -> List[rx.
         rx.button(
             rx.icon('file', size=16),
             "View document",
-            on_click=lambda: AiExpertState.open_current_resource_doc,
+            on_click=lambda: AiExpertState.open_current_resource_file,
             variant='outline',
             cursor="pointer",
             size="2",

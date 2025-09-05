@@ -61,7 +61,7 @@ class DocumentChunksState(rx.State):
         async with self:
             self.chunks_loading = True
             self.chunks_page = page
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         try:
             rag_app_service = await config_state.get_dataset_rag_app_service()

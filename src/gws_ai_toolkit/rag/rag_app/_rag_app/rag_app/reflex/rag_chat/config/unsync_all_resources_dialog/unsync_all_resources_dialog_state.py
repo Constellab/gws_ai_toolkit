@@ -60,7 +60,7 @@ class UnsyncAllResourcesDialogState(rx.State):
         async with self:
             self.resources_to_unsync = []
             self.unsync_resource_progress = -1
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
@@ -74,7 +74,7 @@ class UnsyncAllResourcesDialogState(rx.State):
         async with self:
             self.unsync_resource_progress = 0
             self.unsync_errors = []
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         rag_service = await config_state.get_dataset_rag_app_service()
 

@@ -63,7 +63,7 @@ class DeleteExpiredDocumentsDialogState(rx.State):
         async with self:
             self.documents_to_delete = []
             self.delete_documents_progress = -1
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
@@ -77,7 +77,7 @@ class DeleteExpiredDocumentsDialogState(rx.State):
         async with self:
             self.delete_documents_progress = 0
             self.delete_errors = []
-            config_state = await self.get_state(RagConfigState)
+            config_state = await RagConfigState.get_instance(self)
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
