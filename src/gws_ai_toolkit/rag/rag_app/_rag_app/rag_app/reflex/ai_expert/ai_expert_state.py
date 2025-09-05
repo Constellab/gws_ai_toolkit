@@ -20,12 +20,12 @@ from .ai_expert_config_state import AiExpertConfigState
 
 class AiExpertState(ChatStateBase, rx.State):
     """State management for AI Expert - specialized document-focused chat functionality.
-    
+
     This state class manages the complete AI Expert workflow, providing intelligent
     conversation capabilities focused on a specific document. It integrates with
     OpenAI's API to provide document analysis, question answering, and interactive
     exploration of document content using multiple processing modes.
-    
+
     Key Features:
         - Document-specific chat with full context awareness
         - Multiple processing modes (full_file, relevant_chunks, full_text_chunk)
@@ -34,21 +34,21 @@ class AiExpertState(ChatStateBase, rx.State):
         - Document chunk retrieval and processing
         - Conversation history persistence
         - Error handling and user feedback
-        
+
     Processing Modes:
         - full_file: Uploads entire document to OpenAI with code interpreter access
         - relevant_chunks: Retrieves only most relevant document chunks for the query
         - full_text_chunk: Includes all document chunks as text in the AI prompt
-        
+
     State Attributes:
         current_doc_id (str): ID of the currently loaded document
         openai_file_id (Optional[str]): OpenAI file ID when document is uploaded
         _current_rag_resource (Optional[RagResource]): Loaded document resource
         _document_chunks_text (dict[int, str]): Cached document chunks by max_chunks
-        
+
     Inherits from ChatStateBase providing:
         - Message management and streaming
-        - Chat history and persistence  
+        - Chat history and persistence
         - UI state management (title, placeholder, etc.)
         - Common chat functionality
     """
@@ -97,9 +97,9 @@ class AiExpertState(ChatStateBase, rx.State):
 
             # Try to load the resource using document_id first
             rag_resource = None
-            try:
-                rag_resource = RagResource.from_document_id(rag_doc_id)
-            except:
+
+            rag_resource = RagResource.from_document_id(rag_doc_id)
+            if not rag_resource:
                 # If that fails, try to load from resource id
                 rag_resource = RagResource.from_resource_model_id(rag_doc_id)
 
@@ -469,3 +469,7 @@ class AiExpertState(ChatStateBase, rx.State):
         if not rag_app_service:
             raise ValueError("RAG service not available")
         return rag_app_service
+
+    def get_current_rag_resource(self) -> Optional[RagResource]:
+        """Get the currently loaded RAG resource."""
+        return self._current_rag_resource

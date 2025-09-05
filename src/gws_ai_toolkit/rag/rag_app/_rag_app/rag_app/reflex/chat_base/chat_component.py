@@ -8,14 +8,14 @@ from .messages_list_component import chat_messages_list_component
 
 def _chat_with_messages(config: ChatConfig) -> rx.Component:
     """Chat layout when messages are present - fixed input at bottom.
-    
+
     This layout is used when the chat has messages to display. It provides
     a scrollable message area with a fixed input field at the bottom of
     the screen for easy access.
-    
+
     Args:
         config (ChatConfig): Chat configuration with state and components
-        
+
     Returns:
         rx.Component: Layout with scrollable messages and fixed bottom input
     """
@@ -54,13 +54,13 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
 
 def _empty_chat(config: ChatConfig) -> rx.Component:
     """Chat layout for empty state - centered input with welcome message.
-    
+
     This layout is used when the chat has no messages. It centers the input
     field vertically and displays a welcome message to guide the user.
-    
+
     Args:
         config (ChatConfig): Chat configuration with state and components
-        
+
     Returns:
         rx.Component: Centered layout with empty state message and input
     """
@@ -90,12 +90,12 @@ def _empty_chat(config: ChatConfig) -> rx.Component:
 
 def chat_component(config: ChatConfig) -> rx.Component:
     """Universal chat interface component providing complete chat functionality.
-    
+
     This is the core chat component that provides a full-featured chat interface
     with adaptive layout, message display, input handling, and customizable sections.
     It automatically adapts its layout based on whether messages are present and
     provides a consistent user experience across different chat implementations.
-    
+
     Features:
         - Adaptive layout (centered input when empty, fixed input when messages exist)
         - Three-column layout with customizable left/right sections
@@ -104,12 +104,12 @@ def chat_component(config: ChatConfig) -> rx.Component:
         - Responsive design with mobile-friendly input
         - Empty state messaging
         - Message list display with proper spacing
-        
+
     Layout Modes:
         - Empty state: Centers input vertically with empty state message
         - With messages: Fixed input at bottom, scrollable message area
         - Three-column: Optional left/right sections (like sources panel)
-        
+
     Args:
         config (ChatConfig): Configuration object containing:
             - state: ChatStateBase instance for state management
@@ -121,7 +121,7 @@ def chat_component(config: ChatConfig) -> rx.Component:
     Returns:
         rx.Component: Complete chat interface with header, messages, input, and
             optional side sections, ready for use in any chat application.
-            
+
     Example:
         config = ChatConfig(
             state=MyChatState,
@@ -133,7 +133,9 @@ def chat_component(config: ChatConfig) -> rx.Component:
 
     return rx.auto_scroll(
         rx.hstack(
-            rx.box(config.left_section, flex="1", height="100%"),
+            rx.box(config.left_section(config.state) if config.left_section else None,
+                   flex="1",
+                   height="100%"),
             rx.box(
                 rx.cond(
                     # When there are messages, show normal layout with fixed input
@@ -149,7 +151,11 @@ def chat_component(config: ChatConfig) -> rx.Component:
                 display="flex",
                 flex_direction="column"
             ),
-            rx.box(config.right_section, flex="1", height="100%"),
+            rx.box(
+                config.right_section(config.state) if config.right_section else None,
+                flex="1",
+                height="100%"
+            ),
             align_items="stretch",
             justify_content="stretch",
             width="100%",

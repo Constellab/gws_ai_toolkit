@@ -1,17 +1,20 @@
 
 import reflex as rx
-from gws_reflex_base import add_unauthorized_page, get_theme
-
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.custom_ai_expert_component import \
+    custom_left_sidebar
+from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.custom_ai_expert_state import \
+    CustomAiExpertState
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.navigation import navigation
 from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.rag_main_state import \
     RagAppState
+from gws_reflex_base import add_unauthorized_page, get_theme
 
-from .reflex import (AiExpertState, AppConfigState, ChatConfig,
-                     ConversationHistoryState, HistoryState, RagChatState,
-                     RagConfigState, RagConfigStateConfig, ai_expert_component,
-                     ai_expert_config_component, history_component,
-                     rag_chat_component, rag_config_component,
-                     sources_list_component)
+from .reflex import (AppConfigState, ChatConfig, ConversationHistoryState,
+                     HistoryState, RagConfigState, RagConfigStateConfig,
+                     ai_expert_component, ai_expert_config_component,
+                     ai_expert_header_default_buttons_component,
+                     history_component, rag_chat_component,
+                     rag_config_component)
 
 app = rx.App(
     theme=get_theme(),
@@ -68,21 +71,22 @@ def page_component(content: rx.Component) -> rx.Component:
 
 def rag_chat_page() -> rx.Component:
     """RAG Chat page component."""
-    chat_config = ChatConfig(
-        state=RagChatState,
-        sources_component=sources_list_component,
-        left_section=rx.box(rx.text("Left Section"), bg="gray.100", height="100%"),
-    )
 
     return page_component(
-        rag_chat_component(chat_config)
+        rag_chat_component()
     )
 
 
 def ai_expert_page() -> rx.Component:
     """AI Expert page component for document-specific chat."""
+
+    config = ChatConfig(
+        state=CustomAiExpertState,
+        header_buttons=ai_expert_header_default_buttons_component,
+        left_section=custom_left_sidebar
+    )
     return page_component(
-        ai_expert_component()
+        ai_expert_component(config)
     )
 
 
@@ -135,7 +139,7 @@ def history():
 
 
 # AI Expert page - document-specific chat
-@rx.page(route="/ai-expert/[rag_doc_id]", on_load=[AiExpertState.load_resource_from_url])
+@rx.page(route="/ai-expert/[rag_doc_id]", on_load=[CustomAiExpertState.load_resource_from_url])
 def ai_expert():
     """AI Expert page for document-specific chat."""
     return ai_expert_page()

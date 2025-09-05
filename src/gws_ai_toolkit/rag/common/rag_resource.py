@@ -61,7 +61,7 @@ class RagResource():
 
     def get_document_id(self) -> str | None:
         """Get the document id from the resource tags."""
-        resource_tags = self._get_tags()
+        resource_tags = self.get_tags()
         if not resource_tags.has_tag_key(self.RAG_DOC_TAG_KEY):
             return None
 
@@ -77,12 +77,12 @@ class RagResource():
 
     def is_synced_with_rag(self) -> bool:
         """Check if the resource is synced with the platform."""
-        resource_tags = self._get_tags()
+        resource_tags = self.get_tags()
         return resource_tags.has_tag_key(self.RAG_DOC_TAG_KEY)
 
     def get_sync_date(self) -> datetime | None:
         """Get the sync date from the resource tags."""
-        resource_tags = self._get_tags()
+        resource_tags = self.get_tags()
         if not resource_tags.has_tag_key(self.RAG_SYNC_TAG_KEY):
             return None
 
@@ -98,7 +98,7 @@ class RagResource():
 
     def get_dataset_base_id(self) -> str:
         """Get the dataset base id from the resource tags."""
-        resource_tags = self._get_tags()
+        resource_tags = self.get_tags()
         if not resource_tags.has_tag_key(self.RAG_DATASET_ID_TAG_KEY):
             raise ValueError("The resource was not sent to RAG.")
 
@@ -111,7 +111,7 @@ class RagResource():
             raise ValueError("The resource is not compatible with RAG.")
 
         # For rich text, we convert it to a markdown file
-        file = self._check_and_get_file()
+        file = self.get_raw_file()
         if file.extension == 'json':
             rich_text: RichText = None
             dict_ = json.loads(file.read())
@@ -135,7 +135,7 @@ class RagResource():
 
     def mark_resource_as_sent_to_rag(self, document_id: str, dataset_id: str) -> None:
         """Add tags to the resource."""
-        resource_tags = self._get_tags()
+        resource_tags = self.get_tags()
         origins = TagOrigins(TagOriginType.USER, CurrentUserService.get_and_check_current_user().id)
         tags = [
             Tag(self.RAG_DOC_TAG_KEY, document_id, origins=origins),
@@ -146,7 +146,7 @@ class RagResource():
 
     def unmark_resource_as_sent_to_rag(self) -> None:
         """Remove the platform tags from the resource."""
-        resource_tags = self._get_tags()
+        resource_tags = self.get_tags()
         entity_tags: List[EntityTag] = []
         entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_DOC_TAG_KEY))
         entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_DATASET_ID_TAG_KEY))
@@ -176,19 +176,19 @@ class RagResource():
 
     def get_datahub_key(self) -> str:
         """Get the datahub key of the resource."""
-        tags = self._get_tags()
+        tags = self.get_tags()
         if not tags.has_tag_key(DataHubS3ServerService.KEY_TAG_NAME):
             raise ValueError("Could not find the datahub key.")
         return tags.get_tags_by_key(DataHubS3ServerService.KEY_TAG_NAME)[0].tag_value
 
     # Private helper methods
-    def _get_tags(self) -> EntityTagList:
+    def get_tags(self) -> EntityTagList:
         """Get the tags of the resource."""
         if self._entity_tag_list is None:
             self._entity_tag_list = EntityTagList.find_by_entity(TagEntityType.RESOURCE, self.resource_model.id)
         return self._entity_tag_list
 
-    def _check_and_get_file(self) -> File:
+    def get_raw_file(self) -> File:
         """Check if the resource is a file and return it."""
         resource = self.resource_model.get_resource()
         if not isinstance(resource, File):
