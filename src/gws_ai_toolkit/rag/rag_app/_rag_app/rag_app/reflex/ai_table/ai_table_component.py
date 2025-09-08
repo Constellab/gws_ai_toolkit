@@ -1,96 +1,116 @@
-from typing import List
 
 import reflex as rx
 
-from .ai_table_state import AiTableState
-from ..chat_base.chat_component import chat_component
-from ..chat_base.chat_config import ChatConfig
-from ..chat_base.chat_header_component import \
-    header_clear_chat_button_component
-from ..chat_base.chat_state_base import ChatStateBase
+from .ai_table_chat_component import ai_table_chat_component
+from .ai_table_data_state import AiTableDataState
+from .table_section import table_section
 
 
-def ai_table_header_default_buttons_component(state: ChatStateBase) -> List[rx.Component]:
-    """Default header buttons for the AI Table chat interface.
-
-    Provides standard action buttons for the AI Table page including file viewing
-    and chat clearing functionality. These buttons are displayed in the chat header
-    and provide quick access to common actions.
-
-    Features:
-        - View file button: Opens the current Excel/CSV file being analyzed
-        - Clear chat button: Clears the current conversation history
-
-    Args:
-        state (ChatStateBase): The current chat state instance for accessing state methods
-
-    Returns:
-        List[rx.Component]: List of Reflex button components ready for header display
-
-    Example:
-        buttons = ai_table_header_default_buttons_component(ai_table_state)
-        # Returns: [view_file_button, clear_chat_button]
-    """
-    return [
-        rx.button(
-            rx.icon('table', size=16),
-            "View file",
-            on_click=lambda: AiTableState.open_current_resource_file,
-            variant='outline',
-            cursor="pointer",
-            size="2",
+def table_header():
+    """Header component for the AI Table view"""
+    return rx.hstack(
+        rx.heading("AI Table Analyst", size="6"),
+        rx.spacer(),
+        rx.cond(
+            AiTableDataState.has_multiple_sheets,
+            rx.hstack(
+                rx.text("Sheet:", font_weight="bold"),
+                rx.select.root(
+                    rx.select.trigger(
+                        placeholder="Select sheet",
+                    ),
+                    rx.select.content(
+                        rx.foreach(
+                            AiTableDataState.get_sheet_names,
+                            lambda sheet: rx.select.item(
+                                sheet,
+                                value=sheet,
+                            ),
+                        ),
+                    ),
+                    value=AiTableDataState.current_sheet_name,
+                    on_change=AiTableDataState.switch_sheet,
+                ),
+                spacing="2",
+                align="center",
+            ),
+            rx.text("")
         ),
-        header_clear_chat_button_component(state)
-    ]
+        rx.button(
+            rx.cond(
+                AiTableDataState.chat_panel_open,
+                "Hide Chat",
+                "💬 Show Chat"
+            ),
+            on_click=AiTableDataState.toggle_chat_panel,
+            variant="solid",
+            color_scheme="blue",
+        ),
+        align_items="center",
+        width="100%",
+        padding="0.5em 1em",
+    )
 
 
-def ai_table_component(chat_config: ChatConfig | None = None) -> rx.Component:
-    """AI Table chat component for Excel/CSV-specific data analysis conversations.
+def ai_table_layout():
+    """Main AI Table layout with collapsible chat panel"""
+    return rx.vstack(
+        # Header
+        table_header(),
 
-    This component provides a specialized chat interface for having detailed data
-    analysis conversations about a specific Excel or CSV file. The AI Table focuses 
-    on a single tabular data file and provides comprehensive data analysis, statistical
-    insights, and visualizations using OpenAI's code interpreter with pandas.
+        # Main content area
+        rx.hstack(
+            # Table section (flexible width)
+            table_section(),
+
+            # Chat panel (collapsible)
+            ai_table_chat_component(),
+
+            spacing="0",
+            width="100%",
+            flex="1",
+            min_height="0",
+        ),
+        width="100%",
+        spacing="0"
+    )
+
+
+def ai_table_component() -> rx.Component:
+    """AI Table component with integrated table view and chat functionality.
+
+    This component provides a comprehensive data analysis interface that combines:
+    - Rich table visualization with AG Grid
+    - Collapsible AI chat panel for data analysis conversations
+    - Sheet selection for Excel files
+    - File loading from resources (URL-based)
 
     Features:
-        - Excel/CSV-focused AI conversations with full data analysis capabilities
-        - Full file upload mode with code interpreter access
-        - Configurable AI models and parameters
-        - File viewing and navigation capabilities
-        - Persistent conversation history for the specific file
-        - Custom header buttons for file-specific actions
-        - Data visualization and statistical analysis support
+        - Excel/CSV data visualization with sorting and filtering
+        - AI-powered data analysis chat with code interpreter
+        - Multi-sheet support for Excel files
+        - Responsive layout with collapsible chat panel
+        - Streaming responses with code execution visualization
 
-    The component uses AiTableState for state management, which handles:
-        - File loading and processing (Excel/CSV only)
-        - AI model communication with full file context
-        - Configuration management for data analysis
-        - Resource management and file metadata
-
-    Args:
-        chat_config (ChatConfig | None, optional): Custom ChatConfig to override the defaults.
-            If None, creates a default configuration with AiTableState and default header buttons.
-            Allows customization of state class and UI components.
+    The component uses two main states:
+        - AiTableDataState: Manages dataframe loading, table display, and UI state
+        - AiTableChatState: Handles AI chat interactions and OpenAI integration
 
     Returns:
-        rx.Component: Complete AI Table chat interface with data analysis features,
-            header buttons, message display, and input functionality.
-
-    Example:
-        # Use with default configuration
-        component = ai_table_component()
-
-        # Use with custom configuration
-        custom_config = ChatConfig(
-            state=AiTableState,
-            header_buttons=custom_header_buttons
-        )
-        component = ai_table_component(custom_config)
+        rx.Component: Complete AI Table interface with table and chat functionality
     """
-    if not chat_config:
-        chat_config = ChatConfig(
-            state=AiTableState,
-            header_buttons=ai_table_header_default_buttons_component
+    return rx.cond(
+        AiTableDataState.dataframe_loaded,
+        # Show full table interface when dataframe is loaded
+        ai_table_layout(),
+        # Show loading state when no dataframe
+        rx.center(
+            rx.hstack(
+                rx.spinner(size="3"),
+                rx.text("Loading data...", font_size="lg"),
+                spacing="4",
+            ),
+            height="100%",
+            width="100%",
         )
-
-    return chat_component(chat_config)
+    )

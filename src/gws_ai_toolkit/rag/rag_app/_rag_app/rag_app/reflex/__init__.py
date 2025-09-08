@@ -6,8 +6,7 @@ from .ai_expert.ai_expert_config_component import ai_expert_config_component
 from .ai_expert.ai_expert_config_state import AiExpertConfigState
 from .ai_expert.ai_expert_state import AiExpertState
 # Ai Table
-from .ai_table.ai_table_component import (
-    ai_table_component, ai_table_header_default_buttons_component)
+from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_config import AiTableConfig, AiTableConfigUI
 from .ai_table.ai_table_config_component import ai_table_config_component
 from .ai_table.ai_table_config_state import AiTableConfigState
@@ -58,7 +57,6 @@ __all__ = [
     "ai_table_config_component",
     "AiTableState",
     "ai_table_component",
-    "ai_table_header_default_buttons_component",
 
     # Chat Base
     "ChatConfig",

@@ -19,6 +19,10 @@
                     {
                         "name": "ragflow-sdk",
                         "version": "0.20.3"
+                    },
+                    {
+                        "name": "reflex-enterprise",
+                        "version": "0.3.2"
                     }
                 ]
             }

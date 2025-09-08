@@ -46,7 +46,7 @@ class AssociatedResourceState(rx.State, mixin=True):
         resource = await file_state.get_current_resource_model()
 
         if not resource:
-            Logger.warning("No resource found in state")
+            # Logger.warning("No resource found in state")
             # self._linked_resources = []
             return
 

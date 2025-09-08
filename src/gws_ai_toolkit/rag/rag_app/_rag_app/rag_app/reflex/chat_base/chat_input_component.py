@@ -7,30 +7,35 @@ def chat_input_component(config: ChatConfig) -> rx.Component:
     """Generic input component - uses chat page styling"""
 
     return rx.form(
-        rx.hstack(
-            rx.input(
-                placeholder=config.state.placeholder_text,
-                name="message",
-                flex="1",
-                disabled=config.state.is_streaming,
-                border_radius="24px",
-                style={'input': {'padding-inline': '12px'}},
-                size="3"
-            ),
+        rx.input(
+            placeholder=config.state.placeholder_text,
+            name="message",
+            flex="1",
+            disabled=config.state.is_streaming,
+            border_radius="24px",
+            style={'input': {'padding-inline': '12px'}},
+            size="3"
+        ),
+        # rx.box(width="34px", height="34px", flex_shrink="0"),  # Spacer to align with non-dense input
+        rx.box(
             rx.button(
                 rx.icon("send", size=18),
                 type="submit",
                 disabled=config.state.is_streaming,
                 cursor="pointer",
                 variant="ghost",
-                padding="8px",
                 size="3",
-                border_radius="50%"
+                border_radius="50%",
+                padding="8px",
             ),
-            width="100%",
-            spacing="5",
-            align_items="center"
+            padding="8px",
+            flex_shrink="0",
+            margin_left="0.5em",
+            display="flex"
         ),
         on_submit=config.state.submit_input_form,
         reset_on_submit=True,
+        display="flex",
+        flex_direction="row",
+        align_items="center",
     )

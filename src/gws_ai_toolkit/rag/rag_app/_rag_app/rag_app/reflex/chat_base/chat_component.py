@@ -41,13 +41,14 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
                 width="100%",
                 margin="auto",
             ),
-            position="fixed",
+            position="absolute",
             bottom="20px",
             left="50%",
             transform="translateX(-50%)",
             z_index="1000",
             padding="0 20px",
             width="800px",
+            max_width="90%",
         )
     )
 

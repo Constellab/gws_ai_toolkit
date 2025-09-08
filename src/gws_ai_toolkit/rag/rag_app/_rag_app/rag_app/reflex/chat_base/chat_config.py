@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import Callable, List, Type
 
 import reflex as rx
 
@@ -49,7 +49,7 @@ class ChatConfig:
     """
 
     # State configuration - this is the only customizable part
-    state: ChatStateBase
+    state: Type[ChatStateBase]
 
     # Add custom button on top right of the header
     header_buttons: Callable[[ChatStateBase], List[rx.Component]] | None = None

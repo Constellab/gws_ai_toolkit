@@ -1,10 +1,10 @@
 import reflex as rx
+import reflex_enterprise as rxe
 from gws_reflex_base import add_unauthorized_page, get_theme
 
 from .config_page import combined_config_page
 from .custom_ai_expert_component import custom_left_sidebar
-from .custom_ai_expert_state import (CustomAssociatedResourceAiExpertState,
-                                     CustomAssociatedResourceAiTableState)
+from .custom_ai_expert_state import CustomAssociatedResourceAiExpertState
 # Import custom states to let reflex instantiate them
 from .custom_states import (CustomAppConfigState,
                             CustomConversationHistoryState,
@@ -16,13 +16,13 @@ from .reflex import (AiExpertState, AiTableState, ChatConfig, HistoryState,
                      ai_table_component, history_component, rag_chat_component,
                      rag_config_component)
 
-app = rx.App(
+app = rxe.App(
     theme=get_theme(),
     stylesheets=["/style.css"],
 )
 
 
-def page_component(content: rx.Component) -> rx.Component:
+def page_component(content: rx.Component, disable_padding: bool = False) -> rx.Component:
     """Wrap the page content with navigation and layout."""
     return rx.vstack(
         navigation(),
@@ -31,7 +31,7 @@ def page_component(content: rx.Component) -> rx.Component:
             display="flex",
             width="100%",
             flex="1",
-            padding="1em",
+            padding="1em" if not disable_padding else "0",
             min_height="0",
         ),
         spacing="0",
@@ -90,16 +90,12 @@ def ai_expert():
 
 
 # AI Table page - Excel/CSV-specific data analysis
-@rx.page(route="/ai-table/[resource_id]")
+@rx.page(route="/ai-table/[resource_id]", on_load=AiTableState.load_resource_from_id)
 def ai_table():
     """AI Table page for Excel/CSV data analysis."""
-    config = ChatConfig(
-        state=AiTableState,
-        header_buttons=ai_expert_header_default_buttons_component,
-        left_section=lambda x: custom_left_sidebar(x, CustomAssociatedResourceAiTableState)
-    )
     return page_component(
-        ai_table_component(config)
+        ai_table_component(),
+        disable_padding=True
     )
 
 
