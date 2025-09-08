@@ -3,7 +3,58 @@ import reflex as rx
 
 from .ai_table_chat_component import ai_table_chat_component
 from .ai_table_data_state import AiTableDataState
-from .table_section import table_section
+from .ai_table_section import table_section
+
+
+def table_selector():
+    """Select dropdown for switching between original table and subtables"""
+    return rx.cond(
+        AiTableDataState.tables,  # Only show if there are tables
+        rx.hstack(
+            rx.text("Table:", font_weight="bold"),
+            rx.select.root(
+                rx.select.trigger(
+                    placeholder="Select table",
+                ),
+                rx.select.content(
+                    # Original table option
+                    rx.select.item(
+                        "📊 Original Table",
+                        value="original",
+                    ),
+                    # Subtable options - iterate over dictionary items
+                    rx.foreach(
+                        AiTableDataState.tables.items(),
+                        lambda table_item: rx.cond(
+                            table_item[0] != "original",  # Skip original table in foreach
+                            rx.select.item(
+                                rx.text("📋 ", table_item[1]["name"]),
+                                value=table_item[0],
+                            ),
+                            rx.box()  # Empty for original table
+                        ),
+                    ),
+                ),
+                value=AiTableDataState.current_table_id,
+                on_change=AiTableDataState.switch_table,
+            ),
+            # Remove button for current subtable (only show if subtable is selected)
+            rx.cond(
+                AiTableDataState.current_table_id != "original",
+                rx.button(
+                    "❌ Remove",
+                    variant="outline",
+                    color_scheme="red",
+                    on_click=lambda: AiTableDataState.remove_subtable(AiTableDataState.current_table_id),
+                    size="2",
+                ),
+                rx.box(),
+            ),
+            spacing="2",
+            align="center",
+        ),
+        rx.box()  # Empty box when no tables
+    )
 
 
 def table_header():
@@ -12,7 +63,7 @@ def table_header():
         rx.heading("AI Table Analyst", size="6"),
         rx.spacer(),
         rx.cond(
-            AiTableDataState.has_multiple_sheets,
+            AiTableDataState.has_multiple_sheets,  # Only show for original table
             rx.hstack(
                 rx.text("Sheet:", font_weight="bold"),
                 rx.select.root(
@@ -36,6 +87,8 @@ def table_header():
             ),
             rx.text("")
         ),
+        # Table selector (only when subtables exist)
+        table_selector(),
         rx.button(
             rx.cond(
                 AiTableDataState.chat_panel_open,
@@ -49,6 +102,7 @@ def table_header():
         align_items="center",
         width="100%",
         padding="0.5em 1em",
+        spacing="4",
     )
 
 

@@ -75,7 +75,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
         """Return analysis type for history saving"""
         return "ai_expert"
 
-    def _load_resource_from_id(self) -> Optional[ResourceModel]:
+    def _load_resource(self) -> Optional[ResourceModel]:
         # try to load from rag document id
         # Get the dynamic route parameter - different subclasses may use different parameter names
         document_id = self.document_id if hasattr(self, 'document_id') else None

@@ -74,7 +74,7 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
         """
 
     @abstractmethod
-    def _load_resource_from_id(self) -> Optional[ResourceModel]:
+    def _load_resource(self) -> Optional[ResourceModel]:
         """Load the resource model from DataHub by ID
 
         Returns:
@@ -269,7 +269,7 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
     async def _load_resource_from_url(self) -> Optional[ResourceModel]:
         """Handle page load - get resource ID from router state"""
 
-        resource_model = self._load_resource_from_id()
+        resource_model = self._load_resource()
 
         if not resource_model:
             self.clear_chat()

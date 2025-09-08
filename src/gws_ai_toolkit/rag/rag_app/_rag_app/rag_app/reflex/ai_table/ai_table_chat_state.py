@@ -6,6 +6,7 @@ from gws_core import File, ResourceModel
 from ..chat_base.base_file_analysis_state import BaseFileAnalysisState
 from .ai_table_config import AiTableConfig
 from .ai_table_config_state import AiTableConfigState
+from .ai_table_data_state import AiTableDataState
 
 
 class AiTableChatState(BaseFileAnalysisState, rx.State):
@@ -82,7 +83,7 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         """
         return "ai_table"
 
-    def _load_resource_from_id(self) -> Optional[ResourceModel]:
+    def _load_resource(self) -> Optional[ResourceModel]:
         # try to load from rag document id
         # Get the dynamic route parameter - different subclasses may use different parameter names
         resource_id = self.resource_id if hasattr(self, 'resource_id') else None
@@ -96,19 +97,66 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
 
         return resource_model
 
+    async def get_active_file_path(self) -> Optional[str]:
+        """Get the file path for the currently active table (original or subtable)"""
+        data_state = await self.get_state(AiTableDataState)
+        
+        # If a subtable is active, use its file path
+        if data_state.current_subtable_id:
+            subtable_dict = data_state._find_subtable_dict_by_id(data_state.current_subtable_id)
+            if subtable_dict:
+                return subtable_dict["file_path"]
+        
+        # Otherwise use original file
+        if data_state.current_file_path:
+            return data_state.current_file_path
+            
+        return None
+
+    async def upload_active_file_to_openai(self, file_path: str) -> str:
+        """Upload the active file (original or subtable) to OpenAI and return file ID"""
+        client = self._get_openai_client()
+
+        # Upload file to OpenAI
+        with open(file_path, "rb") as f:
+            uploaded_file = client.files.create(
+                file=f,
+                purpose='assistants'
+            )
+
+        # Cache the file ID (note: for subtables, we don't cache since they're temporary)
+        file_id = uploaded_file.id
+        
+        return file_id
+
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from OpenAI about the file"""
         client = self._get_openai_client()
 
         # Get the current dataframe from data state
         config: AiTableConfig
+        data_state: AiTableDataState
         async with self:
             config = await self.get_config()
+            data_state = await self.get_state(AiTableDataState)
 
-        # Upload file and use code interpreter
-        uploaded_file_id = await self.upload_file_to_openai()
+        # Get active file path (original or subtable)
+        active_file_path = await self.get_active_file_path()
+        if not active_file_path:
+            raise ValueError("No active file available for analysis")
+
+        # Upload the active file and use code interpreter
+        uploaded_file_id = await self.upload_active_file_to_openai(active_file_path)
+        
+        # Update system prompt with context about current table
+        table_context = ""
+        if data_state.current_subtable_id:
+            table_context = f" (Currently analyzing subtable: {data_state.current_table_name})"
+        else:
+            table_context = f" (Currently analyzing original table: {data_state.current_table_name})"
+            
         system_prompt = config.system_prompt.replace(
-            config.prompt_file_placeholder, uploaded_file_id)
+            config.prompt_file_placeholder, uploaded_file_id) + table_context
 
         instructions = system_prompt
         tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}}]
