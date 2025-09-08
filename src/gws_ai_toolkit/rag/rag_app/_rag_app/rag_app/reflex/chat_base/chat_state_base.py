@@ -78,6 +78,10 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             user_message (str): The message from the user
         """
 
+    @abstractmethod
+    def _after_chat_cleared(self):
+        """Hook called after chat is cleared to reset analysis-specific state"""
+
     @rx.var
     def messages_to_display(self) -> List[ChatMessage]:
         """Get the list of messages to display in the chat."""
@@ -159,6 +163,7 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         self._chat_messages = []
         self._current_response_message = None
         self.conversation_id = None
+        self._after_chat_cleared()
 
     # Helper methods to create different message types
     def create_text_message(

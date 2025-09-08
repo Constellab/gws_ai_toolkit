@@ -111,3 +111,7 @@ class RagChatState(ChatStateBase, rx.State):
         """Save current conversation to history with configuration."""
 
         await self.save_conversation_to_history("RAG", {})
+
+    def _after_chat_cleared(self):
+        """Reset any analysis-specific state after chat is cleared."""
+        # No additional state to reset for RAG chat currently

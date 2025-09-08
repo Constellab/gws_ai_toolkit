@@ -76,7 +76,7 @@ def history():
 
 
 # AI Expert page - document-specific chat
-@rx.page(route="/ai-expert/[object_id]", on_load=[AiExpertState.load_resource_from_url])
+@rx.page(route="/ai-expert/[document_id]")
 def ai_expert():
     """AI Expert page for document-specific chat."""
     config = ChatConfig(
@@ -90,7 +90,7 @@ def ai_expert():
 
 
 # AI Table page - Excel/CSV-specific data analysis
-@rx.page(route="/ai-table/[object_id]")
+@rx.page(route="/ai-table/[resource_id]")
 def ai_table():
     """AI Table page for Excel/CSV data analysis."""
     config = ChatConfig(

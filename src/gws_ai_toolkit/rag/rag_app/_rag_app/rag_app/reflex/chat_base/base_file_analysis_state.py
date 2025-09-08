@@ -43,8 +43,6 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
         Implement the abstract methods to provide type-specific behavior.
     """
 
-    # File context
-    current_file_id: str = ""
     openai_file_id: Optional[str] = None
     _current_resource_model: Optional[ResourceModel] = None
 
@@ -58,7 +56,6 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
         Returns:
             bool: True if file is compatible, False otherwise
         """
-        pass
 
     @abstractmethod
     async def get_config(self) -> BaseModelDTO:
@@ -67,7 +64,6 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
             Returns:
                 Configuration object specific to the analysis type
             """
-        pass
 
     @abstractmethod
     def get_analysis_type(self) -> str:
@@ -76,19 +72,14 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
         Returns:
             str: Analysis type identifier (e.g., 'ai_expert', 'ai_table')
         """
-        pass
 
     @abstractmethod
-    def _load_resource_from_id(self, resource_id: str) -> ResourceModel:
+    def _load_resource_from_id(self) -> Optional[ResourceModel]:
         """Load the resource model from DataHub by ID
-
-        Args:
-            resource_id (str): ID of the resource to load
 
         Returns:
             Optional[ResourceModel]: Loaded resource model or None if not found
         """
-        pass
 
     @abstractmethod
     async def call_ai_chat(self, user_message: str):
@@ -97,7 +88,6 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
         Args:
             user_message (str): User's message to send to OpenAI
         """
-        pass
 
     def _get_openai_client(self) -> OpenAI:
         """Get OpenAI client with API key"""
@@ -278,18 +268,16 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
 
     async def _load_resource_from_url(self) -> Optional[ResourceModel]:
         """Handle page load - get resource ID from router state"""
-        # Get the dynamic route parameter - different subclasses may use different parameter names
-        resource_id = self.object_id if hasattr(self, 'object_id') else None
 
-        if self.current_file_id and self.current_file_id != resource_id:
+        resource_model = self._load_resource_from_id()
+
+        if not resource_model:
+            self.clear_chat()
+            return None
+
+        if self._current_resource_model and self._current_resource_model.id != resource_model.id:
             # Reset chat if loading a different file
             self.clear_chat()
 
-        if resource_id and str(resource_id).strip():
-            self.current_file_id = resource_id
-            resource_model = self._load_resource_from_id(resource_id)
-
-            self.subtitle = resource_model.name
-            return resource_model
-
-        return None
+        self.subtitle = resource_model.name
+        return resource_model

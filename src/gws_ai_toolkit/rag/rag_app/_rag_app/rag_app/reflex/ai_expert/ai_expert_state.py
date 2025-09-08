@@ -48,7 +48,6 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
     """
 
     # Document-specific context (inherits current_file_id from BaseFileAnalysisState)
-    current_doc_id: str = ""  # Kept for backwards compatibility, will sync with current_file_id
     _current_rag_resource: Optional[RagResource] = None
     _document_chunks_text: dict[int, str] = {}
 
@@ -76,28 +75,23 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
         """Return analysis type for history saving"""
         return "ai_expert"
 
-    def _load_resource_from_id(self, resource_id: str) -> ResourceModel:
+    def _load_resource_from_id(self) -> Optional[ResourceModel]:
         # try to load from rag document id
-        rag_resource = RagResource.from_document_id(resource_id)
+        # Get the dynamic route parameter - different subclasses may use different parameter names
+        document_id = self.document_id if hasattr(self, 'document_id') else None
+
+        if not document_id:
+            return None
+
+        rag_resource = RagResource.from_document_id(document_id)
         if not rag_resource:
             # If that fails, try to load from resource id
-            rag_resource = RagResource.from_resource_model_id(resource_id)
+            rag_resource = RagResource.from_resource_model_id(document_id)
 
         if not rag_resource:
             raise ValueError("Resource not found or not linked to RAG document")
 
         return rag_resource.resource_model
-
-    async def load_resource_from_url(self):
-        """Handle page load - get resource ID from router state"""
-        # Clear document chunks cache when loading a new resource
-        if hasattr(self, 'rag_doc_id'):
-            rag_doc_id = self.rag_doc_id
-            if self.current_doc_id and self.current_doc_id != rag_doc_id:
-                self._document_chunks_text = {}
-
-        # Call parent implementation which handles the common loading logic
-        await super()._load_resource_from_url()
 
     async def call_ai_chat(self, user_message: str):
         """Get streaming response from OpenAI about the document with AI Expert specific modes"""
@@ -187,7 +181,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
             rag_app_service = await self._get_rag_app_service()
 
         # Get the document ID from the resource
-        document_id = self.get_current_rag_resource().get_document_id()
+        document_id = (await self.get_current_rag_resource()).get_document_id()
 
         # Get the first max_chunks chunks
         chunks = rag_app_service.rag_service.get_document_chunks(
@@ -217,7 +211,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
             rag_app_service = await self._get_rag_app_service()
 
         # Get the document ID from the resource
-        document_id = self.get_current_rag_resource().get_document_id()
+        document_id = (await self.get_current_rag_resource()).get_document_id()
 
         # Retrieve relevant chunks using the user's question
         chunks = rag_app_service.rag_service.retrieve_chunks(
@@ -243,11 +237,8 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
         if self.openai_file_id:
             return self.openai_file_id
 
-        if not self.get_current_rag_resource():
-            raise ValueError("No resource loaded")
-
         client = self._get_openai_client()
-        file = self.get_current_rag_resource().get_file()
+        file = (await self.get_current_rag_resource()).get_file()
 
         # Upload file to OpenAI
         with open(file.path, "rb") as f:
@@ -269,8 +260,15 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
             raise ValueError("RAG service not available")
         return rag_app_service
 
-    def get_current_rag_resource(self) -> Optional[RagResource]:
+    async def get_current_rag_resource(self) -> RagResource:
         """Get the currently loaded RagResource"""
         if not self._current_rag_resource:
-            self._current_rag_resource = RagResource(self._current_resource_model)
+            resource_model = await self.get_current_resource_model()
+            if not resource_model:
+                raise ValueError("No resource loaded")
+            self._current_rag_resource = RagResource(resource_model)
         return self._current_rag_resource
+
+    def _after_chat_cleared(self):
+        self._current_rag_resource = None
+        self._document_chunks_text = {}

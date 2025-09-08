@@ -1,3 +1,5 @@
+from typing import Optional
+
 import reflex as rx
 from gws_core import File, ResourceModel
 
@@ -71,8 +73,14 @@ class AiTableState(BaseFileAnalysisState, rx.State):
         """
         return "ai_table"
 
-    def _load_resource_from_id(self, resource_id: str) -> ResourceModel:
+    def _load_resource_from_id(self) -> Optional[ResourceModel]:
         # try to load from rag document id
+        # Get the dynamic route parameter - different subclasses may use different parameter names
+        resource_id = self.resource_id if hasattr(self, 'resource_id') else None
+
+        if not resource_id:
+            return None
+
         resource_model = ResourceModel.get_by_id(resource_id)
         if not resource_model:
             raise ValueError(f"Resource with id {resource_id} not found")
@@ -129,3 +137,7 @@ class AiTableState(BaseFileAnalysisState, rx.State):
             if final_response and hasattr(final_response, 'id') and not self.conversation_id:
                 async with self:
                     self.set_conversation_id(final_response.id)
+
+    def _after_chat_cleared(self):
+        """Reset any analysis-specific state after chat is cleared."""
+        # No additional state to reset for RAG chat currently

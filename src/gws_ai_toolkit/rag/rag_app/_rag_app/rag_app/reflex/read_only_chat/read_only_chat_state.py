@@ -9,18 +9,18 @@ from ..history.conversation_history_class import ConversationHistory
 
 class ReadOnlyChatState(ChatStateBase, rx.State):
     """State management for read-only conversation display.
-    
+
     This state class extends ChatStateBase to provide read-only viewing of
     historical conversations. It prevents user input while maintaining full
     message display functionality with proper styling and source citations.
-    
+
     Key Features:
         - Read-only conversation display
         - Historical message rendering
         - Configuration dialog integration
         - Disabled user input handling
         - Source citation display
-        
+
     The state is initialized with historical conversation data and provides
     viewing capabilities without allowing new messages or interactions.
     """
@@ -80,3 +80,7 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
             return json.dumps(self.current_configuration, indent=2, ensure_ascii=False)
         except Exception:
             return json.dumps({"error": "Failed to serialize configuration"}, indent=2)
+
+    def _after_chat_cleared(self):
+        """Reset any analysis-specific state after chat is cleared."""
+        # No additional state to reset for RAG chat currently
