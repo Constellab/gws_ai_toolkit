@@ -29,7 +29,7 @@ class AiTableDataState(rx.State):
     chat_panel_open: bool = False
 
     # Table
-    tables: Dict[str, Dict[str, str]] = {}  # Dict with ID as key: {"name": str, "file_path": str}
+    _tables: Dict[str, DataFrameItem] = {}  # Dict with ID as key: DataFrameItem
     current_table_id: str = ORIGINAL_TABLE_ID  # Default to original table
 
     # Selection and table management
@@ -43,19 +43,12 @@ class AiTableDataState(rx.State):
             return None
         return DataFrameItem(self.current_file_name, self.current_file_path)
 
-    def _find_table_dict_by_id(self, table_id: str) -> Optional[Dict[str, str]]:
-        """Find table dict by ID"""
-        return self.tables.get(table_id)
-
     def _get_table_dataframe_item_by_id(self, table_id: str) -> Optional[DataFrameItem]:
         """Get DataFrameItem for a table by ID"""
         if table_id == ORIGINAL_TABLE_ID:
             return self._get_current_dataframe_item()
-
-        table_dict = self._find_table_dict_by_id(table_id)
-        if table_dict and os.path.exists(table_dict["file_path"]):
-            return DataFrameItem(table_dict["name"], table_dict["file_path"])
-        return None
+        
+        return self._tables.get(table_id)
 
     def set_resource(self, resource: ResourceModel):
         """Set the resource to analyze and load it as dataframe
@@ -86,10 +79,10 @@ class AiTableDataState(rx.State):
                 self.current_sheet_name = ""
 
             # Add original table to the tables dictionary
-            self.tables[ORIGINAL_TABLE_ID] = {
-                "name": f"{self.current_file_name} (Original)",
-                "file_path": self.current_file_path
-            }
+            self._tables[ORIGINAL_TABLE_ID] = DataFrameItem(
+                f"{self.current_file_name} (Original)", 
+                self.current_file_path
+            )
 
             # Set current table to original
             self.current_table_id = ORIGINAL_TABLE_ID
@@ -243,8 +236,8 @@ class AiTableDataState(rx.State):
         if self.current_table_id == ORIGINAL_TABLE_ID:
             source_name = self.current_file_name
         else:
-            table_dict = self._find_table_dict_by_id(self.current_table_id)
-            source_name = table_dict["name"] if table_dict else "table"
+            table_item = self._tables.get(self.current_table_id)
+            source_name = table_item.name if table_item else "table"
 
         if source_df is None or source_df.empty:
             print("No source dataframe available for extraction")
@@ -280,10 +273,7 @@ class AiTableDataState(rx.State):
 
         # Create new table entry
         table_id = str(uuid.uuid4())
-        self.tables[table_id] = {
-            "name": subtable_name,
-            "file_path": temp_file_path
-        }
+        self._tables[table_id] = DataFrameItem(subtable_name, temp_file_path)
         self.current_table_id = table_id
 
         # Close the dialog
@@ -297,13 +287,13 @@ class AiTableDataState(rx.State):
     @rx.event
     def switch_to_subtable(self, table_id: str):
         """Switch to a specific table"""
-        if self._find_table_dict_by_id(table_id) or table_id == ORIGINAL_TABLE_ID:
+        if table_id == ORIGINAL_TABLE_ID or table_id in self._tables:
             self.current_table_id = table_id
 
     @rx.event
     def switch_table(self, table_id: str):
         """Switch to original table or a specific table based on ID"""
-        if table_id == ORIGINAL_TABLE_ID or self._find_table_dict_by_id(table_id):
+        if table_id == ORIGINAL_TABLE_ID or table_id in self._tables:
             self.current_table_id = table_id
 
     @rx.event
@@ -313,16 +303,16 @@ class AiTableDataState(rx.State):
         if table_id == ORIGINAL_TABLE_ID:
             return
 
-        table_dict = self._find_table_dict_by_id(table_id)
-        if table_dict:
+        table_item = self._tables.get(table_id)
+        if table_item:
             # Remove from dictionary
-            del self.tables[table_id]
+            del self._tables[table_id]
             # Switch to original if this was the current table
             if self.current_table_id == table_id:
                 self.current_table_id = ORIGINAL_TABLE_ID
             # Clean up temp file
-            if os.path.exists(table_dict["file_path"]):
-                os.unlink(table_dict["file_path"])
+            if os.path.exists(table_item.file_path):
+                os.unlink(table_item.file_path)
 
     @rx.var
     def can_extract(self) -> bool:
@@ -351,5 +341,29 @@ class AiTableDataState(rx.State):
         if self.current_table_id == ORIGINAL_TABLE_ID:
             return f"{self.current_file_name} (Original)"
         else:
-            table_dict = self._find_table_dict_by_id(self.current_table_id)
-            return table_dict["name"] if table_dict else "Unknown Table"
+            table_item = self._tables.get(self.current_table_id)
+            return table_item.name if table_item else "Unknown Table"
+
+    @rx.var
+    def tables(self) -> Dict[str, Dict[str, str]]:
+        """Public property to access tables data for UI - returns dict format for compatibility"""
+        result = {}
+        for table_id, table_item in self._tables.items():
+            result[table_id] = {
+                "name": table_item.name,
+                "file_path": table_item.file_path
+            }
+        return result
+
+    @rx.var
+    def subtables_list(self) -> List[Dict[str, str]]:
+        """Get list of subtables (excluding original) for UI iteration"""
+        subtables = []
+        for table_id, table_item in self._tables.items():
+            if table_id != ORIGINAL_TABLE_ID:
+                subtables.append({
+                    "id": table_id,
+                    "name": table_item.name,
+                    "file_path": table_item.file_path
+                })
+        return subtables

@@ -17,7 +17,6 @@ class DataFrameItem:
     id: str
     name: str
     file_path: str
-    openai_file_id: str | None  # OpenAI file ID for uploaded files
 
     _cached_dataframes: Dict[str, DataFrame]  # Cache for sheet dataframes
     _sheet_names: List[str]  # Cache for sheet names
@@ -28,7 +27,6 @@ class DataFrameItem:
         self.file_path = file_path
         self._cached_dataframes = {}  # Cache for sheet dataframes
         self._sheet_names = []  # Cache for sheet names
-        self.openai_file_id = None  # OpenAI file ID for uploaded files
 
     def get_sheet_names(self) -> List[str]:
         """Get list of sheet names for Excel files, or empty list for CSV"""

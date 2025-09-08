@@ -6,7 +6,7 @@ from gws_core import File, ResourceModel
 from ..chat_base.base_file_analysis_state import BaseFileAnalysisState
 from .ai_table_config import AiTableConfig
 from .ai_table_config_state import AiTableConfigState
-from .ai_table_data_state import AiTableDataState
+from .ai_table_data_state import AiTableDataState, ORIGINAL_TABLE_ID
 
 
 class AiTableChatState(BaseFileAnalysisState, rx.State):
@@ -99,18 +99,20 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
 
     async def get_active_file_path(self) -> Optional[str]:
         """Get the file path for the currently active table (original or subtable)"""
-        data_state = await self.get_state(AiTableDataState)
-        
+        data_state: AiTableDataState
+        async with self:
+            data_state = await self.get_state(AiTableDataState)
+
         # If a subtable is active, use its file path
-        if data_state.current_subtable_id:
-            subtable_dict = data_state._find_subtable_dict_by_id(data_state.current_subtable_id)
-            if subtable_dict:
-                return subtable_dict["file_path"]
-        
+        if data_state.current_table_id != ORIGINAL_TABLE_ID:
+            table_item = data_state._get_table_dataframe_item_by_id(data_state.current_table_id)
+            if table_item:
+                return table_item.file_path
+
         # Otherwise use original file
         if data_state.current_file_path:
             return data_state.current_file_path
-            
+
         return None
 
     async def upload_active_file_to_openai(self, file_path: str) -> str:
@@ -126,7 +128,7 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
 
         # Cache the file ID (note: for subtables, we don't cache since they're temporary)
         file_id = uploaded_file.id
-        
+
         return file_id
 
     async def call_ai_chat(self, user_message: str):
@@ -147,14 +149,14 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
 
         # Upload the active file and use code interpreter
         uploaded_file_id = await self.upload_active_file_to_openai(active_file_path)
-        
+
         # Update system prompt with context about current table
         table_context = ""
-        if data_state.current_subtable_id:
+        if data_state.current_table_id != ORIGINAL_TABLE_ID:
             table_context = f" (Currently analyzing subtable: {data_state.current_table_name})"
         else:
             table_context = f" (Currently analyzing original table: {data_state.current_table_name})"
-            
+
         system_prompt = config.system_prompt.replace(
             config.prompt_file_placeholder, uploaded_file_id) + table_context
 

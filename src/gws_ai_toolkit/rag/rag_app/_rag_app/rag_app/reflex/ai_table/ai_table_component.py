@@ -9,7 +9,7 @@ from .ai_table_section import table_section
 def table_selector():
     """Select dropdown for switching between original table and subtables"""
     return rx.cond(
-        AiTableDataState.tables,  # Only show if there are tables
+        AiTableDataState.subtables_list,  # Only show if there are subtables
         rx.hstack(
             rx.text("Table:", font_weight="bold"),
             rx.select.root(
@@ -22,16 +22,12 @@ def table_selector():
                         "📊 Original Table",
                         value="original",
                     ),
-                    # Subtable options - iterate over dictionary items
+                    # Subtable options - iterate over subtables list
                     rx.foreach(
-                        AiTableDataState.tables.items(),
-                        lambda table_item: rx.cond(
-                            table_item[0] != "original",  # Skip original table in foreach
-                            rx.select.item(
-                                rx.text("📋 ", table_item[1]["name"]),
-                                value=table_item[0],
-                            ),
-                            rx.box()  # Empty for original table
+                        AiTableDataState.subtables_list,
+                        lambda subtable: rx.select.item(
+                            rx.text("📋 ", subtable["name"]),
+                            value=subtable["id"],
                         ),
                     ),
                 ),
@@ -45,7 +41,7 @@ def table_selector():
                     "❌ Remove",
                     variant="outline",
                     color_scheme="red",
-                    on_click=lambda: AiTableDataState.remove_subtable(AiTableDataState.current_table_id),
+                    on_click=AiTableDataState.remove_subtable(AiTableDataState.current_table_id),
                     size="2",
                 ),
                 rx.box(),
