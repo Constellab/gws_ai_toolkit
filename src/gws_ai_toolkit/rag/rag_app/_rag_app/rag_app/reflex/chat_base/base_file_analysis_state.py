@@ -211,11 +211,13 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
             # Handle image files
             if file_extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']:
                 image_data = Image.open(io.BytesIO(file_data_binary.content))
-                return self.create_image_message(
-                    image=image_data,
-                    content="",  # No text content for pure images
-                    role="assistant"
-                )
+
+                async with self:
+                    return await self.create_image_message(
+                        image=image_data,
+                        content="",  # No text content for pure images
+                        role="assistant"
+                    )
             else:
                 # Handle other file types as text messages
                 return self.create_text_message(

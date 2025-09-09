@@ -75,13 +75,13 @@ class ChatMessageText(ChatMessageBase):
 class ChatMessageImage(ChatMessageBase):
     """Chat message containing image content.
 
-    Specialized chat message for image content, using file paths
+    Specialized chat message for image content, using full image paths
     for display in the chat interface. Used for AI-generated images or
     image analysis responses.
 
     Attributes:
         type: Fixed as "image" to identify this as an image message
-        image_path: File path to the image file
+        image_name: Full path to the image file (stored in history images folder)
         content: Optional text description/caption for the image
 
     Example:
@@ -89,11 +89,11 @@ class ChatMessageImage(ChatMessageBase):
             role="assistant",
             content="Generated chart",
             id="msg_img_123",
-            image_path="/tmp/chart_123.png"
+            image_name="/path/to/history/images/image_123.png"
         )
     """
     type: Literal["image"] = "image"
-    image_path: str
+    image_name: str
 
 
 class ChatMessageImageFront(ChatMessageBase):

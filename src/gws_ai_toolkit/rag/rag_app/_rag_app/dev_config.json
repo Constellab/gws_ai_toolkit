@@ -10,7 +10,7 @@
         "resource_sync_mode": "tag",
         "show_config_page": true,
         "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/app_configuration.json",
-        "history_file_path": "/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/history.json"
+        "history_folder_path": "/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/history"
     },
     "env_type": "NONE",
     "env_file_path": "",

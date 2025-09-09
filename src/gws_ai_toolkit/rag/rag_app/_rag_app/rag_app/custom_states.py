@@ -4,7 +4,8 @@ import reflex as rx
 from .rag_main_state import RagAppState
 from .reflex.core.app_config_state import AppConfigState
 from .reflex.history.conversation_history_state import ConversationHistoryState
-from .reflex.rag_chat.config.rag_config_state import RagConfigState, RagConfigStateConfig
+from .reflex.rag_chat.config.rag_config_state import (RagConfigState,
+                                                      RagConfigStateConfig)
 
 
 class CustomAppConfigState(AppConfigState, rx.State):
@@ -17,9 +18,9 @@ class CustomAppConfigState(AppConfigState, rx.State):
 
 class CustomConversationHistoryState(ConversationHistoryState, rx.State):
 
-    async def _get_history_file_path_param(self) -> str:
+    async def _get_history_folder_path_param(self) -> str:
         base_state = await self.get_state(RagAppState)
-        config = await base_state.get_param('history_file_path')
+        config = await base_state.get_param('history_folder_path')
         return config or ''
 
 

@@ -80,7 +80,6 @@ class AiExpertConfigState(rx.State):
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):
         """Handle the combined configuration form submission (mode, system prompt, model, and temperature)"""
-        print("Saving the config")
         try:
             # Get the new values from form data
             new_mode = form_data.get('mode', '').strip()

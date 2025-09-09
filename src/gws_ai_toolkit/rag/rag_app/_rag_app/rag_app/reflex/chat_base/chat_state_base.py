@@ -2,7 +2,7 @@ import os
 import tempfile
 import uuid
 from abc import abstractmethod
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import reflex as rx
 from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
@@ -85,30 +85,38 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
     def _after_chat_cleared(self):
         """Hook called after chat is cleared to reset analysis-specific state"""
 
-    @rx.var
-    def messages_to_display(self) -> List[ChatMessageFront]:
+    @rx.var()
+    async def messages_to_display(self) -> List[ChatMessageFront]:
         """Get the list of messages to display in the chat."""
         messages = self._chat_messages
         if not self.show_chat_code_block:
             messages = [msg for msg in messages if msg.type != "code"]
-        return list(map(self._convert_to_front_message, messages))
+
+        image_folder = await self.get_images_folder_path()
+        return list(map(lambda msg: self._convert_to_front_message_sync(msg, image_folder), messages))
 
     @rx.var
-    def current_response_message(self) -> Optional[ChatMessageFront]:
+    async def current_response_message(self) -> Optional[ChatMessageFront]:
         """Get the current response message being streamed."""
-        current_messages = self._current_response_message
-        if not self.show_chat_code_block and current_messages and current_messages.type == "code":
-            return None
-        return self._convert_to_front_message(current_messages) if current_messages else None
+        current_message = self._current_response_message
 
-    def _convert_to_front_message(self, message: ChatMessage) -> ChatMessageFront:
+        if not current_message:
+            return None
+        if not self.show_chat_code_block and current_message and current_message.type == "code":
+            return None
+
+        image_folder = await self.get_images_folder_path()
+        return self._convert_to_front_message_sync(current_message, image_folder)
+
+    def _convert_to_front_message_sync(self, message: ChatMessage, image_folder: str) -> ChatMessageFront:
         """Convert internal ChatMessage to front-end ChatMessageFront type."""
         if isinstance(message, ChatMessageImage):
+            image_path = os.path.join(image_folder, message.image_name)
             return ChatMessageImageFront(
                 id=message.id,
                 role=message.role,
                 sources=message.sources,
-                image=Image.open(message.image_path)
+                image=Image.open(image_path)  # Now using image_name as full path
             )
         return message
 
@@ -181,7 +189,8 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
 
     # Helper methods to create different message types
     def create_text_message(
-            self, content: str, role: str = "assistant", sources: Optional[List[RagChatSource]] = None) -> ChatMessageText:
+            self, content: str, role: Literal['user', 'assistant'] = "assistant",
+            sources: Optional[List[RagChatSource]] = None) -> ChatMessageText:
         """Create a text message"""
         return ChatMessageText(
             id=str(uuid.uuid4()),
@@ -191,7 +200,8 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         )
 
     def create_code_message(
-            self, content: str, role: str = "assistant", sources: Optional[List[RagChatSource]] = None) -> ChatMessageCode:
+            self, content: str, role: Literal['user', 'assistant'] = "assistant",
+            sources: Optional[List[RagChatSource]] = None) -> ChatMessageCode:
         """Create a code message"""
         return ChatMessageCode(
             id=str(uuid.uuid4()),
@@ -200,15 +210,18 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             sources=sources or []
         )
 
-    def create_image_message(self, image: Image.Image, content: str = "", role: str = "assistant",
-                             sources: Optional[List[RagChatSource]] = None) -> ChatMessageImage:
-        """Create an image message by saving the PIL Image to a temporary file"""
-        image_path = self._save_image_to_temp(image)
+    async def create_image_message(self, image: Image.Image, content: str = "",
+                                   role: Literal['user', 'assistant'] = "assistant",
+                                   sources: Optional[List[RagChatSource]] = None) -> ChatMessageImage:
+        """Create an image message by saving the PIL Image to the history images folder"""
+        history_state = await ConversationHistoryState.get_instance(self)
+        filename = await history_state.save_image_to_history(image)
+
         return ChatMessageImage(
             id=str(uuid.uuid4()),
             role=role,
             content=content,
-            image_path=image_path,
+            image_name=filename,  # Store the full path
             sources=sources or []
         )
 
@@ -260,8 +273,10 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             share_link = ShareLinkService.get_or_create_valid_public_share_link(generate_link_dto)
 
         if share_link:
-            # Redirect the user to the share link URL
-            return rx.redirect(share_link.get_public_link(), is_external=True)
+            public_link = share_link.get_public_link()
+            if public_link:
+                # Redirect the user to the share link URL
+                return rx.redirect(public_link, is_external=True)
 
     async def save_conversation_to_history(self, mode: str, configuration: dict):
         """Save the current conversation to history with the given configuration."""
@@ -281,3 +296,8 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         except Exception as e:
             Logger.error(f"Error saving conversation to history: {e}")
             Logger.log_exception_stack_trace(e)
+
+    async def get_images_folder_path(self) -> str:
+        """Get the folder path where chat images are stored."""
+        history_state = await ConversationHistoryState.get_instance(self)
+        return await history_state.get_images_folder_full_path()

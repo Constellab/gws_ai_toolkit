@@ -182,10 +182,6 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
                     await self.handle_code_interpreter_call_code_delta(event)
                 elif event.type == "response.output_text.annotation.added":
                     await self.handle_output_text_annotation_added(event)
-                    print("Handling output text annotation added...")
-                    print('------------------------------------------------')
-                    print(event)
-                    print('------------------------------------------------')
                 elif event.type == "response.output_item.added":
                     await self.close_current_message()
                 elif event.type == "response.output_item.done":

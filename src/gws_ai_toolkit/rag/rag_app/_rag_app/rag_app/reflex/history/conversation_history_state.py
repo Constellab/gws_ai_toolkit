@@ -1,13 +1,15 @@
 import json
 import os
+import uuid
 from abc import abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import reflex as rx
 from gws_core.core.utils.logger import Logger
+from PIL import Image
 
-from ..chat_base.chat_message_class import ChatMessage, ChatMessageImage
+from ..chat_base.chat_message_class import ChatMessage
 from ..core.utils import Utils
 from .conversation_history_class import (ConversationFullHistory,
                                          ConversationHistory)
@@ -16,19 +18,33 @@ from .conversation_history_class import (ConversationFullHistory,
 class ConversationHistoryState(rx.State, mixin=True):
     """State management for conversation history storage."""
 
-    _history_file_path: str = ''
+    # Constants for folder and file structure
+    HISTORY_FILE_NAME: str = 'history.json'
+    IMAGES_FOLDER_NAME: str = 'images'
+
+    _history_folder_path: str = ''
 
     @abstractmethod
-    async def _get_history_file_path_param(self) -> str:
-        """Get the parameter name for history file path."""
+    async def _get_history_folder_path_param(self) -> str:
+        """Get the parameter name for history folder path."""
         pass
 
-    async def get_history_file_path(self) -> str:
-        """Get the history file path."""
-        if not self._history_file_path:
-            self._history_file_path = await self._get_history_file_path_param()
+    async def get_history_folder_path(self) -> str:
+        """Get the history folder path."""
+        if not self._history_folder_path:
+            self._history_folder_path = await self._get_history_folder_path_param()
 
-        return self._history_file_path
+        return self._history_folder_path
+
+    async def get_history_file_path(self) -> str:
+        """Get the full path to the history.json file."""
+        folder_path = await self.get_history_folder_path()
+        return os.path.join(folder_path, self.HISTORY_FILE_NAME)
+
+    async def get_images_folder_full_path(self) -> str:
+        """Get the full path to the images folder."""
+        folder_path = await self.get_history_folder_path()
+        return os.path.join(folder_path, self.IMAGES_FOLDER_NAME)
 
     async def _load_history(self) -> ConversationFullHistory:
         """Load conversation history from JSON file."""
@@ -46,12 +62,16 @@ class ConversationHistoryState(rx.State, mixin=True):
     async def _save_history(self, full_history: ConversationFullHistory) -> None:
         """Save conversation history to JSON file."""
         try:
-            history_file_path = await self.get_history_file_path()
-            if not history_file_path:
+            history_folder_path = await self.get_history_folder_path()
+            if not history_folder_path:
                 return
 
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(history_file_path), exist_ok=True)
+            # Ensure folder structure exists
+            os.makedirs(history_folder_path, exist_ok=True)
+            images_folder_path = await self.get_images_folder_full_path()
+            os.makedirs(images_folder_path, exist_ok=True)
+
+            history_file_path = await self.get_history_file_path()
 
             # Convert ConversationFullHistory object to dict format for JSON serialization
             history_data = full_history.to_json_dict()
@@ -131,6 +151,28 @@ class ConversationHistoryState(rx.State, mixin=True):
             await self._save_history(empty_history)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
+
+    async def save_image_to_history(self, image: Image.Image) -> str:
+        """Save a PIL Image to the history images folder and return the filename.
+
+        Args:
+            image: PIL Image object to save
+
+        Returns:
+            str: The filename of the saved image (not the full path)
+        """
+        images_folder_path = await self.get_images_folder_full_path()
+        print(f"Images folder path: {images_folder_path}")
+        os.makedirs(images_folder_path, exist_ok=True)
+
+        # Generate unique filename
+        filename = f"image_{uuid.uuid4().hex}.png"
+        file_path = os.path.join(images_folder_path, filename)
+
+        # Save image
+        image.save(file_path, format="PNG")
+
+        return filename
 
     @staticmethod
     async def get_instance(state: rx.State) -> 'ConversationHistoryState':

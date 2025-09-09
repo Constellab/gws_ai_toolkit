@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 import reflex as rx
-from gws_core import File, ResourceModel
+from gws_core import File, Logger, ResourceModel
 
 from .dataframe_item import DataFrameItem
 
@@ -47,7 +47,7 @@ class AiTableDataState(rx.State):
         """Get DataFrameItem for a table by ID"""
         if table_id == ORIGINAL_TABLE_ID:
             return self._get_current_dataframe_item()
-        
+
         return self._tables.get(table_id)
 
     def set_resource(self, resource: ResourceModel):
@@ -58,7 +58,7 @@ class AiTableDataState(rx.State):
         """
         file = resource.get_resource()
         if not isinstance(file, File) or not file.is_csv_or_excel():
-            print("Resource is not a valid CSV or Excel file")
+            Logger.error("Resource is not a valid CSV or Excel file")
             return
 
         self.current_file_path = file.path
@@ -69,7 +69,7 @@ class AiTableDataState(rx.State):
         if df_item:
             test_df = df_item.get_default_dataframe()
             if test_df.empty:
-                print(f"The dataframe is empty: {file.path}")
+                Logger.error(f"The dataframe is empty: {file.path}")
                 return
 
             # Set default sheet for Excel files
@@ -80,7 +80,7 @@ class AiTableDataState(rx.State):
 
             # Add original table to the tables dictionary
             self._tables[ORIGINAL_TABLE_ID] = DataFrameItem(
-                f"{self.current_file_name} (Original)", 
+                f"{self.current_file_name} (Original)",
                 self.current_file_path
             )
 
@@ -195,18 +195,6 @@ class AiTableDataState(rx.State):
         self.current_selection = selected_cells
 
     @rx.event
-    def on_context_menu(self, event):
-        """Handle context menu event (right-click)"""
-        # Currently not implemented
-        print("Context menu event:", event)
-
-    @rx.event
-    def on_cell_context_menu(self, event):
-        """Handle cell context menu event (right-click)"""
-        # Currently not implemented
-        print("Cell context menu event:", event)
-
-    @rx.event
     def open_extract_dialog(self):
         """Open the extract dialog"""
         self.extract_dialog_open = True
@@ -226,7 +214,6 @@ class AiTableDataState(rx.State):
     def extract_selection(self):
         """Extract the selected data and create a new subtable"""
         if not self.current_selection or len(self.current_selection) != 1:
-            print("Invalid selection for extraction")
             return
 
         selection = self.current_selection[0]
@@ -240,7 +227,7 @@ class AiTableDataState(rx.State):
             source_name = table_item.name if table_item else "table"
 
         if source_df is None or source_df.empty:
-            print("No source dataframe available for extraction")
+            Logger.error("No valid dataframe available for extraction")
             return
 
         # Extract row and column ranges

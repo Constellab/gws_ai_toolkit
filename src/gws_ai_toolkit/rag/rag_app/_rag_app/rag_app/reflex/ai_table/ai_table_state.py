@@ -1,7 +1,7 @@
 from typing import Optional
 
 import reflex as rx
-from gws_core import File, ResourceModel
+from gws_core import File, Logger, ResourceModel
 
 from .ai_table_chat_state import AiTableChatState
 from .ai_table_data_state import AiTableDataState
@@ -28,7 +28,7 @@ class AiTableState(rx.State):
             resource (ResourceModel): Resource model to set
         """
         if not self.validate_resource(resource):
-            print("Invalid resource: not an Excel or CSV file")
+            Logger.error(f"Invalid resource type for AI Table: {resource.id}")
             return
 
         self._current_resource_model = resource
