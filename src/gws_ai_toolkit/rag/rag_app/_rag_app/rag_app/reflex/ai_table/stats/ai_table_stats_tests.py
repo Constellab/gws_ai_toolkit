@@ -1,12 +1,12 @@
 
 import numpy as np
+import pandas as pd
 from scikit_posthocs import posthoc_dunn
 from scipy import stats
-from statsmodels.formula.api import ols
-from statsmodels.stats.anova import anova_lm
+from scipy.stats import f_oneway
 from statsmodels.stats.contingency_tables import mcnemar
 from statsmodels.stats.diagnostic import lilliefors
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
+from statsmodels.stats.multicomp import MultiComparison
 from statsmodels.stats.weightstats import ttest_ind
 
 
@@ -107,12 +107,14 @@ class AiTableStatsTests:
             'test_name': 'Student t-test (paired)'
         }
 
-    def anova_test(self, df, formula):
-        """ANOVA test using statsmodels."""
-        model = ols(formula, data=df).fit()
-        anova_result = anova_lm(model, typ=2)
+    def anova_test(self, *groups):
+        """ANOVA test using scipy.stats."""
+        # Use f_oneway with column arrays directly
+        statistic, p_value = f_oneway(*groups)
+
         return {
-            'anova_table': anova_result,
+            'statistic': statistic,
+            'p_value': p_value,
             'test_name': 'ANOVA'
         }
 
@@ -154,17 +156,15 @@ class AiTableStatsTests:
         }
 
     # Post-hoc tests
-    def tukey_hsd_test(self, df, formula):
+    def tukey_hsd_test(self, dataframe):
         """Tukey's HSD post-hoc test after ANOVA."""
-        # Extract group and value columns from the melted dataframe
-        group_col = df.columns[0]  # Should be 'group'
-        value_col = df.columns[1]  # Should be 'value'
 
-        tukey_result = pairwise_tukeyhsd(
-            endog=df[value_col],
-            groups=df[group_col],
-            alpha=0.05
-        )
+        # Melt the dataframe to create group and value columns
+        melted_df = pd.melt(dataframe, var_name="group", value_name="value").dropna()
+
+        # Use MultiComparison class
+        mc = MultiComparison(melted_df["value"], melted_df["group"])
+        tukey_result = mc.tukeyhsd(alpha=0.05)
 
         return {
             'summary': str(tukey_result),
@@ -172,12 +172,25 @@ class AiTableStatsTests:
             'test_name': 'Tukey HSD'
         }
 
-    def dunn_test(self, df):
+    def dunn_test(self, dataframe, column_names):
         """Dunn's post-hoc test after Kruskal-Wallis."""
         try:
-            # Use posthoc_dunn from scikit_posthocs with explicit column specification
-            # Assuming df has columns 'group' and 'value' (from the melted dataframe)
-            dunn_result = posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+            # Create arrays for Dunn test without melting
+            all_values = []
+            all_groups = []
+
+            for i, col_name in enumerate(column_names):
+                col_data = dataframe.iloc[:, i].dropna()
+                all_values.extend(col_data.values)
+                all_groups.extend([col_name] * len(col_data))
+
+            # Create temporary dataframe for posthoc_dunn
+            temp_df = pd.DataFrame({
+                'value': all_values,
+                'group': all_groups
+            })
+
+            dunn_result = posthoc_dunn(temp_df, val_col='value', group_col='group', p_adjust='bonferroni')
             return {
                 'pairwise_matrix': dunn_result.to_dict(),
                 'test_name': 'Dunn'

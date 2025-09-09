@@ -64,19 +64,21 @@ class AiTableStatsState(rx.State):
             non_null_count = col_data.notna().sum()
             row_counts[col] = non_null_count
 
-        # Check if all columns have the same number of rows
-        unique_row_counts = set(row_counts.values())
-        if len(unique_row_counts) > 1:
-            count_details = ', '.join([f"{col}: {count} rows" for col, count in row_counts.items()])
-            return rx.toast.error(f"Selected columns have different numbers of non-null rows: {count_details}")
+        # # Check if all columns have the same number of rows
+        # unique_row_counts = set(row_counts.values())
+        # if len(unique_row_counts) > 1:
+        #     count_details = ', '.join([f"{col}: {count} rows" for col, count in row_counts.items()])
+        #     return rx.toast.error(f"Selected columns have different numbers of non-null rows: {count_details}")
 
         # Use the checkbox value to determine if columns are independent
         # If columns are paired, they are not independent
         columns_are_independent = not columns_are_paired
 
+        # Filter the dataframe to only include the selected columns
+        filtered_df = current_df[valid_columns]
+
         stats_analyzer = AiTableStats(
-            dataframe=current_df,
-            selected_columns=valid_columns,
+            dataframe=filtered_df,
             columns_are_independent=columns_are_independent
         )
 
@@ -86,7 +88,7 @@ class AiTableStatsState(rx.State):
         # Convert test history to JSON for display
         try:
             self.test_history_json = json.dumps(stats_analyzer.test_history, indent=2, default=str)
-            
+
             # Get the last test result if available
             if stats_analyzer.test_history:
                 self.last_test_json = json.dumps(stats_analyzer.test_history[-1], indent=2, default=str)
