@@ -5,6 +5,7 @@ from reflex_resizable_panels import resizable_panels as rzp
 from .ai_table_data_state import AiTableDataState
 from .ai_table_section import table_section
 from .chat.ai_table_chat_component import ai_table_chat_component
+from .stats.ai_table_stats_component import ai_table_stats_component
 
 
 def table_selector():
@@ -54,7 +55,7 @@ def table_selector():
     )
 
 
-def table_header():
+def _table_header():
     """Header component for the AI Table view"""
     return rx.hstack(
         rx.heading("AI Table Analyst", size="6"),
@@ -87,12 +88,14 @@ def table_header():
         # Table selector (only when subtables exist)
         table_selector(),
         rx.button(
-            rx.cond(
-                AiTableDataState.chat_panel_open,
-                "Hide Chat",
-                "💬 Show Chat"
-            ),
-            on_click=AiTableDataState.toggle_chat_panel,
+            "💬 Chat",
+            on_click=lambda: AiTableDataState.toggle_right_panel_state('chat'),
+            variant="solid",
+            cursor="pointer",
+        ),
+        rx.button(
+            "📈 Stats",
+            on_click=lambda: AiTableDataState.toggle_right_panel_state('stats'),
             variant="solid",
             cursor="pointer",
         ),
@@ -103,11 +106,26 @@ def table_header():
     )
 
 
+def _right_panel() -> rx.Component:
+    return rx.box(
+        rx.match(
+            AiTableDataState.right_panel_state,
+            ("chat", ai_table_chat_component()),
+            ("stats", ai_table_stats_component()),
+        ),
+        background_color="var(--gray-2)",
+        height="100%",
+        display="flex",
+        border_radius="5px",
+        width="100%",
+    )
+
+
 def ai_table_layout():
     """Main AI Table layout with collapsible chat panel"""
     return rx.vstack(
         # Header
-        table_header(),
+        _table_header(),
 
         rzp.group(
             rzp.panel(
@@ -118,16 +136,14 @@ def ai_table_layout():
                 order=1
             ),
             rx.cond(
-                AiTableDataState.chat_panel_open,
+                AiTableDataState.right_panel_opened,
                 rx.fragment(
-
                     rzp.handle(
                         background="initial",
                         width="1px"
                     ),
                     rzp.panel(
-                        # Chat panel (collapsible)
-                        ai_table_chat_component(),
+                        _right_panel(),
                         default_size=30,
                         min_size=10,
                         order=2

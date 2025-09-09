@@ -126,7 +126,8 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
             (config.state.messages_to_display.length() == 0) & ~config.state.current_response_message & ~config.state.is_streaming,
             rx.box(
                 rx.text(
-                    config.state.empty_state_message if hasattr(config.state, 'empty_state_message') else "Start a conversation...",
+                    config.state.empty_state_message if hasattr(
+                        config.state, 'empty_state_message') else "Start a conversation...",
                     color="var(--gray-9)",
                     font_size="16px",
                     text_align="center",

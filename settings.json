@@ -27,6 +27,10 @@
                     {
                         "name": "reflex-resizable-panels",
                         "version": "0.0.1"
+                    },
+                    {
+                        "name": "scikit-posthocs",
+                        "version": "0.11.4"
                     }
                 ]
             }

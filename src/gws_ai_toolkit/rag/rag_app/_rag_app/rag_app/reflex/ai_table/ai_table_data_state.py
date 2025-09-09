@@ -1,7 +1,7 @@
 import os
 import tempfile
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 import pandas as pd
 import reflex as rx
@@ -10,6 +10,8 @@ from gws_core import File, Logger, ResourceModel
 from .dataframe_item import DataFrameItem
 
 ORIGINAL_TABLE_ID = "original"
+
+RightPanelState = Literal["closed", "chat", "stats"]
 
 
 class AiTableDataState(rx.State):
@@ -26,7 +28,7 @@ class AiTableDataState(rx.State):
     current_file_name: str = ""
 
     # UI state
-    chat_panel_open: bool = False
+    right_panel_state: RightPanelState = "closed"
 
     # Table
     _tables: Dict[str, DataFrameItem] = {}  # Dict with ID as key: DataFrameItem
@@ -95,9 +97,17 @@ class AiTableDataState(rx.State):
             self.current_sheet_name = sheet_name
 
     @rx.event
-    def toggle_chat_panel(self):
-        """Toggle the chat panel visibility"""
-        self.chat_panel_open = not self.chat_panel_open
+    def toggle_right_panel_state(self, state: RightPanelState):
+        """Set the right panel state (chat, stats, closed)"""
+        if self.right_panel_state == state:
+            self.right_panel_state = "closed"
+        else:
+            self.right_panel_state = state
+
+    @rx.var
+    def right_panel_opened(self) -> bool:
+        """Check if right panel is open"""
+        return self.right_panel_state != "closed"
 
     @rx.var
     def get_sheet_names(self) -> List[str]:

@@ -215,7 +215,6 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
                 async with self:
                     return await self.create_image_message(
                         image=image_data,
-                        content="",  # No text content for pure images
                         role="assistant"
                     )
             else:

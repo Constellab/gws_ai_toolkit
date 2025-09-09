@@ -14,44 +14,20 @@ def ai_table_chat_component():
         state=AiTableChatState
     )
 
-    return rx.box(
-        rx.auto_scroll(
-            rx.hstack(
-                rx.heading(AiTableDataState.current_table_name, size="3"),
-                rx.spacer(),
-                header_clear_chat_button_component(chat_config.state),
-                align_items="center",
-            ),
-            chat_messages_list_component(chat_config),
-            chat_input_component(chat_config),
-            width="100%",
-            flex="1",
-            display="flex",
-            min_height="0",
-            class_name="ai-table-chat-component",
-            flex_direction="column",
-            padding="1em",
+    return rx.auto_scroll(
+        rx.hstack(
+            rx.heading(AiTableDataState.current_table_name, size="3"),
+            rx.spacer(),
+            header_clear_chat_button_component(chat_config.state),
+            align_items="center",
         ),
-
-        # transition="width 0.3s ease-in-out",
-        style=rx.cond(
-            AiTableDataState.chat_panel_open,
-            {
-                # "width": "600px",
-                "display": "flex",
-                "borderLeft": "1px solid var(--gray-5)",
-                "borderTop": "1px solid var(--gray-5)",
-            },
-            {
-                "display": "none",
-                # "width": "0px",
-            }
-        ),
-        # overflow="hidden",
-        background_color="var(--gray-2)",
-        height="100%",
-        # class_name="ai-table-chat-panel",
-        # display="flex",
-        border_radius="5px",
+        chat_messages_list_component(chat_config),
+        chat_input_component(chat_config),
         width="100%",
+        flex="1",
+        display="flex",
+        min_height="0",
+        class_name="ai-table-chat-component",
+        flex_direction="column",
+        padding="1em",
     )

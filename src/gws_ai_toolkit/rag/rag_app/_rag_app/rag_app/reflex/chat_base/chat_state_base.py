@@ -210,8 +210,7 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             sources=sources or []
         )
 
-    async def create_image_message(self, image: Image.Image, content: str = "",
-                                   role: Literal['user', 'assistant'] = "assistant",
+    async def create_image_message(self, image: Image.Image, role: Literal['user', 'assistant'] = "assistant",
                                    sources: Optional[List[RagChatSource]] = None) -> ChatMessageImage:
         """Create an image message by saving the PIL Image to the history images folder"""
         history_state = await ConversationHistoryState.get_instance(self)
@@ -220,7 +219,6 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         return ChatMessageImage(
             id=str(uuid.uuid4()),
             role=role,
-            content=content,
             image_name=filename,  # Store the full path
             sources=sources or []
         )

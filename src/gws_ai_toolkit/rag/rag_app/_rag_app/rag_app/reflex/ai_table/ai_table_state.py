@@ -5,6 +5,8 @@ from gws_core import File, Logger, ResourceModel
 
 from .ai_table_data_state import AiTableDataState
 from .chat.ai_table_chat_state import AiTableChatState
+from .dataframe_item import DataFrameItem
+from .stats.ai_table_stats_state import AiTableStatsState
 
 
 class AiTableState(rx.State):
@@ -27,7 +29,8 @@ class AiTableState(rx.State):
         Args:
             resource (ResourceModel): Resource model to set
         """
-        if not self.validate_resource(resource):
+        file_path = self.validate_resource(resource)
+        if not file_path:
             Logger.error(f"Invalid resource type for AI Table: {resource.id}")
             return
 
@@ -40,7 +43,7 @@ class AiTableState(rx.State):
         data_state.set_resource(resource)
         chat_state.set_resource(resource)
 
-    def validate_resource(self, resource: ResourceModel) -> bool:
+    def validate_resource(self, resource: ResourceModel) -> str | None:
         """Validate if resource is an Excel or CSV file
 
         Args:
@@ -49,13 +52,13 @@ class AiTableState(rx.State):
         Returns:
             bool: True if resource is Excel/CSV, False otherwise
         """
-        try:
-            file = resource.get_resource()
-            if not isinstance(file, File):
-                return False
-            return file.is_csv_or_excel()
-        except Exception:
-            return False
+        file = resource.get_resource()
+        if not isinstance(file, File):
+            return None
+        if not file.is_csv_or_excel():
+            return None
+
+        return file.path
 
     async def load_resource_from_id(self) -> None:
         """Load resource from URL parameter"""
