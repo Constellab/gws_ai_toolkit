@@ -1,6 +1,8 @@
 import reflex as rx
 
 from ..chat_base.chat_config import ChatConfig
+from ..chat_base.chat_header_component import \
+    header_clear_chat_button_component
 from ..chat_base.chat_input_component import chat_input_component
 from ..chat_base.messages_list_component import chat_messages_list_component
 from .ai_table_chat_state import AiTableChatState
@@ -14,6 +16,10 @@ def ai_table_chat_component():
 
     return rx.box(
         rx.auto_scroll(
+            rx.hstack(
+                rx.spacer(),
+                header_clear_chat_button_component(chat_config.state),
+            ),
             chat_messages_list_component(chat_config),
             chat_input_component(chat_config),
             width="100%",

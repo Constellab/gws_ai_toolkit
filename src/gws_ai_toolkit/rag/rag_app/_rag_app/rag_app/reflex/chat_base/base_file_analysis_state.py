@@ -137,7 +137,7 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
             await self.update_current_response_message(new_message)
 
     async def handle_output_text_annotation_added(self, event):
-        """Handle response.output_text_annotation.added event"""
+        """Handle response.output_text.annotation.added event"""
         annotation = event.annotation
 
         # Extract file from annotation
@@ -196,6 +196,7 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
         """Extract file from OpenAI response - handles images and other files"""
 
         file_data_binary = None
+
         try:
             if file_id.startswith('cfile_') and container_id:
                 # Container file - use containers API
@@ -211,7 +212,7 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
             if file_extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']:
                 image_data = Image.open(io.BytesIO(file_data_binary.content))
                 return self.create_image_message(
-                    data=image_data,
+                    image=image_data,
                     content="",  # No text content for pure images
                     role="assistant"
                 )

@@ -6,7 +6,7 @@ from gws_core import File, ResourceModel
 from ..chat_base.base_file_analysis_state import BaseFileAnalysisState
 from .ai_table_config import AiTableConfig
 from .ai_table_config_state import AiTableConfigState
-from .ai_table_data_state import AiTableDataState, ORIGINAL_TABLE_ID
+from .ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
 
 
 class AiTableChatState(BaseFileAnalysisState, rx.State):
@@ -180,8 +180,12 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
                     await self.handle_output_text_delta(event)
                 elif event.type == "response.code_interpreter_call_code.delta":
                     await self.handle_code_interpreter_call_code_delta(event)
-                elif event.type == "response.output_text_annotation.added":
+                elif event.type == "response.output_text.annotation.added":
                     await self.handle_output_text_annotation_added(event)
+                    print("Handling output text annotation added...")
+                    print('------------------------------------------------')
+                    print(event)
+                    print('------------------------------------------------')
                 elif event.type == "response.output_item.added":
                     await self.close_current_message()
                 elif event.type == "response.output_item.done":

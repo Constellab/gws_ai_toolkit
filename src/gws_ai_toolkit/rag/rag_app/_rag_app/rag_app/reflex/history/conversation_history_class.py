@@ -39,13 +39,6 @@ class ConversationHistory(BaseModelDTO):
                 self.label = label_text
                 break
 
-    def to_json_dict(self) -> dict:
-        """Convert to JSON dict with proper datetime serialization."""
-        data = super().to_json_dict()
-        # Convert datetime to ISO string for JSON storage
-        data['timestamp'] = self.timestamp.isoformat()
-        return data
-
     @classmethod
     def from_json(cls, json_: dict) -> 'ConversationHistory':
         """Create from JSON dict with proper datetime deserialization."""

@@ -93,7 +93,7 @@ def table_header():
             ),
             on_click=AiTableDataState.toggle_chat_panel,
             variant="solid",
-            color_scheme="blue",
+            cursor="pointer",
         ),
         align_items="center",
         width="100%",

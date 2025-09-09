@@ -105,7 +105,15 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
 
         if expert_config.mode == 'full_file':
             # Full file mode - use base class implementation
-            return await super().call_ai_chat(user_message)
+            file_id = await self.upload_file_to_openai()
+            document_name = self._current_resource_model.name
+
+            # Replace the placeholder with document name and include chunks
+            instructions = expert_config.system_prompt.replace(
+                expert_config.prompt_file_placeholder,
+                f"{document_name}\n{file_id}"
+            )
+            tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [file_id]}}]
 
         elif expert_config.mode == 'relevant_chunks':
             # Relevant chunks mode - get only relevant chunks based on user question
@@ -150,7 +158,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
                     await self.handle_output_text_delta(event)
                 elif event.type == "response.code_interpreter_call_code.delta":
                     await self.handle_code_interpreter_call_code_delta(event)
-                elif event.type == "response.output_text_annotation.added":
+                elif event.type == "response.output_text.annotation.added":
                     await self.handle_output_text_annotation_added(event)
                 elif event.type == "response.output_item.added":
                     await self.close_current_message()
@@ -230,27 +238,6 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
             chunk_texts.append(chunk.content)
 
         return "\n".join(chunk_texts)
-
-    # Override upload_file_to_openai to work with RagResource
-    async def upload_file_to_openai(self) -> str:
-        """Upload the document file to OpenAI and return file ID"""
-        if self.openai_file_id:
-            return self.openai_file_id
-
-        client = self._get_openai_client()
-        file = (await self.get_current_rag_resource()).get_file()
-
-        # Upload file to OpenAI
-        with open(file.path, "rb") as f:
-            uploaded_file = client.files.create(
-                file=f,
-                purpose="assistants"
-            )
-
-        async with self:
-            self.openai_file_id = uploaded_file.id
-
-        return uploaded_file.id
 
     async def _get_rag_app_service(self) -> BaseRagAppService:
         """Get the RAG app service instance."""

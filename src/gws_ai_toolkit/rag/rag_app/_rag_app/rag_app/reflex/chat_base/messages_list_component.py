@@ -1,22 +1,22 @@
 import reflex as rx
 
 from .chat_config import ChatConfig
-from .chat_message_class import (ChatMessage, ChatMessageCode,
-                                 ChatMessageImage, ChatMessageText)
+from .chat_message_class import (ChatMessageCode, ChatMessageFront,
+                                 ChatMessageImageFront, ChatMessageText)
 from .chat_state_base import ChatStateBase
 
 
-def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
+def _message_bubble(message: ChatMessageFront, config: ChatConfig) -> rx.Component:
     """Individual message bubble component with role-based styling.
-    
+
     Creates styled message bubbles with different appearances for user and
     assistant messages. Handles content rendering, source display, and
     responsive layout.
-    
+
     Args:
-        message (ChatMessage): The message to render
+        message (ChatMessageFront): The message to render
         config (ChatConfig): Chat configuration for styling and components
-        
+
     Returns:
         rx.Component: Styled message bubble with appropriate alignment and content
     """
@@ -63,13 +63,13 @@ def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
 
 def _streaming_indicator(state_class: ChatStateBase) -> rx.Component:
     """Loading indicator shown during AI response streaming.
-    
+
     Displays a spinner and "thinking" message when the AI is generating
     a response, providing visual feedback to the user.
-    
+
     Args:
         state_class (ChatStateBase): Chat state to check streaming status
-        
+
     Returns:
         rx.Component: Conditional loading indicator based on streaming state
     """
@@ -91,12 +91,12 @@ def _streaming_indicator(state_class: ChatStateBase) -> rx.Component:
 
 def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     """Complete message display component for chat interfaces.
-    
+
     This component renders the complete message list for chat interfaces, handling
     different message types (text, image, code), streaming indicators, and proper
     layout with user/assistant message styling. It provides the core message
     display functionality used across all chat implementations.
-    
+
     Features:
         - Multi-type message rendering (text, image, code)
         - Distinct styling for user vs assistant messages
@@ -104,22 +104,23 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
         - Source citations and references
         - Proper spacing and responsive layout
         - Loading indicators during AI responses
-        
+
     Args:
         config (ChatConfig): Chat configuration containing:
             - state: Provides messages and streaming state
             - sources_component: Optional component for displaying sources
-            
+
     Returns:
         rx.Component: Complete scrollable message list with all message types,
             streaming indicators, and proper styling for chat display.
-            
+
     Example:
         messages = chat_messages_list_component(chat_config)
         # Renders all messages with proper styling and streaming support
     """
 
     return rx.box(
+
         rx.foreach(
             config.state.messages_to_display,
             lambda message: _message_bubble(message, config)
@@ -137,15 +138,15 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     )
 
 
-def _message_content(message: ChatMessage) -> rx.Component:
+def _message_content(message: ChatMessageFront) -> rx.Component:
     """Content renderer that handles different message types.
-    
+
     Routes message content to appropriate rendering functions based on
     message type (text, image, code), ensuring proper display formatting.
-    
+
     Args:
         message (ChatMessage): Message with type-specific content
-        
+
     Returns:
         rx.Component: Rendered content appropriate for the message type
     """
@@ -161,10 +162,10 @@ def _message_content(message: ChatMessage) -> rx.Component:
 
 def _text_content(message: ChatMessageText) -> rx.Component:
     """Renders text content with markdown support.
-    
+
     Args:
         message (ChatMessageText): Text message to render
-        
+
     Returns:
         rx.Component: Markdown-rendered text content
     """
@@ -174,41 +175,28 @@ def _text_content(message: ChatMessageText) -> rx.Component:
     )
 
 
-def _image_content(message: ChatMessageImage) -> rx.Component:
+def _image_content(message: ChatMessageImageFront) -> rx.Component:
     """Renders image content with optional text description.
-    
+
     Args:
         message (ChatMessageImage): Image message to render
-        
+
     Returns:
         rx.Component: Image display with optional text content
     """
-    return rx.vstack(
-        rx.cond(
-            message.content,  # If there's text content along with the image
-            rx.markdown(
-                message.content,
-                font_size="14px",
-            ),
-            rx.text("")
-        ),
-        rx.image(
-            src=message.data,  # Now data is available on the base class
-            max_width="100%",
-            height="auto",
-            border_radius="8px",
-            margin="0.5em 0",
-        ),
-        spacing="2"
+    return rx.image(
+        src=message.image,  # Use image_path instead of data
+        max_width="100%",
+        height="auto",
     )
 
 
 def _code_content(message: ChatMessageCode) -> rx.Component:
     """Renders code content with syntax highlighting.
-    
+
     Args:
         message (ChatMessageCode): Code message to render
-        
+
     Returns:
         rx.Component: Syntax-highlighted code block
     """

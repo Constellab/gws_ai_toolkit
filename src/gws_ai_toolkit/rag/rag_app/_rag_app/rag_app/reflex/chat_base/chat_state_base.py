@@ -1,3 +1,5 @@
+import os
+import tempfile
 import uuid
 from abc import abstractmethod
 from typing import List, Optional
@@ -14,7 +16,8 @@ from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
 from ..history.conversation_history_state import ConversationHistoryState
 from .chat_message_class import (ChatMessage, ChatMessageCode,
-                                 ChatMessageImage, ChatMessageText)
+                                 ChatMessageFront, ChatMessageImage,
+                                 ChatMessageImageFront, ChatMessageText)
 
 
 class ChatStateBase(ReflexMainState, rx.State, mixin=True):
@@ -83,20 +86,31 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         """Hook called after chat is cleared to reset analysis-specific state"""
 
     @rx.var
-    def messages_to_display(self) -> List[ChatMessage]:
+    def messages_to_display(self) -> List[ChatMessageFront]:
         """Get the list of messages to display in the chat."""
         messages = self._chat_messages
         if not self.show_chat_code_block:
             messages = [msg for msg in messages if msg.type != "code"]
-        return messages
+        return list(map(self._convert_to_front_message, messages))
 
     @rx.var
-    def current_response_message(self) -> Optional[ChatMessage]:
+    def current_response_message(self) -> Optional[ChatMessageFront]:
         """Get the current response message being streamed."""
         current_messages = self._current_response_message
         if not self.show_chat_code_block and current_messages and current_messages.type == "code":
             return None
-        return current_messages
+        return self._convert_to_front_message(current_messages) if current_messages else None
+
+    def _convert_to_front_message(self, message: ChatMessage) -> ChatMessageFront:
+        """Convert internal ChatMessage to front-end ChatMessageFront type."""
+        if isinstance(message, ChatMessageImage):
+            return ChatMessageImageFront(
+                id=message.id,
+                role=message.role,
+                sources=message.sources,
+                image=Image.open(message.image_path)
+            )
+        return message
 
     @rx.event(background=True)
     async def submit_input_form(self, form_data: dict) -> None:
@@ -186,16 +200,33 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             sources=sources or []
         )
 
-    def create_image_message(self, data: Image.Image, content: str = "", role: str = "assistant",
+    def create_image_message(self, image: Image.Image, content: str = "", role: str = "assistant",
                              sources: Optional[List[RagChatSource]] = None) -> ChatMessageImage:
-        """Create an image message"""
+        """Create an image message by saving the PIL Image to a temporary file"""
+        image_path = self._save_image_to_temp(image)
         return ChatMessageImage(
             id=str(uuid.uuid4()),
             role=role,
             content=content,
-            data=data,
+            image_path=image_path,
             sources=sources or []
         )
+
+    def _save_image_to_temp(self, image: Image.Image) -> str:
+        """Save PIL Image to temporary directory and return the file path"""
+        # Create temp directory if it doesn't exist
+        temp_dir = tempfile.gettempdir()
+        chat_temp_dir = os.path.join(temp_dir, "chat_images")
+        os.makedirs(chat_temp_dir, exist_ok=True)
+
+        # Generate unique filename
+        filename = f"image_{uuid.uuid4().hex}.png"
+        file_path = os.path.join(chat_temp_dir, filename)
+
+        # Save image
+        image.save(file_path, format="PNG")
+
+        return file_path
 
     def add_message(self, message: ChatMessage) -> None:
         """Add a message to the chat history"""
