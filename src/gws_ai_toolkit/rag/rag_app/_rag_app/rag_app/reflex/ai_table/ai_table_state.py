@@ -3,8 +3,8 @@ from typing import Optional
 import reflex as rx
 from gws_core import File, Logger, ResourceModel
 
-from .ai_table_chat_state import AiTableChatState
 from .ai_table_data_state import AiTableDataState
+from .chat.ai_table_chat_state import AiTableChatState
 
 
 class AiTableState(rx.State):

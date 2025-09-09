@@ -7,10 +7,12 @@ from .ai_expert.ai_expert_config_state import AiExpertConfigState
 from .ai_expert.ai_expert_state import AiExpertState
 # Ai Table
 from .ai_table.ai_table_component import ai_table_component
-from .ai_table.ai_table_config import AiTableConfig, AiTableConfigUI
-from .ai_table.ai_table_config_component import ai_table_config_component
-from .ai_table.ai_table_config_state import AiTableConfigState
 from .ai_table.ai_table_state import AiTableState
+from .ai_table.chat.ai_table_chat_config import (AiTableChatConfig,
+                                                 AiTableChatConfigUI)
+from .ai_table.chat.ai_table_chat_config_component import \
+    ai_table_chat_config_component
+from .ai_table.chat.ai_table_chat_config_state import AiTableChatConfigState
 from .chat_base.chat_component import chat_component
 # Chat Base
 from .chat_base.chat_config import ChatConfig
@@ -51,10 +53,10 @@ __all__ = [
     "ai_expert_header_default_buttons_component",
 
     # Ai Table
-    "AiTableConfig",
-    "AiTableConfigUI",
-    "AiTableConfigState",
-    "ai_table_config_component",
+    "AiTableChatConfig",
+    "AiTableChatConfigUI",
+    "AiTableChatConfigState",
+    "ai_table_chat_config_component",
     "AiTableState",
     "ai_table_component",
 

@@ -2,9 +2,9 @@
 import reflex as rx
 from reflex_resizable_panels import resizable_panels as rzp
 
-from .ai_table_chat_component import ai_table_chat_component
 from .ai_table_data_state import AiTableDataState
 from .ai_table_section import table_section
+from .chat.ai_table_chat_component import ai_table_chat_component
 
 
 def table_selector():

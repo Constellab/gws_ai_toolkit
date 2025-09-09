@@ -9,17 +9,17 @@ from ..rag.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_config_state impo
     AiExpertConfigState
 from ..rag.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_state import \
     AiExpertState
+from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.ai_table_chat_config_component import \
+    ai_table_chat_config_component
+from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.ai_table_chat_config_state import \
+    AiTableChatConfigState
 # Ai Table
 from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.ai_table_component import (
     ai_table_component, ai_table_header_default_buttons_component)
-from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.ai_table_config import (
-    AiTableConfig, AiTableConfigUI)
-from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.ai_table_config_component import \
-    ai_table_config_component
-from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.ai_table_config_state import \
-    AiTableConfigState
 from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.ai_table_state import \
     AiTableState
+from ..rag.rag_app._rag_app.rag_app.reflex.ai_table.chat.ai_table_chat_config import (
+    AiTableChatConfig, AiTableChatConfigUI)
 from ..rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_component import \
     chat_component
 # Chat Base
@@ -75,10 +75,10 @@ __all__ = [
     "ai_expert_header_default_buttons_component",
 
     # Ai Table
-    "AiTableConfig",
-    "AiTableConfigUI",
-    "AiTableConfigState",
-    "ai_table_config_component",
+    "AiTableChatConfig",
+    "AiTableChatConfigUI",
+    "AiTableChatConfigState",
+    "ai_table_chat_config_component",
     "AiTableState",
     "ai_table_component",
     "ai_table_header_default_buttons_component",

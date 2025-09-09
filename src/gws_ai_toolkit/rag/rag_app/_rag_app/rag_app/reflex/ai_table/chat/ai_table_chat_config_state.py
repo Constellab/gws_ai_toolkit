@@ -3,12 +3,12 @@ from typing import Type, cast
 import reflex as rx
 from gws_core import Logger
 
-from ..chat_base.base_analysis_config import BaseAnalysisConfig
-from ..core.app_config_state import AppConfigState
-from .ai_table_config import AiTableConfig
+from ...chat_base.base_analysis_config import BaseAnalysisConfig
+from ...core.app_config_state import AppConfigState
+from .ai_table_chat_config import AiTableChatConfig
 
 
-class AiTableConfigState(rx.State):
+class AiTableChatConfigState(rx.State):
     """State management for AI Table configuration interface.
 
     This state class manages the configuration form for AI Table functionality,
@@ -33,7 +33,7 @@ class AiTableConfigState(rx.State):
         Returns:
             Type[BaseAnalysisConfig]: AiTableConfig class type
         """
-        return AiTableConfig
+        return AiTableChatConfig
 
     async def get_config(self) -> BaseAnalysisConfig:
         """Get the current configuration for this analysis type"""
@@ -146,7 +146,7 @@ class AiTableConfigState(rx.State):
         current_config = await self.get_config()
 
         # Create new config with updated values
-        new_config = AiTableConfig(
+        new_config = AiTableChatConfig(
             prompt_file_placeholder=current_config.prompt_file_placeholder,
             system_prompt=new_system_prompt,
             model=new_model,

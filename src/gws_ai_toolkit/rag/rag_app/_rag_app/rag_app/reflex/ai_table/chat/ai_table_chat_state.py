@@ -3,10 +3,10 @@ from typing import Optional
 import reflex as rx
 from gws_core import File, ResourceModel
 
-from ..chat_base.base_file_analysis_state import BaseFileAnalysisState
-from .ai_table_config import AiTableConfig
-from .ai_table_config_state import AiTableConfigState
-from .ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
+from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
+from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
+from .ai_table_chat_config import AiTableChatConfig
+from .ai_table_chat_config_state import AiTableChatConfigState
 
 
 class AiTableChatState(BaseFileAnalysisState, rx.State):
@@ -66,13 +66,13 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
             return False
         return file.is_csv_or_excel()
 
-    async def get_config(self) -> AiTableConfig:
+    async def get_config(self) -> AiTableChatConfig:
         """Get configuration for AI Table analysis
 
         Returns:
             AiTableConfig: Configuration object for AI Table
         """
-        app_config_state = await self.get_state(AiTableConfigState)
+        app_config_state = await self.get_state(AiTableChatConfigState)
         return await app_config_state.get_config()
 
     def get_analysis_type(self) -> str:
@@ -136,7 +136,7 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         client = self._get_openai_client()
 
         # Get the current dataframe from data state
-        config: AiTableConfig
+        config: AiTableChatConfig
         data_state: AiTableDataState
         async with self:
             config = await self.get_config()

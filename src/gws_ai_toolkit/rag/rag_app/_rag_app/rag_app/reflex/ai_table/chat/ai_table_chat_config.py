@@ -4,11 +4,11 @@ from typing import Callable, List
 
 import reflex as rx
 
-from ..chat_base.base_analysis_config import BaseAnalysisConfig
+from ...chat_base.base_analysis_config import BaseAnalysisConfig
 
 
 @dataclass
-class AiTableConfigUI:
+class AiTableChatConfigUI:
     """UI configuration class for AI Table interface customization.
 
     This dataclass defines UI-specific configuration options for the AI Table
@@ -30,7 +30,7 @@ class AiTableConfigUI:
     header_buttons: Callable[[], List[rx.Component]] | None = None
 
 
-class AiTableConfig(BaseAnalysisConfig):
+class AiTableChatConfig(BaseAnalysisConfig):
     """Configuration class for AI Table functionality.
 
     This class defines configurable parameters specific to the AI Table chat system

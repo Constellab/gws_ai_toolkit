@@ -1,7 +1,7 @@
 
 import reflex as rx
 
-from .reflex import ai_expert_config_component, ai_table_config_component
+from .reflex import ai_expert_config_component, ai_table_chat_config_component
 
 
 def combined_config_page() -> rx.Component:
@@ -26,7 +26,7 @@ def combined_config_page() -> rx.Component:
 
             rx.tabs.content(
                 rx.vstack(
-                    ai_table_config_component(),
+                    ai_table_chat_config_component(),
                     spacing="4",
                     width="100%",
                 ),
