@@ -69,7 +69,7 @@ class ChatMessageText(ChatMessageBase):
         )
     """
     type: Literal["text"] = "text"
-    content: Optional[str] = None
+    content: str
 
 
 class ChatMessageImage(ChatMessageBase):
@@ -126,11 +126,11 @@ class ChatMessageCode(ChatMessageBase):
         )
     """
     type: Literal["code"] = "code"
-    content: Optional[str] = None
+    code: str
 
 
 # Type used for the storage and internal processing
-ChatMessage = ChatMessageCode | ChatMessageImage | ChatMessageText
+ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage
 
 # Type used  for front-end rendering
-ChatMessageFront = ChatMessageCode | ChatMessageImageFront | ChatMessageText
+ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront

@@ -127,7 +127,7 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
 
         if current_message and current_message.type == "code":
             async with self:
-                current_message.content += code
+                current_message.code += code
         else:
             # Create new code message if none exists or if current is different type
             new_message = self.create_code_message(

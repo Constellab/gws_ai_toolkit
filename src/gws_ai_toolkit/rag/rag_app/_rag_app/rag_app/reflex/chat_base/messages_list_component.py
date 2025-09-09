@@ -201,7 +201,7 @@ def _code_content(message: ChatMessageCode) -> rx.Component:
         rx.Component: Syntax-highlighted code block
     """
     return rx.code_block(
-        message.content,
+        code=rx.cond(message.code, message.code, ""),
         language="python",
         border_radius="8px",
         padding="1em",

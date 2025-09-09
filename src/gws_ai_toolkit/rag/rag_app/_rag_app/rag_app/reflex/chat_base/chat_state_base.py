@@ -206,7 +206,7 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         return ChatMessageCode(
             id=str(uuid.uuid4()),
             role=role,
-            content=content,
+            code=content,
             sources=sources or []
         )
 
