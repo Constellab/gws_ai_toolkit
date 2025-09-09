@@ -17,8 +17,10 @@ def ai_table_chat_component():
     return rx.box(
         rx.auto_scroll(
             rx.hstack(
+                rx.heading(AiTableDataState.current_table_name, size="3"),
                 rx.spacer(),
                 header_clear_chat_button_component(chat_config.state),
+                align_items="center",
             ),
             chat_messages_list_component(chat_config),
             chat_input_component(chat_config),

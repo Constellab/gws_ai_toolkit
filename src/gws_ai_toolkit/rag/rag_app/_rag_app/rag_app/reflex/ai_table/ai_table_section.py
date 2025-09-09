@@ -85,7 +85,8 @@ def table_section():
             ),
             width="100%",
             flex='1',
-            min_height='0'
+            min_height='0',
+            padding="0 1em 1em 1em"
         ),
         # Extract dialog
         extract_dialog(),

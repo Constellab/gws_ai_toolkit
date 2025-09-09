@@ -30,11 +30,11 @@ class ConversationHistory(BaseModelDTO):
     def update_label(self) -> None:
         """Update the label with the first 100 characters of the first user question."""
         for message in self.messages:
-            if message.role == "user" and message.code:
+            if message.role == "user" and message.type == "text":
                 # Take first 100 characters and clean up
-                label_text = str(message.code).strip()[:100]
+                label_text = str(message.content).strip()[:100]
                 # Add ellipsis if truncated
-                if len(str(message.code).strip()) > 100:
+                if len(str(message.content).strip()) > 100:
                     label_text += "..."
                 self.label = label_text
                 break
