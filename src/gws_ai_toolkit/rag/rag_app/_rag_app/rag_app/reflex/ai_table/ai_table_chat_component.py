@@ -37,18 +37,21 @@ def ai_table_chat_component():
         style=rx.cond(
             AiTableDataState.chat_panel_open,
             {
-                "width": "600px",
+                # "width": "600px",
+                "display": "flex",
                 "borderLeft": "1px solid var(--gray-5)",
                 "borderTop": "1px solid var(--gray-5)",
             },
             {
-                "width": "0px",
+                "display": "none",
+                # "width": "0px",
             }
         ),
-        overflow="hidden",
+        # overflow="hidden",
         background_color="var(--gray-2)",
         height="100%",
-        class_name="ai-table-chat-panel",
-        display="flex",
-        border_radius="5px"
+        # class_name="ai-table-chat-panel",
+        # display="flex",
+        border_radius="5px",
+        width="100%",
     )

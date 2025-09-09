@@ -1,5 +1,6 @@
 
 import reflex as rx
+from reflex_resizable_panels import resizable_panels as rzp
 
 from .ai_table_chat_component import ai_table_chat_component
 from .ai_table_data_state import AiTableDataState
@@ -108,19 +109,50 @@ def ai_table_layout():
         # Header
         table_header(),
 
-        # Main content area
-        rx.hstack(
-            # Table section (flexible width)
-            table_section(),
+        rzp.group(
+            rzp.panel(
+                # Table section (flexible width)
+                table_section(),
+                default_size=70,
+                min_size=10,
+                order=1
+            ),
+            rx.cond(
+                AiTableDataState.chat_panel_open,
+                rx.fragment(
 
-            # Chat panel (collapsible)
-            ai_table_chat_component(),
-
-            spacing="0",
+                    rzp.handle(
+                        background="initial",
+                        width="1px"
+                    ),
+                    rzp.panel(
+                        # Chat panel (collapsible)
+                        ai_table_chat_component(),
+                        default_size=30,
+                        min_size=10,
+                        order=2
+                    ),
+                ),
+            ),
+            direction="horizontal",
             width="100%",
             flex="1",
             min_height="0",
         ),
+
+        # Main content area
+        # rx.hstack(
+        #     # Table section (flexible width)
+        #     table_section(),
+
+        #     # Chat panel (collapsible)
+        #     ai_table_chat_component(),
+
+        #     spacing="0",
+        #     width="100%",
+        #     flex="1",
+        #     min_height="0",
+        # ),
         width="100%",
         spacing="0"
     )
