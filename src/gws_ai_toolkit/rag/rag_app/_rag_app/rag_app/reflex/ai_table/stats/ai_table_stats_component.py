@@ -25,6 +25,12 @@ def ai_table_stats_component():
                     name="columns_input",
                     width="100%",
                 ),
+                rx.text("Group by column (optional):"),
+                rx.input(
+                    placeholder="e.g., category, group_type",
+                    name="group_input",
+                    width="100%",
+                ),
                 rx.checkbox(
                     "Columns are paired",
                     name="columns_are_paired",

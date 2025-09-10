@@ -1,27 +1,80 @@
 
 
-from typing import List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
+from gws_core import TableUnfolderHelper
 from pandas import DataFrame, api
 
 from .ai_table_stats_tests import AiTableStatsTests
 
 
 class AiTableStats:
+    """
+    Statistical analysis class that follows a decision tree approach for selecting appropriate tests.
+    
+    DECISION TREE LOGIC:
+    
+    1. DATA TYPE CLASSIFICATION:
+       - If all columns are quantitative (numeric) → Go to quantitative analysis
+       - If columns are qualitative (categorical) → Go to qualitative analysis
+    
+    2. QUALITATIVE ANALYSIS:
+       - 1 column: Chi² adjustment test (goodness of fit)
+       - 2 columns:
+         * Independent: Chi² independence test
+         * Dependent: McNemar test
+       - >2 columns: Not supported (error)
+    
+    3. QUANTITATIVE ANALYSIS:
+       Step 1: NORMALITY TEST (for each column)
+       - If n < 50: Shapiro-Wilk test
+       - If n ≥ 50: Kolmogorov-Smirnov test (Lilliefors)
+       - Result: all_normal = True if ALL columns have p > 0.05
+       
+       Step 2: HOMOGENEITY OF VARIANCE TEST
+       - If all_normal = True: Bartlett test
+       - If all_normal = False: Levene test
+       - Result: is_homogeneous = True if p > 0.05
+       
+       Step 3: PARAMETRIC PATH (if is_homogeneous AND all_normal)
+       - 2 columns:
+         * Independent: Student's t-test (independent)
+         * Dependent: Student's t-test (paired)
+       - >2 columns:
+         * Independent: ANOVA → If significant (p < 0.05): Tukey HSD post-hoc
+         * Dependent: Not supported (error)
+       
+       Step 4: NON-PARAMETRIC PATH (if NOT is_homogeneous OR NOT all_normal)
+       - 2 columns:
+         * Independent: Mann-Whitney U test
+         * Dependent: Wilcoxon signed-rank test
+       - >2 columns:
+         * Independent: Kruskal-Wallis → If significant (p < 0.05): Dunn post-hoc
+         * Dependent: Friedman test
+    
+    INDEPENDENCE vs DEPENDENCE:
+    - Independent: Different groups/subjects (e.g., treatment A vs treatment B)
+    - Dependent: Same subjects measured multiple times (e.g., before vs after treatment)
+    """
 
     _dataframe: DataFrame
 
     # True if selected columns are independent (e.g., age, height), False if dependent (e.g., sales over months)
     _columns_are_independent: bool
 
+    # Optional group column name for grouping analysis
+    group_column_name: Optional[str] = None
+
     _tests: AiTableStatsTests
     test_history: List[dict]
 
     def __init__(self, dataframe: DataFrame,
-                 columns_are_independent: bool = True):
+                 columns_are_independent: bool = True,
+                 group_column_name: Optional[str] = None):
         self._dataframe = dataframe
         self._columns_are_independent = columns_are_independent
+        self.group_column_name = group_column_name
         self._tests = AiTableStatsTests()
         self.test_history = []
 
@@ -29,7 +82,7 @@ class AiTableStats:
         """Check if all columns are quantitative (numeric)"""
         return all(api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns)
 
-    def _record_test(self, test_category, test_name, result):
+    def _record_test(self, test_category: str, test_name: str, result: Dict[str, Any]) -> None:
         """Record a test result in the history."""
         self.test_history.append({
             'category': test_category,
@@ -39,14 +92,14 @@ class AiTableStats:
             'columns_are_independent': self._columns_are_independent
         })
 
-    def run_statistical_analysis(self):
+    def run_statistical_analysis(self) -> None:
         """Run statistical analysis using decision tree logic."""
         if self.columns_are_quantitative():
             self._analyze_quantitative_columns()
         else:
             self._analyze_qualitative_columns()
 
-    def _analyze_qualitative_columns(self):
+    def _analyze_qualitative_columns(self) -> None:
         """Analyze qualitative columns using decision tree logic."""
         num_columns = len(self._dataframe.columns)
 
@@ -77,7 +130,7 @@ class AiTableStats:
         else:
             raise ValueError("Error: More than 2 qualitative columns not supported")
 
-    def _analyze_quantitative_columns(self):
+    def _analyze_quantitative_columns(self) -> None:
         """Analyze quantitative columns using decision tree logic."""
         num_rows = len(self._dataframe)
         num_columns = len(self._dataframe.columns)
@@ -157,7 +210,7 @@ class AiTableStats:
                     if result['p_value'] < 0.05:
                         print("Running post-hoc: Dunn test (Kruskal-Wallis p < 0.05)")
                         # Use columns directly for Dunn
-                        dunn_result = self._tests.dunn_test(self._dataframe, list(self._dataframe.columns))
+                        dunn_result = self._tests.dunn_test(self._dataframe)
                         self._record_test("post-hoc", "Dunn", dunn_result)
                         print(f"Dunn Result: {dunn_result}")
                 else:
@@ -167,7 +220,7 @@ class AiTableStats:
                     self._record_test("quantitative", "Friedman", result)
                     print(f"Result: {result}")
 
-    def _test_normality(self, dataframe, num_rows):
+    def _test_normality(self, dataframe: DataFrame, num_rows: int) -> Dict[str, Any]:
         """Test normality of quantitative columns."""
         all_normal = True
         test_results = []
@@ -196,7 +249,7 @@ class AiTableStats:
             'test_used': 'Shapiro-Wilk' if num_rows < 50 else 'Kolmogorov-Smirnov'
         }
 
-    def _test_homogeneity(self, filtered_df, all_normal):
+    def _test_homogeneity(self, filtered_df: DataFrame, all_normal: bool) -> Dict[str, Any]:
         """Test homogeneity of variance."""
         groups = [filtered_df[col].dropna() for col in filtered_df.columns]
 

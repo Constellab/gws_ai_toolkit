@@ -1,4 +1,6 @@
 
+from typing import Any, Dict, List, Union
+
 import numpy as np
 import pandas as pd
 from scikit_posthocs import posthoc_dunn
@@ -17,7 +19,7 @@ class AiTableStatsTests:
         pass
 
     # Normality tests
-    def shapiro_wilk_test(self, data):
+    def shapiro_wilk_test(self, data: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Shapiro-Wilk normality test."""
         statistic, p_value = stats.shapiro(data)
         return {
@@ -26,7 +28,7 @@ class AiTableStatsTests:
             'test_name': 'Shapiro-Wilk'
         }
 
-    def kolmogorov_smirnov_test(self, data):
+    def kolmogorov_smirnov_test(self, data: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Kolmogorov-Smirnov normality test using Lilliefors from statsmodels."""
         statistic, p_value = lilliefors(data, dist='norm')
         return {
@@ -36,7 +38,7 @@ class AiTableStatsTests:
         }
 
     # Homogeneity tests
-    def bartlett_test(self, *groups):
+    def bartlett_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Bartlett's test for homogeneity of variances."""
         statistic, p_value = stats.bartlett(*groups)
         return {
@@ -45,7 +47,7 @@ class AiTableStatsTests:
             'test_name': 'Bartlett'
         }
 
-    def levene_test(self, *groups):
+    def levene_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Levene's test for homogeneity of variances."""
         statistic, p_value = stats.levene(*groups)
         return {
@@ -55,7 +57,7 @@ class AiTableStatsTests:
         }
 
     # Qualitative tests
-    def chi2_adjustment_test(self, observed_freq):
+    def chi2_adjustment_test(self, observed_freq: Union[np.ndarray, List[int]]) -> Dict[str, Any]:
         """Chi-squared goodness of fit test (adjustment test)."""
         # For goodness of fit, we compare observed vs expected uniform distribution
         expected_freq = np.full_like(observed_freq, np.mean(observed_freq))
@@ -66,7 +68,7 @@ class AiTableStatsTests:
             'test_name': 'Chi-squared adjustment'
         }
 
-    def chi2_independence_test(self, contingency_table):
+    def chi2_independence_test(self, contingency_table: Union[np.ndarray, List[List[int]]]) -> Dict[str, Any]:
         """Chi-squared test of independence."""
         chi2_stat, p_value, dof, expected = stats.chi2_contingency(contingency_table)
         return {
@@ -77,17 +79,17 @@ class AiTableStatsTests:
             'test_name': 'Chi-squared independence'
         }
 
-    def mcnemar_test(self, table):
+    def mcnemar_test(self, table: Union[np.ndarray, List[List[int]]]) -> Dict[str, Any]:
         """McNemar's test for paired categorical data."""
         result = mcnemar(table, exact=False, correction=True)
         return {
-            'statistic': result.statistic,
-            'p_value': result.pvalue,
+            'statistic': float(result.statistic),
+            'p_value': float(result.pvalue),
             'test_name': 'McNemar'
         }
 
     # Quantitative tests - parametric
-    def student_independent_test(self, group1, group2):
+    def student_independent_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Student's t-test for independent samples."""
         statistic, p_value, df = ttest_ind(group1, group2, usevar='pooled')
         # statsmodels ttest_ind returns a tuple: (statistic, pvalue, degrees_of_freedom)
@@ -98,7 +100,7 @@ class AiTableStatsTests:
             'test_name': 'Student t-test (independent)'
         }
 
-    def student_paired_test(self, group1, group2):
+    def student_paired_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Student's t-test for paired samples."""
         statistic, p_value = stats.ttest_rel(group1, group2)
         return {
@@ -107,7 +109,7 @@ class AiTableStatsTests:
             'test_name': 'Student t-test (paired)'
         }
 
-    def anova_test(self, *groups):
+    def anova_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """ANOVA test using scipy.stats."""
         # Use f_oneway with column arrays directly
         statistic, p_value = f_oneway(*groups)
@@ -119,7 +121,7 @@ class AiTableStatsTests:
         }
 
     # Quantitative tests - non-parametric
-    def mann_whitney_test(self, group1, group2):
+    def mann_whitney_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Mann-Whitney U test."""
         statistic, p_value = stats.mannwhitneyu(group1, group2, alternative='two-sided')
         return {
@@ -128,7 +130,7 @@ class AiTableStatsTests:
             'test_name': 'Mann-Whitney U'
         }
 
-    def wilcoxon_test(self, group1, group2):
+    def wilcoxon_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Wilcoxon signed-rank test for paired samples."""
         statistic, p_value = stats.wilcoxon(group1, group2, alternative='two-sided')
         return {
@@ -137,7 +139,7 @@ class AiTableStatsTests:
             'test_name': 'Wilcoxon signed-rank'
         }
 
-    def kruskal_wallis_test(self, *groups):
+    def kruskal_wallis_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Kruskal-Wallis H test."""
         statistic, p_value = stats.kruskal(*groups)
         return {
@@ -146,7 +148,7 @@ class AiTableStatsTests:
             'test_name': 'Kruskal-Wallis'
         }
 
-    def friedman_test(self, *groups):
+    def friedman_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Friedman test for repeated measures."""
         statistic, p_value = stats.friedmanchisquare(*groups)
         return {
@@ -156,7 +158,7 @@ class AiTableStatsTests:
         }
 
     # Post-hoc tests
-    def tukey_hsd_test(self, dataframe):
+    def tukey_hsd_test(self, dataframe: pd.DataFrame) -> Dict[str, Any]:
         """Tukey's HSD post-hoc test after ANOVA."""
 
         # Melt the dataframe to create group and value columns
@@ -172,25 +174,13 @@ class AiTableStatsTests:
             'test_name': 'Tukey HSD'
         }
 
-    def dunn_test(self, dataframe, column_names):
+    def dunn_test(self, dataframe: pd.DataFrame) -> Dict[str, Any]:
         """Dunn's post-hoc test after Kruskal-Wallis."""
         try:
-            # Create arrays for Dunn test without melting
-            all_values = []
-            all_groups = []
+            # Melt the dataframe to create group and value columns
+            melted_df = pd.melt(dataframe, var_name="group", value_name="value").dropna()
 
-            for i, col_name in enumerate(column_names):
-                col_data = dataframe.iloc[:, i].dropna()
-                all_values.extend(col_data.values)
-                all_groups.extend([col_name] * len(col_data))
-
-            # Create temporary dataframe for posthoc_dunn
-            temp_df = pd.DataFrame({
-                'value': all_values,
-                'group': all_groups
-            })
-
-            dunn_result = posthoc_dunn(temp_df, val_col='value', group_col='group', p_adjust='bonferroni')
+            dunn_result = posthoc_dunn(melted_df, val_col='value', group_col='group', p_adjust='bonferroni')
             return {
                 'pairwise_matrix': dunn_result.to_dict(),
                 'test_name': 'Dunn'

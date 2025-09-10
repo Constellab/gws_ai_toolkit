@@ -18,6 +18,7 @@ class AiTableStatsState(rx.State):
     async def submit_columns(self, form_data: dict):
         """Submit and validate column names."""
         columns_input = form_data.get("columns_input", "")
+        group_input = form_data.get("group_input", "")
         columns_are_paired = form_data.get("columns_are_paired", False)
 
         if not columns_input.strip():
@@ -25,6 +26,9 @@ class AiTableStatsState(rx.State):
 
         # Split by comma and clean up whitespace
         columns = [col.strip() for col in columns_input.split(",") if col.strip()]
+        
+        # Handle group column (optional)
+        group_column = group_input.strip() if group_input else None
 
         if not columns:
             return rx.toast.error("No valid columns found.")
@@ -51,8 +55,12 @@ class AiTableStatsState(rx.State):
             else:
                 valid_columns.append(col)
 
-        # Show validation results
+        # Validate group column if provided
+        if group_column and group_column not in available_columns:
+            return rx.toast.error(
+                f"Group column '{group_column}' not found in dataframe. Available columns: '{', '.join(available_columns)}'")
 
+        # Show validation results for main columns
         if missing_columns:
             return rx.toast.error(
                 f"Columns not found in dataframe: '{', '.join(missing_columns)}'. Available columns: '{', '.join(available_columns)}'")
@@ -75,11 +83,17 @@ class AiTableStatsState(rx.State):
         columns_are_independent = not columns_are_paired
 
         # Filter the dataframe to only include the selected columns
-        filtered_df = current_df[valid_columns]
+        # Add group column to the filtered dataframe if provided
+        columns_to_include = valid_columns.copy()
+        if group_column:
+            columns_to_include.append(group_column)
+        
+        filtered_df = current_df[columns_to_include]
 
         stats_analyzer = AiTableStats(
             dataframe=filtered_df,
-            columns_are_independent=columns_are_independent
+            columns_are_independent=columns_are_independent,
+            group_column_name=group_column
         )
 
         # Run the statistical analysis decision tree
@@ -98,7 +112,10 @@ class AiTableStatsState(rx.State):
             self.test_history_json = f"Error serializing test history: {str(e)}"
             self.last_test_json = f"Error serializing last test: {str(e)}"
 
-        return rx.toast.success(f"Valid columns found: {', '.join(valid_columns)}")
+        success_msg = f"Valid columns found: {', '.join(valid_columns)}"
+        if group_column:
+            success_msg += f" (grouped by: {group_column})"
+        return rx.toast.success(success_msg)
 
     @rx.event
     def clear_test_results(self):
