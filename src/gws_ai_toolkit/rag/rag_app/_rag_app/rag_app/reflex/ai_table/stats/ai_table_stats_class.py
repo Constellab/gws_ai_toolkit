@@ -3,7 +3,6 @@
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from gws_core import TableUnfolderHelper
 from pandas import DataFrame, api
 
 from .ai_table_stats_tests import AiTableStatsTests
@@ -12,31 +11,31 @@ from .ai_table_stats_tests import AiTableStatsTests
 class AiTableStats:
     """
     Statistical analysis class that follows a decision tree approach for selecting appropriate tests.
-    
+
     DECISION TREE LOGIC:
-    
+
     1. DATA TYPE CLASSIFICATION:
        - If all columns are quantitative (numeric) → Go to quantitative analysis
        - If columns are qualitative (categorical) → Go to qualitative analysis
-    
+
     2. QUALITATIVE ANALYSIS:
        - 1 column: Chi² adjustment test (goodness of fit)
        - 2 columns:
          * Independent: Chi² independence test
          * Dependent: McNemar test
        - >2 columns: Not supported (error)
-    
+
     3. QUANTITATIVE ANALYSIS:
        Step 1: NORMALITY TEST (for each column)
        - If n < 50: Shapiro-Wilk test
        - If n ≥ 50: Kolmogorov-Smirnov test (Lilliefors)
        - Result: all_normal = True if ALL columns have p > 0.05
-       
+
        Step 2: HOMOGENEITY OF VARIANCE TEST
        - If all_normal = True: Bartlett test
        - If all_normal = False: Levene test
        - Result: is_homogeneous = True if p > 0.05
-       
+
        Step 3: PARAMETRIC PATH (if is_homogeneous AND all_normal)
        - 2 columns:
          * Independent: Student's t-test (independent)
@@ -44,7 +43,7 @@ class AiTableStats:
        - >2 columns:
          * Independent: ANOVA → If significant (p < 0.05): Tukey HSD post-hoc
          * Dependent: Not supported (error)
-       
+
        Step 4: NON-PARAMETRIC PATH (if NOT is_homogeneous OR NOT all_normal)
        - 2 columns:
          * Independent: Mann-Whitney U test
@@ -52,7 +51,7 @@ class AiTableStats:
        - >2 columns:
          * Independent: Kruskal-Wallis → If significant (p < 0.05): Dunn post-hoc
          * Dependent: Friedman test
-    
+
     INDEPENDENCE vs DEPENDENCE:
     - Independent: Different groups/subjects (e.g., treatment A vs treatment B)
     - Dependent: Same subjects measured multiple times (e.g., before vs after treatment)
@@ -63,18 +62,13 @@ class AiTableStats:
     # True if selected columns are independent (e.g., age, height), False if dependent (e.g., sales over months)
     _columns_are_independent: bool
 
-    # Optional group column name for grouping analysis
-    group_column_name: Optional[str] = None
-
     _tests: AiTableStatsTests
     test_history: List[dict]
 
     def __init__(self, dataframe: DataFrame,
-                 columns_are_independent: bool = True,
-                 group_column_name: Optional[str] = None):
+                 columns_are_independent: bool = True):
         self._dataframe = dataframe
         self._columns_are_independent = columns_are_independent
-        self.group_column_name = group_column_name
         self._tests = AiTableStatsTests()
         self.test_history = []
 
