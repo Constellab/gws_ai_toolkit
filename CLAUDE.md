@@ -66,6 +66,8 @@ All RAG services implement the `BaseRagService` abstract class with these key me
 - Use state management effectively to handle application state
 - Keep UI components reusable and maintainable
 - All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import ai_expert_config_component` instead of `from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex import ai_expert_config_component`
+- Define the attributes, parameters and return types of functions, methods and classes using type hints
+- for the `rx.button`, always set `cursor="pointer"` to have the pointer cursor on hover
 
 ### Start RAG app
 - Run the RAG app locally: `gws reflex run-dev src/gws_ai_toolkit/rag/rag_app/_rag_app/dev_config.json` 

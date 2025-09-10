@@ -10,29 +10,33 @@ from pandas import DataFrame
 
 from ..ai_table_data_state import AiTableDataState
 from .ai_table_stats_class import AiTableStats
+from .ai_table_stats_tests import AiTableStatsResults
 
 
 class AiTableStatsState(rx.State):
     """State for the AI Table stats component."""
 
-    test_history_json: str = ""
-    last_test_json: str = ""
-    ai_prompt: str = ""
+    test_history: List[AiTableStatsResults] = []
     is_processing: bool = False
 
     @rx.event(background=True)
     async def process_ai_prompt(self, form_data: dict):
+        if self.is_processing:
+            return rx.toast.error("Analysis already in progress. Please wait.")
+
         return await self._process_ai_prompt(form_data)
 
     async def _process_ai_prompt(self, form_data: dict):
         """Process AI prompt to extract column analysis parameters."""
+        async with self:
+            self.clear_test_results()
+
         prompt = form_data.get("ai_prompt", "").strip()
         if not prompt:
             return rx.toast.error("Please enter a prompt describing your analysis.")
 
         current_df: DataFrame | None
         async with self:
-
             # Get current dataframe to extract column names
             ai_table_state = await self.get_state(AiTableDataState)
             current_df = ai_table_state.current_dataframe
@@ -41,7 +45,6 @@ class AiTableStatsState(rx.State):
             return rx.toast.error("No dataframe available. Please load a file first.")
 
         async with self:
-            self.ai_prompt = prompt
             self.is_processing = True
 
             # Get current dataframe to extract column names
@@ -160,7 +163,7 @@ Available columns: {', '.join(available_columns)}"""
 
                 return columns_input, group_input, columns_are_paired
 
-        return None, None, None
+        return None, None, False
 
     async def validate_and_run_analysis(
             self,
@@ -197,6 +200,10 @@ Available columns: {', '.join(available_columns)}"""
             group_column = group_input.strip()
             columns_are_paired = False  # Force independent if grouping
 
+            if group_column in columns:
+                # remove the group column from selected columns if present
+                columns.remove(group_column)
+
             # Validate group column if provided
             if group_column not in available_columns:
                 return rx.toast.error(
@@ -206,9 +213,6 @@ Available columns: {', '.join(available_columns)}"""
             if len(columns) > 1:
                 return rx.toast.error(
                     f"When a group column is provided, only 1 column can be selected. You selected {len(columns)} columns: {', '.join(columns)}")
-
-            if group_column in columns:
-                return rx.toast.error("Group column cannot be one the selected column.")
 
         # Check that all selected columns have the same number of non-null rows
         # row_counts = {}
@@ -238,24 +242,9 @@ Available columns: {', '.join(available_columns)}"""
         # Run the statistical analysis decision tree
         stats_analyzer.run_statistical_analysis()
 
-        # Convert test history to JSON for display
+        # Store test history and last test result
         async with self:
-            try:
-                self.test_history_json = json.dumps(stats_analyzer.test_history, indent=2, default=str)
-
-                # Get the last test result if available
-                if stats_analyzer.test_history:
-                    self.last_test_json = json.dumps(stats_analyzer.test_history[-1], indent=2, default=str)
-                else:
-                    self.last_test_json = ""
-            except Exception as e:
-                self.test_history_json = f"Error serializing test history: {str(e)}"
-                self.last_test_json = f"Error serializing last test: {str(e)}"
-
-        success_msg = f"Valid columns found: {', '.join(columns)}"
-        if group_column:
-            success_msg += f" (grouped by: {group_column})"
-        return rx.toast.success(success_msg)
+            self.test_history = stats_analyzer.test_history
 
     def _get_filtered_and_unfolded_dataframe(self, selected_columns: list,
                                              group_column: Optional[str],
@@ -290,12 +279,19 @@ Available columns: {', '.join(available_columns)}"""
         # Return the unfolded dataframe
         return unfolded_table.get_data()
 
+    @rx.var
+    def last_test_result(self) -> Optional[AiTableStatsResults]:
+        """Get the last test result."""
+        # Get the last test result if available
+        if self.test_history:
+            return self.test_history[-1]
+        else:
+            return None
+
     @rx.event
     def clear_test_results(self):
         """Clear test history and last test results."""
-        self.test_history_json = ""
-        self.last_test_json = ""
-        return rx.toast.info("Test results cleared.")
+        self.test_history = []
 
     def _get_openai_client(self) -> OpenAI:
         """Get OpenAI client with API key"""
