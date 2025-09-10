@@ -2,6 +2,8 @@ import json
 from typing import Any, Dict, Generator, List, Literal, Optional, Union
 
 import requests
+from gws_core import CredentialsDataOther, ExternalApiService, FormData, Logger
+
 from gws_ai_toolkit.rag.dify.dify_class import (
     DifyChunksResponse, DifyCreateDatasetMetadataRequest,
     DifyCreateDatasetMetadataResponse, DifyDatasetDocument,
@@ -11,7 +13,6 @@ from gws_ai_toolkit.rag.dify.dify_class import (
     DifySendEndMessageStreamResponse, DifySendMessageSource,
     DifySendMessageStreamResponse, DifyUpdateDocumentOptions,
     DifyUpdateDocumentsMetadataRequest, DifyUploadFile, DifyUploadFileResponse)
-from gws_core import CredentialsDataOther, ExternalApiService, FormData, Logger
 
 
 class DifyService:
@@ -496,22 +497,21 @@ class DifyService:
                                         break
 
                                     json_data = json.loads(line)
+                                    # Update conversation_id in response object
+                                    dify_response.conversation_id = json_data['conversation_id']
+
                                     if 'event' in json_data and json_data['event'] == 'message':
-                                        # Update conversation_id in response object
-                                        if 'conversation_id' in json_data:
-                                            dify_response.conversation_id = json_data['conversation_id']
 
                                         # Yield message response for streaming text
                                         if 'answer' in json_data:
                                             message_response = DifySendMessageStreamResponse(
-                                                answer=json_data['answer']
+                                                id=json_data['id'],
+                                                answer=json_data['answer'],
+                                                conversation_id=dify_response.conversation_id
                                             )
                                             yield message_response
 
                                     if 'event' in json_data and json_data['event'] == 'message_end':
-                                        # Update conversation_id in final response
-                                        if 'conversation_id' in json_data:
-                                            dify_response.conversation_id = json_data['conversation_id']
 
                                         # Process sources if available
                                         if 'metadata' in json_data and 'retriever_resources' in json_data['metadata']:

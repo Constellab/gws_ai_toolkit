@@ -105,7 +105,12 @@ class RagRagFlowService(BaseRagService):
 
                     yield chat_end
                 else:
-                    yield RagChatStreamResponse(answer=answer.content, is_from_beginning=True)
+                    yield RagChatStreamResponse(
+                        id=answer.id,
+                        answer=answer.content,
+                        is_from_beginning=True,
+                        session_id=answer.session_id
+                    )
 
     @staticmethod
     def from_credentials(credentials: CredentialsDataOther) -> 'RagRagFlowService':

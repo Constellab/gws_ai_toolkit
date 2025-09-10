@@ -13,6 +13,7 @@ class ConversationHistory(BaseModelDTO):
     messages: List[ChatMessage]
     mode: str
     label: str = ""
+    external_conversation_id: Optional[str] = None  # ID from external system (openai, dify, ragflow...)
 
     def add_messages(self, new_messages: List[ChatMessage]) -> None:
         """Add new messages to the conversation, avoiding duplicates based on message ID."""

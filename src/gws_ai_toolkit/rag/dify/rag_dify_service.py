@@ -124,7 +124,12 @@ class RagDifyService(BaseRagService):
         """Send a query and get streaming chat response."""
         for response in self._dify_service.send_message_stream(query, user, conversation_id, **kwargs):
             if isinstance(response, DifySendMessageStreamResponse):
-                yield RagChatStreamResponse(answer=response.answer, is_from_beginning=False)
+                yield RagChatStreamResponse(
+                    id=response.id,
+                    answer=response.answer,
+                    is_from_beginning=False,
+                    session_id=response.conversation_id
+                )
             elif isinstance(response, DifySendEndMessageStreamResponse):
                 # Convert sources to RagChunk references
                 chat_end = RagChatEndStreamResponse(session_id=response.conversation_id)

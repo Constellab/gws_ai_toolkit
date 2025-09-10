@@ -85,7 +85,8 @@ class ConversationHistoryState(rx.State, mixin=True):
                                conversation_id: str,
                                messages: List[ChatMessage],
                                mode: str,
-                               configuration: Dict[str, Any]) -> None:
+                               configuration: Dict[str, Any],
+                               external_conversation_id: Optional[str] = None) -> None:
         """Add or update a conversation in the history.
 
         Args:
@@ -93,6 +94,7 @@ class ConversationHistoryState(rx.State, mixin=True):
             messages: List of chat messages in the conversation
             mode: Mode of the conversation (e.g., "RAG", "ai_expert")
             configuration: Configuration settings (mode, temperature, expert_mode, document_id, etc.)
+            external_conversation_id: Optional ID from external system (openai, dify, ragflow...)
         """
         try:
             full_history = await self._load_history()
@@ -104,7 +106,8 @@ class ConversationHistoryState(rx.State, mixin=True):
                 configuration=configuration,
                 messages=messages,
                 mode=mode,
-                label=""  # Will be set automatically when messages are added
+                label="",  # Will be set automatically when messages are added
+                external_conversation_id=external_conversation_id
             )
 
             # Add conversation to full history (handles duplicates internally)
@@ -162,7 +165,6 @@ class ConversationHistoryState(rx.State, mixin=True):
             str: The filename of the saved image (not the full path)
         """
         images_folder_path = await self.get_images_folder_full_path()
-        print(f"Images folder path: {images_folder_path}")
         os.makedirs(images_folder_path, exist_ok=True)
 
         # Generate unique filename

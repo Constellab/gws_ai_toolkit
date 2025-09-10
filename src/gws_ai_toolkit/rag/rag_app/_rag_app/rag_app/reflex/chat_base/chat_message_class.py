@@ -19,6 +19,7 @@ class ChatMessageBase(BaseModelDTO):
         type (Literal["text", "image", "code"]): Content type for proper rendering
         content (Any): Message content - varies by message type
         id (str): Unique identifier for the message
+        external_id (Optional[str]): Optional external system ID (from openai, dify, ragflow...) for the message
         sources (Optional[List[RagChatSource]]): Source citations for RAG responses
 
     Features:
@@ -39,6 +40,7 @@ class ChatMessageBase(BaseModelDTO):
     """
     role: Literal['user', 'assistant']
     id: str
+    external_id: Optional[str] = None
     sources: Optional[List[RagChatSource]] = []
 
     def is_user_message(self) -> bool:

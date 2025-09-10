@@ -9,8 +9,8 @@
         "rag_provider": "ragflow",
         "resource_sync_mode": "tag",
         "show_config_page": true,
-        "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/app_configuration.json",
-        "history_folder_path": "/lab/user/bricks/gws_ai_toolkit/src/gws_ai_toolkit/rag/rag_app/_rag_app/history"
+        "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/_data/app_configuration.json",
+        "history_folder_path": "/lab/user/bricks/gws_ai_toolkit/_data/history"
     },
     "env_type": "NONE",
     "env_file_path": "",

@@ -37,6 +37,8 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         - Error handling and user feedback
     """
 
+    previous_response_id: Optional[str] = None  # For conversation continuity
+
     # UI configuration
     title = "AI Table Analyst"
     placeholder_text = "Ask about this Excel/CSV data..."
@@ -48,6 +50,8 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         Args:
             resource (ResourceModel): Resource model to set
         """
+        if self._current_resource_model and self._current_resource_model.id == resource.id:
+            return  # No change
         self.clear_chat()
         self._current_resource_model = resource
 
@@ -169,7 +173,7 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
             instructions=instructions,
             input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
             temperature=config.temperature,
-            previous_response_id=self.conversation_id,
+            previous_response_id=self._previous_external_response_id,
             tools=tools,
         ) as stream:
 
@@ -182,23 +186,9 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
                     await self.handle_code_interpreter_call_code_delta(event)
                 elif event.type == "response.output_text.annotation.added":
                     await self.handle_output_text_annotation_added(event)
-                elif event.type == "response.output_item.added":
-                    await self.close_current_message()
-                elif event.type == "response.output_item.done":
+                elif event.type == "response.output_item.added" or event.type == "response.output_item.done":
                     await self.close_current_message()
                 elif event.type == "response.created":
-                    # Save the response ID for future conversation continuity
-                    if hasattr(event, 'response') and hasattr(event.response, 'id'):
-                        async with self:
-                            self.conversation_id = event.response.id
-
-            # Get the final response to extract response ID if not already captured
-            final_response = stream.get_final_response()
-            if final_response and hasattr(final_response, 'id') and not self.conversation_id:
-                async with self:
-                    self.set_conversation_id(final_response.id)
-
-    def _after_chat_cleared(self):
-        """Reset any analysis-specific state after chat is cleared."""
-        # No additional state to reset for AI Table chat currently
-        pass
+                    await self.handle_response_created(event)
+                elif event.type == "response.completed":
+                    await self.handle_response_completed()

@@ -56,53 +56,56 @@ class RagChatState(ChatStateBase, rx.State):
         chat_id = await rag_app_state.get_chat_id()
         if not chat_id:
             raise ValueError("Chat ID is not configured")
-        for chunk in datahub_rag_service.send_message_stream(
+        for stream_response in datahub_rag_service.send_message_stream(
             query=user_message,
-            conversation_id=self.conversation_id,
+            conversation_id=self.external_conversation_id,
             user=None,  # TODO handle user
             chat_id=chat_id,
         ):
-            if isinstance(chunk, RagChatStreamResponse):
-                if chunk.is_from_beginning:
-                    full_response = chunk.answer
+            if isinstance(stream_response, RagChatStreamResponse):
+                if stream_response.is_from_beginning:
+                    full_response = stream_response.answer
                     # Create new message for streaming
                     current_assistant_message = ChatMessageText(
                         role="assistant",
                         content=full_response,
                         id=str(uuid.uuid4()),
-                        sources=[]
+                        sources=[],
+                        external_id=stream_response.id,
                     )
                     await self.update_current_response_message(current_assistant_message)
                 else:
-                    full_response += chunk.answer
+                    full_response += stream_response.answer
                     # Update the current streaming message
                     if current_assistant_message:
                         async with self:
                             current_assistant_message.content = full_response
-            elif isinstance(chunk, RagChatEndStreamResponse):
-                end_message_response = chunk
+            elif isinstance(stream_response, RagChatEndStreamResponse):
+                end_message_response = stream_response
 
         # Process the final response
-        session_id = None
+        conversation_id = None
         sources: List[RagChatSource] = []
 
         if end_message_response:
             if isinstance(end_message_response, RagChatStreamResponse):
-                session_id = end_message_response.session_id
+                conversation_id = end_message_response.session_id
             elif isinstance(end_message_response, RagChatEndStreamResponse):
-                session_id = end_message_response.session_id
+                conversation_id = end_message_response.session_id
                 if end_message_response.sources:
                     sources = end_message_response.sources
 
             async with self:
-                if session_id:
-                    self.set_conversation_id(session_id)
+                if conversation_id:
+                    self.set_external_conversation_id(conversation_id)
 
         # Update final message with sources if we have them
         await self.update_current_message_sources(sources)
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""
+        if not self._current_response_message:
+            return
         await super().close_current_message()
         # Save conversation after message is added to history
         await self._save_conversation_to_history()
@@ -114,4 +117,3 @@ class RagChatState(ChatStateBase, rx.State):
 
     def _after_chat_cleared(self):
         """Reset any analysis-specific state after chat is cleared."""
-        # No additional state to reset for RAG chat currently

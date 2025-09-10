@@ -6,6 +6,10 @@ from typing import Optional, Union, cast
 import reflex as rx
 from gws_core import BaseModelDTO, File, Logger, ResourceModel
 from openai import OpenAI
+from openai.types.responses import (ResponseCodeInterpreterCallCodeDeltaEvent,
+                                    ResponseCreatedEvent,
+                                    ResponseOutputTextAnnotationAddedEvent,
+                                    ResponseTextDeltaEvent)
 from PIL import Image
 
 from .chat_message_class import ChatMessage, ChatMessageImage, ChatMessageText
@@ -45,6 +49,9 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
 
     openai_file_id: Optional[str] = None
     _current_resource_model: Optional[ResourceModel] = None
+
+    _previous_external_response_id: Optional[str] = None  # For conversation continuity
+    _current_external_response_id: Optional[str] = None
 
     @abstractmethod
     def validate_resource(self, resource: ResourceModel) -> bool:
@@ -96,7 +103,19 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
             raise ValueError("OpenAI API key is not set")
         return OpenAI(api_key=api_key)
 
-    async def handle_output_text_delta(self, event):
+    async def handle_response_created(self, event: ResponseCreatedEvent):
+        """Handle response.created event"""
+        async with self:
+            self._current_external_response_id = event.response.id
+
+    async def handle_response_completed(self):
+        """Handle response.completed event"""
+        await self.close_current_message()
+        async with self:
+            self._previous_external_response_id = self._current_external_response_id
+            self._current_external_response_id = None
+
+    async def handle_output_text_delta(self, event: ResponseTextDeltaEvent):
         """Handle response.output_text.delta event"""
         text = event.delta
 
@@ -112,11 +131,13 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
             # Create new text message if none exists or if current is different type
             new_message = self.create_text_message(
                 content=text,
-                role="assistant"
+                role="assistant",
+                external_id=self._current_external_response_id
+
             )
             await self.update_current_response_message(new_message)
 
-    async def handle_code_interpreter_call_code_delta(self, event):
+    async def handle_code_interpreter_call_code_delta(self, event: ResponseCodeInterpreterCallCodeDeltaEvent):
         """Handle response.code_interpreter_call_code.delta event"""
         code = event.delta
 
@@ -132,11 +153,12 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
             # Create new code message if none exists or if current is different type
             new_message = self.create_code_message(
                 content=code,
-                role="assistant"
+                role="assistant",
+                external_id=self._current_external_response_id
             )
             await self.update_current_response_message(new_message)
 
-    async def handle_output_text_annotation_added(self, event):
+    async def handle_output_text_annotation_added(self, event: ResponseOutputTextAnnotationAddedEvent):
         """Handle response.output_text.annotation.added event"""
         annotation = event.annotation
 
@@ -154,7 +176,8 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
                 # Create error message if image loading fails
                 error_message = self.create_text_message(
                     content=f"[Error loading image: {str(e)}]",
-                    role="assistant"
+                    role="assistant",
+                    external_id=self._current_external_response_id
                 )
                 await self.update_current_response_message(error_message)
             except Exception as e:
@@ -162,7 +185,8 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
                 # Create error message for unexpected errors
                 error_message = self.create_text_message(
                     content=f"[Unexpected error loading image: {str(e)}]",
-                    role="assistant"
+                    role="assistant",
+                    external_id=self._current_external_response_id
                 )
                 await self.update_current_response_message(error_message)
 
@@ -238,6 +262,8 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""
+        if not self._current_response_message:
+            return
         await super().close_current_message()
         # Save conversation after message is added to history
         await self._save_conversation_to_history()
@@ -283,3 +309,7 @@ class BaseFileAnalysisState(ChatStateBase, rx.State, mixin=True):
 
         self.subtitle = resource_model.name
         return resource_model
+
+    def _after_chat_cleared(self):
+        self._previous_external_response_id = None
+        self._current_external_response_id = None

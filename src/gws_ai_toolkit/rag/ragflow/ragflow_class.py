@@ -59,6 +59,7 @@ class RagFlowCreateSessionRequest(BaseModelDTO):
 
 class RagflowAskStreamResponse(BaseModelDTO):
     """Response model for streaming chat responses."""
+    id: Optional[str]
     content: str
     role: Literal['user', 'assistant']
     reference: List[dict] | None = None

@@ -5,8 +5,6 @@ from gws_core import File, Logger, ResourceModel
 
 from .ai_table_data_state import AiTableDataState
 from .chat.ai_table_chat_state import AiTableChatState
-from .dataframe_item import DataFrameItem
-from .stats.ai_table_stats_state import AiTableStatsState
 
 
 class AiTableState(rx.State):

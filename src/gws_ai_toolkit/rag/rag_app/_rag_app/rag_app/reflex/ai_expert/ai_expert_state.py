@@ -147,7 +147,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
             instructions=instructions,
             input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
             temperature=expert_config.temperature,
-            previous_response_id=self.conversation_id,
+            previous_response_id=self._previous_external_response_id,
             tools=tools,
         ) as stream:
 
@@ -160,21 +160,12 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
                     await self.handle_code_interpreter_call_code_delta(event)
                 elif event.type == "response.output_text.annotation.added":
                     await self.handle_output_text_annotation_added(event)
-                elif event.type == "response.output_item.added":
-                    await self.close_current_message()
-                elif event.type == "response.output_item.done":
+                elif event.type == "response.output_item.added" or event.type == "response.output_item.done":
                     await self.close_current_message()
                 elif event.type == "response.created":
-                    # Save the response ID for future conversation continuity
-                    if hasattr(event, 'response') and hasattr(event.response, 'id'):
-                        async with self:
-                            self.conversation_id = event.response.id
-
-            # Get the final response to extract response ID if not already captured
-            final_response = stream.get_final_response()
-            if final_response and hasattr(final_response, 'id') and not self.conversation_id:
-                async with self:
-                    self.set_conversation_id(final_response.id)
+                    await self.handle_response_created(event)
+                elif event.type == "response.completed":
+                    await self.handle_response_completed()
 
     # Event handlers are inherited from BaseFileAnalysisState - no need to duplicate
 
@@ -215,11 +206,13 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
         """Get the most relevant chunks based on the user's question"""
 
         rag_app_service: BaseRagAppService
+        rag_resource: RagResource
         async with self:
             rag_app_service = await self._get_rag_app_service()
+            rag_resource = await self.get_current_rag_resource()
 
         # Get the document ID from the resource
-        document_id = (await self.get_current_rag_resource()).get_document_id()
+        document_id = rag_resource.get_document_id()
 
         # Retrieve relevant chunks using the user's question
         chunks = rag_app_service.rag_service.retrieve_chunks(
@@ -257,5 +250,6 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
         return self._current_rag_resource
 
     def _after_chat_cleared(self):
+        super()._after_chat_cleared()
         self._current_rag_resource = None
         self._document_chunks_text = {}

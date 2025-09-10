@@ -42,7 +42,8 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
         Args:
             conversation: The conversation history to display
         """
-        self.conversation_id = conversation.conversation_id
+        self._conversation_id = conversation.conversation_id
+        self.external_conversation_id = conversation.external_conversation_id
         self._chat_messages = conversation.messages.copy()
         self._current_response_message = None
         self.is_streaming = False

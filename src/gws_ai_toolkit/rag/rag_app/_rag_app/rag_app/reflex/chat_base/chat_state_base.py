@@ -63,7 +63,9 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
     _chat_messages: List[ChatMessage]
     _current_response_message: Optional[ChatMessage]
     is_streaming: bool
-    conversation_id: Optional[str] = None
+
+    _conversation_id: Optional[str] = None
+    external_conversation_id: Optional[str] = None  # ID from external system (openai, dify, ragflow...)
 
     # UI Configuration
     title: str = "AI Chat"
@@ -161,56 +163,74 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
 
     async def update_current_response_message(self, message: ChatMessage) -> None:
         """Set the current streaming response message"""
+        if not self.is_streaming:
+            return
         async with self:
             self._current_response_message = message
 
     async def update_current_message_sources(self, sources: List[RagChatSource]) -> None:
         """Update the sources of the current streaming message"""
+        if not self.is_streaming:
+            return
         async with self:
             if self._current_response_message:
                 self._current_response_message.sources = sources
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history"""
+        if not self._current_response_message:
+            return
         async with self:
             if self._current_response_message:
                 self._chat_messages.append(self._current_response_message)
                 self._current_response_message = None
 
-    def set_conversation_id(self, conversation_id: str) -> None:
-        self.conversation_id = conversation_id
+    def set_external_conversation_id(self, external_conversation_id: str) -> None:
+        self.external_conversation_id = external_conversation_id
 
     @rx.event
     def clear_chat(self) -> None:
         self._chat_messages = []
         self._current_response_message = None
-        self.conversation_id = None
+        self._conversation_id = None
+        self.external_conversation_id = None
+        self.is_streaming = False
         self._after_chat_cleared()
 
     # Helper methods to create different message types
     def create_text_message(
-            self, content: str, role: Literal['user', 'assistant'] = "assistant",
+            self,
+            content: str,
+            role: Literal['user', 'assistant'] = "assistant",
+            external_id: Optional[str] = None,
             sources: Optional[List[RagChatSource]] = None) -> ChatMessageText:
         """Create a text message"""
         return ChatMessageText(
             id=str(uuid.uuid4()),
             role=role,
             content=content,
+            external_id=external_id,
             sources=sources or []
         )
 
     def create_code_message(
-            self, content: str, role: Literal['user', 'assistant'] = "assistant",
+            self,
+            content: str,
+            role: Literal['user', 'assistant'] = "assistant",
+            external_id: Optional[str] = None,
             sources: Optional[List[RagChatSource]] = None) -> ChatMessageCode:
         """Create a code message"""
         return ChatMessageCode(
             id=str(uuid.uuid4()),
             role=role,
             code=content,
+            external_id=external_id,
             sources=sources or []
         )
 
-    async def create_image_message(self, image: Image.Image, role: Literal['user', 'assistant'] = "assistant",
+    async def create_image_message(self, image: Image.Image,
+                                   role: Literal['user', 'assistant'] = "assistant",
+                                   external_id: Optional[str] = None,
                                    sources: Optional[List[RagChatSource]] = None) -> ChatMessageImage:
         """Create an image message by saving the PIL Image to the history images folder"""
         history_state = await ConversationHistoryState.get_instance(self)
@@ -220,6 +240,7 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             id=str(uuid.uuid4()),
             role=role,
             image_name=filename,  # Store the full path
+            external_id=external_id,
             sources=sources or []
         )
 
@@ -241,6 +262,8 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
 
     def add_message(self, message: ChatMessage) -> None:
         """Add a message to the chat history"""
+        if not self.is_streaming:
+            return
         self._chat_messages.append(message)
 
     @rx.event
@@ -278,18 +301,23 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
 
     async def save_conversation_to_history(self, mode: str, configuration: dict):
         """Save the current conversation to history with the given configuration."""
-        if not self.conversation_id or not self._chat_messages:
+        if not self._chat_messages:
             return
+
+        if self._conversation_id is None:
+            async with self:
+                self._conversation_id = str(uuid.uuid4())
 
         try:
             history_state: ConversationHistoryState
             async with self:
                 history_state = await ConversationHistoryState.get_instance(self)
                 await history_state.add_conversation(
-                    conversation_id=self.conversation_id,
+                    conversation_id=self._conversation_id,
                     messages=self._chat_messages,
                     mode=mode,
-                    configuration=configuration
+                    configuration=configuration,
+                    external_conversation_id=self.external_conversation_id
                 )
         except Exception as e:
             Logger.error(f"Error saving conversation to history: {e}")

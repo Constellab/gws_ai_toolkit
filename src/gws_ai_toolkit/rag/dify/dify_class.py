@@ -54,11 +54,13 @@ class DifySendMessageSource(BaseModelDTO):
 
 
 class DifySendMessageStreamResponse(BaseModelDTO):
+    id: str
     answer: str
+    conversation_id: str
 
 
 class DifySendEndMessageStreamResponse(BaseModelDTO):
-    conversation_id: Optional[str] = None
+    conversation_id: str
     sources: Optional[List[DifySendMessageSource]] = None
 
 
