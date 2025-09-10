@@ -1,13 +1,14 @@
 
 import json
-from typing import Optional
+import os
+from typing import List, Optional, Tuple
 
 import reflex as rx
 from gws_core import Table, TableUnfolderHelper
+from openai import OpenAI
 from pandas import DataFrame
 
 from ..ai_table_data_state import AiTableDataState
-# Create AiTableStats instance and run analysis
 from .ai_table_stats_class import AiTableStats
 
 
@@ -16,13 +17,157 @@ class AiTableStatsState(rx.State):
 
     test_history_json: str = ""
     last_test_json: str = ""
+    ai_prompt: str = ""
+    is_processing: bool = False
 
-    @rx.event
-    async def submit_columns(self, form_data: dict):
-        """Submit and validate column names."""
-        columns_input: str = form_data.get("columns_input", "")
-        group_input: str = form_data.get("group_input", "")
-        columns_are_paired: bool = form_data.get("columns_are_paired", False)
+    @rx.event(background=True)
+    async def process_ai_prompt(self, form_data: dict):
+        return await self._process_ai_prompt(form_data)
+
+    async def _process_ai_prompt(self, form_data: dict):
+        """Process AI prompt to extract column analysis parameters."""
+        prompt = form_data.get("ai_prompt", "").strip()
+        if not prompt:
+            return rx.toast.error("Please enter a prompt describing your analysis.")
+
+        current_df: DataFrame | None
+        async with self:
+
+            # Get current dataframe to extract column names
+            ai_table_state = await self.get_state(AiTableDataState)
+            current_df = ai_table_state.current_dataframe
+
+        if current_df is None or current_df.empty:
+            return rx.toast.error("No dataframe available. Please load a file first.")
+
+        async with self:
+            self.ai_prompt = prompt
+            self.is_processing = True
+
+            # Get current dataframe to extract column names
+            ai_table_state = await self.get_state(AiTableDataState)
+
+        available_columns = list(current_df.columns)
+
+        # Convert prompt to analysis parameters using OpenAI
+        columns_input, group_input, columns_are_paired = await self._convert_prompt_to_analysis_params(
+            prompt=prompt,
+            available_columns=available_columns
+        )
+
+        async with self:
+            self.is_processing = False
+
+        if not columns_input:
+            return rx.toast.error(
+                "Could not extract valid column names from the prompt. "
+                "Please check your prompt and ensure you reference existing column names.")
+
+        # Call the validation and analysis function
+        return await self.validate_and_run_analysis(
+            current_df=current_df,
+            columns_input=columns_input,
+            group_input=group_input,
+            columns_are_paired=columns_are_paired
+        )
+
+    async def _convert_prompt_to_analysis_params(self,
+                                                 prompt: str,
+                                                 available_columns: List[str]) -> Tuple[Optional[str], Optional[str], bool]:
+        # Create OpenAI client
+        client = self._get_openai_client()
+
+        # Define the function schema for OpenAI
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "analyze_columns",
+                    "description": "Extract column analysis parameters from user prompt",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "selected_columns": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of column names to analyze (exact names from available columns)"
+                            },
+                            "group_column": {
+                                "type": "string",
+                                "description": "Optional column name to group by (exact name from available columns). Use null if no grouping needed."
+                            },
+                            "columns_are_paired": {
+                                "type": "boolean",
+                                "description": "True if the selected columns represent paired data that should be analyzed together, False if they are independent variables"
+                            }
+                        },
+                        "required": ["selected_columns", "columns_are_paired"]
+                    }
+                }
+            }
+        ]
+
+        # Create the system prompt with available columns
+        system_prompt = f"""You are an expert data analyst. The user has a dataset with these columns: {', '.join(available_columns)}.
+
+Based on their request, extract:
+1. selected_columns: The exact column names they want to analyze (must match exactly from the available columns)
+2. group_column: Optional column to group by (exact name, or null if no grouping)
+3. columns_are_paired: Whether columns represent paired data (like before/after measurements) or independent variables
+
+Important rules:
+- Only use exact column names from the available list
+- If a column is used as group_column, it cannot be in selected_columns
+- Paired columns are used for related measurements (before/after, treatment/control, etc.)
+- Independent columns are separate variables to compare
+
+Available columns: {', '.join(available_columns)}"""
+
+        # Create the input for OpenAI
+        input_list = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ]
+
+        # Call OpenAI API
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=input_list,
+            tools=tools,
+            # force the model to use the function
+            tool_choice={"type": "function", "function": {"name": "analyze_columns"}}
+        )
+
+        # Extract function call result
+        if response.choices[0].message.tool_calls:
+            tool_call = response.choices[0].message.tool_calls[0]
+            if tool_call.function.name == "analyze_columns":
+                function_args = json.loads(tool_call.function.arguments)
+
+                selected_columns = function_args.get("selected_columns", [])
+                group_column = function_args.get("group_column")
+                columns_are_paired = function_args.get("columns_are_paired", False)
+
+                print("Extracted parameters:")
+                print(f"Selected columns: {selected_columns}")
+                print(f"Group column: {group_column}")
+                print(f"Columns are paired: {columns_are_paired}")
+                print('--------------------------------')
+
+                # Convert to expected format
+                columns_input = ", ".join(selected_columns) if selected_columns else None
+                group_input = group_column if group_column else None
+
+                return columns_input, group_input, columns_are_paired
+
+        return None, None, None
+
+    async def validate_and_run_analysis(
+            self,
+            current_df: DataFrame,
+            columns_input: str,
+            group_input: Optional[str],
+            columns_are_paired: bool):
 
         if not columns_input.strip():
             return rx.toast.error("Please enter at least one column name.")
@@ -32,13 +177,6 @@ class AiTableStatsState(rx.State):
 
         if not columns:
             return rx.toast.error("No valid columns found.")
-
-        # Get current dataframe from AiTableDataState
-        ai_table_state = await self.get_state(AiTableDataState)
-        current_df = ai_table_state.current_dataframe
-
-        if current_df is None or current_df.empty:
-            return rx.toast.error("No dataframe available. Please load a file first.")
 
         available_columns = list(current_df.columns)
 
@@ -57,6 +195,7 @@ class AiTableStatsState(rx.State):
         if group_input:
             # Handle group column (optional)
             group_column = group_input.strip()
+            columns_are_paired = False  # Force independent if grouping
 
             # Validate group column if provided
             if group_column not in available_columns:
@@ -100,17 +239,18 @@ class AiTableStatsState(rx.State):
         stats_analyzer.run_statistical_analysis()
 
         # Convert test history to JSON for display
-        try:
-            self.test_history_json = json.dumps(stats_analyzer.test_history, indent=2, default=str)
+        async with self:
+            try:
+                self.test_history_json = json.dumps(stats_analyzer.test_history, indent=2, default=str)
 
-            # Get the last test result if available
-            if stats_analyzer.test_history:
-                self.last_test_json = json.dumps(stats_analyzer.test_history[-1], indent=2, default=str)
-            else:
-                self.last_test_json = ""
-        except Exception as e:
-            self.test_history_json = f"Error serializing test history: {str(e)}"
-            self.last_test_json = f"Error serializing last test: {str(e)}"
+                # Get the last test result if available
+                if stats_analyzer.test_history:
+                    self.last_test_json = json.dumps(stats_analyzer.test_history[-1], indent=2, default=str)
+                else:
+                    self.last_test_json = ""
+            except Exception as e:
+                self.test_history_json = f"Error serializing test history: {str(e)}"
+                self.last_test_json = f"Error serializing last test: {str(e)}"
 
         success_msg = f"Valid columns found: {', '.join(columns)}"
         if group_column:
@@ -156,3 +296,10 @@ class AiTableStatsState(rx.State):
         self.test_history_json = ""
         self.last_test_json = ""
         return rx.toast.info("Test results cleared.")
+
+    def _get_openai_client(self) -> OpenAI:
+        """Get OpenAI client with API key"""
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OpenAI API key is not set")
+        return OpenAI(api_key=api_key)

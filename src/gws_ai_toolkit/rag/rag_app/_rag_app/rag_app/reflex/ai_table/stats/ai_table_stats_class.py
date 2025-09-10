@@ -67,7 +67,7 @@ class AiTableStats:
 
     def __init__(self, dataframe: DataFrame,
                  columns_are_independent: bool = True):
-        self._dataframe = dataframe
+        self._dataframe = dataframe.dropna()
         self._columns_are_independent = columns_are_independent
         self._tests = AiTableStatsTests()
         self.test_history = []

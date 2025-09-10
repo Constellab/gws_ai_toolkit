@@ -89,8 +89,10 @@ class AiTableStatsTests:
         }
 
     # Quantitative tests - parametric
-    def student_independent_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
+    def student_independent_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
+                                 group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Student's t-test for independent samples."""
+
         statistic, p_value, df = ttest_ind(group1, group2, usevar='pooled')
         # statsmodels ttest_ind returns a tuple: (statistic, pvalue, degrees_of_freedom)
         return {
@@ -100,7 +102,8 @@ class AiTableStatsTests:
             'test_name': 'Student t-test (independent)'
         }
 
-    def student_paired_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
+    def student_paired_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
+                            group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Student's t-test for paired samples."""
         statistic, p_value = stats.ttest_rel(group1, group2)
         return {
@@ -121,7 +124,8 @@ class AiTableStatsTests:
         }
 
     # Quantitative tests - non-parametric
-    def mann_whitney_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
+    def mann_whitney_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
+                          group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Mann-Whitney U test."""
         statistic, p_value = stats.mannwhitneyu(group1, group2, alternative='two-sided')
         return {
@@ -130,7 +134,8 @@ class AiTableStatsTests:
             'test_name': 'Mann-Whitney U'
         }
 
-    def wilcoxon_test(self, group1: Union[np.ndarray, pd.Series, List[float]], group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
+    def wilcoxon_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
+                      group2: Union[np.ndarray, pd.Series, List[float]]) -> Dict[str, Any]:
         """Wilcoxon signed-rank test for paired samples."""
         statistic, p_value = stats.wilcoxon(group1, group2, alternative='two-sided')
         return {
