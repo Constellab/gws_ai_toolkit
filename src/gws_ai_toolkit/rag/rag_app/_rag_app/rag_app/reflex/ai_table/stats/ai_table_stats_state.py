@@ -1,7 +1,7 @@
 
 import json
 import os
-from typing import List, Optional, Tuple, cast
+from typing import List, Optional, cast
 
 import reflex as rx
 from gws_core import BaseModelDTO, Table, TableUnfolderHelper
@@ -159,7 +159,7 @@ Available columns: {', '.join(available_columns)}"""
                     columns=selected_columns,
                     str_columns=", ".join(selected_columns),
                     group_input=function_args.get("group_column"),
-                    columns_are_paired=function_args.get("columns_are_paired", False)
+                    columns_are_paired=function_args.get("columns_are_paired", False),
                 )
 
         return AiTableStatsRunConfig(
@@ -167,7 +167,7 @@ Available columns: {', '.join(available_columns)}"""
             columns=[],
             str_columns="",
             group_input=None,
-            columns_are_paired=False
+            columns_are_paired=False,
         )
 
     async def validate_and_run_analysis(
@@ -322,8 +322,54 @@ Available columns: {', '.join(available_columns)}"""
             self.is_processing = True
 
         try:
-            # Run the additional test (cast to proper type)
+            # Run other additional tests normally (without reference column)
             self._current_stats_analyzer.run_additional_test(cast(AiTableStatsTestName, test_name))
+
+        finally:
+            async with self:
+                self.is_processing = False
+                self._current_stats_analyzer = self._current_stats_analyzer  # Trigger state update
+
+    @rx.event(background=True)  # type: ignore
+    async def run_additional_test_with_reference_column(self, form_data: dict):
+        """Run additional test with reference column from form."""
+        if self.is_processing:
+            return rx.toast.error("Analysis already in progress. Please wait.")
+
+        if not self._current_stats_analyzer or not self.last_run_config:
+            return rx.toast.error("No statistical analysis available. Please run an analysis first.")
+
+        # Get reference column/group from form
+        reference_input: str = form_data.get("reference_column", "").strip()
+
+        # Compute actual reference column name based on group_input
+        reference_column: str | None = None
+        if reference_input:
+            if self.last_run_config.group_input:
+                # For grouped data: format as 'COLUMN_GROUP'
+                first_column = self.last_run_config.columns[0] if self.last_run_config.columns else ""
+                reference_column = f"{first_column}_{reference_input}"
+
+                # Use AiTableStats methods to validate column existence
+                if not self._current_stats_analyzer.has_column(reference_column):
+                    return rx.toast.error(
+                        f"Reference group '{reference_input}' not found in the column '{self.last_run_config.group_input}'.")
+
+            else:
+                # For non-grouped data: use input as column name directly
+                reference_column = reference_input
+
+                # Use AiTableStats methods to validate column existence
+                if not self._current_stats_analyzer.has_column(reference_column):
+                    return rx.toast.error(
+                        f"Reference column '{reference_column}' not found in dataframe or is not a selected column.")
+
+        async with self:
+            self.is_processing = True
+
+        try:
+            # Run pairwise test with reference column
+            self._current_stats_analyzer.run_student_independent_pairwise(reference_column)
 
         finally:
             async with self:

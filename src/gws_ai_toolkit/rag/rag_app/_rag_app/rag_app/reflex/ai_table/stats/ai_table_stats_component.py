@@ -49,21 +49,73 @@ def _show_additional_test_suggestion() -> rx.Component:
                     f"Based on your analysis, you might want to run: {AiTableStatsState.suggested_additional_test}",
                     margin_bottom="0.5em"
                 ),
-                rx.button(
-                    rx.cond(
-                        AiTableStatsState.is_processing,
-                        rx.hstack(
-                            rx.spinner(size="1"),
-                            rx.text("Running..."),
-                            spacing="2",
-                            align_items="center"
+                # Show reference column input for pairwise test
+                rx.cond(
+                    AiTableStatsState.suggested_additional_test == "Student t-test (independent paired wise)",
+                    rx.form(
+                        rx.vstack(
+                            rx.cond(
+                                AiTableStatsState.last_run_config.group_input,
+                                rx.text("Reference group (Optional):", font_weight="bold", font_size="0.9em"),
+                                rx.text("Reference Column (Optional):", font_weight="bold", font_size="0.9em")
+                            ),
+                            rx.cond(
+                                AiTableStatsState.last_run_config.group_input,
+                                rx.text(
+                                    "Specify a group name to compare against all other groups",
+                                    font_size="0.8em", color="gray", margin_bottom="0.5em"),
+                                rx.text(
+                                    "Specify a reference column to compare against all others (instead of all combinations)",
+                                    font_size="0.8em", color="gray", margin_bottom="0.5em")
+                            ),
+                            rx.input(
+                                placeholder=rx.cond(
+                                    AiTableStatsState.last_run_config.group_input,
+                                    "e.g., 'control' - leave empty for all combinations",
+                                    "e.g., 'control_group' - leave empty for all combinations"
+                                ),
+                                name="reference_column",
+                                width="100%",
+                                size="2"
+                            ),
+                            rx.button(
+                                rx.cond(
+                                    AiTableStatsState.is_processing,
+                                    rx.hstack(
+                                        rx.spinner(size="1"),
+                                        rx.text("Running..."),
+                                        spacing="2",
+                                        align_items="center"
+                                    ),
+                                    rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
+                                ),
+                                type="submit",
+                                cursor="pointer",
+                                disabled=AiTableStatsState.is_processing
+                            ),
+                            spacing="2"
                         ),
-                        rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
+                        on_submit=AiTableStatsState.run_additional_test_with_reference_column,
+                        reset_on_submit=True
                     ),
-                    on_click=lambda: AiTableStatsState.run_additional_test(AiTableStatsState.suggested_additional_test),
-                    color_scheme="green",
-                    cursor="pointer",
-                    disabled=AiTableStatsState.is_processing
+                    # For other tests, show simple button
+                    rx.button(
+                        rx.cond(
+                            AiTableStatsState.is_processing,
+                            rx.hstack(
+                                rx.spinner(size="1"),
+                                rx.text("Running..."),
+                                spacing="2",
+                                align_items="center"
+                            ),
+                            rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
+                        ),
+                        on_click=lambda: AiTableStatsState.run_additional_test(
+                            AiTableStatsState.suggested_additional_test),
+                        color_scheme="green",
+                        cursor="pointer",
+                        disabled=AiTableStatsState.is_processing
+                    )
                 ),
                 padding="0.8em",
                 border="1px solid var(--green-6)",
@@ -178,7 +230,7 @@ def ai_table_stats_component():
                                 rx.text("Processing..."),
                                 spacing="2", align_items="center"),
                             rx.text("Analyze with AI")),
-                        type="submit", color_scheme="blue", cursor="pointer", disabled=AiTableStatsState.is_processing),
+                        type="submit", cursor="pointer", disabled=AiTableStatsState.is_processing),
                     spacing="2", margin_top="0.5em",),
                 spacing="3", align="stretch",),
             on_submit=AiTableStatsState.process_ai_prompt, reset_on_submit=False,),

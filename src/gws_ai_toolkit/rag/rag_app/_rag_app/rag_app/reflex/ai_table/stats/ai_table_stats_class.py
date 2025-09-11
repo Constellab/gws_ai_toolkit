@@ -79,6 +79,14 @@ class AiTableStats:
         """Check if all columns are quantitative (numeric)"""
         return all(api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns)
 
+    def has_column(self, column_name: str) -> bool:
+        """Check if a column exists in the dataframe."""
+        return column_name in self._dataframe.columns
+
+    def get_available_columns(self) -> List[str]:
+        """Get list of available columns in the dataframe."""
+        return list(self._dataframe.columns)
+
     def _record_test(self, result: AiTableStatsResults) -> None:
         """Record a test result in the history."""
         self.test_history.append(result)
@@ -307,9 +315,14 @@ class AiTableStats:
         """
         return any(result.test_name == test_name for result in self.test_history)
 
-    def run_student_independent_pairwise(self) -> AiTableStatsResults:
+    def run_student_independent_pairwise(self, reference_column: Optional[str] = None) -> AiTableStatsResults:
         """
         Run Student t-test (independent paired wise) with appropriate corrections.
+
+        Args:
+            reference_column: Optional reference column. If provided, comparisons are only made
+                            between this column and all other columns. If None, all pairwise
+                            combinations are tested.
 
         Checks prerequisites:
         - ANOVA must have been performed
@@ -336,7 +349,7 @@ class AiTableStats:
                 "Error: Tukey HSD test must be performed before running Student t-test (independent paired wise)")
 
         # Get the raw pairwise t-test results
-        raw_result = self._tests.student_independent_pairwise_test(self._dataframe)
+        raw_result = self._tests.student_independent_pairwise_test(self._dataframe, reference_column)
         self._record_test(raw_result)
 
         details: StudentTTestPairwiseDetails = cast(StudentTTestPairwiseDetails, raw_result.details)
@@ -353,7 +366,7 @@ class AiTableStats:
                 correction_result = self._tests.tukey_hsd_test(details.pairwise_comparisons_matrix)
         else:
             # Apply Scheffe correction for paired columns
-            correction_result = self._tests.scheffe_test(details.pairwise_comparisons_matrix)
+            correction_result = self._tests.scheffe_test(details.pairwise_comparisons_matrix, num_columns)
 
         self._record_test(correction_result)
         return correction_result

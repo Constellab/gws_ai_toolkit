@@ -1,6 +1,6 @@
 
 from itertools import combinations
-from typing import List, Union
+from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -256,13 +256,60 @@ class AiTableStatsTests:
             )
         )
 
-    def student_independent_pairwise_test(self, dataframe: pd.DataFrame) -> AiTableStatsResults:
-        """Student's t-test for independent pairwise comparisons (post-hoc after ANOVA)."""
+    def _perform_ttest_comparison(self, group1: pd.Series, group2: pd.Series, 
+                                  p_value_matrix: pd.DataFrame, col1: str, col2: str,
+                                  valid_comparisons: int, significant_count: int,
+                                  should_count: bool = True) -> tuple[int, int]:
+        """
+        Perform t-test comparison between two groups and update matrix.
+        
+        Args:
+            group1: First group data
+            group2: Second group data  
+            p_value_matrix: Matrix to update with p-values
+            col1: First column name
+            col2: Second column name
+            valid_comparisons: Current count of valid comparisons
+            significant_count: Current count of significant comparisons
+            should_count: Whether to count this comparison in statistics
+            
+        Returns:
+            Tuple of (updated valid_comparisons, updated significant_count)
+        """
+        group1_clean = group1.dropna()
+        group2_clean = group2.dropna()
+
+        if len(group1_clean) > 0 and len(group2_clean) > 0:
+            statistic, p_value, df = ttest_ind(group1_clean, group2_clean, usevar='pooled')
+            p_value_matrix.loc[col1, col2] = float(p_value)
+            
+            if should_count:
+                valid_comparisons += 1
+                if p_value < 0.05:
+                    significant_count += 1
+        else:
+            # Set to None for invalid comparisons
+            p_value_matrix.loc[col1, col2] = None
+                
+        return valid_comparisons, significant_count
+
+    def student_independent_pairwise_test(self, dataframe: pd.DataFrame, reference_column: Optional[str] = None) -> AiTableStatsResults:
+        """Student's t-test for independent pairwise comparisons (post-hoc after ANOVA).
+        
+        Args:
+            dataframe: DataFrame containing the data
+            reference_column: Optional reference column. If provided, comparisons are only made 
+                            between this column and all other columns. If None, all pairwise 
+                            combinations are tested.
+        """
         # Get all columns
         columns = dataframe.columns.tolist()
 
         if len(columns) < 2:
             raise ValueError("The table must contain at least two columns for pairwise comparisons.")
+
+        if reference_column and reference_column not in columns:
+            raise ValueError(f"Reference column '{reference_column}' not found in dataframe columns.")
 
         # Initialize matrices for p-values and statistics
         p_value_matrix = pd.DataFrame(index=columns, columns=columns, dtype=object)
@@ -275,30 +322,48 @@ class AiTableStatsTests:
         valid_comparisons = 0
         significant_count = 0
 
-        for i, col1 in enumerate(columns):
-            for j, col2 in enumerate(columns):
-                if i != j:  # Skip diagonal
-                    group1 = dataframe[col1].dropna()
-                    group2 = dataframe[col2].dropna()
+        if reference_column:
+            # Only compare reference column with all other columns
+            for col in columns:
+                if col != reference_column:
+                    # Compare reference to other column
+                    valid_comparisons, significant_count = self._perform_ttest_comparison(
+                        dataframe[reference_column], dataframe[col],
+                        p_value_matrix, reference_column, col,
+                        valid_comparisons, significant_count,
+                        should_count=True
+                    )
+                    # Also set the symmetric entry in the matrix
+                    p_value_matrix.loc[col, reference_column] = p_value_matrix.loc[reference_column, col]
 
-                    if len(group1) > 0 and len(group2) > 0:
-                        statistic, p_value, df = ttest_ind(group1, group2, usevar='pooled')
-
-                        p_value_matrix.loc[col1, col2] = float(p_value)
-
-                        if i < j:  # Count each pair only once
-                            valid_comparisons += 1
-                            if p_value < 0.05:
-                                significant_count += 1
-                    else:
-                        # Set to None for invalid comparisons
+            # Set all non-reference comparisons to None
+            for i, col1 in enumerate(columns):
+                for j, col2 in enumerate(columns):
+                    if col1 != reference_column and col2 != reference_column and i != j:
                         p_value_matrix.loc[col1, col2] = None
+        else:
+            # Original behavior: all pairwise combinations
+            for i, col1 in enumerate(columns):
+                for j, col2 in enumerate(columns):
+                    if i != j:  # Skip diagonal
+                        # Only count each pair once for statistics
+                        should_count = i < j
+                        valid_comparisons, significant_count = self._perform_ttest_comparison(
+                            dataframe[col1], dataframe[col2],
+                            p_value_matrix, col1, col2,
+                            valid_comparisons, significant_count,
+                            should_count=should_count
+                        )
 
         if valid_comparisons == 0:
             raise ValueError("No valid pairs with data found for t-tests.")
 
         # Create combined matrix with p-values as the main result
-        comparison_matrix = p_value_matrix
+        if reference_column:
+            # When reference column is provided, return only the reference column data
+            comparison_matrix = p_value_matrix[[reference_column]]
+        else:
+            comparison_matrix = p_value_matrix
 
         if significant_count > 0:
             result_text = f"Significant differences found in {significant_count} of {valid_comparisons} pairwise comparisons."
