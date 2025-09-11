@@ -34,6 +34,11 @@ def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:
                 spacing="4"
             )
         ),
+        # Figure (if it exists)
+        rx.cond(
+            test_result.figure,
+            rx.plotly(test_result.figure, width="100%", height="300px")
+        ),
         padding="0.5em",
     )
 

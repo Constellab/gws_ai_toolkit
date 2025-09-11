@@ -1,9 +1,11 @@
 
+import json
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import pandas as pd
-# import plotly.graph_objs as go
+import plotly.graph_objs as go
 from gws_core import BaseModelDTO
+from pydantic import field_validator
 
 AiTableStatsAdditionalTestName = Literal[
     "Student t-test (independent paired wise)",
@@ -180,6 +182,8 @@ class AiTableStatsResults(BaseModelDTO):
     p_value: Optional[float] = None
     details: Optional[AiTableStatsDetailsType] = None
 
+    figure: Optional[go.Figure] = None  # Plotly figure object, not serialized
+
     p_value_scientific: Optional[str] = None
     statistic_scientific: Optional[str] = None
 
@@ -190,5 +194,16 @@ class AiTableStatsResults(BaseModelDTO):
         if self.statistic is not None:
             self.statistic_scientific = f"{self.statistic:.2e}"
 
-    # class Config:
-    #     arbitrary_types_allowed = True
+    @field_validator('figure', mode='before')  # Updated to field_validator with mode='before'
+    @classmethod  # Add classmethod decorator (required in V2)
+    def deserialize_figure(cls, value):
+        if isinstance(value, str):
+            # Convert JSON string to Plotly figure
+            return go.Figure(json.loads(value))
+        return value
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {
+            go.Figure: lambda fig: json.loads(fig.to_json())
+        }

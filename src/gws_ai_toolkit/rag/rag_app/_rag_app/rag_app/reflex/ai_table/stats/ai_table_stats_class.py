@@ -3,6 +3,7 @@
 from typing import List, Optional, cast
 
 import pandas as pd
+from gws_core import Logger
 from pandas import DataFrame, api
 
 from .ai_table_stats_tests import AiTableStatsTests
@@ -58,6 +59,24 @@ class AiTableStats:
     INDEPENDENCE vs DEPENDENCE:
     - Independent: Different groups/subjects (e.g., treatment A vs treatment B)
     - Dependent: Same subjects measured multiple times (e.g., before vs after treatment)
+
+    ADDITIONAL TESTS:
+    Additional tests can be run after the main statistical analysis to provide more detailed insights:
+
+    - Student t-test (independent paired wise): Performs pairwise comparisons between all column pairs
+      using Student's t-test. Available after ANOVA has been performed and shows significant results.
+
+      Prerequisites:
+      * ANOVA test must have been performed
+      * Tukey HSD test must have been performed
+
+      Correction methods applied:
+      * Independent columns with <30 columns: Bonferroni correction
+      * Independent columns with ≥30 columns: Tukey correction (already applied)
+      * Dependent/paired columns: Scheffe correction
+
+      Optional reference column parameter allows testing only between a reference column and all others,
+      rather than all possible pairwise combinations.
     """
 
     _dataframe: DataFrame
@@ -104,28 +123,28 @@ class AiTableStats:
 
         if num_columns == 1:
             # Chi2 adjustment test (goodness of fit)
-            print("Running: Khi2 adjustment")
+            Logger.debug("Running: Khi2 adjustment")
             column_data = self._dataframe.iloc[:, 0]
             observed_freq = column_data.value_counts().values
             result = self._tests.chi2_adjustment_test(observed_freq)
             self._record_test(result)
-            print(f"Result: {result}")
+            Logger.debug(f"Result: {result}")
 
         elif num_columns == 2:
             if self._columns_are_independent:
                 # Chi2 independence test
-                print("Running: Khi2 independance")
+                Logger.debug("Running: Khi2 independance")
                 contingency_table = pd.crosstab(self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1])
                 result = self._tests.chi2_independence_test(contingency_table.values)
                 self._record_test(result)
-                print(f"Result: {result}")
+                Logger.debug(f"Result: {result}")
             else:
                 # McNemar test
-                print("Running: Khi2 McNemar")
+                Logger.debug("Running: Khi2 McNemar")
                 contingency_table = pd.crosstab(self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1])
                 result = self._tests.mcnemar_test(contingency_table.values)
                 self._record_test(result)
-                print(f"Result: {result}")
+                Logger.debug(f"Result: {result}")
         else:
             raise ValueError("Error: More than 2 qualitative columns not supported")
 
@@ -145,75 +164,75 @@ class AiTableStats:
             # Fourth step
             if num_columns == 2:
                 if self._columns_are_independent:
-                    print("Running: Student independent")
+                    Logger.debug("Running: Student independent")
                     result = self._tests.student_independent_test(
                         self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
                     )
                     self._record_test(result)
-                    print(f"Result: {result}")
+                    Logger.debug(f"Result: {result}")
                 else:
-                    print("Running: Student paired")
+                    Logger.debug("Running: Student paired")
                     result = self._tests.student_paired_test(
                         self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
                     )
                     self._record_test(result)
-                    print(f"Result: {result}")
+                    Logger.debug(f"Result: {result}")
             elif num_columns > 2:
                 if self._columns_are_independent:
-                    print("Running: ANOVA")
+                    Logger.debug("Running: ANOVA")
                     # Use columns directly for ANOVA
                     groups = [self._dataframe.iloc[:, i].dropna() for i in range(num_columns)]
                     result = self._tests.anova_test(*groups)
                     self._record_test(result)
-                    print(f"Result: {result}")
+                    Logger.debug(f"Result: {result}")
 
                     # Check if ANOVA is significant and run Tukey post-hoc test
                     if result.p_value < 0.05:
-                        print("Running post-hoc: Tukey HSD (ANOVA p < 0.05)")
+                        Logger.debug("Running post-hoc: Tukey HSD (ANOVA p < 0.05)")
                         # Use columns directly for Tukey
                         tukey_result = self._tests.tukey_hsd_test(self._dataframe)
                         self._record_test(tukey_result)
-                        print(f"Tukey Result: {tukey_result}")
+                        Logger.debug(f"Tukey Result: {tukey_result}")
                 else:
                     raise ValueError("Error: More than 2 non-independent quantitative columns not supported")
         else:
             # Fifth step
             if num_columns == 2:
                 if self._columns_are_independent:
-                    print("Running: Mann-Whitney")
+                    Logger.debug("Running: Mann-Whitney")
                     result = self._tests.mann_whitney_test(
                         self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
                     )
                     self._record_test(result)
-                    print(f"Result: {result}")
+                    Logger.debug(f"Result: {result}")
                 else:
-                    print("Running: Wilcoxon")
+                    Logger.debug("Running: Wilcoxon")
                     result = self._tests.wilcoxon_test(
                         self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
                     )
                     self._record_test(result)
-                    print(f"Result: {result}")
+                    Logger.debug(f"Result: {result}")
             elif num_columns > 2:
                 if self._columns_are_independent:
-                    print("Running: Kruskal-Wallis")
+                    Logger.debug("Running: Kruskal-Wallis")
                     groups = [self._dataframe.iloc[:, i].dropna() for i in range(num_columns)]
                     result = self._tests.kruskal_wallis_test(*groups)
                     self._record_test(result)
-                    print(f"Result: {result}")
+                    Logger.debug(f"Result: {result}")
 
                     # Check if Kruskal-Wallis is significant and run Dunn post-hoc test
                     if result.p_value < 0.05:
-                        print("Running post-hoc: Dunn test (Kruskal-Wallis p < 0.05)")
+                        Logger.debug("Running post-hoc: Dunn test (Kruskal-Wallis p < 0.05)")
                         # Use columns directly for Dunn
                         dunn_result = self._tests.dunn_test(self._dataframe)
                         self._record_test(dunn_result)
-                        print(f"Dunn Result: {dunn_result}")
+                        Logger.debug(f"Dunn Result: {dunn_result}")
                 else:
-                    print("Running: Friedman")
+                    Logger.debug("Running: Friedman")
                     groups = [self._dataframe.iloc[:, i] for i in range(num_columns)]
                     result = self._tests.friedman_test(*groups)
                     self._record_test(result)
-                    print(f"Result: {result}")
+                    Logger.debug(f"Result: {result}")
 
     def _test_normality(self, dataframe: DataFrame, num_rows: int) -> bool:
         """Test normality of quantitative columns."""
@@ -224,13 +243,13 @@ class AiTableStats:
             column_data = dataframe[col].dropna()
 
             if num_rows < 50:
-                print(f"Running normality test on {col}: Shapiro-Wilk (< 50 rows)")
+                Logger.debug(f"Running normality test on {col}: Shapiro-Wilk (< 50 rows)")
                 result = self._tests.shapiro_wilk_test(column_data)
             else:
-                print(f"Running normality test on {col}: Kolmogorov-Smirnov (>= 50 rows)")
+                Logger.debug(f"Running normality test on {col}: Kolmogorov-Smirnov (>= 50 rows)")
                 result = self._tests.kolmogorov_smirnov_test(column_data)
 
-            print(f"Normality result for {col}: {result}")
+            Logger.debug(f"Normality result for {col}: {result}")
             result_texts.append(result.result_text)
 
             # If any column has p_value <= 0.05, consider all columns as not normal
@@ -254,15 +273,16 @@ class AiTableStats:
         """Test homogeneity of variance."""
         groups = [filtered_df[col].dropna() for col in filtered_df.columns]
 
+        result: AiTableStatsResults
         if all_normal:
-            print("Running homogeneity test: Bartlett (normal data)")
+            Logger.debug("Running homogeneity test: Bartlett (normal data)")
             result = self._tests.bartlett_test(*groups)
         else:
-            print("Running homogeneity test: Levene (non-normal data)")
+            Logger.debug("Running homogeneity test: Levene (non-normal data)")
             result = self._tests.levene_test(*groups)
 
         self._record_test(result)
-        print(f"Homogeneity result: {result}")
+        Logger.debug(f"Homogeneity result: {result}")
 
         # If p_value > 0.05, variances are homogeneous
         return result.p_value > 0.05
