@@ -1,7 +1,10 @@
+import json
 from typing import List, Literal, Optional
 
+import plotly.graph_objects as go
 from gws_core import BaseModelDTO
 from PIL import Image
+from pydantic import field_validator
 
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
@@ -131,8 +134,54 @@ class ChatMessageCode(ChatMessageBase):
     code: str
 
 
+class ChatMessagePlotly(ChatMessageBase):
+    """Chat message containing Plotly figure content.
+
+    Specialized chat message for interactive Plotly visualizations created
+    through function calls. Used to display charts, graphs, and data
+    visualizations in the chat interface.
+
+    Attributes:
+        type: Fixed as "plotly" to identify this as a plotly message
+        figure: The Plotly figure object for rendering
+        content: Optional text description/caption for the figure
+
+    Example:
+        plotly_msg = ChatMessagePlotly(
+            role="assistant",
+            content="Data visualization",
+            id="msg_plotly_123",
+            figure=go.Figure(data=[go.Bar(x=['A', 'B'], y=[1, 2])])
+        )
+    """
+    type: Literal["plotly"] = "plotly"
+    figure: go.Figure
+    content: str = ""
+
+    @field_validator('figure', mode='before')  # Updated to field_validator with mode='before'
+    @classmethod  # Add classmethod decorator (required in V2)
+    def deserialize_figure(cls, value):
+        if isinstance(value, go.Figure):
+            return value
+
+        if isinstance(value, str):
+            # Convert JSON string to Plotly figure
+            value = json.loads(value)
+
+        if not isinstance(value, dict):
+            raise ValueError("figure must be a dict or JSON string representing a Plotly figure")
+
+        return go.Figure(value)
+
+    class Config:
+        arbitrary_types_allowed = True
+        # json_encoders = {
+        #     go.Figure: lambda fig: json.loads(fig.to_json())
+        # }
+
+
 # Type used for the storage and internal processing
-ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage
+ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly
 
 # Type used  for front-end rendering
-ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront
+ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotly

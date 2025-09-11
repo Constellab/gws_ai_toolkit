@@ -13,13 +13,13 @@ from .history_state import HistoryState
 
 def _conversation_item(conversation: ConversationHistory) -> rx.Component:
     """Individual conversation item in the history sidebar.
-    
+
     Renders a single conversation entry with truncated title, metadata,
     and click functionality for selection.
-    
+
     Args:
         conversation (ConversationHistory): Conversation data to display
-        
+
     Returns:
         rx.Component: Clickable conversation item with title and metadata
     """
@@ -108,6 +108,7 @@ def _conversations_sidebar() -> rx.Component:
                 padding_inline="1em",
             ),
 
+
             # Loading state
             rx.cond(
                 HistoryState.is_loading,
@@ -117,6 +118,7 @@ def _conversations_sidebar() -> rx.Component:
                     padding="20px",
                     text_align="center"
                 ),
+
                 # Content when not loading
                 rx.cond(
                     HistoryState.has_conversations,
@@ -226,21 +228,21 @@ def _conversation_display() -> rx.Component:
 
 def history_component():
     """Complete conversation history interface with sidebar and display panel.
-    
+
     This component provides a two-panel interface for browsing and viewing
     conversation history. The left panel shows a scrollable list of conversations,
     while the right panel displays the selected conversation in read-only mode.
-    
+
     Features:
         - Two-panel layout with conversation list and display
         - Conversation selection and highlighting
         - Read-only conversation viewing
         - Configuration dialog for conversation settings
         - Loading states and refresh functionality
-        
+
     Returns:
         rx.Component: Complete history interface with sidebar and conversation display
-        
+
     Example:
         history_ui = history_component()
         # Renders two-panel history interface

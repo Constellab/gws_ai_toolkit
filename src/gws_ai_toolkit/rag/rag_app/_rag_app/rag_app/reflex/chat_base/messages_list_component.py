@@ -1,8 +1,12 @@
+from typing import cast
+
+import plotly.graph_objects as go
 import reflex as rx
 
 from .chat_config import ChatConfig
 from .chat_message_class import (ChatMessageCode, ChatMessageFront,
-                                 ChatMessageImageFront, ChatMessageText)
+                                 ChatMessageImageFront, ChatMessagePlotly,
+                                 ChatMessageText)
 from .chat_state_base import ChatStateBase
 
 
@@ -121,6 +125,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     """
 
     return rx.box(
+
         # Show empty state message when no messages exist
         rx.cond(
             (config.state.messages_to_display.length() == 0) & ~config.state.current_response_message & ~config.state.is_streaming,
@@ -177,6 +182,7 @@ def _message_content(message: ChatMessageFront) -> rx.Component:
         ("text", _text_content(message)),
         ("image", _image_content(message)),
         ("code", _code_content(message)),
+        ("plotly", _plotly_content(message)),
         rx.text(f"Unsupported message type {message.type}.")
     )
 
@@ -226,4 +232,22 @@ def _code_content(message: ChatMessageCode) -> rx.Component:
         language="python",
         border_radius="8px",
         padding="1em",
+    )
+
+
+def _plotly_content(message: ChatMessagePlotly) -> rx.Component:
+    """Renders plotly figure content.
+
+    Args:
+        message (ChatMessagePlotly): Plotly message to render
+
+    Returns:
+        rx.Component: Plotly figure display
+    """
+    return rx.cond(
+        message.figure,
+        rx.plotly(
+            # rx.cond used to avoid warning
+            data=rx.cond(message.figure, message.figure, go.Figure()),
+        )
     )

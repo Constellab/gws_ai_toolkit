@@ -4,6 +4,7 @@ import uuid
 from abc import abstractmethod
 from typing import List, Literal, Optional
 
+import plotly.graph_objects as go
 import reflex as rx
 from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
                       ShareLinkEntityType, ShareLinkService)
@@ -17,7 +18,8 @@ from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from ..history.conversation_history_state import ConversationHistoryState
 from .chat_message_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageFront, ChatMessageImage,
-                                 ChatMessageImageFront, ChatMessageText)
+                                 ChatMessageImageFront, ChatMessagePlotly,
+                                 ChatMessageText)
 
 
 class ChatStateBase(ReflexMainState, rx.State, mixin=True):
@@ -122,7 +124,7 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             )
         return message
 
-    @rx.event(background=True)
+    @rx.event(background=True)  # type: ignore
     async def submit_input_form(self, form_data: dict) -> None:
         """On chat input form submit, check message and call AI chat
 
@@ -240,6 +242,22 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             id=str(uuid.uuid4()),
             role=role,
             image_name=filename,  # Store the full path
+            external_id=external_id,
+            sources=sources or []
+        )
+
+    def create_plotly_message(self,
+                              figure: go.Figure,
+                              content: str = "",
+                              role: Literal['user', 'assistant'] = "assistant",
+                              external_id: Optional[str] = None,
+                              sources: Optional[List[RagChatSource]] = None) -> ChatMessagePlotly:
+        """Create a Plotly message with interactive figure"""
+        return ChatMessagePlotly(
+            id=str(uuid.uuid4()),
+            role=role,
+            figure=figure,
+            content=content,
             external_id=external_id,
             sources=sources or []
         )

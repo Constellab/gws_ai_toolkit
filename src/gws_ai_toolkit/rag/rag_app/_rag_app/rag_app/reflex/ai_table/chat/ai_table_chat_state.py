@@ -1,7 +1,11 @@
+import json
 from typing import Optional
 
+import plotly.graph_objects as go
 import reflex as rx
-from gws_core import File, ResourceModel
+from gws_core import BaseModelDTO, File, ResourceModel
+from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
+                                    ResponseFunctionCallArgumentsDoneEvent)
 
 from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
 from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
@@ -165,9 +169,20 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
             config.prompt_file_placeholder, uploaded_file_id) + table_context
 
         instructions = system_prompt
-        tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}}]
 
-        # Create streaming response with code interpreter
+        tools = [
+            {"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}},
+            {
+                "type": "function",
+                # "strict": True,
+                "name": "create_plotly_figure",
+                "description": "Create a Plotly figure from JSON configuration. Use this when you want to create interactive charts and visualizations.",
+                "parameters": PlotlyFigureConfig.model_json_schema()
+
+            },
+        ]
+
+        # Create streaming response with code interpreter and function calling
         with client.responses.stream(
             model=config.model,
             instructions=instructions,
@@ -186,9 +201,58 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
                     await self.handle_code_interpreter_call_code_delta(event)
                 elif event.type == "response.output_text.annotation.added":
                     await self.handle_output_text_annotation_added(event)
+                elif event.type == "response.function_call_arguments.delta":
+                    await self.handle_function_call_arguments_delta(event)
+                elif event.type == "response.function_call_arguments.done":
+                    await self.handle_function_call_arguments_done(event)
                 elif event.type == "response.output_item.added" or event.type == "response.output_item.done":
                     await self.close_current_message()
                 elif event.type == "response.created":
                     await self.handle_response_created(event)
                 elif event.type == "response.completed":
                     await self.handle_response_completed()
+
+    async def handle_function_call_arguments_delta(self, event: ResponseFunctionCallArgumentsDeltaEvent):
+        """Handle response.function_call_arguments.delta event"""
+        # This would handle streaming function arguments, but typically we wait for the complete arguments
+        pass
+
+    async def handle_function_call_arguments_done(self, event: ResponseFunctionCallArgumentsDoneEvent):
+        """Handle response.function_call_arguments.done event - execute the function call"""
+
+        print('Handling function_call_arguments.done event')
+        arguments_str = event.arguments
+
+        # Since we only have one function defined, we can assume it's create_plotly_figure
+        # In a more complex setup, we'd need to track the function name from earlier events
+        try:
+            # Parse arguments
+            arguments = json.loads(arguments_str)
+
+            # Create Plotly figure from config - this is what the user requested
+            fig = go.Figure(arguments)
+
+            # Create a success message showing the chart has been created
+            print('Creating Plotly figure message')
+            success_message = self.create_plotly_message(
+                figure=fig,
+                content="✅ Plotly figure created successfully from provided JSON configuration",
+                role="assistant",
+                external_id=self._current_external_response_id
+            )
+            await self.update_current_response_message(success_message)
+
+        except json.JSONDecodeError as e:
+            error_message = self.create_text_message(
+                content=f"❌ Error parsing function arguments: {str(e)}",
+                role="assistant",
+                external_id=self._current_external_response_id
+            )
+            await self.update_current_response_message(error_message)
+        except Exception as e:
+            error_message = self.create_text_message(
+                content=f"❌ Error creating Plotly figure: {str(e)}",
+                role="assistant",
+                external_id=self._current_external_response_id
+            )
+            await self.update_current_response_message(error_message)

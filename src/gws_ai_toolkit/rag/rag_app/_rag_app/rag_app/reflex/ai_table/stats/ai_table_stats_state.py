@@ -7,6 +7,7 @@ import reflex as rx
 from gws_core import BaseModelDTO, Table, TableUnfolderHelper
 from openai import OpenAI
 from pandas import DataFrame
+from pydantic import BaseModel, Field
 
 from ..ai_table_data_state import AiTableDataState
 from .ai_table_stats_class import AiTableStats
@@ -19,6 +20,20 @@ class AiTableStatsRunConfig(BaseModelDTO):
     str_columns: str  # Comma-separated string of columns for display
     group_input: Optional[str]
     columns_are_paired: bool
+
+
+class AiTableFunctionTool(BaseModel):
+    selected_columns: List[str] = Field(
+        description="List of column names to analyze (exact names from available columns)"
+    )
+    group_column: Optional[str] = Field(
+        description="Optional column name to group by (exact name from available columns). Use null if no grouping needed."
+    )
+    columns_are_paired: bool = Field(
+        description="True if the selected columns represent paired data that should be analyzed together, False if they are independent variables")
+
+    class Config:
+        extra = "forbid"  # Prevent additional properties
 
 
 class AiTableStatsState(rx.State):
@@ -90,27 +105,10 @@ class AiTableStatsState(rx.State):
             {
                 "type": "function",
                 "function": {
+                    "strict": True,
                     "name": "analyze_columns",
                     "description": "Extract column analysis parameters from user prompt",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "selected_columns": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of column names to analyze (exact names from available columns)"
-                            },
-                            "group_column": {
-                                "type": "string",
-                                "description": "Optional column name to group by (exact name from available columns). Use null if no grouping needed."
-                            },
-                            "columns_are_paired": {
-                                "type": "boolean",
-                                "description": "True if the selected columns represent paired data that should be analyzed together, False if they are independent variables"
-                            }
-                        },
-                        "required": ["selected_columns", "columns_are_paired"]
-                    }
+                    "parameters": AiTableFunctionTool.model_json_schema()
                 }
             }
         ]
