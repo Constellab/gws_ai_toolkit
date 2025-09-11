@@ -40,6 +40,7 @@ def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:
             rx.plotly(test_result.figure, width="100%", height="300px")
         ),
         padding="0.5em",
+        width="100%",
     )
 
 

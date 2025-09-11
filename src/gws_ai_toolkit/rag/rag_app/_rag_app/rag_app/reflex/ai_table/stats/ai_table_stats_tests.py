@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from scikit_posthocs import posthoc_dunn
 from scipy import stats
-from scipy.stats import f_oneway
+from scipy.stats import f_oneway, pearsonr, spearmanr
 from statsmodels.stats.contingency_tables import mcnemar
 from statsmodels.stats.diagnostic import lilliefors
 from statsmodels.stats.multicomp import MultiComparison
@@ -469,6 +469,67 @@ class AiTableStatsTests:
             details=FriedmanTestDetails(
                 conditions_count=len(groups),
                 subjects_count=len(groups[0]) if groups else 0
+            )
+        )
+
+    # Correlation tests
+    def pearson_correlation_test(self, x: Union[np.ndarray, pd.Series, List[float]],
+                                y: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
+        """Pearson correlation test between two variables."""
+        correlation, p_value = pearsonr(x, y)
+
+        # Generate result text based on p-value and correlation strength
+        if p_value < 0.05:
+            if abs(correlation) >= 0.7:
+                strength = "strong"
+            elif abs(correlation) >= 0.3:
+                strength = "moderate"
+            else:
+                strength = "weak"
+            
+            direction = "positive" if correlation > 0 else "negative"
+            result_text = f"Significant {strength} {direction} linear correlation (r={correlation:.3f})."
+        else:
+            result_text = f"No significant linear correlation (r={correlation:.3f})."
+
+        return AiTableStatsResults(
+            test_name='Pearson correlation',
+            result_text=result_text,
+            result_figure=None,
+            statistic=float(correlation),
+            p_value=float(p_value),
+            details=TwoGroupNonParametricTestDetails(
+                sample_sizes=[len(x), len(y)]
+            )
+        )
+
+    def spearman_correlation_test(self, x: Union[np.ndarray, pd.Series, List[float]],
+                                 y: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
+        """Spearman rank correlation test between two variables."""
+        correlation, p_value = spearmanr(x, y)
+
+        # Generate result text based on p-value and correlation strength
+        if p_value < 0.05:
+            if abs(correlation) >= 0.7:
+                strength = "strong"
+            elif abs(correlation) >= 0.3:
+                strength = "moderate"
+            else:
+                strength = "weak"
+            
+            direction = "positive" if correlation > 0 else "negative"
+            result_text = f"Significant {strength} {direction} monotonic correlation (ρ={correlation:.3f})."
+        else:
+            result_text = f"No significant monotonic correlation (ρ={correlation:.3f})."
+
+        return AiTableStatsResults(
+            test_name='Spearman correlation',
+            result_text=result_text,
+            result_figure=None,
+            statistic=float(correlation),
+            p_value=float(p_value),
+            details=TwoGroupNonParametricTestDetails(
+                sample_sizes=[len(x), len(y)]
             )
         )
 
