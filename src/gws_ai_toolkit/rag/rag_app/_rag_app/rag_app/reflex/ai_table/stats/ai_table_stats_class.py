@@ -1,11 +1,14 @@
 
 
-from typing import Any, Dict, List
+from typing import List, Optional, cast
 
 import pandas as pd
 from pandas import DataFrame, api
 
-from .ai_table_stats_tests import AiTableStatsResults, AiTableStatsTests
+from .ai_table_stats_tests import AiTableStatsTests
+from .ai_table_stats_type import (AiTableStatsResults, AiTableStatsTestName,
+                                  NormalitySummaryTestDetails,
+                                  StudentTTestPairwiseDetails)
 
 
 class AiTableStats:
@@ -46,7 +49,7 @@ class AiTableStats:
 
        Step 4: NON-PARAMETRIC PATH (if NOT is_homogeneous OR NOT all_normal)
        - 2 columns:
-         * Independent: Mann-Whitney U test
+         * Independent: Mann-Whitney test
          * Dependent: Wilcoxon signed-rank test
        - >2 columns:
          * Independent: Kruskal-Wallis → If significant (p < 0.05): Dunn post-hoc
@@ -207,7 +210,7 @@ class AiTableStats:
     def _test_normality(self, dataframe: DataFrame, num_rows: int) -> bool:
         """Test normality of quantitative columns."""
         all_normal = True
-        test_results = []
+        result_texts: List[str] = []
 
         for col in dataframe.columns:
             column_data = dataframe[col].dropna()
@@ -220,7 +223,7 @@ class AiTableStats:
                 result = self._tests.kolmogorov_smirnov_test(column_data)
 
             print(f"Normality result for {col}: {result}")
-            test_results.append(result)
+            result_texts.append(result.result_text)
 
             # If any column has p_value <= 0.05, consider all columns as not normal
             if result.p_value <= 0.05:
@@ -228,13 +231,13 @@ class AiTableStats:
 
         self._record_test(
             AiTableStatsResults(
-                test_name="Normality Summary",
+                test_name="Normality summary",
                 result_text="All columns are normal" if all_normal else "At least one column is not normal",
-                details={
-                    'all_normal': all_normal,
-                    'test_used': 'Shapiro-Wilk' if num_rows < 50 else 'Kolmogorov-Smirnov',
-                    'individual_results': test_results
-                }
+                details=NormalitySummaryTestDetails(
+                    all_normal=all_normal,
+                    test_used='Shapiro-Wilk' if num_rows < 50 else 'Kolmogorov-Smirnov',
+                    result_texts=result_texts
+                )
             ))
 
         return all_normal
@@ -255,3 +258,102 @@ class AiTableStats:
 
         # If p_value > 0.05, variances are homogeneous
         return result.p_value > 0.05
+
+    def suggested_additional_tests(self) -> Optional[str]:
+        """
+        Suggest additional tests to perform based on test history.
+
+        Args:
+            test_history: List of test names that have been performed
+
+        Returns:
+            Suggested test name or None if no suggestion available
+        """
+        if not self.test_history:
+            return None
+
+        # If ANOVA was done and Student pairwise not done, suggest Student pairwise
+        if self.history_contains("ANOVA") and not self.history_contains("Student t-test (independent paired wise)"):
+            return "Student t-test (independent paired wise)"
+
+        return None
+
+    def run_additional_test(self, test_name: AiTableStatsTestName) -> AiTableStatsResults:
+        """
+        Run an additional statistical test based on the provided test name.
+
+        Args:
+            test_name: Name of the test to run
+
+        Returns:
+            AiTableStatsResults with the test results
+
+        Raises:
+            ValueError: If the test name is not recognized or prerequisites are not met
+        """
+        if test_name == "Student t-test (independent paired wise)":
+            return self.run_student_independent_pairwise()
+        else:
+            raise ValueError(f"Error: Test '{test_name}' not recognized or not implemented for additional tests")
+
+    def history_contains(self, test_name: AiTableStatsTestName) -> bool:
+        """
+        Check if a specific test has been performed.
+
+        Args:
+            test_name: Name of the test to check
+        Returns:
+            True if the test has been performed, False otherwise
+        """
+        return any(result.test_name == test_name for result in self.test_history)
+
+    def run_student_independent_pairwise(self) -> AiTableStatsResults:
+        """
+        Run Student t-test (independent paired wise) with appropriate corrections.
+
+        Checks prerequisites:
+        - ANOVA must have been performed
+        - Tukey HSD must have been performed
+
+        Applies corrections based on:
+        - If columns_are_independent:
+          - If nb of columns < 30: Bonferroni correction
+          - If nb of columns >= 30: Tukey correction (already done, so no additional correction)
+        - If columns are paired: Scheffe correction
+
+        Returns:
+            AiTableStatsResults with the test results
+
+        Raises:
+            ValueError: If prerequisites are not met
+        """
+        # Check prerequisites
+        if not self.history_contains("ANOVA"):
+            raise ValueError("Error: ANOVA test must be performed before running Student t-test (independent paired wise)")
+
+        if not self.history_contains("Tukey HSD"):
+            raise ValueError(
+                "Error: Tukey HSD test must be performed before running Student t-test (independent paired wise)")
+
+        # Get the raw pairwise t-test results
+        raw_result = self._tests.student_independent_pairwise_test(self._dataframe)
+        self._record_test(raw_result)
+
+        details: StudentTTestPairwiseDetails = cast(StudentTTestPairwiseDetails, raw_result.details)
+        num_columns = len(self._dataframe.columns)
+
+        correction_result: AiTableStatsResults
+        # Apply appropriate correction based on conditions
+        if self._columns_are_independent:
+            if num_columns < 30:
+                # Apply Bonferroni correction
+                correction_result = self._tests.bonferroni_test(details.pairwise_comparisons_matrix)
+            else:
+                # Apply Tukey correction
+                correction_result = self._tests.tukey_hsd_test(details.pairwise_comparisons_matrix)
+        else:
+            # Apply Scheffe correction for paired columns
+            correction_result = self._tests.scheffe_test(details.pairwise_comparisons_matrix)
+
+        self._record_test(correction_result)
+        return correction_result

@@ -1,7 +1,7 @@
 import reflex as rx
 
 from .ai_table_stats_state import AiTableStatsState
-from .ai_table_stats_tests import AiTableStatsResults
+from .ai_table_stats_type import AiTableStatsResults
 
 
 def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:
@@ -38,8 +38,93 @@ def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:
     )
 
 
+def _show_additional_test_suggestion() -> rx.Component:
+    """Display suggested additional test if available."""
+    return rx.cond(
+        AiTableStatsState.has_suggested_additional_test,
+        rx.box(
+            rx.heading("Suggested Additional Test", size="3", margin_bottom="0.5em", margin_top="1em"),
+            rx.box(
+                rx.text(
+                    f"Based on your analysis, you might want to run: {AiTableStatsState.suggested_additional_test}",
+                    margin_bottom="0.5em"
+                ),
+                rx.button(
+                    rx.cond(
+                        AiTableStatsState.is_processing,
+                        rx.hstack(
+                            rx.spinner(size="1"),
+                            rx.text("Running..."),
+                            spacing="2",
+                            align_items="center"
+                        ),
+                        rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
+                    ),
+                    on_click=lambda: AiTableStatsState.run_additional_test(AiTableStatsState.suggested_additional_test),
+                    color_scheme="green",
+                    cursor="pointer",
+                    disabled=AiTableStatsState.is_processing
+                ),
+                padding="0.8em",
+                border="1px solid var(--green-6)",
+                border_radius="8px",
+                background_color="var(--green-2)"
+            ),
+            width="100%"
+        )
+    )
+
+
+def _show_last_run_config() -> rx.Component:
+    """Display the last run configuration (excluding ai_prompt)."""
+    return rx.cond(
+        AiTableStatsState.last_run_config,
+        rx.box(
+            rx.heading("Configuration", size="3", margin_bottom="0.5em", margin_top="1em"),
+            rx.vstack(
+                rx.hstack(
+                    rx.text("Columns:", font_weight="bold", font_size="0.9em"),
+                    rx.text(
+                        AiTableStatsState.last_run_config.str_columns,
+                        font_size="0.9em"
+                    ),
+                    spacing="2"
+                ),
+                rx.hstack(
+                    rx.text("Group Input:", font_weight="bold", font_size="0.9em"),
+                    rx.text(
+                        rx.cond(
+                            AiTableStatsState.last_run_config.group_input,
+                            AiTableStatsState.last_run_config.group_input,
+                            "None"
+                        ),
+                        font_size="0.9em"
+                    ),
+                    spacing="2"
+                ),
+                rx.hstack(
+                    rx.text("Columns are Paired:", font_weight="bold", font_size="0.9em"),
+                    rx.text(
+                        rx.cond(
+                            AiTableStatsState.last_run_config.columns_are_paired,
+                            "Yes",
+                            "No"
+                        ),
+                        font_size="0.9em"
+                    ),
+                    spacing="2"
+                ),
+                spacing="1",
+                padding="1em",
+            ),
+            width="100%"
+        )
+    )
+
+
 def _show_results() -> rx.Component:
     return rx.fragment(
+        _show_last_run_config(),
         rx.cond(
             AiTableStatsState.last_test_result,
             rx.box(
@@ -62,7 +147,8 @@ def _show_results() -> rx.Component:
                 ),
                 width="100%"
             )
-        )
+        ),
+        _show_additional_test_suggestion()
     )
 
 

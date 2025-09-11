@@ -1,41 +1,33 @@
 
-from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union
+from itertools import combinations
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objs as go
-from gws_core import BaseModelDTO
 from scikit_posthocs import posthoc_dunn
 from scipy import stats
 from scipy.stats import f_oneway
 from statsmodels.stats.contingency_tables import mcnemar
 from statsmodels.stats.diagnostic import lilliefors
 from statsmodels.stats.multicomp import MultiComparison
+from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.weightstats import ttest_ind
 
-
-class AiTableStatsResults(BaseModelDTO):
-
-    test_name: str
-    result_text: str
-    result_figure: Optional[str] = None
-    statistic: Optional[Decimal] = None
-    p_value: Optional[Decimal] = None
-    details: Optional[Dict[str, Any]] = None
-
-    p_value_scientific: Optional[str] = None
-    statistic_scientific: Optional[str] = None
-
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-        if self.p_value is not None:
-            self.p_value_scientific = f"{self.p_value:.2e}"
-        if self.statistic is not None:
-            self.statistic_scientific = f"{self.statistic:.2e}"
-
-    # class Config:
-    #     arbitrary_types_allowed = True
+from .ai_table_stats_type import (AiTableStatsResults, AnovaTestDetails,
+                                  BonferroniTestDetails,
+                                  ChiSquaredAdjustmentTestDetails,
+                                  ChiSquaredIndependenceTestDetails,
+                                  DunnTestDetails, FriedmanTestDetails,
+                                  HomogeneityTestDetails, McNemarTestDetails,
+                                  MultiGroupNonParametricTestDetails,
+                                  NormalityTestDetails,
+                                  PairedNonParametricTestDetails,
+                                  ScheffeTestDetails,
+                                  StudentTTestIndependentDetails,
+                                  StudentTTestPairedDetails,
+                                  StudentTTestPairwiseDetails,
+                                  TukeyHSDTestDetails,
+                                  TwoGroupNonParametricTestDetails)
 
 
 class AiTableStatsTests:
@@ -56,13 +48,11 @@ class AiTableStatsTests:
             test_name='Shapiro-Wilk',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Test for normality assumption',
-                'null_hypothesis': 'Data follows normal distribution',
-                'sample_size': len(data)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=NormalityTestDetails(
+                sample_size=len(data)
+            )
         )
 
     def kolmogorov_smirnov_test(self, data: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
@@ -79,13 +69,11 @@ class AiTableStatsTests:
             test_name='Kolmogorov-Smirnov (Lilliefors)',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Test for normality assumption using Lilliefors correction',
-                'null_hypothesis': 'Data follows normal distribution',
-                'sample_size': len(data)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=NormalityTestDetails(
+                sample_size=len(data)
+            )
         )
 
     # Homogeneity tests
@@ -103,13 +91,11 @@ class AiTableStatsTests:
             test_name='Bartlett',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Test for homogeneity of variances',
-                'null_hypothesis': 'All groups have equal variances',
-                'groups_count': len(groups)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=HomogeneityTestDetails(
+                groups_count=len(groups)
+            )
         )
 
     def levene_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
@@ -126,13 +112,11 @@ class AiTableStatsTests:
             test_name='Levene',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Test for homogeneity of variances (robust alternative to Bartlett)',
-                'null_hypothesis': 'All groups have equal variances',
-                'groups_count': len(groups)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=HomogeneityTestDetails(
+                groups_count=len(groups)
+            )
         )
 
     # Qualitative tests
@@ -152,14 +136,12 @@ class AiTableStatsTests:
             test_name='Chi-squared adjustment',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Goodness of fit test for uniform distribution',
-                'null_hypothesis': 'Observed frequencies follow expected distribution',
-                'categories': len(observed_freq),
-                'expected_freq': expected_freq.tolist()
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=ChiSquaredAdjustmentTestDetails(
+                categories=len(observed_freq),
+                expected_freq=expected_freq.tolist()
+            )
         )
 
     def chi2_independence_test(self, contingency_table: Union[np.ndarray, List[List[int]]]) -> AiTableStatsResults:
@@ -167,7 +149,7 @@ class AiTableStatsTests:
         chi2_stat, p_value, dof, expected = stats.chi2_contingency(contingency_table)
 
         # Generate result text based on p-value
-        if Decimal(p_value) < 0.05:
+        if p_value < 0.05:
             result_text = "Variables are significantly associated (not independent)."
         else:
             result_text = "Variables appear to be independent."
@@ -176,14 +158,13 @@ class AiTableStatsTests:
             test_name='Chi-squared independence',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(chi2_stat),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Test of independence between categorical variables',
-                'null_hypothesis': 'Variables are independent',
-                'degrees_of_freedom': int(dof),
-                'expected_frequencies': expected.tolist()
-            }
+            statistic=float(chi2_stat),
+            p_value=float(p_value),
+            details=ChiSquaredIndependenceTestDetails(
+                degrees_of_freedom=int(dof),
+                expected_frequencies=expected.tolist(),
+                raw_data=np.array(contingency_table).tolist()
+            )
         )
 
     def mcnemar_test(self, table: Union[np.ndarray, List[List[int]]]) -> AiTableStatsResults:
@@ -191,7 +172,7 @@ class AiTableStatsTests:
         result = mcnemar(table, exact=False, correction=True)
 
         # Generate result text based on p-value
-        if Decimal(result.pvalue) < 0.05:
+        if result.pvalue < 0.05:
             result_text = "Significant difference between paired categorical responses."
         else:
             result_text = "No significant difference between paired responses."
@@ -200,13 +181,9 @@ class AiTableStatsTests:
             test_name='McNemar',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(result.statistic),
-            p_value=Decimal(result.pvalue),
-            details={
-                'interpretation': 'Test for paired categorical data differences',
-                'null_hypothesis': 'Marginal probabilities are equal',
-                'table_shape': np.array(table).shape
-            }
+            statistic=float(result.statistic),
+            p_value=float(result.pvalue),
+            details=McNemarTestDetails()
         )
 
     # Quantitative tests - parametric
@@ -226,14 +203,12 @@ class AiTableStatsTests:
             test_name='Student t-test (independent)',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Compare means of two independent groups',
-                'null_hypothesis': 'Group means are equal',
-                'degrees_of_freedom': df,
-                'sample_sizes': [len(group1), len(group2)]
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=StudentTTestIndependentDetails(
+                degrees_of_freedom=df,
+                sample_sizes=[len(group1), len(group2)]
+            )
         )
 
     def student_paired_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
@@ -242,7 +217,7 @@ class AiTableStatsTests:
         statistic, p_value = stats.ttest_rel(group1, group2)
 
         # Generate result text based on p-value
-        if Decimal(p_value) < 0.05:
+        if p_value < 0.05:
             result_text = "Significant difference between paired measurements."
         else:
             result_text = "No significant difference between paired measurements."
@@ -251,13 +226,11 @@ class AiTableStatsTests:
             test_name='Student t-test (paired)',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Compare means of paired/dependent samples',
-                'null_hypothesis': 'Mean difference equals zero',
-                'pairs_count': len(group1)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=StudentTTestPairedDetails(
+                pairs_count=len(group1)
+            )
         )
 
     def anova_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
@@ -275,20 +248,80 @@ class AiTableStatsTests:
             test_name='ANOVA',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Compare means across multiple groups',
-                'null_hypothesis': 'All group means are equal',
-                'groups_count': len(groups),
-                'total_observations': sum(len(group) for group in groups)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=AnovaTestDetails(
+                groups_count=len(groups),
+                total_observations=sum(len(group) for group in groups)
+            )
+        )
+
+    def student_independent_pairwise_test(self, dataframe: pd.DataFrame) -> AiTableStatsResults:
+        """Student's t-test for independent pairwise comparisons (post-hoc after ANOVA)."""
+        # Get all columns
+        columns = dataframe.columns.tolist()
+
+        if len(columns) < 2:
+            raise ValueError("The table must contain at least two columns for pairwise comparisons.")
+
+        # Initialize matrices for p-values and statistics
+        p_value_matrix = pd.DataFrame(index=columns, columns=columns, dtype=object)
+
+        # Set diagonal to 0 (comparison of column with itself)
+        for col in columns:
+            p_value_matrix.loc[col, col] = 0.0
+
+        # Perform pairwise comparisons
+        valid_comparisons = 0
+        significant_count = 0
+
+        for i, col1 in enumerate(columns):
+            for j, col2 in enumerate(columns):
+                if i != j:  # Skip diagonal
+                    group1 = dataframe[col1].dropna()
+                    group2 = dataframe[col2].dropna()
+
+                    if len(group1) > 0 and len(group2) > 0:
+                        statistic, p_value, df = ttest_ind(group1, group2, usevar='pooled')
+
+                        p_value_matrix.loc[col1, col2] = float(p_value)
+
+                        if i < j:  # Count each pair only once
+                            valid_comparisons += 1
+                            if p_value < 0.05:
+                                significant_count += 1
+                    else:
+                        # Set to None for invalid comparisons
+                        p_value_matrix.loc[col1, col2] = None
+
+        if valid_comparisons == 0:
+            raise ValueError("No valid pairs with data found for t-tests.")
+
+        # Create combined matrix with p-values as the main result
+        comparison_matrix = p_value_matrix
+
+        if significant_count > 0:
+            result_text = f"Significant differences found in {significant_count} of {valid_comparisons} pairwise comparisons."
+        else:
+            result_text = "No significant pairwise differences found."
+
+        return AiTableStatsResults(
+            test_name='Student t-test (independent paired wise)',
+            result_text=result_text,
+            result_figure=None,
+            statistic=None,
+            p_value=None,
+            details=StudentTTestPairwiseDetails(
+                pairwise_comparisons_matrix=comparison_matrix,
+                significant_comparisons=significant_count,
+                total_comparisons=valid_comparisons
+            )
         )
 
     # Quantitative tests - non-parametric
     def mann_whitney_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
                           group2: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
-        """Mann-Whitney U test."""
+        """Mann-Whitney test."""
         statistic, p_value = stats.mannwhitneyu(group1, group2, alternative='two-sided')
 
         # Generate result text based on p-value
@@ -298,16 +331,14 @@ class AiTableStatsTests:
             result_text = "No significant difference between group distributions."
 
         return AiTableStatsResults(
-            test_name='Mann-Whitney U',
+            test_name='Mann-Whitney',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Non-parametric test comparing two independent groups',
-                'null_hypothesis': 'Distributions are identical',
-                'sample_sizes': [len(group1), len(group2)]
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=TwoGroupNonParametricTestDetails(
+                sample_sizes=[len(group1), len(group2)]
+            )
         )
 
     def wilcoxon_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
@@ -316,7 +347,7 @@ class AiTableStatsTests:
         statistic, p_value = stats.wilcoxon(group1, group2, alternative='two-sided')
 
         # Generate result text based on p-value
-        if Decimal(p_value) < 0.05:
+        if p_value < 0.05:
             result_text = "Significant difference between paired observations."
         else:
             result_text = "No significant difference between paired observations."
@@ -325,13 +356,11 @@ class AiTableStatsTests:
             test_name='Wilcoxon signed-rank',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Non-parametric test for paired samples',
-                'null_hypothesis': 'Median difference equals zero',
-                'pairs_count': len(group1)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=PairedNonParametricTestDetails(
+                pairs_count=len(group1)
+            )
         )
 
     def kruskal_wallis_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
@@ -348,14 +377,12 @@ class AiTableStatsTests:
             test_name='Kruskal-Wallis',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Non-parametric test comparing multiple groups',
-                'null_hypothesis': 'All group distributions are identical',
-                'groups_count': len(groups),
-                'total_observations': sum(len(group) for group in groups)
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=MultiGroupNonParametricTestDetails(
+                groups_count=len(groups),
+                total_observations=sum(len(group) for group in groups)
+            )
         )
 
     def friedman_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
@@ -372,14 +399,12 @@ class AiTableStatsTests:
             test_name='Friedman',
             result_text=result_text,
             result_figure=None,
-            statistic=Decimal(statistic),
-            p_value=Decimal(p_value),
-            details={
-                'interpretation': 'Non-parametric test for repeated measures',
-                'null_hypothesis': 'All conditions have identical effects',
-                'conditions_count': len(groups),
-                'subjects_count': len(groups[0]) if groups else 0
-            }
+            statistic=float(statistic),
+            p_value=float(p_value),
+            details=FriedmanTestDetails(
+                conditions_count=len(groups),
+                subjects_count=len(groups[0]) if groups else 0
+            )
         )
 
     # Post-hoc tests
@@ -410,59 +435,133 @@ class AiTableStatsTests:
             result_figure=None,
             statistic=None,
             p_value=None,
-            details={
-                'interpretation': 'Post-hoc test following significant ANOVA',
-                'summary': str(tukey_result),
-                'pairwise_comparisons': tukey_result.summary().data,
-                'significant_pairs': significant_pairs
-            }
+            details=TukeyHSDTestDetails(
+                summary=str(tukey_result),
+                pairwise_comparisons=tukey_result.summary().data,
+                significant_pairs=significant_pairs,
+                raw_data=tukey_result
+            )
         )
 
     def dunn_test(self, dataframe: pd.DataFrame) -> AiTableStatsResults:
         """Dunn's post-hoc test after Kruskal-Wallis."""
-        try:
-            # Melt the dataframe to create group and value columns
-            melted_df = pd.melt(dataframe, var_name="group", value_name="value").dropna()
+        # Melt the dataframe to create group and value columns
+        melted_df = pd.melt(dataframe, var_name="group", value_name="value").dropna()
 
-            dunn_result = posthoc_dunn(melted_df, val_col='value', group_col='group', p_adjust='bonferroni')
+        dunn_result = posthoc_dunn(melted_df, val_col='value', group_col='group', p_adjust='bonferroni')
 
-            # Count significant comparisons (p < 0.05)
-            significant_count = 0
-            for i in dunn_result.index:
-                for j in dunn_result.columns:
-                    if i != j:
-                        p_val = dunn_result.loc[i, j]
-                        if pd.notna(p_val) and Decimal(p_val) < 0.05:
-                            significant_count += 1
-            significant_count = significant_count // 2  # Each comparison counted twice
+        # Count significant comparisons (p < 0.05)
+        significant_count = 0
+        for i in dunn_result.index:
+            for j in dunn_result.columns:
+                if i != j:
+                    p_val = dunn_result.loc[i, j]
+                    if pd.notna(p_val) and p_val < 0.05:
+                        significant_count += 1
+        significant_count = significant_count // 2  # Each comparison counted twice
 
-            if significant_count > 0:
-                result_text = f"Significant differences found in {significant_count} pairwise comparisons."
-            else:
-                result_text = "No significant pairwise differences found."
+        if significant_count > 0:
+            result_text = f"Significant differences found in {significant_count} pairwise comparisons."
+        else:
+            result_text = "No significant pairwise differences found."
 
-            return AiTableStatsResults(
-                test_name='Dunn',
-                result_text=result_text,
-                result_figure=None,
-                statistic=None,
-                p_value=None,
-                details={
-                    'interpretation': 'Post-hoc test following significant Kruskal-Wallis',
-                    'pairwise_matrix': dunn_result.to_dict(),
-                    'adjustment_method': 'bonferroni',
-                    'significant_comparisons': significant_count
-                }
+        return AiTableStatsResults(
+            test_name='Dunn',
+            result_text=result_text,
+            result_figure=None,
+            statistic=None,
+            p_value=None,
+            details=DunnTestDetails(
+                pairwise_matrix=dunn_result.to_dict(),
+                adjustment_method='bonferroni',
+                significant_comparisons=significant_count,
+                raw_data=dunn_result
             )
-        except Exception as e:
-            return AiTableStatsResults(
-                test_name='Dunn (error)',
-                result_text=f"Error running Dunn test: {str(e)}",
-                result_figure=None,
-                statistic=None,
-                p_value=None,
-                details={
-                    'error': str(e),
-                    'interpretation': 'Test failed to execute'
-                }
+        )
+
+    def bonferroni_test(self, p_values: Union[List[float], pd.DataFrame, pd.Series]) -> AiTableStatsResults:
+        """Bonferroni correction for multiple comparisons."""
+
+        # Convert to list if DataFrame or Series
+        if isinstance(p_values, pd.DataFrame):
+            p_values_list = p_values.values.flatten().tolist()
+        elif isinstance(p_values, pd.Series):
+            p_values_list = p_values.tolist()
+        else:
+            p_values_list = p_values
+
+        # Apply Bonferroni correction
+        corrected_p_values, _, _, alpha_bonf = multipletests(p_values_list, method='bonferroni')
+
+        # Count significant comparisons after correction
+        significant_count = sum(1 for p in corrected_p_values if p < 0.05)
+
+        if significant_count > 0:
+            result_text = f"Significant differences found in {significant_count} of {len(p_values_list)} comparisons after Bonferroni correction."
+        else:
+            result_text = "No significant differences found after Bonferroni correction."
+
+        return AiTableStatsResults(
+            test_name='Student t-test (independent paired wise)',
+            result_text=result_text,
+            result_figure=None,
+            statistic=None,
+            p_value=None,
+            details=BonferroniTestDetails(
+                original_p_values=p_values_list,
+                corrected_p_values=corrected_p_values.tolist(),
+                adjustment_method='bonferroni',
+                significant_comparisons=significant_count,
+                total_comparisons=len(p_values_list),
+                corrected_alpha=float(alpha_bonf)
             )
+        )
+
+    def scheffe_test(
+            self, p_values: Union[List[float],
+                                  pd.DataFrame, pd.Series],
+            num_groups: int) -> AiTableStatsResults:
+        """Scheffe correction for multiple comparisons."""
+
+        # Convert to list if DataFrame or Series
+        if isinstance(p_values, pd.DataFrame):
+            p_values_list = p_values.values.flatten().tolist()
+        elif isinstance(p_values, pd.Series):
+            p_values_list = p_values.tolist()
+        else:
+            p_values_list = p_values
+
+        if num_groups < 2:
+            raise ValueError("Number of groups must be at least 2 for Scheffe correction.")
+
+        # Calculate Scheffe critical value
+        critical_value = stats.f.ppf(0.95, num_groups - 1, float('inf'))  # F critical value
+        scheffe_multiplier = (num_groups - 1) * critical_value
+
+        # Apply Scheffe correction: multiply p-values by the Scheffe multiplier
+        corrected_p_values = [min(1.0, float(p) * float(scheffe_multiplier)) for p in p_values_list]
+
+        # Count significant comparisons after correction
+        significant_count = sum(1 for p in corrected_p_values if p < 0.05)
+
+        if significant_count > 0:
+            result_text = f"Significant differences found in {significant_count} of {len(p_values_list)} comparisons after Scheffe correction."
+        else:
+            result_text = "No significant differences found after Scheffe correction."
+
+        return AiTableStatsResults(
+            test_name='Student t-test (independent paired wise)',
+            result_text=result_text,
+            result_figure=None,
+            statistic=None,
+            p_value=None,
+            details=ScheffeTestDetails(
+                original_p_values=p_values_list,
+                corrected_p_values=corrected_p_values,
+                adjustment_method='scheffe',
+                significant_comparisons=significant_count,
+                total_comparisons=len(p_values_list),
+                scheffe_multiplier=float(scheffe_multiplier),
+                num_groups=num_groups
+            )
+        )
