@@ -152,6 +152,23 @@ class ScheffeTestDetails(BaseTestDetails):
     num_groups: int
 
 
+class BenjaminiHochbergTestDetails(BaseTestDetails):
+    original_p_values: List[float]
+    corrected_p_values: List[float]
+    adjustment_method: str
+    significant_comparisons: int
+    total_comparisons: int
+    false_discovery_rate: float
+
+
+class HolmTestDetails(BaseTestDetails):
+    original_p_values: List[float]
+    corrected_p_values: List[float]
+    adjustment_method: str
+    significant_comparisons: int
+    total_comparisons: int
+
+
 class CorrelationPairwiseDetails(BaseTestDetails):
     pairwise_comparisons_matrix: pd.DataFrame
     significant_comparisons: int
@@ -178,6 +195,8 @@ AiTableStatsDetailsType = Union[
     DunnTestDetails,
     BonferroniTestDetails,
     ScheffeTestDetails,
+    BenjaminiHochbergTestDetails,
+    HolmTestDetails,
     CorrelationPairwiseDetails,
 ]
 

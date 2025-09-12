@@ -115,7 +115,8 @@ class TestAiTableStatsTestsPairWise(TestCase):
 
         # Check that dunnett test is running without error with the generated matrix
         simple_test = AiTableStatsTests()
-        simple_test.dunn_test(matrix)
+        simple_test.benjamini_hochberg_test(matrix)
+        simple_test.holm_test(matrix)
 
     def test_pearson_correlation_pairwise_test_with_reference(self):
         """Test Pearson correlation with reference column."""
@@ -148,7 +149,8 @@ class TestAiTableStatsTestsPairWise(TestCase):
 
         # Check that dunnett test is running without error with the generated matrix
         simple_test = AiTableStatsTests()
-        simple_test.dunn_test(matrix)
+        simple_test.benjamini_hochberg_test(matrix)
+        simple_test.holm_test(matrix)
 
     def test_spearman_correlation_pairwise_test_with_reference(self):
         """Test Spearman correlation with reference column."""

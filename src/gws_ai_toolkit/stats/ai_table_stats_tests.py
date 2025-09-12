@@ -15,11 +15,13 @@ from statsmodels.stats.weightstats import ttest_ind
 
 from .ai_table_stats_plots import AiTableStatsPlots
 from .ai_table_stats_type import (AiTableStatsResults, AnovaTestDetails,
+                                  BenjaminiHochbergTestDetails,
                                   BonferroniTestDetails,
                                   ChiSquaredAdjustmentTestDetails,
                                   ChiSquaredIndependenceTestDetails,
                                   DunnTestDetails, FriedmanTestDetails,
-                                  HomogeneityTestDetails, McNemarTestDetails,
+                                  HolmTestDetails, HomogeneityTestDetails,
+                                  McNemarTestDetails,
                                   MultiGroupNonParametricTestDetails,
                                   NormalityTestDetails,
                                   PairedNonParametricTestDetails,
@@ -661,5 +663,82 @@ class AiTableStatsTests:
                 total_comparisons=len(p_values_list),
                 scheffe_multiplier=float(scheffe_multiplier),
                 num_groups=num_groups
+            )
+        )
+
+    def benjamini_hochberg_test(self, p_values: pd.DataFrame, fdr: float = 0.05) -> AiTableStatsResults:
+        """Benjamini-Hochberg correction for controlling false discovery rate (FDR)."""
+
+        # Convert DataFrame to list for processing
+        p_values_list = p_values.values.flatten().tolist()
+
+        # Apply Benjamini-Hochberg correction
+        _, corrected_p_values, _, _ = multipletests(p_values_list, method='fdr_bh', alpha=fdr)
+
+        # Count significant comparisons after correction
+        significant_count = sum(1 for p in corrected_p_values if p < fdr)
+
+        if significant_count > 0:
+            result_text = f"Significant differences found in {significant_count} of {len(p_values_list)} comparisons after Benjamini-Hochberg correction (FDR={fdr})."
+        else:
+            result_text = f"No significant differences found after Benjamini-Hochberg correction (FDR={fdr})."
+
+        # Create corrected p-values matrix with same structure as original
+        corrected_matrix = p_values.copy()
+        corrected_values_reshaped = np.array(corrected_p_values).reshape(p_values.shape)
+        corrected_matrix.iloc[:, :] = corrected_values_reshaped
+        heatmap_figure = self.plots.generate_p_values_heatmap(corrected_matrix, "Benjamini-Hochberg Corrected P-values")
+
+        return AiTableStatsResults(
+            test_name='Student t-test (independent paired wise)',
+            result_text=result_text,
+            result_figure=heatmap_figure,
+            statistic=None,
+            p_value=None,
+            details=BenjaminiHochbergTestDetails(
+                original_p_values=p_values_list,
+                corrected_p_values=corrected_p_values.tolist(),
+                adjustment_method='fdr_bh',
+                significant_comparisons=significant_count,
+                total_comparisons=len(p_values_list),
+                false_discovery_rate=float(fdr)
+            )
+        )
+
+    def holm_test(self, p_values: pd.DataFrame) -> AiTableStatsResults:
+        """Holm step-down correction for multiple comparisons."""
+
+        # Convert DataFrame to list for processing
+        p_values_list = p_values.values.flatten().tolist()
+
+        # Apply Holm correction
+        _, corrected_p_values, _, _ = multipletests(p_values_list, method='holm')
+
+        # Count significant comparisons after correction
+        significant_count = sum(1 for p in corrected_p_values if p < 0.05)
+
+        if significant_count > 0:
+            result_text = f"Significant differences found in {significant_count} of {len(p_values_list)} comparisons after Holm correction."
+        else:
+            result_text = "No significant differences found after Holm correction."
+
+        # Create corrected p-values matrix with same structure as original
+        corrected_matrix = p_values.copy()
+        corrected_values_reshaped = np.array(corrected_p_values).reshape(p_values.shape)
+        corrected_matrix.iloc[:, :] = corrected_values_reshaped
+        heatmap_figure = self.plots.generate_p_values_heatmap(corrected_matrix, "Holm Corrected P-values")
+
+        return AiTableStatsResults(
+            test_name='Student t-test (independent paired wise)',
+            result_text=result_text,
+            result_figure=heatmap_figure,
+            statistic=None,
+            p_value=None,
+            details=HolmTestDetails(
+                original_p_values=p_values_list,
+                corrected_p_values=corrected_p_values.tolist(),
+                adjustment_method='holm',
+                significant_comparisons=significant_count,
+                total_comparisons=len(p_values_list)
             )
         )

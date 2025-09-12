@@ -5,11 +5,12 @@ import pandas as pd
 
 from gws_ai_toolkit.stats.ai_table_stats_tests import AiTableStatsTests
 from gws_ai_toolkit.stats.ai_table_stats_type import (
-    AiTableStatsResults, AnovaTestDetails, BonferroniTestDetails,
-    ChiSquaredAdjustmentTestDetails, ChiSquaredIndependenceTestDetails,
-    DunnTestDetails, FriedmanTestDetails, HomogeneityTestDetails,
-    McNemarTestDetails, MultiGroupNonParametricTestDetails,
-    NormalityTestDetails, PairedNonParametricTestDetails, ScheffeTestDetails,
+    AiTableStatsResults, AnovaTestDetails, BenjaminiHochbergTestDetails,
+    BonferroniTestDetails, ChiSquaredAdjustmentTestDetails,
+    ChiSquaredIndependenceTestDetails, DunnTestDetails, FriedmanTestDetails,
+    HolmTestDetails, HomogeneityTestDetails, McNemarTestDetails,
+    MultiGroupNonParametricTestDetails, NormalityTestDetails,
+    PairedNonParametricTestDetails, ScheffeTestDetails,
     StudentTTestIndependentDetails, StudentTTestPairedDetails,
     TukeyHSDTestDetails, TwoGroupNonParametricTestDetails)
 
@@ -331,3 +332,51 @@ class TestAiTableStatsTests(TestCase):
 
         self.assertIsInstance(result, AiTableStatsResults)
         self.assertEqual(result.details.sample_size, 3)
+
+    def test_benjamini_hochberg_test(self):
+        """Test Benjamini-Hochberg correction for multiple comparisons."""
+        # Create DataFrame with p-values for testing
+        p_values_df = pd.DataFrame({
+            'Group_A': [1.0, 0.02, 0.001, 0.15],
+            'Group_B': [0.02, 1.0, 0.03, 0.08],
+            'Group_C': [0.001, 0.03, 1.0, 0.04],
+            'Group_D': [0.15, 0.08, 0.04, 1.0]
+        }, index=['Group_A', 'Group_B', 'Group_C', 'Group_D'])
+
+        result = self.stats_tests.benjamini_hochberg_test(p_values_df, fdr=0.05)
+
+        self.assertIsInstance(result, AiTableStatsResults)
+        self.assertEqual(result.test_name, 'Student t-test (independent paired wise)')
+        self.assertIsNone(result.statistic)
+        self.assertIsNone(result.p_value)
+        self.assertIsInstance(result.details, BenjaminiHochbergTestDetails)
+        self.assertEqual(result.details.adjustment_method, 'fdr_bh')
+        self.assertEqual(result.details.false_discovery_rate, 0.05)
+        self.assertEqual(result.details.total_comparisons, 16)  # 4x4 matrix
+        self.assertIsInstance(result.details.significant_comparisons, int)
+        self.assertIsInstance(result.details.original_p_values, list)
+        self.assertIsInstance(result.details.corrected_p_values, list)
+        self.assertIn("benjamini-hochberg", result.result_text.lower())
+
+    def test_holm_test(self):
+        """Test Holm step-down correction for multiple comparisons."""
+        # Create DataFrame with p-values for testing
+        p_values_df = pd.DataFrame({
+            'Group_A': [1.0, 0.02, 0.001],
+            'Group_B': [0.02, 1.0, 0.03],
+            'Group_C': [0.001, 0.03, 1.0]
+        }, index=['Group_A', 'Group_B', 'Group_C'])
+
+        result = self.stats_tests.holm_test(p_values_df)
+
+        self.assertIsInstance(result, AiTableStatsResults)
+        self.assertEqual(result.test_name, 'Student t-test (independent paired wise)')
+        self.assertIsNone(result.statistic)
+        self.assertIsNone(result.p_value)
+        self.assertIsInstance(result.details, HolmTestDetails)
+        self.assertEqual(result.details.adjustment_method, 'holm')
+        self.assertEqual(result.details.total_comparisons, 9)  # 3x3 matrix
+        self.assertIsInstance(result.details.significant_comparisons, int)
+        self.assertIsInstance(result.details.original_p_values, list)
+        self.assertIsInstance(result.details.corrected_p_values, list)
+        self.assertIn("holm", result.result_text.lower())

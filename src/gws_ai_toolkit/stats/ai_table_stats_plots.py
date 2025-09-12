@@ -19,7 +19,22 @@ class AiTableStatsPlots:
         Returns:
             plotly.graph_objects.Figure: Heatmap figure
         """
-        # Create text annotations for the heatmap
+        # Transform p-values using -log10 for better visualization
+        # This creates a logarithmic scale where smaller p-values have higher values
+        log_p_values = p_values_matrix.copy()
+        for i in range(len(p_values_matrix.index)):
+            for j in range(len(p_values_matrix.columns)):
+                p_val = p_values_matrix.iloc[i, j]
+                if pd.notna(p_val) and p_val > 0:
+                    # Use -log10(p) transformation, with special handling for very small values
+                    if p_val < 1e-10:
+                        log_p_values.iloc[i, j] = 10  # Cap at -log10(1e-10) = 10
+                    else:
+                        log_p_values.iloc[i, j] = -np.log10(p_val)
+                else:
+                    log_p_values.iloc[i, j] = np.nan
+
+        # Create text annotations for the heatmap (original p-values)
         text_matrix = []
         for i in range(len(p_values_matrix.index)):
             text_row = []
@@ -42,32 +57,31 @@ class AiTableStatsPlots:
                         text_row.append(str(p_val))
             text_matrix.append(text_row)
 
-        # Create heatmap
+        # Create heatmap using transformed values
         fig = Figure(data=Heatmap(
-            z=p_values_matrix.values,
+            z=log_p_values.values,
             x=p_values_matrix.columns.tolist(),
             y=p_values_matrix.index.tolist(),
             text=text_matrix,
             texttemplate="%{text}",
             textfont={"size": 10},
             colorscale=[
-                [0, "darkred"],      # Very significant (p < 0.001)
-                [0.001, "red"],      # Significant (p < 0.01)
-                [0.01, "orange"],    # Marginally significant (p < 0.05)
-                [0.05, "yellow"],    # Not significant (p < 0.1)
-                [0.1, "lightgreen"],  # Not significant (p < 0.5)
-                [0.5, "green"],      # Not significant (p < 1.0)
-                [1, "darkgreen"]     # Same groups (p = 1.0)
+                [0.0, "darkgreen"],    # p = 1.0 (-log10(1) = 0)
+                [0.25, "lightgreen"], # p = 0.1 (-log10(0.1) = 1)
+                [0.5, "yellow"],       # p = 0.05 (-log10(0.05) ≈ 1.3)
+                [0.75, "orange"],      # p = 0.01 (-log10(0.01) = 2)
+                [1.0, "darkred"]       # p < 0.001 (-log10(0.001) = 3+)
             ],
             colorbar=dict(
                 title="P-value",
                 titleside="right",
                 tickmode="array",
-                tickvals=[0, 0.001, 0.01, 0.05, 0.1, 0.5, 1.0],
-                ticktext=["0", "0.001", "0.01", "0.05", "0.1", "0.5", "1.0"]
+                tickvals=[0, 1, 1.3, 2, 3],
+                ticktext=["1.0", "0.1", "0.05", "0.01", "0.001"],
+                tickfont=dict(size=10)
             ),
             hoverongaps=False,
-            hovertemplate='<b>%{y} vs %{x}</b><br>P-value: %{z:.4f}<extra></extra>'
+            hovertemplate='<b>%{y} vs %{x}</b><br>P-value: %{text}<extra></extra>'
         ))
 
         fig.update_layout(

@@ -117,7 +117,7 @@ class AiTableRelationStats(AiTableStatsBase):
             Logger.debug(f"Pearson Pairwise Result: {pearson_result}")
 
             # Run Dunn post-hoc test if Pearson pairwise produced a comparison matrix
-            self._run_dunn(cast(CorrelationPairwiseDetails, pearson_result.details))
+            self._run_correction_after_pairwise(cast(CorrelationPairwiseDetails, pearson_result.details))
 
             # Run Spearman pairwise correlation test
             Logger.debug("Running: Spearman pairwise correlation")
@@ -128,13 +128,22 @@ class AiTableRelationStats(AiTableStatsBase):
             Logger.debug(f"Spearman Pairwise Result: {spearman_result}")
 
             # Run Dunn post-hoc test if Spearman pairwise produced a comparison matrix
-            self._run_dunn(cast(CorrelationPairwiseDetails, spearman_result.details))
+            self._run_correction_after_pairwise(cast(CorrelationPairwiseDetails, spearman_result.details))
 
-    def _run_dunn(self, result_details: CorrelationPairwiseDetails) -> None:
+    def _run_correction_after_pairwise(self, result_details: CorrelationPairwiseDetails) -> None:
         """Run Dunn post-hoc test on pairwise comparison matrix."""
         if result_details.pairwise_comparisons_matrix is not None:
-            Logger.debug("Running post-hoc: Dunn test on p-values")
+
             simple_tests = AiTableStatsTests()
-            dunn_result = simple_tests.dunn_test(result_details.pairwise_comparisons_matrix)
-            self._record_test(dunn_result)
-            Logger.debug(f"Dunn Result: {dunn_result}")
+            if result_details.total_comparisons <= 10:
+                Logger.debug("Running post-hoc: Holm test on p-values because total comparisons <= 10")
+                holm_result = simple_tests.holm_test(result_details.pairwise_comparisons_matrix)
+                self._record_test(holm_result)
+                Logger.debug(f"Holm Result: {holm_result}")
+            else:
+                Logger.debug("Running post-hoc: Benjamini–Hochberg test on p-values skipped because total comparisons > 10")
+                Logger.debug(f"Total comparisons: {result_details.total_comparisons}")
+                # If needed, implement other corrections for large number of comparisons
+                bonferroni_result = simple_tests.benjamini_hochberg_test(result_details.pairwise_comparisons_matrix)
+                self._record_test(bonferroni_result)
+                Logger.debug(f"Benjamini–Hochberg Result: {bonferroni_result}")
