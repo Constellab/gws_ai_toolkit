@@ -41,8 +41,8 @@ class AiTableStatsTestsPairWise:
             raise ValueError(f"Reference column '{reference_column}' not found in dataframe columns.")
 
         # Initialize matrices for p-values and statistics
-        p_value_matrix = pd.DataFrame(index=columns, columns=columns, dtype=object)
-        statistic_matrix = pd.DataFrame(index=columns, columns=columns, dtype=object)
+        p_value_matrix = pd.DataFrame(index=columns, columns=columns, dtype=float)
+        statistic_matrix = pd.DataFrame(index=columns, columns=columns, dtype=float)
 
         # Set diagonal values
         for col in columns:
@@ -162,8 +162,8 @@ class AiTableStatsTestsPairWise:
             comparison_function=self._ttest_wrapper,
             test_name='Student t-test (independent paired wise)',
             details_class=StudentTTestPairwiseDetails,
-            diagonal_p_value=0.0,
-            diagonal_stat_value=0.0  # t-statistic for comparison with self is 0
+            diagonal_p_value=1.0,
+            diagonal_stat_value=1.0  # t-statistic for comparison with self is 0
         )
 
     def _ttest_wrapper(self, group1: pd.Series, group2: pd.Series) -> tuple[float, float]:
@@ -188,7 +188,7 @@ class AiTableStatsTestsPairWise:
             comparison_function=pearsonr,
             test_name='Pearson correlation',
             details_class=CorrelationPairwiseDetails,
-            diagonal_p_value=0.0,
+            diagonal_p_value=1.0,
             diagonal_stat_value=1.0
         )
 
@@ -211,6 +211,6 @@ class AiTableStatsTestsPairWise:
             comparison_function=spearmanr,
             test_name='Spearman correlation',
             details_class=CorrelationPairwiseDetails,
-            diagonal_p_value=0.0,
+            diagonal_p_value=1.0,
             diagonal_stat_value=1.0
         )

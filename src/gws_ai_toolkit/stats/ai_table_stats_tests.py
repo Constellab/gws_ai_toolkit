@@ -585,7 +585,7 @@ class AiTableStatsTests:
         p_values_list = p_values.values.flatten().tolist()
 
         # Apply Bonferroni correction
-        corrected_p_values, _, _, alpha_bonf = multipletests(p_values_list, method='bonferroni')
+        rejected, corrected_p_values, _, alpha_bonf = multipletests(p_values_list, method='bonferroni')
 
         # Count significant comparisons after correction
         significant_count = sum(1 for p in corrected_p_values if p < 0.05)
