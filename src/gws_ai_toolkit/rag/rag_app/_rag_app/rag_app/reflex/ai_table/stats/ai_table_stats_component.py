@@ -56,73 +56,53 @@ def _show_additional_test_suggestion() -> rx.Component:
                     margin_bottom="0.5em"
                 ),
                 # Show reference column input for pairwise test
-                rx.cond(
-                    AiTableStatsState.suggested_additional_test == "Student t-test (independent paired wise)",
-                    rx.form(
-                        rx.vstack(
-                            rx.cond(
-                                AiTableStatsState.last_run_config.group_input,
-                                rx.text("Reference group (Optional):", font_weight="bold", font_size="0.9em"),
-                                rx.text("Reference Column (Optional):", font_weight="bold", font_size="0.9em")
-                            ),
-                            rx.cond(
-                                AiTableStatsState.last_run_config.group_input,
-                                rx.text(
-                                    "Specify a group name to compare against all other groups",
-                                    font_size="0.8em", color="gray", margin_bottom="0.5em"),
-                                rx.text(
-                                    "Specify a reference column to compare against all others (instead of all combinations)",
-                                    font_size="0.8em", color="gray", margin_bottom="0.5em")
-                            ),
-                            rx.input(
-                                placeholder=rx.cond(
-                                    AiTableStatsState.last_run_config.group_input,
-                                    "e.g., 'control' - leave empty for all combinations",
-                                    "e.g., 'control_group' - leave empty for all combinations"
-                                ),
-                                name="reference_column",
-                                width="100%",
-                                size="2"
-                            ),
-                            rx.button(
-                                rx.cond(
-                                    AiTableStatsState.is_processing,
-                                    rx.hstack(
-                                        rx.spinner(size="1"),
-                                        rx.text("Running..."),
-                                        spacing="2",
-                                        align_items="center"
-                                    ),
-                                    rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
-                                ),
-                                type="submit",
-                                cursor="pointer",
-                                disabled=AiTableStatsState.is_processing
-                            ),
-                            spacing="2"
-                        ),
-                        on_submit=AiTableStatsState.run_additional_test_with_reference_column,
-                        reset_on_submit=True
-                    ),
-                    # For other tests, show simple button
-                    rx.button(
+                rx.form(
+                    rx.vstack(
                         rx.cond(
-                            AiTableStatsState.is_processing,
-                            rx.hstack(
-                                rx.spinner(size="1"),
-                                rx.text("Running..."),
-                                spacing="2",
-                                align_items="center"
-                            ),
-                            rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
+                            AiTableStatsState.last_run_config.group_input,
+                            rx.text("Reference group (Optional):", font_weight="bold", font_size="0.9em"),
+                            rx.text("Reference Column (Optional):", font_weight="bold", font_size="0.9em")
                         ),
-                        on_click=lambda: AiTableStatsState.run_additional_test(
-                            AiTableStatsState.suggested_additional_test),
-                        color_scheme="green",
-                        cursor="pointer",
-                        disabled=AiTableStatsState.is_processing
-                    )
+                        rx.cond(
+                            AiTableStatsState.last_run_config.group_input,
+                            rx.text(
+                                "Specify a group name to compare against all other groups",
+                                font_size="0.8em", color="gray", margin_bottom="0.5em"),
+                            rx.text(
+                                "Specify a reference column to compare against all others (instead of all combinations)",
+                                font_size="0.8em", color="gray", margin_bottom="0.5em")
+                        ),
+                        rx.input(
+                            placeholder=rx.cond(
+                                AiTableStatsState.last_run_config.group_input,
+                                "e.g., 'control' - leave empty for all combinations",
+                                "e.g., 'control_group' - leave empty for all combinations"
+                            ),
+                            name="reference_column",
+                            width="100%",
+                            size="2"
+                        ),
+                        rx.button(
+                            rx.cond(
+                                AiTableStatsState.is_processing,
+                                rx.hstack(
+                                    rx.spinner(size="1"),
+                                    rx.text("Running..."),
+                                    spacing="2",
+                                    align_items="center"
+                                ),
+                                rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
+                            ),
+                            type="submit",
+                            cursor="pointer",
+                            disabled=AiTableStatsState.is_processing
+                        ),
+                        spacing="2"
+                    ),
+                    on_submit=AiTableStatsState.run_additional_test_with_reference_column,
+                    reset_on_submit=True
                 ),
+
                 padding="0.8em",
                 border="1px solid var(--green-6)",
                 border_radius="8px",
@@ -167,6 +147,30 @@ def _show_last_run_config() -> rx.Component:
                             AiTableStatsState.last_run_config.columns_are_paired,
                             "Yes",
                             "No"
+                        ),
+                        font_size="0.9em"
+                    ),
+                    spacing="2"
+                ),
+                rx.hstack(
+                    rx.text("Relation Analysis:", font_weight="bold", font_size="0.9em"),
+                    rx.text(
+                        rx.cond(
+                            AiTableStatsState.last_run_config.relation,
+                            "Yes (Correlation tests)",
+                            "No (Standard tests)"
+                        ),
+                        font_size="0.9em"
+                    ),
+                    spacing="2"
+                ),
+                rx.hstack(
+                    rx.text("Reference column:", font_weight="bold", font_size="0.9em"),
+                    rx.text(
+                        rx.cond(
+                            AiTableStatsState.last_run_config.reference_column,
+                            AiTableStatsState.last_run_config.reference_column,
+                            "None"
                         ),
                         font_size="0.9em"
                     ),
@@ -223,10 +227,10 @@ def ai_table_stats_component():
             rx.vstack(
                 rx.text("Describe your analysis in natural language:", font_weight="bold"),
                 rx.text(
-                    "Examples: 'Compare age and salary', 'Analyze revenue grouped by region', 'Test if before and after scores are paired'",
+                    "Examples: 'Compare age and salary', 'Analyze revenue grouped by region', 'Test if before and after scores are paired', 'What is the correlation between height and weight?'",
                     font_size="0.9em", color="gray", margin_bottom="0.5em"),
                 rx.input(
-                    placeholder="e.g., 'Compare the sales and profit columns' or 'Analyze customer satisfaction grouped by product category'",
+                    placeholder="e.g., 'Compare the sales and profit columns', 'Analyze customer satisfaction grouped by product category', or 'Show correlation between price and demand'",
                     name="ai_prompt", width="100%"),
                 rx.hstack(
                     rx.button(

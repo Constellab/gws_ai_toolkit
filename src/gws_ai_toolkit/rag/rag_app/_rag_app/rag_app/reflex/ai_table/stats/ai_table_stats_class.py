@@ -6,15 +6,20 @@ import pandas as pd
 from gws_core import Logger
 from pandas import DataFrame, api
 
+from .ai_table_stats_base import AiTableStatsBase
 from .ai_table_stats_tests import AiTableStatsTests
+from .ai_table_stats_tests_pairwise import AiTableStatsTestsPairWise
 from .ai_table_stats_type import (AiTableStatsResults, AiTableStatsTestName,
                                   NormalitySummaryTestDetails,
                                   StudentTTestPairwiseDetails)
 
 
-class AiTableStats:
+class AiTableStats(AiTableStatsBase):
     """
     Statistical analysis class that follows a decision tree approach for selecting appropriate tests.
+
+    For correlation and relationship analysis between two variables, use the separate
+    AiTableRelationStats class which specializes in Pearson and Spearman correlation tests.
 
     DECISION TREE LOGIC:
 
@@ -79,36 +84,16 @@ class AiTableStats:
       rather than all possible pairwise combinations.
     """
 
-    _dataframe: DataFrame
-
     # True if selected columns are independent (e.g., age, height), False if dependent (e.g., sales over months)
     _columns_are_independent: bool
 
     _tests: AiTableStatsTests
-    test_history: List[AiTableStatsResults]
 
     def __init__(self, dataframe: DataFrame,
                  columns_are_independent: bool = True):
-        self._dataframe = dataframe.dropna()
+        super().__init__(dataframe)
         self._columns_are_independent = columns_are_independent
         self._tests = AiTableStatsTests()
-        self.test_history = []
-
-    def columns_are_quantitative(self) -> bool:
-        """Check if all columns are quantitative (numeric)"""
-        return all(api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns)
-
-    def has_column(self, column_name: str) -> bool:
-        """Check if a column exists in the dataframe."""
-        return column_name in self._dataframe.columns
-
-    def get_available_columns(self) -> List[str]:
-        """Get list of available columns in the dataframe."""
-        return list(self._dataframe.columns)
-
-    def _record_test(self, result: AiTableStatsResults) -> None:
-        """Record a test result in the history."""
-        self.test_history.append(result)
 
     def run_statistical_analysis(self) -> None:
         """Run statistical analysis using decision tree logic."""
@@ -297,7 +282,7 @@ class AiTableStats:
         Returns:
             Suggested test name or None if no suggestion available
         """
-        if not self.test_history:
+        if not self._tests_history:
             return None
 
         # If ANOVA was done and Student pairwise not done, suggest Student pairwise
@@ -305,35 +290,6 @@ class AiTableStats:
             return "Student t-test (independent paired wise)"
 
         return None
-
-    def run_additional_test(self, test_name: AiTableStatsTestName) -> AiTableStatsResults:
-        """
-        Run an additional statistical test based on the provided test name.
-
-        Args:
-            test_name: Name of the test to run
-
-        Returns:
-            AiTableStatsResults with the test results
-
-        Raises:
-            ValueError: If the test name is not recognized or prerequisites are not met
-        """
-        if test_name == "Student t-test (independent paired wise)":
-            return self.run_student_independent_pairwise()
-        else:
-            raise ValueError(f"Error: Test '{test_name}' not recognized or not implemented for additional tests")
-
-    def history_contains(self, test_name: AiTableStatsTestName) -> bool:
-        """
-        Check if a specific test has been performed.
-
-        Args:
-            test_name: Name of the test to check
-        Returns:
-            True if the test has been performed, False otherwise
-        """
-        return any(result.test_name == test_name for result in self.test_history)
 
     def run_student_independent_pairwise(self, reference_column: Optional[str] = None) -> AiTableStatsResults:
         """
@@ -369,7 +325,8 @@ class AiTableStats:
                 "Error: Tukey HSD test must be performed before running Student t-test (independent paired wise)")
 
         # Get the raw pairwise t-test results
-        raw_result = self._tests.student_independent_pairwise_test(self._dataframe, reference_column)
+        pair_wise_tester = AiTableStatsTestsPairWise()
+        raw_result = pair_wise_tester.student_independent_pairwise_test(self._dataframe, reference_column)
         self._record_test(raw_result)
 
         details: StudentTTestPairwiseDetails = cast(StudentTTestPairwiseDetails, raw_result.details)

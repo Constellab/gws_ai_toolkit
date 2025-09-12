@@ -175,9 +175,9 @@ class ChatMessagePlotly(ChatMessageBase):
 
     class Config:
         arbitrary_types_allowed = True
-        # json_encoders = {
-        #     go.Figure: lambda fig: json.loads(fig.to_json())
-        # }
+        json_encoders = {
+            go.Figure: lambda fig: json.loads(fig.to_json())
+        }
 
 
 # Type used for the storage and internal processing

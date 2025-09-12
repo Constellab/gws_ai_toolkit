@@ -6,11 +6,21 @@ import reflex as rx
 from gws_core import BaseModelDTO, File, ResourceModel
 from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
                                     ResponseFunctionCallArgumentsDoneEvent)
+from pydantic import Field
 
 from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
 from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
 from .ai_table_chat_config import AiTableChatConfig
 from .ai_table_chat_config_state import AiTableChatConfigState
+
+
+class PlotlyFigureConfig(BaseModelDTO):
+    fig_config: dict = Field(
+        description="Plotly figure configuration as dictionary - result of plotly fig.to_dict()",
+    )
+
+    class Config:
+        extra = "forbid"  # Prevent additional properties
 
 
 class AiTableChatState(BaseFileAnalysisState, rx.State):

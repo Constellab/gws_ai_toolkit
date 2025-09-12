@@ -31,6 +31,8 @@ AiTableStatsTestName = Literal[
     "Friedman",
     "Tukey HSD",
     "Dunn",
+    "Pearson correlation",
+    "Spearman correlation",
 ]
 
 
@@ -150,6 +152,12 @@ class ScheffeTestDetails(BaseTestDetails):
     num_groups: int
 
 
+class CorrelationPairwiseDetails(BaseTestDetails):
+    pairwise_comparisons_matrix: pd.DataFrame
+    significant_comparisons: int
+    total_comparisons: int
+
+
 # Union type for all test details
 AiTableStatsDetailsType = Union[
     NormalityTestDetails,
@@ -170,6 +178,7 @@ AiTableStatsDetailsType = Union[
     DunnTestDetails,
     BonferroniTestDetails,
     ScheffeTestDetails,
+    CorrelationPairwiseDetails,
 ]
 
 

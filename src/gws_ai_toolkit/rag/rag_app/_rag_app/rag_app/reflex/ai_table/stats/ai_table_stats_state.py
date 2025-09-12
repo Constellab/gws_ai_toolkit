@@ -10,6 +10,8 @@ from pandas import DataFrame
 from pydantic import BaseModel, Field
 
 from ..ai_table_data_state import AiTableDataState
+from .ai_table_relation_stats import AiTableRelationStats
+from .ai_table_stats_base import AiTableStatsBase
 from .ai_table_stats_class import AiTableStats
 from .ai_table_stats_type import AiTableStatsResults, AiTableStatsTestName
 
@@ -20,6 +22,8 @@ class AiTableStatsRunConfig(BaseModelDTO):
     str_columns: str  # Comma-separated string of columns for display
     group_input: Optional[str]
     columns_are_paired: bool
+    relation: bool  # True if relation/correlation analysis is needed
+    reference_column: Optional[str]  # Optional reference column for relation analysis
 
 
 class AiTableFunctionTool(BaseModel):
@@ -30,7 +34,14 @@ class AiTableFunctionTool(BaseModel):
         description="Optional column name to group by (exact name from available columns). Use null if no grouping needed."
     )
     columns_are_paired: bool = Field(
-        description="True if the selected columns represent paired data that should be analyzed together, False if they are independent variables")
+        description="True if the selected columns represent paired data that should be analyzed together, False if they are independent variables"
+    )
+    relation: bool = Field(
+        description="True if the user wants correlation/relationship analysis (Pearson and Spearman tests) between 2 or more variables, False for standard statistical tests"
+    )
+    reference_column: Optional[str] = Field(
+        description="Optional reference column for relation analysis. When specified with 3+ columns, only correlations between this reference column and all other columns are computed. Use null for all pairwise correlations."
+    )
 
     class Config:
         extra = "forbid"  # Prevent additional properties
@@ -40,7 +51,7 @@ class AiTableStatsState(rx.State):
     """State for the AI Table stats component."""
 
     is_processing: bool = False
-    _current_stats_analyzer: Optional[AiTableStats] = None
+    _current_stats_analyzer: Optional[AiTableStatsBase] = None
 
     last_run_config: Optional[AiTableStatsRunConfig] = None
 
@@ -88,7 +99,9 @@ class AiTableStatsState(rx.State):
                 current_df=current_df,
                 columns=last_run_config.columns,
                 group_input=last_run_config.group_input,
-                columns_are_paired=last_run_config.columns_are_paired
+                columns_are_paired=last_run_config.columns_are_paired,
+                relation=last_run_config.relation,
+                reference_column=last_run_config.reference_column
             )
         finally:
             async with self:
@@ -120,12 +133,27 @@ Based on their request, extract:
 1. selected_columns: The exact column names they want to analyze (must match exactly from the available columns)
 2. group_column: Optional column to group by (exact name, or null if no grouping)
 3. columns_are_paired: Whether columns represent paired data (like before/after measurements) or independent variables
+4. relation: Whether the user wants correlation/relationship analysis (Pearson and Spearman tests)
+5. reference_column: Optional reference column for relation analysis (only used when relation=true and 3+ columns selected)
 
 Important rules:
 - Only use exact column names from the available list
 - If a column is used as group_column, it cannot be in selected_columns
 - Paired columns are used for related measurements (before/after, treatment/control, etc.)
 - Independent columns are separate variables to compare
+
+Relation analysis (correlation) detection:
+- Set relation=true if the user asks about correlation, association, relationship, or connection between 2 or more variables
+- Keywords that indicate relation analysis: "correlation", "relationship", "association", "connection", "related to", "depends on", "correlated with"
+- Relation analysis requires 2 or more columns and no grouping
+- Examples: "correlation between height and weight", "relationship between price and sales", "are age and income related?"
+
+Reference column for relation analysis (only when relation=true):
+- Use reference_column when the user wants to focus correlation analysis on one specific variable against all others
+- Set reference_column=null for all pairwise correlations (default behavior)
+- Examples with reference column: "how does price correlate with all other variables?", "show correlations of age against height, weight, and income"
+- Examples without reference: "show all correlations between height, weight, age, and income", "correlation matrix of all variables"
+- The reference_column must be one of the selected_columns
 
 Available columns: {', '.join(available_columns)}"""
 
@@ -158,6 +186,8 @@ Available columns: {', '.join(available_columns)}"""
                     str_columns=", ".join(selected_columns),
                     group_input=function_args.get("group_column"),
                     columns_are_paired=function_args.get("columns_are_paired", False),
+                    relation=function_args.get("relation", False),
+                    reference_column=function_args.get("reference_column"),
                 )
 
         return AiTableStatsRunConfig(
@@ -166,6 +196,8 @@ Available columns: {', '.join(available_columns)}"""
             str_columns="",
             group_input=None,
             columns_are_paired=False,
+            relation=False,
+            reference_column=None,
         )
 
     async def validate_and_run_analysis(
@@ -173,7 +205,9 @@ Available columns: {', '.join(available_columns)}"""
             current_df: DataFrame,
             columns: List[str],
             group_input: Optional[str],
-            columns_are_paired: bool):
+            columns_are_paired: bool,
+            relation: bool,
+            reference_column: Optional[str] = None):
 
         available_columns = list(current_df.columns)
 
@@ -228,17 +262,35 @@ Available columns: {', '.join(available_columns)}"""
             original_df=current_df
         )
 
-        stats_analyzer = AiTableStats(
-            dataframe=processed_df,
-            columns_are_independent=not columns_are_paired,
-        )
+        # Check if relation analysis is requested
+        if relation:
 
-        # Run the statistical analysis decision tree
-        stats_analyzer.run_statistical_analysis()
+            # Validate reference column for relation analysis if provided
+            if reference_column:
+                reference_column = self._get_and_check_reference_column(reference_column)
 
-        # Store test history and current stats analyzer
-        async with self:
-            self._current_stats_analyzer = stats_analyzer
+            # Create relation analyzer with optional reference column
+            relation_analyzer = AiTableRelationStats(dataframe=processed_df, reference_column=reference_column)
+
+            # Run correlation analysis
+            relation_analyzer.run_correlation_analysis()
+
+            # Store relation analyzer
+            async with self:
+                self._current_stats_analyzer = relation_analyzer
+        else:
+
+            stats_analyzer = AiTableStats(
+                dataframe=processed_df,
+                columns_are_independent=not columns_are_paired,
+            )
+
+            # Run the statistical analysis decision tree
+            stats_analyzer.run_statistical_analysis()
+
+            # Store test history and current stats analyzer
+            async with self:
+                self._current_stats_analyzer = stats_analyzer
 
     def _get_filtered_and_unfolded_dataframe(self, selected_columns: list,
                                              group_column: Optional[str],
@@ -276,9 +328,9 @@ Available columns: {', '.join(available_columns)}"""
     @rx.var
     def test_history(self) -> List[AiTableStatsResults]:
         """Get the test history."""
-        if not self._current_stats_analyzer:
-            return []
-        return self._current_stats_analyzer.test_history
+        if self._current_stats_analyzer:
+            return self._current_stats_analyzer.get_tests_history()
+        return []
 
     @rx.var
     def last_test_result(self) -> Optional[AiTableStatsResults]:
@@ -308,27 +360,6 @@ Available columns: {', '.join(available_columns)}"""
         self.last_run_config = None
 
     @rx.event(background=True)  # type: ignore
-    async def run_additional_test(self, test_name: str):
-        """Run an additional statistical test."""
-        if self.is_processing:
-            return rx.toast.error("Analysis already in progress. Please wait.")
-
-        if not self._current_stats_analyzer:
-            return rx.toast.error("No statistical analysis available. Please run an analysis first.")
-
-        async with self:
-            self.is_processing = True
-
-        try:
-            # Run other additional tests normally (without reference column)
-            self._current_stats_analyzer.run_additional_test(cast(AiTableStatsTestName, test_name))
-
-        finally:
-            async with self:
-                self.is_processing = False
-                self._current_stats_analyzer = self._current_stats_analyzer  # Trigger state update
-
-    @rx.event(background=True)  # type: ignore
     async def run_additional_test_with_reference_column(self, form_data: dict):
         """Run additional test with reference column from form."""
         if self.is_processing:
@@ -337,42 +368,57 @@ Available columns: {', '.join(available_columns)}"""
         if not self._current_stats_analyzer or not self.last_run_config:
             return rx.toast.error("No statistical analysis available. Please run an analysis first.")
 
+        stats_analyzer = cast(AiTableStats, self._current_stats_analyzer)
+        if not isinstance(stats_analyzer, AiTableStats):
+            return rx.toast.error(
+                "Additional tests can only be run for standard statistical analyses, not relation analyses.")
+
         # Get reference column/group from form
-        reference_input: str = form_data.get("reference_column", "").strip()
+        reference_input: str = form_data.get("reference_column", "")
 
         # Compute actual reference column name based on group_input
-        reference_column: str | None = None
-        if reference_input:
-            if self.last_run_config.group_input:
-                # For grouped data: format as 'COLUMN_GROUP'
-                first_column = self.last_run_config.columns[0] if self.last_run_config.columns else ""
-                reference_column = f"{first_column}_{reference_input}"
-
-                # Use AiTableStats methods to validate column existence
-                if not self._current_stats_analyzer.has_column(reference_column):
-                    return rx.toast.error(
-                        f"Reference group '{reference_input}' not found in the column '{self.last_run_config.group_input}'.")
-
-            else:
-                # For non-grouped data: use input as column name directly
-                reference_column = reference_input
-
-                # Use AiTableStats methods to validate column existence
-                if not self._current_stats_analyzer.has_column(reference_column):
-                    return rx.toast.error(
-                        f"Reference column '{reference_column}' not found in dataframe or is not a selected column.")
+        reference_column: str | None = self._get_and_check_reference_column(reference_input)
 
         async with self:
             self.is_processing = True
 
         try:
             # Run pairwise test with reference column
-            self._current_stats_analyzer.run_student_independent_pairwise(reference_column)
+            stats_analyzer.run_student_independent_pairwise(reference_column)
 
         finally:
             async with self:
                 self.is_processing = False
                 self._current_stats_analyzer = self._current_stats_analyzer  # Trigger state update
+
+    def _get_and_check_reference_column(self, reference_input: str) -> Optional[str]:
+        # Compute actual reference column name based on group_input
+
+        if not reference_input or not self.last_run_config or not self._current_stats_analyzer:
+            return None
+
+        reference_input = reference_input.strip()
+
+        if self.last_run_config.group_input:
+            # For grouped data: format as 'COLUMN_GROUP'
+            first_column = self.last_run_config.columns[0] if self.last_run_config.columns else ""
+            reference_column = f"{first_column}_{reference_input}"
+
+            # Use AiTableStats methods to validate column existence
+            if not self._current_stats_analyzer.has_column(reference_column):
+                raise ValueError(
+                    f"Reference group '{reference_input}' not found in the column '{self.last_run_config.group_input}'.")
+
+            return reference_column
+
+        else:
+            # For non-grouped data: use input as column name directly
+            # Use AiTableStats methods to validate column existence
+            if not self._current_stats_analyzer.has_column(reference_input):
+                raise ValueError(
+                    f"Reference column '{reference_input}' not found in dataframe or is not a selected column.")
+
+            return reference_input
 
     def _get_openai_client(self) -> OpenAI:
         """Get OpenAI client with API key"""
