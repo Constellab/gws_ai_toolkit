@@ -28,6 +28,11 @@ class TestAiTableStatsTests(TestCase):
         self.group1 = np.random.normal(0, 1, 50)
         self.group2 = np.random.normal(1, 1, 50)
         self.group3 = np.random.normal(2, 1, 50)
+        self.dataframe = pd.DataFrame({
+            'A': np.random.normal(0, 1, 100),
+            'B': np.random.normal(1, 1, 100),
+            'C': np.random.normal(2, 1, 100)
+        })
 
         # Paired data
         self.paired_data1 = np.random.normal(0, 1, 30)
@@ -157,7 +162,7 @@ class TestAiTableStatsTests(TestCase):
 
     def test_anova_test(self):
         """Test ANOVA test."""
-        result = self.stats_tests.anova_test(self.group1, self.group2, self.group3)
+        result = self.stats_tests.anova_test(self.dataframe)
 
         self.assertIsInstance(result, AiTableStatsResults)
         self.assertEqual(result.test_name, 'ANOVA')
@@ -165,7 +170,7 @@ class TestAiTableStatsTests(TestCase):
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, AnovaTestDetails)
         self.assertEqual(result.details.groups_count, 3)
-        self.assertEqual(result.details.total_observations, len(self.group1) + len(self.group2) + len(self.group3))
+        self.assertEqual(result.details.total_observations, 300)
 
     def test_mann_whitney_test(self):
         """Test Mann-Whitney test."""
@@ -191,7 +196,7 @@ class TestAiTableStatsTests(TestCase):
 
     def test_kruskal_wallis_test(self):
         """Test Kruskal-Wallis H test."""
-        result = self.stats_tests.kruskal_wallis_test(self.group1, self.group2, self.group3)
+        result = self.stats_tests.kruskal_wallis_test(self.dataframe)
 
         self.assertIsInstance(result, AiTableStatsResults)
         self.assertEqual(result.test_name, 'Kruskal-Wallis')
@@ -199,11 +204,11 @@ class TestAiTableStatsTests(TestCase):
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, MultiGroupNonParametricTestDetails)
         self.assertEqual(result.details.groups_count, 3)
-        self.assertEqual(result.details.total_observations, len(self.group1) + len(self.group2) + len(self.group3))
+        self.assertEqual(result.details.total_observations, 300)
 
     def test_friedman_test(self):
         """Test Friedman test for repeated measures."""
-        result = self.stats_tests.friedman_test(self.group1[:30], self.group2[:30], self.group3[:30])
+        result = self.stats_tests.friedman_test(self.dataframe)
 
         self.assertIsInstance(result, AiTableStatsResults)
         self.assertEqual(result.test_name, 'Friedman')
@@ -211,7 +216,7 @@ class TestAiTableStatsTests(TestCase):
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, FriedmanTestDetails)
         self.assertEqual(result.details.conditions_count, 3)
-        self.assertEqual(result.details.subjects_count, 30)
+        self.assertEqual(result.details.subjects_count, 100)
 
     def test_pearson_correlation_test(self):
         """Test Pearson correlation test."""

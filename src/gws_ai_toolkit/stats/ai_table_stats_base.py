@@ -1,20 +1,21 @@
 
 
-from typing import List, Optional
+from typing import Optional
 
 from pandas import DataFrame, api
 
-from .ai_table_stats_type import AiTableStatsResults, AiTableStatsTestName
+from .ai_table_stats_type import (AiTableStatsResultList, AiTableStatsResults,
+                                  AiTableStatsTestName)
 
 
 class AiTableStatsBase:
 
     _dataframe: DataFrame
-    _tests_history: List[AiTableStatsResults]
+    _tests_history: AiTableStatsResultList
 
     def __init__(self, dataframe: DataFrame):
         self._dataframe = dataframe.dropna()
-        self._tests_history = []
+        self._tests_history = AiTableStatsResultList()
 
     def suggested_additional_tests(self) -> Optional[str]:
         """Suggest additional tests based on current data and previous tests.
@@ -35,13 +36,13 @@ class AiTableStatsBase:
         """Check if all columns are quantitative (numeric)"""
         return all(api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns)
 
-    def get_tests_history(self) -> List[AiTableStatsResults]:
+    def get_tests_history(self) -> AiTableStatsResultList:
         """Get the history of all statistical tests performed."""
         return self._tests_history
 
     def _record_test(self, result: AiTableStatsResults) -> None:
         """Record a test result in the history."""
-        self._tests_history.append(result)
+        self._tests_history.add_result(result)
 
     def history_contains(self, test_name: AiTableStatsTestName) -> bool:
         """
@@ -52,4 +53,4 @@ class AiTableStatsBase:
         Returns:
             True if the test has been performed, False otherwise
         """
-        return any(result.test_name == test_name for result in self._tests_history)
+        return self._tests_history.contains_test(test_name)

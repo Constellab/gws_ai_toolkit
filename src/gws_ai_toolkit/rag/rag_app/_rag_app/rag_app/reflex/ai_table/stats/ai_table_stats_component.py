@@ -6,6 +6,30 @@ from gws_ai_toolkit.stats.ai_table_stats_type import AiTableStatsResults
 from .ai_table_stats_state import AiTableStatsState
 
 
+def _form_prompt() -> rx.Component:
+    return rx.form(
+        rx.vstack(
+            rx.text("Describe your analysis in natural language:", font_weight="bold"),
+            rx.text(
+                "Examples: 'Compare age and salary', 'Analyze revenue grouped by region', 'Test if before and after scores are paired', 'What is the correlation between height and weight?'",
+                font_size="0.9em", color="gray", margin_bottom="0.5em"),
+            rx.input(
+                placeholder="e.g., 'Compare the sales and profit columns', 'Analyze customer satisfaction grouped by product category', or 'Show correlation between price and demand'",
+                name="ai_prompt", width="100%"),
+            rx.hstack(
+                rx.button(
+                    rx.cond(
+                        AiTableStatsState.is_processing, rx.hstack(
+                            rx.spinner(size="1"),
+                            rx.text("Processing..."),
+                            spacing="2", align_items="center"),
+                        rx.text("Analyze with AI")),
+                    type="submit", cursor="pointer", disabled=AiTableStatsState.is_processing),
+                spacing="2", margin_top="0.5em",),
+            spacing="3", align="stretch",),
+        on_submit=AiTableStatsState.process_ai_prompt, reset_on_submit=False)
+
+
 def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:
     """Display a single test result with result_text, test_name, and optional statistics."""
     return rx.box(
@@ -190,7 +214,15 @@ def _show_last_run_config() -> rx.Component:
 
 
 def _show_results() -> rx.Component:
-    return rx.fragment(
+    return rx.box(
+        rx.cond(
+            AiTableStatsState.ai_summary_response,
+            rx.box(
+                rx.heading("AI Summary", size="3", margin_bottom="0.5em", margin_top="1em"),
+                rx.text(AiTableStatsState.ai_summary_response),
+                width="100%"
+            ),
+        ),
         _show_last_run_config(),
         rx.cond(
             AiTableStatsState.last_test_result,
@@ -228,26 +260,6 @@ def ai_table_stats_component():
                 "Clear Results", on_click=AiTableStatsState.clear_test_results,
                 color_scheme="red", variant="outline", cursor="pointer"),
             align_items="center", margin_bottom="1em"),
-        rx.form(
-            rx.vstack(
-                rx.text("Describe your analysis in natural language:", font_weight="bold"),
-                rx.text(
-                    "Examples: 'Compare age and salary', 'Analyze revenue grouped by region', 'Test if before and after scores are paired', 'What is the correlation between height and weight?'",
-                    font_size="0.9em", color="gray", margin_bottom="0.5em"),
-                rx.input(
-                    placeholder="e.g., 'Compare the sales and profit columns', 'Analyze customer satisfaction grouped by product category', or 'Show correlation between price and demand'",
-                    name="ai_prompt", width="100%"),
-                rx.hstack(
-                    rx.button(
-                        rx.cond(
-                            AiTableStatsState.is_processing, rx.hstack(
-                                rx.spinner(size="1"),
-                                rx.text("Processing..."),
-                                spacing="2", align_items="center"),
-                            rx.text("Analyze with AI")),
-                        type="submit", cursor="pointer", disabled=AiTableStatsState.is_processing),
-                    spacing="2", margin_top="0.5em",),
-                spacing="3", align="stretch",),
-            on_submit=AiTableStatsState.process_ai_prompt, reset_on_submit=False,),
+        _form_prompt(),
         _show_results(),
         padding="1em", width="100%", overflow="auto",)

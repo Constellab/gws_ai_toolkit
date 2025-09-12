@@ -223,3 +223,31 @@ class AiTableStatsResults(BaseModelDTO):
         json_encoders = {
             Figure: lambda fig: json.loads(fig.to_json())
         }
+
+
+class AiTableStatsResultList():
+
+    _results: List[AiTableStatsResults]
+
+    def __init__(self, results: Optional[List[AiTableStatsResults]] = None):
+        self._results = results or []
+
+    def add_result(self, result: AiTableStatsResults):
+        self._results.append(result)
+
+    def get_last_result(self) -> Optional[AiTableStatsResults]:
+        if self._results:
+            return self._results[-1]
+        return None
+
+    def get_results(self) -> List[AiTableStatsResults]:
+        return self._results
+
+    def get_ai_text_summary(self) -> str:
+        summaries = []
+        for result in self._results:
+            summaries.append(f"Test: {result.test_name}\nResult: {result.result_text}\n")
+        return "\n".join(summaries)
+
+    def contains_test(self, test_name: AiTableStatsTestName) -> bool:
+        return any(result.test_name == test_name for result in self._results)

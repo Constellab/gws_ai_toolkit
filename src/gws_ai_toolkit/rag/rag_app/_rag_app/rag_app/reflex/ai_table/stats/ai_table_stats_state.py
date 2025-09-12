@@ -55,6 +55,7 @@ class AiTableStatsState(rx.State):
     _current_stats_analyzer: Optional[AiTableStatsBase] = None
 
     last_run_config: Optional[AiTableStatsRunConfig] = None
+    ai_summary_response: Optional[str] = None
 
     @rx.event(background=True)  # type: ignore
     async def process_ai_prompt(self, form_data: dict):
@@ -94,7 +95,7 @@ class AiTableStatsState(rx.State):
                 self.last_run_config = last_run_config
 
             # Call the validation and analysis function
-            return await self.validate_and_run_analysis(
+            toast = await self.validate_and_run_analysis(
                 current_df=current_df,
                 columns=last_run_config.columns,
                 group_input=last_run_config.group_input,
@@ -102,6 +103,12 @@ class AiTableStatsState(rx.State):
                 relation=last_run_config.relation,
                 reference_column=last_run_config.reference_column
             )
+
+            if toast:
+                return toast
+
+            # Generate AI summary response after analysis
+            await self._generate_ai_summary_response()
         finally:
             async with self:
                 self.is_processing = False
@@ -287,6 +294,8 @@ Available columns: {columns_with_types}"""
             # Store relation analyzer
             async with self:
                 self._current_stats_analyzer = relation_analyzer
+
+        # Generate AI summary response after analysis
         else:
 
             stats_analyzer = AiTableStats(
@@ -300,6 +309,66 @@ Available columns: {columns_with_types}"""
             # Store test history and current stats analyzer
             async with self:
                 self._current_stats_analyzer = stats_analyzer
+
+    async def _generate_ai_summary_response(self):
+        """Generate a clear AI response combining the original prompt with statistical analysis results."""
+        if not self._current_stats_analyzer or not self.last_run_config:
+            return
+
+        # Get the AI text summary from test history
+        test_history = self._current_stats_analyzer.get_tests_history()
+        ai_text_summary = test_history.get_ai_text_summary()
+
+        if not ai_text_summary.strip():
+            return
+
+        # Get OpenAI client
+        client = self._get_openai_client()
+
+        # Prepare the prompt for OpenAI
+        original_prompt = self.last_run_config.ai_prompt
+
+        system_prompt = """You are an expert data analyst. You will receive:
+1. The user's original analysis request/prompt
+2. Statistical analysis results from tests that were run
+
+Your task is to provide a clear, concise, and actionable response to the user's original question based on the statistical results.
+
+Guidelines:
+- Answer the user's specific question directly
+- Use plain language, avoid unnecessary technical jargon
+- Highlight key findings and their practical significance
+- If the results show significance, explain what this means in context
+- If results are not significant, explain what this suggests
+- Keep the response focused and relevant to the original question"""
+
+        user_message = f"""Original user question: "{original_prompt}"
+
+Statistical analysis results:
+{ai_text_summary}
+
+Please provide a clear, direct answer to the user's original question based on these statistical results."""
+
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=0.3
+            )
+
+            # Store the AI response (you might want to add a state variable for this)
+            ai_response = response.choices[0].message.content
+            if ai_response:
+                async with self:
+                    self.ai_summary_response = ai_response.strip()
+
+        except Exception as e:
+            # Handle API errors gracefully
+            async with self:
+                self.ai_summary_response = f"Error generating summary: {str(e)}"
 
     def _get_filtered_and_unfolded_dataframe(self, selected_columns: list,
                                              group_column: Optional[str],
@@ -338,7 +407,7 @@ Available columns: {columns_with_types}"""
     def test_history(self) -> List[AiTableStatsResults]:
         """Get the test history."""
         if self._current_stats_analyzer:
-            return self._current_stats_analyzer.get_tests_history()
+            return self._current_stats_analyzer.get_tests_history().get_results()
         return []
 
     @rx.var
@@ -367,6 +436,7 @@ Available columns: {columns_with_types}"""
         """Clear test history and last test results."""
         self._current_stats_analyzer = None
         self.last_run_config = None
+        self.ai_summary_response = None
 
     @rx.event(background=True)  # type: ignore
     async def run_additional_test_with_reference_column(self, form_data: dict):
