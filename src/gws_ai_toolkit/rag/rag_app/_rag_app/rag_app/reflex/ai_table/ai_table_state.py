@@ -5,6 +5,7 @@ from gws_core import File, Logger, ResourceModel
 
 from .ai_table_data_state import AiTableDataState
 from .chat.ai_table_chat_state import AiTableChatState
+from .chat.ai_table_chat_state_2 import AiTableChatState2
 
 
 class AiTableState(rx.State):
@@ -36,7 +37,8 @@ class AiTableState(rx.State):
 
         # Set resource in both states
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
-        chat_state: AiTableChatState = await self.get_state(AiTableChatState)
+        # chat_state: AiTableChatState = await self.get_state(AiTableChatState)
+        chat_state: AiTableChatState2 = await self.get_state(AiTableChatState2)
 
         data_state.set_resource(resource)
         chat_state.set_resource(resource)

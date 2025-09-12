@@ -7,11 +7,12 @@ from ...chat_base.chat_input_component import chat_input_component
 from ...chat_base.messages_list_component import chat_messages_list_component
 from ..ai_table_data_state import AiTableDataState
 from .ai_table_chat_state import AiTableChatState
+from .ai_table_chat_state_2 import AiTableChatState2
 
 
 def ai_table_chat_component():
     chat_config = ChatConfig(
-        state=AiTableChatState
+        state=AiTableChatState2
     )
 
     return rx.auto_scroll(
