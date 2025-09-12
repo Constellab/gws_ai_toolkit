@@ -9,11 +9,12 @@ from openai import OpenAI
 from pandas import DataFrame
 from pydantic import BaseModel, Field
 
+from gws_ai_toolkit.stats.ai_table_relation_stats import AiTableRelationStats
+from gws_ai_toolkit.stats.ai_table_stats_base import AiTableStatsBase
+from gws_ai_toolkit.stats.ai_table_stats_class import AiTableStats
+from gws_ai_toolkit.stats.ai_table_stats_type import AiTableStatsResults
+
 from ..ai_table_data_state import AiTableDataState
-from .ai_table_relation_stats import AiTableRelationStats
-from .ai_table_stats_base import AiTableStatsBase
-from .ai_table_stats_class import AiTableStats
-from .ai_table_stats_type import AiTableStatsResults, AiTableStatsTestName
 
 
 class AiTableStatsRunConfig(BaseModelDTO):
@@ -78,12 +79,10 @@ class AiTableStatsState(rx.State):
             self.is_processing = True
 
         try:
-            available_columns = list(current_df.columns)
-
             # Convert prompt to analysis parameters using OpenAI
             last_run_config = await self._convert_prompt_to_analysis_params(
                 prompt=prompt,
-                available_columns=available_columns
+                current_df=current_df
             )
 
             if not last_run_config.columns:
@@ -109,7 +108,7 @@ class AiTableStatsState(rx.State):
 
     async def _convert_prompt_to_analysis_params(self,
                                                  prompt: str,
-                                                 available_columns: List[str]) -> AiTableStatsRunConfig:
+                                                 current_df: DataFrame) -> AiTableStatsRunConfig:
         # Create OpenAI client
         client = self._get_openai_client()
 
@@ -126,8 +125,18 @@ class AiTableStatsState(rx.State):
             }
         ]
 
-        # Create the system prompt with available columns
-        system_prompt = f"""You are an expert data analyst. The user has a dataset with these columns: {', '.join(available_columns)}.
+        available_columns = list(current_df.columns)
+
+        # Create column information with types
+        column_info = []
+        for col in available_columns:
+            col_type = str(current_df[col].dtype)
+            column_info.append(f"'{col}' ({col_type})")
+
+        columns_with_types = ', '.join(column_info)
+
+        # Create the system prompt with available columns and types
+        system_prompt = f"""You are an expert data analyst. The user has a dataset with these columns: {columns_with_types}.
 
 Based on their request, extract:
 1. selected_columns: The exact column names they want to analyze (must match exactly from the available columns)
@@ -155,7 +164,7 @@ Reference column for relation analysis (only when relation=true):
 - Examples without reference: "show all correlations between height, weight, age, and income", "correlation matrix of all variables"
 - The reference_column must be one of the selected_columns
 
-Available columns: {', '.join(available_columns)}"""
+Available columns: {columns_with_types}"""
 
         # Create the input for OpenAI
         input_list = [

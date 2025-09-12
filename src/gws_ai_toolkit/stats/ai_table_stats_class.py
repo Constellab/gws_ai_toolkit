@@ -4,12 +4,12 @@ from typing import List, Optional, cast
 
 import pandas as pd
 from gws_core import Logger
-from pandas import DataFrame, api
+from pandas import DataFrame
 
 from .ai_table_stats_base import AiTableStatsBase
 from .ai_table_stats_tests import AiTableStatsTests
 from .ai_table_stats_tests_pairwise import AiTableStatsTestsPairWise
-from .ai_table_stats_type import (AiTableStatsResults, AiTableStatsTestName,
+from .ai_table_stats_type import (AiTableStatsResults,
                                   NormalitySummaryTestDetails,
                                   StudentTTestPairwiseDetails)
 

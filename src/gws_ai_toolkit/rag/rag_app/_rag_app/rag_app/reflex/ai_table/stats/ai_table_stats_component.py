@@ -1,7 +1,8 @@
 import reflex as rx
 
+from gws_ai_toolkit.stats.ai_table_stats_type import AiTableStatsResults
+
 from .ai_table_stats_state import AiTableStatsState
-from .ai_table_stats_type import AiTableStatsResults
 
 
 def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:

@@ -1,5 +1,5 @@
 
-from typing import List, Optional, Union
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
@@ -189,7 +189,7 @@ class AiTableStatsTests:
                                  group2: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
         """Student's t-test for independent samples."""
 
-        statistic, p_value, df = ttest_ind(group1, group2, usevar='pooled')
+        statistic, p_value, degrees_of_freedom = ttest_ind(group1, group2, usevar='pooled')
 
         # Generate result text based on p-value
         if p_value < 0.05:
@@ -204,7 +204,7 @@ class AiTableStatsTests:
             statistic=float(statistic),
             p_value=float(p_value),
             details=StudentTTestIndependentDetails(
-                degrees_of_freedom=df,
+                degrees_of_freedom=degrees_of_freedom,
                 sample_sizes=[len(group1), len(group2)]
             )
         )

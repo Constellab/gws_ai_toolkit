@@ -91,3 +91,7 @@ All RAG services implement the `BaseRagService` abstract class with these key me
 - Default route is "/" if no route is specified
 - It generates a screenshot `app_screenshot.png` (in root folder of project)
 - It generates a console logs file `console_logs.txt` (in root folder of project)
+
+## Testing
+- Tests are located in `tests/test_gws_ai_toolkit/`
+- Use `gws server test [FILENAME]` to run tests
