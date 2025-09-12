@@ -9,12 +9,14 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
 ## Architecture
 
 ### Directory Structure
-- `src/gws_ai_toolkit/rag/` - Main RAG implementations
-  - `common/` - Shared base classes and utilities
-  - `dify/` - Dify platform integration  
-  - `ragflow/` - RagFlow platform integration
-  - `rag_app/_rag_app/` - Standalone Reflex-based RAG application
-  - `datahub_dify_app/` - DataHub integration app for Dify
+- `src/gws_ai_toolkit/` - Main RAG implementations
+  - `rag/` - RAG services and integrations
+    - `common/` - Shared base classes and utilities
+    - `dify/` - Dify platform integration  
+    - `ragflow/` - RagFlow platform integration
+    - `rag_app/_rag_app/` - Standalone Reflex-based RAG application
+    - `datahub_dify_app/` - DataHub integration app for Dify
+  - `stats/` - Tools to perform statistical analysis and generate visualizations
 - `tests/test_gws_ai_toolkit/` - Test files
 
 ### Core Components

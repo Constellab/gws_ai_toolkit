@@ -1,4 +1,3 @@
-from typing import cast
 
 import plotly.graph_objects as go
 import reflex as rx

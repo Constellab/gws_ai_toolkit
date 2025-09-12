@@ -4,6 +4,7 @@ import pandas as pd
 from scipy.stats import pearsonr, spearmanr
 from statsmodels.stats.weightstats import ttest_ind
 
+from .ai_table_stats_plots import AiTableStatsPlots
 from .ai_table_stats_type import (AiTableStatsResults,
                                   CorrelationPairwiseDetails,
                                   StudentTTestPairwiseDetails)
@@ -11,6 +12,8 @@ from .ai_table_stats_type import (AiTableStatsResults,
 
 class AiTableStatsTestsPairWise:
     """Class containing pairwise statistical tests for AI Table Stats analysis."""
+
+    plots = AiTableStatsPlots()
 
     def _perform_pairwise_analysis(self, dataframe: pd.DataFrame, reference_column: Optional[str],
                                    comparison_function, test_name: str,
@@ -190,7 +193,9 @@ class AiTableStatsTestsPairWise:
         )
 
     def spearman_correlation_pairwise_test(
-            self, dataframe: pd.DataFrame, reference_column: Optional[str] = None) -> AiTableStatsResults:
+            self,
+            dataframe: pd.DataFrame,
+            reference_column: Optional[str] = None) -> AiTableStatsResults:
         """Spearman rank correlation test for pairwise comparisons.
 
         Args:

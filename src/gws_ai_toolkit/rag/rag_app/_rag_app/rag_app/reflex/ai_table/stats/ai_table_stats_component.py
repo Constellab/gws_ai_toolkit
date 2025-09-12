@@ -1,4 +1,5 @@
 import reflex as rx
+from plotly.graph_objects import Figure
 
 from gws_ai_toolkit.stats.ai_table_stats_type import AiTableStatsResults
 
@@ -37,8 +38,11 @@ def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:
         ),
         # Figure (if it exists)
         rx.cond(
-            test_result.figure,
-            rx.plotly(test_result.figure, width="100%", height="300px")
+            test_result.result_figure,
+            rx.plotly(
+                data=rx.cond(test_result.result_figure, test_result.result_figure, Figure()),
+                width="100%"
+            )
         ),
         padding="0.5em",
         width="100%",

@@ -3,8 +3,8 @@ import json
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import pandas as pd
-import plotly.graph_objs as go
 from gws_core import BaseModelDTO
+from plotly.graph_objs import Figure
 from pydantic import field_validator
 
 AiTableStatsAdditionalTestName = Literal[
@@ -186,12 +186,10 @@ class AiTableStatsResults(BaseModelDTO):
 
     test_name: AiTableStatsTestName
     result_text: str
-    result_figure: Optional[str] = None
+    result_figure: Optional[Figure] = None
     statistic: Optional[float] = None
     p_value: Optional[float] = None
     details: Optional[AiTableStatsDetailsType] = None
-
-    figure: Optional[go.Figure] = None  # Plotly figure object, not serialized
 
     p_value_scientific: Optional[str] = None
     statistic_scientific: Optional[str] = None
@@ -203,16 +201,25 @@ class AiTableStatsResults(BaseModelDTO):
         if self.statistic is not None:
             self.statistic_scientific = f"{self.statistic:.2e}"
 
-    @field_validator('figure', mode='before')  # Updated to field_validator with mode='before'
+    @field_validator('result_figure', mode='before')  # Updated to field_validator with mode='before'
     @classmethod  # Add classmethod decorator (required in V2)
-    def deserialize_figure(cls, value):
+    def deserialize_result_figure(cls, value):
+        if not value:
+            return None
+        if isinstance(value, Figure):
+            return value
+
         if isinstance(value, str):
-            # Convert JSON string to Plotly figure
-            return go.Figure(json.loads(value))
-        return value
+            # Convert JSON string to Plotly result_figure
+            value = json.loads(value)
+
+        if not isinstance(value, dict):
+            raise ValueError("result_figure must be a dict or JSON string representing a Plotly result_figure")
+
+        return Figure(value)
 
     class Config:
         arbitrary_types_allowed = True
         json_encoders = {
-            go.Figure: lambda fig: json.loads(fig.to_json())
+            Figure: lambda fig: json.loads(fig.to_json())
         }

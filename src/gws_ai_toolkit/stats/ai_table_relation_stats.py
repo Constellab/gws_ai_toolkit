@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 
 from gws_core import Logger
 from pandas import DataFrame, api
@@ -6,6 +6,7 @@ from pandas import DataFrame, api
 from .ai_table_stats_base import AiTableStatsBase
 from .ai_table_stats_tests import AiTableStatsTests
 from .ai_table_stats_tests_pairwise import AiTableStatsTestsPairWise
+from .ai_table_stats_type import CorrelationPairwiseDetails
 
 
 class AiTableRelationStats(AiTableStatsBase):
@@ -28,11 +29,13 @@ class AiTableRelationStats(AiTableStatsBase):
        - Pairwise Pearson correlation test: Tests all pairs or reference vs all others
        - Pairwise Spearman correlation test: Tests all pairs or reference vs all others
        - If reference_column is provided, only tests reference vs all other columns
+       - After a dunn test if perfomed on pvalues
 
     3. INTERPRETATION:
        - Pearson: Measures strength of linear relationship (-1 to +1)
        - Spearman: Measures strength of monotonic relationship (-1 to +1)
        - Both provide p-values for statistical significance testing
+
 
     This class is designed to be used as a separate analysis branch from the main
     statistical tests in AiTableStats, focusing specifically on relationships
@@ -70,30 +73,34 @@ class AiTableRelationStats(AiTableStatsBase):
         Logger.debug("Starting correlation analysis")
         num_columns = self.count_columns()
 
+        simple_tests = AiTableStatsTests()
+
         if num_columns == 2:
             # Two-column case: Use traditional pairwise correlation
             Logger.debug("Running two-column correlation analysis")
 
-            tests_ = AiTableStatsTests()
-
             # Get the two columns
             col1_data = self._dataframe.iloc[:, 0]
             col2_data = self._dataframe.iloc[:, 1]
+            col1_name = self._dataframe.columns[0]
+            col2_name = self._dataframe.columns[1]
 
             # Run Pearson correlation test
             Logger.debug("Running: Pearson correlation")
-            pearson_result = tests_.pearson_correlation_test(col1_data, col2_data)
+            pearson_result = simple_tests.pearson_correlation_test(col1_data, col2_data, col1_name, col2_name)
             self._record_test(pearson_result)
             Logger.debug(f"Pearson Result: {pearson_result}")
 
             # Run Spearman correlation test
             Logger.debug("Running: Spearman correlation")
-            spearman_result = tests_.spearman_correlation_test(col1_data, col2_data)
+            # Do not generate scatter plot as this was already done in Pearson test
+            spearman_result = simple_tests.spearman_correlation_test(col1_data, col2_data, col1_name, col2_name,
+                                                                     generate_plot=False)
             self._record_test(spearman_result)
             Logger.debug(f"Spearman Result: {spearman_result}")
 
         else:
-            tests_ = AiTableStatsTestsPairWise()
+            pairwise_tests = AiTableStatsTestsPairWise()
             # Multi-column case: Use pairwise correlation tests
             Logger.debug(f"Running multi-column pairwise correlation analysis ({num_columns} columns)")
             if self._reference_column:
@@ -103,16 +110,31 @@ class AiTableRelationStats(AiTableStatsBase):
 
             # Run Pearson pairwise correlation test
             Logger.debug("Running: Pearson pairwise correlation")
-            pearson_result = tests_.pearson_correlation_pairwise_test(
+            pearson_result = pairwise_tests.pearson_correlation_pairwise_test(
                 self._dataframe, reference_column=self._reference_column
             )
             self._record_test(pearson_result)
             Logger.debug(f"Pearson Pairwise Result: {pearson_result}")
 
+            # Run Dunn post-hoc test if Pearson pairwise produced a comparison matrix
+            self._run_dunn(cast(CorrelationPairwiseDetails, pearson_result.details))
+
             # Run Spearman pairwise correlation test
             Logger.debug("Running: Spearman pairwise correlation")
-            spearman_result = tests_.spearman_correlation_pairwise_test(
+            spearman_result = pairwise_tests.spearman_correlation_pairwise_test(
                 self._dataframe, reference_column=self._reference_column
             )
             self._record_test(spearman_result)
             Logger.debug(f"Spearman Pairwise Result: {spearman_result}")
+
+            # Run Dunn post-hoc test if Spearman pairwise produced a comparison matrix
+            self._run_dunn(cast(CorrelationPairwiseDetails, spearman_result.details))
+
+    def _run_dunn(self, result_details: CorrelationPairwiseDetails) -> None:
+        """Run Dunn post-hoc test on pairwise comparison matrix."""
+        if result_details.pairwise_comparisons_matrix is not None:
+            Logger.debug("Running post-hoc: Dunn test on p-values")
+            simple_tests = AiTableStatsTests()
+            dunn_result = simple_tests.dunn_test(result_details.pairwise_comparisons_matrix)
+            self._record_test(dunn_result)
+            Logger.debug(f"Dunn Result: {dunn_result}")

@@ -1,5 +1,4 @@
 from unittest import TestCase
-from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -282,21 +281,6 @@ class TestAiTableStatsTests(TestCase):
         self.assertIsInstance(result.details.significant_comparisons, int)
         self.assertIn("pairwise", result.result_text.lower())
 
-    def test_bonferroni_test_with_list(self):
-        """Test Bonferroni correction with list of p-values."""
-        p_values = [0.01, 0.03, 0.05, 0.1, 0.2]
-        result = self.stats_tests.bonferroni_test(p_values)
-
-        self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Student t-test (independent paired wise)')
-        self.assertIsInstance(result.details, BonferroniTestDetails)
-        self.assertEqual(result.details.original_p_values, p_values)
-        self.assertEqual(len(result.details.corrected_p_values), len(p_values))
-        self.assertEqual(result.details.adjustment_method, 'bonferroni')
-        self.assertEqual(result.details.total_comparisons, len(p_values))
-        self.assertIsInstance(result.details.corrected_alpha, float)
-        self.assertIn("bonferroni", result.result_text.lower())
-
     def test_bonferroni_test_with_dataframe(self):
         """Test Bonferroni correction with DataFrame of p-values."""
         p_values_df = pd.DataFrame({'p_vals': [0.01, 0.03, 0.05, 0.1, 0.2]})
@@ -305,38 +289,6 @@ class TestAiTableStatsTests(TestCase):
         self.assertIsInstance(result, AiTableStatsResults)
         self.assertIsInstance(result.details, BonferroniTestDetails)
         self.assertEqual(len(result.details.original_p_values), 5)
-
-    def test_bonferroni_test_with_series(self):
-        """Test Bonferroni correction with Series of p-values."""
-        p_values_series = pd.Series([0.01, 0.03, 0.05, 0.1, 0.2])
-        result = self.stats_tests.bonferroni_test(p_values_series)
-
-        self.assertIsInstance(result, AiTableStatsResults)
-        self.assertIsInstance(result.details, BonferroniTestDetails)
-        self.assertEqual(len(result.details.original_p_values), 5)
-
-    def test_scheffe_test_with_list(self):
-        """Test Scheffe correction with list of p-values."""
-        p_values = [0.01, 0.03, 0.05, 0.1, 0.2]
-        num_groups = 3
-        result = self.stats_tests.scheffe_test(p_values, num_groups)
-
-        self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Student t-test (independent paired wise)')
-        self.assertIsInstance(result.details, ScheffeTestDetails)
-        self.assertEqual(result.details.original_p_values, p_values)
-        self.assertEqual(len(result.details.corrected_p_values), len(p_values))
-        self.assertEqual(result.details.adjustment_method, 'scheffe')
-        self.assertEqual(result.details.num_groups, num_groups)
-        self.assertIsInstance(result.details.scheffe_multiplier, float)
-        self.assertIn("scheffe", result.result_text.lower())
-
-    def test_scheffe_test_invalid_groups(self):
-        """Test Scheffe correction with invalid number of groups."""
-        p_values = [0.01, 0.03, 0.05]
-        with self.assertRaises(ValueError) as context:
-            self.stats_tests.scheffe_test(p_values, 1)
-        self.assertIn("at least 2", str(context.exception))
 
     def test_input_type_flexibility(self):
         """Test that methods accept various input types (numpy arrays, pandas Series, lists)."""

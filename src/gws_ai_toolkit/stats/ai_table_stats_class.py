@@ -59,7 +59,7 @@ class AiTableStats(AiTableStatsBase):
          * Dependent: Wilcoxon signed-rank test
        - >2 columns:
          * Independent: Kruskal-Wallis → If significant (p < 0.05): Dunn post-hoc
-         * Dependent: Friedman test
+         * Dependent: Friedman test → If significant (p < 0.05): Dunn post-hoc
 
     INDEPENDENCE vs DEPENDENCE:
     - Independent: Different groups/subjects (e.g., treatment A vs treatment B)
@@ -151,23 +151,24 @@ class AiTableStats(AiTableStatsBase):
                 if self._columns_are_independent:
                     Logger.debug("Running: Student independent")
                     result = self._tests.student_independent_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
+                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0], self._dataframe.columns[1]
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
                 else:
                     Logger.debug("Running: Student paired")
                     result = self._tests.student_paired_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
+                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0], self._dataframe.columns[1]
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
             elif num_columns > 2:
                 if self._columns_are_independent:
                     Logger.debug("Running: ANOVA")
-                    # Use columns directly for ANOVA
-                    groups = [self._dataframe.iloc[:, i].dropna() for i in range(num_columns)]
-                    result = self._tests.anova_test(*groups)
+                    # Pass DataFrame directly to ANOVA
+                    result = self._tests.anova_test(self._dataframe)
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
 
@@ -186,22 +187,24 @@ class AiTableStats(AiTableStatsBase):
                 if self._columns_are_independent:
                     Logger.debug("Running: Mann-Whitney")
                     result = self._tests.mann_whitney_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
+                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0], self._dataframe.columns[1]
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
                 else:
                     Logger.debug("Running: Wilcoxon")
                     result = self._tests.wilcoxon_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
+                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0], self._dataframe.columns[1]
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
             elif num_columns > 2:
                 if self._columns_are_independent:
                     Logger.debug("Running: Kruskal-Wallis")
-                    groups = [self._dataframe.iloc[:, i].dropna() for i in range(num_columns)]
-                    result = self._tests.kruskal_wallis_test(*groups)
+                    # Pass DataFrame directly to Kruskal-Wallis
+                    result = self._tests.kruskal_wallis_test(self._dataframe)
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
 
@@ -214,10 +217,18 @@ class AiTableStats(AiTableStatsBase):
                         Logger.debug(f"Dunn Result: {dunn_result}")
                 else:
                     Logger.debug("Running: Friedman")
-                    groups = [self._dataframe.iloc[:, i] for i in range(num_columns)]
-                    result = self._tests.friedman_test(*groups)
+                    # Pass DataFrame directly to Friedman
+                    result = self._tests.friedman_test(self._dataframe)
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
+
+                    # Check if Friedman is significant and run Dunn post-hoc test
+                    if result.p_value < 0.05:
+                        Logger.debug("Running post-hoc: Dunn test (Friedman p < 0.05)")
+                        # Use columns directly for Dunn
+                        dunn_result = self._tests.dunn_test(self._dataframe)
+                        self._record_test(dunn_result)
+                        Logger.debug(f"Dunn Result: {dunn_result}")
 
     def _test_normality(self, dataframe: DataFrame, num_rows: int) -> bool:
         """Test normality of quantitative columns."""
@@ -343,6 +354,7 @@ class AiTableStats(AiTableStatsBase):
                 correction_result = self._tests.tukey_hsd_test(details.pairwise_comparisons_matrix)
         else:
             # Apply Scheffe correction for paired columns
+            # Never called for now
             correction_result = self._tests.scheffe_test(details.pairwise_comparisons_matrix, num_columns)
 
         self._record_test(correction_result)
