@@ -4,7 +4,7 @@ import reflex as rx
 
 from .chat_config import ChatConfig
 from .chat_message_class import (ChatMessageCode, ChatMessageFront,
-                                 ChatMessageImageFront, ChatMessagePlotly,
+                                 ChatMessageImageFront, ChatMessagePlotlyFront,
                                  ChatMessageText)
 from .chat_state_base import ChatStateBase
 
@@ -234,7 +234,7 @@ def _code_content(message: ChatMessageCode) -> rx.Component:
     )
 
 
-def _plotly_content(message: ChatMessagePlotly) -> rx.Component:
+def _plotly_content(message: ChatMessagePlotlyFront) -> rx.Component:
     """Renders plotly figure content.
 
     Args:
@@ -248,5 +248,6 @@ def _plotly_content(message: ChatMessagePlotly) -> rx.Component:
         rx.plotly(
             # rx.cond used to avoid warning
             data=rx.cond(message.figure, message.figure, go.Figure()),
+            width="100%",
         )
     )

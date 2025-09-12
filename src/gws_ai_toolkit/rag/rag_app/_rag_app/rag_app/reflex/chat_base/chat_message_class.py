@@ -98,7 +98,7 @@ class ChatMessageImage(ChatMessageBase):
         )
     """
     type: Literal["image"] = "image"
-    image_name: str
+    filename: str
 
 
 class ChatMessageImageFront(ChatMessageBase):
@@ -143,45 +143,46 @@ class ChatMessagePlotly(ChatMessageBase):
 
     Attributes:
         type: Fixed as "plotly" to identify this as a plotly message
-        figure: The Plotly figure object for rendering
-        content: Optional text description/caption for the figure
+        filename: The filename where the Plotly figure is stored
 
     Example:
         plotly_msg = ChatMessagePlotly(
             role="assistant",
-            content="Data visualization",
+            id="msg_plotly_123",
+            figure=go.Figure(data=[go.Bar(x=['A', 'B'], y=[1, 2])])
+        )
+    """
+    type: Literal["plotly"] = "plotly"
+    filename: str
+
+
+class ChatMessagePlotlyFront(ChatMessageBase):
+    """Chat message containing Plotly figure content.
+
+    Specialized chat message for interactive Plotly visualizations created
+    through function calls. Used to display charts, graphs, and data
+    visualizations in the chat interface.
+
+    Attributes:
+        type: Fixed as "plotly" to identify this as a plotly message
+        figure: The Plotly figure object for rendering
+
+    Example:
+        plotly_msg = ChatMessagePlotly(
+            role="assistant",
             id="msg_plotly_123",
             figure=go.Figure(data=[go.Bar(x=['A', 'B'], y=[1, 2])])
         )
     """
     type: Literal["plotly"] = "plotly"
     figure: go.Figure
-    content: str = ""
-
-    @field_validator('figure', mode='before')  # Updated to field_validator with mode='before'
-    @classmethod  # Add classmethod decorator (required in V2)
-    def deserialize_figure(cls, value):
-        if isinstance(value, go.Figure):
-            return value
-
-        if isinstance(value, str):
-            # Convert JSON string to Plotly figure
-            value = json.loads(value)
-
-        if not isinstance(value, dict):
-            raise ValueError("figure must be a dict or JSON string representing a Plotly figure")
-
-        return go.Figure(value)
 
     class Config:
         arbitrary_types_allowed = True
-        json_encoders = {
-            go.Figure: lambda fig: json.loads(fig.to_json())
-        }
 
 
 # Type used for the storage and internal processing
 ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly
 
 # Type used  for front-end rendering
-ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotly
+ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotlyFront

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 import reflex as rx
 from gws_core.core.utils.logger import Logger
 from PIL import Image
+from plotly.graph_objs import Figure
 
 from ..chat_base.chat_message_class import ChatMessage
 from ..core.utils import Utils
@@ -21,6 +22,7 @@ class ConversationHistoryState(rx.State, mixin=True):
     # Constants for folder and file structure
     HISTORY_FILE_NAME: str = 'history.json'
     IMAGES_FOLDER_NAME: str = 'images'
+    PLOTS_FOLDER_NAME: str = 'plots'
 
     _history_folder_path: str = ''
 
@@ -45,6 +47,11 @@ class ConversationHistoryState(rx.State, mixin=True):
         """Get the full path to the images folder."""
         folder_path = await self.get_history_folder_path()
         return os.path.join(folder_path, self.IMAGES_FOLDER_NAME)
+
+    async def get_plots_folder_full_path(self) -> str:
+        """Get the full path to the plots folder."""
+        folder_path = await self.get_history_folder_path()
+        return os.path.join(folder_path, self.PLOTS_FOLDER_NAME)
 
     async def _load_history(self) -> ConversationFullHistory:
         """Load conversation history from JSON file."""
@@ -173,6 +180,26 @@ class ConversationHistoryState(rx.State, mixin=True):
 
         # Save image
         image.save(file_path, format="PNG")
+
+        return filename
+
+    async def save_plotly_figure_to_history(self, figure: Figure) -> str:
+        """Save a Plotly Figure to the history images folder and return the filename.
+
+        Args:
+            figure: Plotly Figure object to save
+        Returns:
+            str: The filename of the saved plot (not the full path)
+        """
+        plots_folder_path = await self.get_plots_folder_full_path()
+        os.makedirs(plots_folder_path, exist_ok=True)
+
+        # Generate unique filename
+        filename = f"plot_{uuid.uuid4().hex}.json"
+        file_path = os.path.join(plots_folder_path, filename)
+
+        # Save figure as JSON file
+        figure.write_json(file_path)
 
         return filename
 

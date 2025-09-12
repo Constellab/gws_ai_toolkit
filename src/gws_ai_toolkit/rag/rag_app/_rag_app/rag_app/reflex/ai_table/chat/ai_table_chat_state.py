@@ -3,12 +3,13 @@ from typing import Optional
 
 import plotly.graph_objects as go
 import reflex as rx
-from gws_core import BaseModelDTO, File, ResourceModel
+from gws_core import BaseModelDTO, File, Logger, ResourceModel
 from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
                                     ResponseFunctionCallArgumentsDoneEvent)
 from pydantic import Field
 
 from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
+from ...chat_base.chat_message_class import ChatMessage
 from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
 from .ai_table_chat_config import AiTableChatConfig
 from .ai_table_chat_config_state import AiTableChatConfigState
@@ -230,7 +231,6 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
     async def handle_function_call_arguments_done(self, event: ResponseFunctionCallArgumentsDoneEvent):
         """Handle response.function_call_arguments.done event - execute the function call"""
 
-        print('Handling function_call_arguments.done event')
         arguments_str = event.arguments
 
         # Since we only have one function defined, we can assume it's create_plotly_figure
@@ -243,16 +243,17 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
             fig = go.Figure(arguments)
 
             # Create a success message showing the chart has been created
-            print('Creating Plotly figure message')
-            success_message = self.create_plotly_message(
-                figure=fig,
-                content="✅ Plotly figure created successfully from provided JSON configuration",
-                role="assistant",
-                external_id=self._current_external_response_id
-            )
+            success_message: ChatMessage
+            async with self:
+                success_message = await self.create_plotly_message(
+                    figure=fig,
+                    role="assistant",
+                    external_id=self._current_external_response_id
+                )
             await self.update_current_response_message(success_message)
 
         except json.JSONDecodeError as e:
+            Logger.log_exception_stack_trace(e)
             error_message = self.create_text_message(
                 content=f"❌ Error parsing function arguments: {str(e)}",
                 role="assistant",
@@ -260,6 +261,7 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
             )
             await self.update_current_response_message(error_message)
         except Exception as e:
+            Logger.log_exception_stack_trace(e)
             error_message = self.create_text_message(
                 content=f"❌ Error creating Plotly figure: {str(e)}",
                 role="assistant",

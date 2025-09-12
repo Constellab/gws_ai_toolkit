@@ -1,16 +1,17 @@
+import json
 import os
 import tempfile
 import uuid
 from abc import abstractmethod
 from typing import List, Literal, Optional
 
-import plotly.graph_objects as go
 import reflex as rx
 from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
                       ShareLinkEntityType, ShareLinkService)
 from gws_core.core.utils.logger import Logger
 from gws_reflex_main import ReflexMainState
 from PIL import Image
+from plotly.graph_objects import Figure
 
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
@@ -19,7 +20,7 @@ from ..history.conversation_history_state import ConversationHistoryState
 from .chat_message_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageFront, ChatMessageImage,
                                  ChatMessageImageFront, ChatMessagePlotly,
-                                 ChatMessageText)
+                                 ChatMessagePlotlyFront, ChatMessageText)
 
 
 class ChatStateBase(ReflexMainState, rx.State, mixin=True):
@@ -97,7 +98,9 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             messages = [msg for msg in messages if msg.type != "code"]
 
         image_folder = await self.get_images_folder_path()
-        return list(map(lambda msg: self._convert_to_front_message_sync(msg, image_folder), messages))
+        plot_folder = await self.get_plots_folder_path()
+        messages = [self._convert_to_front_message_sync(msg, image_folder, plot_folder) for msg in messages]
+        return [msg for msg in messages if msg is not None]  # type: ignore
 
     @rx.var
     async def current_response_message(self) -> Optional[ChatMessageFront]:
@@ -110,17 +113,33 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             return None
 
         image_folder = await self.get_images_folder_path()
-        return self._convert_to_front_message_sync(current_message, image_folder)
+        plot_folder = await self.get_plots_folder_path()
+        return self._convert_to_front_message_sync(current_message, image_folder, plot_folder)
 
-    def _convert_to_front_message_sync(self, message: ChatMessage, image_folder: str) -> ChatMessageFront:
+    def _convert_to_front_message_sync(
+            self, message: ChatMessage, image_folder: str, plot_folder: str) -> ChatMessageFront | None:
         """Convert internal ChatMessage to front-end ChatMessageFront type."""
         if isinstance(message, ChatMessageImage):
-            image_path = os.path.join(image_folder, message.image_name)
+            figure_path = os.path.join(image_folder, message.filename)
             return ChatMessageImageFront(
                 id=message.id,
                 role=message.role,
                 sources=message.sources,
-                image=Image.open(image_path)  # Now using image_name as full path
+                image=Image.open(figure_path)  # Now using image_name as full path
+            )
+        if isinstance(message, ChatMessagePlotly):
+            figure_path = os.path.join(plot_folder, message.filename)
+            try:
+                with open(figure_path, 'r', encoding='utf-8') as file:
+                    figure_json = json.load(file)
+            except Exception as e:
+                Logger.log_exception_stack_trace(e)
+                return None
+            return ChatMessagePlotlyFront(
+                id=message.id,
+                role=message.role,
+                sources=message.sources,
+                figure=Figure(figure_json)
             )
         return message
 
@@ -241,23 +260,23 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         return ChatMessageImage(
             id=str(uuid.uuid4()),
             role=role,
-            image_name=filename,  # Store the full path
+            filename=filename,  # Store the full path
             external_id=external_id,
             sources=sources or []
         )
 
-    def create_plotly_message(self,
-                              figure: go.Figure,
-                              content: str = "",
-                              role: Literal['user', 'assistant'] = "assistant",
-                              external_id: Optional[str] = None,
-                              sources: Optional[List[RagChatSource]] = None) -> ChatMessagePlotly:
+    async def create_plotly_message(self,
+                                    figure: Figure,
+                                    role: Literal['user', 'assistant'] = "assistant",
+                                    external_id: Optional[str] = None,
+                                    sources: Optional[List[RagChatSource]] = None) -> ChatMessagePlotly:
         """Create a Plotly message with interactive figure"""
+        history_state = await ConversationHistoryState.get_instance(self)
+        filename = await history_state.save_plotly_figure_to_history(figure)
         return ChatMessagePlotly(
             id=str(uuid.uuid4()),
             role=role,
-            figure=figure,
-            content=content,
+            filename=filename,
             external_id=external_id,
             sources=sources or []
         )
@@ -345,3 +364,8 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         """Get the folder path where chat images are stored."""
         history_state = await ConversationHistoryState.get_instance(self)
         return await history_state.get_images_folder_full_path()
+
+    async def get_plots_folder_path(self) -> str:
+        """Get the folder path where chat plots are stored."""
+        history_state = await ConversationHistoryState.get_instance(self)
+        return await history_state.get_plots_folder_full_path()
