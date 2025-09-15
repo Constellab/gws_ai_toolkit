@@ -10,8 +10,9 @@ from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
                                     ResponseOutputItemDoneEvent)
 from pydantic import Field
 
-from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
 from ...chat_base.chat_message_class import ChatMessage
+from ...chat_base.chat_state_base import ChatStateBase
+from ...chat_base.open_ai_chat_state_base import OpenAiChatStateBase
 from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
 from .ai_table_chat_config import AiTableChatConfig
 from .ai_table_chat_config_state import AiTableChatConfigState
@@ -26,7 +27,7 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class AiTableChatState2(BaseFileAnalysisState, rx.State):
+class AiTableChatState2(OpenAiChatStateBase, rx.State):
     """State management for AI Table Chat - specialized Excel/CSV-focused chat functionality.
 
     This state class manages the AI Table chat workflow, providing intelligent
@@ -58,17 +59,6 @@ class AiTableChatState2(BaseFileAnalysisState, rx.State):
     title = "AI Table Analyst"
     placeholder_text = "Ask about this Excel/CSV data..."
     empty_state_message = "Start analyzing your Excel/CSV data"
-
-    def set_resource(self, resource: ResourceModel):
-        """Set the resource to analyze and validate it's an Excel/CSV file
-
-        Args:
-            resource (ResourceModel): Resource model to set
-        """
-        if self._current_resource_model and self._current_resource_model.id == resource.id:
-            return  # No change
-        self.clear_chat()
-        self._current_resource_model = resource
 
     def validate_resource(self, resource: ResourceModel) -> bool:
         """Validate if file is an Excel or CSV file
@@ -149,20 +139,6 @@ fig.add_trace(go.Scatter(x=df['column1'], y=df['column2']))
 fig.update_layout(title='Chart Title')
 ```"""
 
-    def _load_resource(self) -> Optional[ResourceModel]:
-        # try to load from rag document id
-        # Get the dynamic route parameter - different subclasses may use different parameter names
-        resource_id = self.resource_id if hasattr(self, 'resource_id') else None
-
-        if not resource_id:
-            return None
-
-        resource_model = ResourceModel.get_by_id(resource_id)
-        if not resource_model:
-            raise ValueError(f"Resource with id {resource_id} not found")
-
-        return resource_model
-
     async def get_active_file_path(self) -> Optional[str]:
         """Get the file path for the currently active table (original or subtable)"""
         data_state: AiTableDataState
@@ -181,7 +157,7 @@ fig.update_layout(title='Chart Title')
 
         return None
 
-    async def call_ai_chat(self, user_message: str):
+    async def call_ai_chat(self, user_message: str) -> None:
         """Get streaming response from OpenAI about the table data"""
         client = self._get_openai_client()
 
@@ -250,8 +226,6 @@ fig.update_layout(title='Chart Title')
                     await self.handle_output_text_delta(event)
                 elif event.type == "response.code_interpreter_call_code.delta":
                     await self.handle_code_interpreter_call_code_delta(event)
-                elif event.type == "response.output_text.annotation.added":
-                    await self.handle_output_text_annotation_added(event)
                 elif event.type == "response.function_call_arguments.delta":
                     await self.handle_function_call_arguments_delta(event)
                 elif event.type == "response.function_call_arguments.done":

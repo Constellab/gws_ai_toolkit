@@ -9,7 +9,8 @@ from gws_core import (BaseModelDTO, EntityTagList, Logger, ResourceModel,
 
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
-from .reflex import AiExpertState, AiTableState
+from .reflex.ai_expert.ai_expert_state import AiExpertState
+from .reflex.ai_table.ai_table_state import AiTableState
 from .reflex.chat_base.base_file_analysis_state import BaseFileAnalysisState
 
 

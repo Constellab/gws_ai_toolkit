@@ -4,7 +4,7 @@ from typing import Type
 import reflex as rx
 
 from .custom_ai_expert_state import AssociatedResourceState, ResourceDTO
-from .reflex import ChatStateBase
+from .reflex.chat_base.chat_state_base import ChatStateBase
 
 
 def _resource_item(resource: ResourceDTO, state: AssociatedResourceState) -> rx.Component:

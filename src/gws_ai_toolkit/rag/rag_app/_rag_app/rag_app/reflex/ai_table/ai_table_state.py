@@ -35,13 +35,18 @@ class AiTableState(rx.State):
 
         self._current_resource_model = resource
 
+        file = resource.get_resource()
+        if not isinstance(file, File) or not file.is_csv_or_excel():
+            Logger.error("Resource is not a valid CSV or Excel file")
+            return
+
         # Set resource in both states
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
-        # chat_state: AiTableChatState = await self.get_state(AiTableChatState)
-        chat_state: AiTableChatState2 = await self.get_state(AiTableChatState2)
+        data_state.set_resource(file)
 
-        data_state.set_resource(resource)
-        chat_state.set_resource(resource)
+        # chat_state: AiTableChatState = await self.get_state(AiTableChatState)
+        # chat_state: AiTableChatState2 = await self.get_state(AiTableChatState2)
+        # chat_state.set_resource(resource)
 
     def validate_resource(self, resource: ResourceModel) -> str | None:
         """Validate if resource is an Excel or CSV file

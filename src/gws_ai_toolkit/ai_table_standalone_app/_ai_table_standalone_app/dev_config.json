@@ -1,0 +1,10 @@
+{
+    "app_dir_path": "",
+    "source_ids": [],
+    "params": {
+        "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/_data/app_configuration.json",
+        "history_standalone_ai_table": "/lab/user/bricks/gws_ai_toolkit/_data/history"
+    },
+    "env_type": "NONE",
+    "env_file_path": ""
+}

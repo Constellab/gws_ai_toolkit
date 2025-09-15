@@ -1,7 +1,10 @@
 
 import reflex as rx
 
-from .reflex import ai_expert_config_component, ai_table_chat_config_component
+from .reflex.ai_expert.ai_expert_config_component import \
+    ai_expert_config_component
+from .reflex.ai_table.chat.ai_table_chat_config_component import \
+    ai_table_chat_config_component
 
 
 def combined_config_page() -> rx.Component:

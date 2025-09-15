@@ -1,3 +1,5 @@
+from typing import List
+
 import reflex as rx
 import reflex_enterprise as rxe
 from gws_reflex_base import add_unauthorized_page, get_theme
@@ -9,41 +11,37 @@ from .custom_ai_expert_state import CustomAssociatedResourceAiExpertState
 from .custom_states import (CustomAppConfigState,
                             CustomConversationHistoryState,
                             CustomRagConfigState)
-from .navigation import navigation
-from .reflex import (AiExpertState, AiTableState, ChatConfig, HistoryState,
-                     ai_expert_component,
-                     ai_expert_header_default_buttons_component,
-                     ai_table_component, history_component, rag_chat_component,
-                     rag_config_component)
+from .reflex.ai_expert.ai_expert_component import (
+    ai_expert_component, ai_expert_header_default_buttons_component)
+from .reflex.ai_expert.ai_expert_state import AiExpertState
+from .reflex.ai_table.ai_table_component import ai_table_component
+from .reflex.ai_table.ai_table_state import AiTableState
+from .reflex.chat_base.chat_config import ChatConfig
+from .reflex.core.nav_bar_component import NavBarItem
+from .reflex.core.page_component import page_component
+from .reflex.history.history_component import history_component
+from .reflex.history.history_state import HistoryState
+from .reflex.rag_chat.config.rag_config_component import rag_config_component
+from .reflex.rag_chat.rag_chat_component import rag_chat_component
 
 app = rxe.App(
     theme=get_theme(),
     stylesheets=["/style.css"],
 )
 
-
-def page_component(content: rx.Component, disable_padding: bool = False) -> rx.Component:
-    """Wrap the page content with navigation and layout."""
-    return rx.vstack(
-        navigation(),
-        rx.box(
-            content,
-            display="flex",
-            width="100%",
-            flex="1",
-            padding="1em" if not disable_padding else "0",
-            min_height="0",
-        ),
-        spacing="0",
-        width="100%",
-        height="100vh",
-    )
+nav_bar_items: List[NavBarItem] = [
+    NavBarItem(text="Chat", icon="message-circle", url="/"),
+    NavBarItem(text="Resources", icon="database", url="/rag-config"),
+    NavBarItem(text="Config", icon="settings", url="/config"),
+    NavBarItem(text="History", icon="clock", url="/history"),
+]
 
 
 @rx.page(route="/")
 def index():
     """Main chat page."""
     return page_component(
+        nav_bar_items,
         rag_chat_component()
     )
 
@@ -53,6 +51,7 @@ def index():
 def rag_config():
     """Resource page for managing RAG resources and sync."""
     return page_component(
+        nav_bar_items,
         rag_config_component()
     )
 
@@ -62,6 +61,7 @@ def rag_config():
 def config_page():
     """Configuration page for AI Expert and AI Table settings."""
     return page_component(
+        nav_bar_items,
         combined_config_page()
     )
 
@@ -71,6 +71,7 @@ def config_page():
 def history():
     """History page for viewing conversation history."""
     return page_component(
+        nav_bar_items,
         history_component()
     )
 
@@ -85,6 +86,7 @@ def ai_expert():
         left_section=lambda x: custom_left_sidebar(x, CustomAssociatedResourceAiExpertState)
     )
     return page_component(
+        nav_bar_items,
         ai_expert_component(config)
     )
 
@@ -94,6 +96,7 @@ def ai_expert():
 def ai_table():
     """AI Table page for Excel/CSV data analysis."""
     return page_component(
+        nav_bar_items,
         ai_table_component(),
         disable_padding=True
     )

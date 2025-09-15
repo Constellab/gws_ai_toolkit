@@ -52,16 +52,12 @@ class AiTableDataState(rx.State):
 
         return self._tables.get(table_id)
 
-    def set_resource(self, resource: ResourceModel):
-        """Set the resource to analyze and load it as dataframe
+    def set_resource(self, file: File):
+        """Set the resource file to load data from
 
         Args:
-            resource (ResourceModel): Resource model to set
+            file (File): File to set
         """
-        file = resource.get_resource()
-        if not isinstance(file, File) or not file.is_csv_or_excel():
-            Logger.error("Resource is not a valid CSV or Excel file")
-            return
 
         self.current_file_path = file.path
         self.current_file_name = os.path.splitext(os.path.basename(file.path))[0]
