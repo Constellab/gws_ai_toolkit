@@ -223,31 +223,37 @@ def _show_results() -> rx.Component:
                 width="100%"
             ),
         ),
-        _show_last_run_config(),
-        rx.cond(
-            AiTableStatsState.last_test_result,
-            rx.box(
-                rx.heading("Last Test Result", size="3", margin_bottom="0.5em", margin_top="1em"),
-                _show_test_result(AiTableStatsState.last_test_result),
-                width="100%"
-            )
-        ),
-        rx.cond(
-            AiTableStatsState.test_history.length() > 0,
-            rx.box(
-                rx.heading("Complete Test History", size="3", margin_bottom="0.5em", margin_top="1em"),
-                rx.vstack(
-                    rx.foreach(
-                        AiTableStatsState.test_history,
-                        _show_test_result
+        _show_additional_test_suggestion(),
+        rx.accordion.root(
+            rx.accordion.item(
+                header="Details",
+                content=rx.accordion.content(
+                    _show_last_run_config(),
+                    rx.cond(
+                        AiTableStatsState.test_history.length() > 0,
+                        rx.box(
+                            rx.heading("Complete Test History", size="3", margin_bottom="0.5em", margin_top="1em"),
+                            rx.vstack(
+                                rx.foreach(
+                                    AiTableStatsState.test_history,
+                                    _show_test_result
+                                ),
+                                spacing="2",
+                                width="100%"
+                            ),
+                            width="100%"
+                        )
                     ),
-                    spacing="2",
-                    width="100%"
+
                 ),
-                width="100%"
-            )
+                style={"cursor": "pointer"},
+            ),
+            collapsible=True,
+            width="100%",
+            variant="soft",
+            margin_top="1em"
         ),
-        _show_additional_test_suggestion()
+
     )
 
 

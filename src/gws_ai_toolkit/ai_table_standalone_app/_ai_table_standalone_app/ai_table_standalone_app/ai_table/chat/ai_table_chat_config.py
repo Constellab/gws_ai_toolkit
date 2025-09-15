@@ -4,7 +4,7 @@ from typing import Callable, List
 
 import reflex as rx
 
-from ...chat_base.base_analysis_config import BaseAnalysisConfig
+from gws_ai_toolkit._app.chat_base import BaseAnalysisConfig
 
 
 @dataclass

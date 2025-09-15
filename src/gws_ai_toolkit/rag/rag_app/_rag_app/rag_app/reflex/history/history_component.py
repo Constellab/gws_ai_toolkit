@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Type
 
 import reflex as rx
 
@@ -7,6 +7,7 @@ from ..chat_base.sources_list_component import sources_list_component
 from ..read_only_chat.read_only_chat_interface import read_only_chat_component
 from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
 from .conversation_history_class import ConversationHistory
+from .conversation_history_state import ConversationHistoryState
 from .history_config_dialog import history_config_dialog
 from .history_state import HistoryState
 
@@ -226,7 +227,7 @@ def _conversation_display() -> rx.Component:
     )
 
 
-def history_component():
+def history_component(conversation_history_state: Type[ConversationHistoryState]):
     """Complete conversation history interface with sidebar and display panel.
 
     This component provides a two-panel interface for browsing and viewing
@@ -247,6 +248,14 @@ def history_component():
         history_ui = history_component()
         # Renders two-panel history interface
     """
+
+    if not issubclass(conversation_history_state, ConversationHistoryState):
+        raise ValueError("conversation_history_state must be a subclass of ConversationHistoryState")
+
+    if conversation_history_state is ConversationHistoryState:
+        raise ValueError(
+            "conversation_history_state must be a subclass of ConversationHistoryState, not the base class itself")
+
     return rx.hstack(
         _conversations_sidebar(),
         _conversation_display(),

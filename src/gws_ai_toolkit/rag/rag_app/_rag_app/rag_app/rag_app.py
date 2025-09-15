@@ -14,8 +14,6 @@ from .custom_states import (CustomAppConfigState,
 from .reflex.ai_expert.ai_expert_component import (
     ai_expert_component, ai_expert_header_default_buttons_component)
 from .reflex.ai_expert.ai_expert_state import AiExpertState
-from .reflex.ai_table.ai_table_component import ai_table_component
-from .reflex.ai_table.ai_table_state import AiTableState
 from .reflex.chat_base.chat_config import ChatConfig
 from .reflex.core.nav_bar_component import NavBarItem
 from .reflex.core.page_component import page_component
@@ -72,7 +70,7 @@ def history():
     """History page for viewing conversation history."""
     return page_component(
         nav_bar_items,
-        history_component()
+        history_component(CustomConversationHistoryState)
     )
 
 
@@ -92,14 +90,14 @@ def ai_expert():
 
 
 # AI Table page - Excel/CSV-specific data analysis
-@rx.page(route="/ai-table/[resource_id]", on_load=AiTableState.load_resource_from_id)
-def ai_table():
-    """AI Table page for Excel/CSV data analysis."""
-    return page_component(
-        nav_bar_items,
-        ai_table_component(),
-        disable_padding=True
-    )
+# @rx.page(route="/ai-table/[resource_id]", on_load=AiTableState.load_resource_from_id)
+# def ai_table():
+#     """AI Table page for Excel/CSV data analysis."""
+#     return page_component(
+#         nav_bar_items,
+#         ai_table_component(),
+#         disable_padding=True
+#     )
 
 
 # Add the unauthorized page to the app.

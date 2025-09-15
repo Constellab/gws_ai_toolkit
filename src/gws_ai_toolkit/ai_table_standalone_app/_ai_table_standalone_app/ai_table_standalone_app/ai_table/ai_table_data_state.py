@@ -5,9 +5,9 @@ from typing import Dict, List, Literal, Optional
 
 import pandas as pd
 import reflex as rx
-from gws_core import File, Logger, ResourceModel
+from gws_core import File, Logger
 
-from .dataframe_item import DataFrameItem
+from gws_ai_toolkit.core.dataframe_item import DataFrameItem
 
 ORIGINAL_TABLE_ID = "original"
 

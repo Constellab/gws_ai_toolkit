@@ -1,12 +1,10 @@
 import reflex as rx
 
-from ...chat_base.chat_config import ChatConfig
-from ...chat_base.chat_header_component import \
-    header_clear_chat_button_component
-from ...chat_base.chat_input_component import chat_input_component
-from ...chat_base.messages_list_component import chat_messages_list_component
+from gws_ai_toolkit._app.chat_base import (ChatConfig, chat_input_component,
+                                           chat_messages_list_component,
+                                           header_clear_chat_button_component)
+
 from ..ai_table_data_state import AiTableDataState
-from .ai_table_chat_state import AiTableChatState
 from .ai_table_chat_state_2 import AiTableChatState2
 
 

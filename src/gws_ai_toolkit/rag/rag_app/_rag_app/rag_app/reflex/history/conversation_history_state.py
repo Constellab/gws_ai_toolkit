@@ -71,6 +71,7 @@ class ConversationHistoryState(rx.State, mixin=True):
         try:
             history_folder_path = await self.get_history_folder_path()
             if not history_folder_path:
+                Logger.error("History folder path is not set.")
                 return
 
             # Ensure folder structure exists

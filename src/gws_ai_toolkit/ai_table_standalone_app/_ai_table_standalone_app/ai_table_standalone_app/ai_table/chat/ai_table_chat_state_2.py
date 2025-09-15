@@ -1,6 +1,7 @@
 import json
 from typing import Optional
 
+import pandas as pd
 import plotly.graph_objects as go
 import reflex as rx
 from gws_core import BaseModelDTO, File, Logger, ResourceModel
@@ -9,67 +10,54 @@ from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
                                     ResponseOutputItemDoneEvent)
 from pydantic import Field
 
-from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
-from ...chat_base.chat_message_class import ChatMessage
+from gws_ai_toolkit._app.chat_base import ChatMessage, OpenAiChatStateBase
+
 from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
 from .ai_table_chat_config import AiTableChatConfig
 from .ai_table_chat_config_state import AiTableChatConfigState
 
 
-class PlotlyFigureConfig(BaseModelDTO):
-    fig_config: dict = Field(
-        description="Plotly figure configuration as dictionary - result of plotly fig.to_dict()",
+class PlotlyCodeConfig(BaseModelDTO):
+    code: str = Field(
+        description="Python code to generate a Plotly figure. The code should use a DataFrame variable named 'df' as input and return a Plotly Figure object.",
     )
 
     class Config:
         extra = "forbid"  # Prevent additional properties
 
 
-class AiTableChatState(BaseFileAnalysisState, rx.State):
+class AiTableChatState2(OpenAiChatStateBase, rx.State):
     """State management for AI Table Chat - specialized Excel/CSV-focused chat functionality.
 
     This state class manages the AI Table chat workflow, providing intelligent
     data analysis capabilities focused on a specific Excel or CSV file. It integrates
     with OpenAI's API to provide data analysis, statistical insights, and interactive
-    exploration of tabular data using code interpreter with pandas.
+    exploration of tabular data using generated Python code execution.
 
     Key Features:
-        - Excel/CSV-specific chat with full data analysis capabilities
-        - Full file upload to OpenAI with code interpreter access
-        - OpenAI integration with streaming responses
-        - Data visualization and statistical analysis
+        - Excel/CSV-specific chat with data analysis capabilities
+        - Table metadata sharing (column names, types, row count) instead of file upload
+        - OpenAI integration with streaming responses and function calling
+        - Dynamic code generation and execution for data visualization
         - Conversation history persistence
         - Error handling and user feedback
 
     Processing Mode:
-        - Only supports full_file mode: Uploads entire Excel/CSV file to OpenAI
-          with code interpreter access for comprehensive data analysis
+        - Metadata-only mode: Shares table structure and metadata with OpenAI
+        - Code generation: OpenAI generates Python code for Plotly visualizations
+        - Local execution: Generated code is executed locally with the actual DataFrame
 
     Inherits from BaseFileAnalysisState providing:
         - File loading and validation
         - OpenAI integration with streaming responses
-        - File upload to OpenAI with code interpreter access
         - Conversation history integration
         - Error handling and user feedback
     """
-
-    previous_response_id: Optional[str] = None  # For conversation continuity
 
     # UI configuration
     title = "AI Table Analyst"
     placeholder_text = "Ask about this Excel/CSV data..."
     empty_state_message = "Start analyzing your Excel/CSV data"
-
-    def set_resource(self, resource: ResourceModel):
-        """Set the resource to analyze and validate it's an Excel/CSV file
-
-        Args:
-            resource (ResourceModel): Resource model to set
-        """
-        if self._current_resource_model and self._current_resource_model.id == resource.id:
-            return  # No change
-        self.clear_chat()
-        self._current_resource_model = resource
 
     def validate_resource(self, resource: ResourceModel) -> bool:
         """Validate if file is an Excel or CSV file
@@ -90,10 +78,11 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         """Get configuration for AI Table analysis
 
         Returns:
-            AiTableConfig: Configuration object for AI Table
+            AiTableChatConfig: Configuration object for AI Table
         """
         app_config_state = await self.get_state(AiTableChatConfigState)
-        return await app_config_state.get_config()
+        config = await app_config_state.get_config()
+        return config
 
     def get_analysis_type(self) -> str:
         """Return analysis type for history saving
@@ -103,19 +92,51 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         """
         return "ai_table"
 
-    def _load_resource(self) -> Optional[ResourceModel]:
-        # try to load from rag document id
-        # Get the dynamic route parameter - different subclasses may use different parameter names
-        resource_id = self.resource_id if hasattr(self, 'resource_id') else None
+    def _create_custom_prompt(self, table_metadata: str, table_context: str) -> str:
+        """Create custom prompt for table analysis with metadata
 
-        if not resource_id:
-            return None
+        Args:
+            table_metadata (str): Table metadata including columns, types, and row count
+            table_context (str): Context about current table (original or subtable)
 
-        resource_model = ResourceModel.get_by_id(resource_id)
-        if not resource_model:
-            raise ValueError(f"Resource with id {resource_id} not found")
+        Returns:
+            str: Custom prompt for OpenAI
+        """
+        return f"""You are an AI assistant specialized in data analysis and visualization. You have access to information about a table/dataset but not the actual data.
 
-        return resource_model
+{table_metadata}
+
+{table_context}
+
+Your role is to help users analyze and visualize this data. When users request visualizations or charts, you should:
+
+1. Generate Python code that creates Plotly figures
+2. Use 'df' as the variable name for the DataFrame
+3. Ensure the code assigns the final figure to a variable named 'fig'
+4. Use appropriate Plotly graph objects (plotly.graph_objects) for visualizations
+5. Make reasonable assumptions about data based on column names and types
+
+You can assume the following imports are available:
+- pandas as pd
+- plotly.graph_objects as go
+
+When generating code, make sure it:
+- Uses 'df' as the DataFrame variable
+- Creates meaningful visualizations based on the data types
+- Handles potential data issues gracefully
+- Provide the figure in a variable named 'fig'
+- Do not use function definitions
+- Do not use return statements
+
+Call the function only once per user request for a chart.
+
+Example code structure:
+```python
+fig = go.Figure()
+# Add traces and configure layout
+fig.add_trace(go.Scatter(x=df['column1'], y=df['column2']))
+fig.update_layout(title='Chart Title')
+```"""
 
     async def get_active_file_path(self) -> Optional[str]:
         """Get the file path for the currently active table (original or subtable)"""
@@ -135,24 +156,8 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
 
         return None
 
-    async def upload_active_file_to_openai(self, file_path: str) -> str:
-        """Upload the active file (original or subtable) to OpenAI and return file ID"""
-        client = self._get_openai_client()
-
-        # Upload file to OpenAI
-        with open(file_path, "rb") as f:
-            uploaded_file = client.files.create(
-                file=f,
-                purpose='assistants'
-            )
-
-        # Cache the file ID (note: for subtables, we don't cache since they're temporary)
-        file_id = uploaded_file.id
-
-        return file_id
-
-    async def call_ai_chat(self, user_message: str):
-        """Get streaming response from OpenAI about the file"""
+    async def call_ai_chat(self, user_message: str) -> None:
+        """Get streaming response from OpenAI about the table data"""
         client = self._get_openai_client()
 
         # Get the current dataframe from data state
@@ -162,46 +167,55 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
             config = await self.get_config()
             data_state = await self.get_state(AiTableDataState)
 
-        # Get active file path (original or subtable)
+        # Get active table metadata instead of uploading file
         active_file_path = await self.get_active_file_path()
         if not active_file_path:
             raise ValueError("No active file available for analysis")
 
-        # Upload the active file and use code interpreter
-        uploaded_file_id = await self.upload_active_file_to_openai(active_file_path)
+        # Load dataframe to get metadata
+        try:
+            if active_file_path.endswith('.csv'):
+                df = pd.read_csv(active_file_path)
+            else:
+                df = pd.read_excel(active_file_path)
 
-        # Update system prompt with context about current table
+            # Get table metadata
+            column_info = []
+            for col in df.columns:
+                dtype = str(df[col].dtype)
+                column_info.append(f"{col}: {dtype}")
+
+            table_metadata = f"""Table Information:
+- Columns ({len(df.columns)}): {', '.join(column_info)}
+- Number of rows: {len(df)}
+- Table shape: {df.shape}"""
+
+        except Exception as e:
+            table_metadata = f"Error loading table metadata: {str(e)}"
+
+        # Create custom prompt with table metadata
         table_context = ""
         if data_state.current_table_id != ORIGINAL_TABLE_ID:
-            table_context = f" (Currently analyzing subtable: {data_state.current_table_name})"
+            table_context = f"Currently analyzing subtable: {data_state.current_table_name}"
         else:
-            table_context = f" (Currently analyzing original table: {data_state.current_table_name})"
+            table_context = f"Currently analyzing original table: {data_state.current_table_name}"
 
-        system_prompt = config.system_prompt.replace(
-            config.prompt_file_placeholder, uploaded_file_id) + table_context
-
-        instructions = system_prompt
+        instructions = self._create_custom_prompt(table_metadata, table_context)
 
         tools = [
-            {"type": "code_interpreter", "container": {"type": "auto", "file_ids": [uploaded_file_id]}},
-            {
-                "type": "function",
-                # "strict": True,
-                "name": "create_plotly_figure",
-                "description": "Create a Plotly figure from JSON configuration. Use this when you want to create interactive charts and visualizations.",
-                "parameters": PlotlyFigureConfig.model_json_schema()
+            {"type": "function",
+             "name": "generate_plotly_figure",
+             "description":
+             "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object.",
+             "parameters": PlotlyCodeConfig.model_json_schema()}]
 
-            },
-        ]
-
-        # Create streaming response with code interpreter and function calling
         with client.responses.stream(
             model=config.model,
             instructions=instructions,
             input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
             temperature=config.temperature,
             previous_response_id=self._previous_external_response_id,
-            tools=tools,
+            tools=tools
         ) as stream:
 
             # Process streaming events
@@ -211,8 +225,6 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
                     await self.handle_output_text_delta(event)
                 elif event.type == "response.code_interpreter_call_code.delta":
                     await self.handle_code_interpreter_call_code_delta(event)
-                elif event.type == "response.output_text.annotation.added":
-                    await self.handle_output_text_annotation_added(event)
                 elif event.type == "response.function_call_arguments.delta":
                     await self.handle_function_call_arguments_delta(event)
                 elif event.type == "response.function_call_arguments.done":
@@ -261,21 +273,56 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
     async def handle_function_call_arguments_delta(self, event: ResponseFunctionCallArgumentsDeltaEvent):
         """Handle response.function_call_arguments.delta event"""
         # This would handle streaming function arguments, but typically we wait for the complete arguments
-        pass
+        # Implementation can be added here if streaming function arguments is needed
 
     async def handle_function_call_arguments_done(self, event: ResponseFunctionCallArgumentsDoneEvent):
-        """Handle response.function_call_arguments.done event - execute the function call"""
+        """Handle response.function_call_arguments.done event - execute the generated code"""
 
         arguments_str = event.arguments
 
-        # Since we only have one function defined, we can assume it's create_plotly_figure
-        # In a more complex setup, we'd need to track the function name from earlier events
+        # Since we only have one function defined, we can assume it's generate_plotly_figure
         try:
             # Parse arguments
             arguments = json.loads(arguments_str)
+            code = arguments.get('code', '')
 
-            # Create Plotly figure from config - this is what the user requested
-            fig = go.Figure(arguments)
+            if not code:
+                raise ValueError("No code provided in function arguments")
+
+            # Load the current dataframe for code execution
+            active_file_path = await self.get_active_file_path()
+            if not active_file_path:
+                raise ValueError("No active file available for analysis")
+
+            # Load dataframe
+            if active_file_path.endswith('.csv'):
+                df = pd.read_csv(active_file_path)
+            else:
+                df = pd.read_excel(active_file_path)
+
+            # Execute the generated code
+            # Create a safe execution environment with the dataframe
+            execution_globals = {
+                'df': df,
+                'pd': pd,
+                'go': go,
+                '__builtins__': __builtins__
+            }
+
+            # Execute the code and capture the result
+            exec(code, execution_globals)
+
+            # The code should have created a 'fig' variable or returned a figure
+            # Look for common variable names that might contain the figure
+            fig = None
+            for var_name in ['fig', 'figure', 'plot']:
+                if var_name in execution_globals and hasattr(execution_globals[var_name], 'to_dict'):
+                    fig = execution_globals[var_name]
+                    break
+
+            if fig is None:
+                raise ValueError(
+                    "The executed code did not produce a Plotly figure. Make sure to assign the figure to a variable named 'fig'.")
 
             # Create a success message showing the chart has been created
             success_message: ChatMessage
@@ -287,19 +334,28 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
                 )
             await self.update_current_response_message(success_message)
 
-        except json.JSONDecodeError as e:
-            Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
-                content=f"❌ Error parsing function arguments: {str(e)}",
-                role="assistant",
-                external_id=self._current_external_response_id
-            )
-            await self.update_current_response_message(error_message)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
             error_message = self.create_text_message(
-                content=f"❌ Error creating Plotly figure: {str(e)}",
+                content=f"❌ Error executing generated code: {str(e)}",
                 role="assistant",
                 external_id=self._current_external_response_id
             )
             await self.update_current_response_message(error_message)
+
+    async def close_current_message(self):
+        """Close the current streaming message and add it to the chat history, then save to conversation history."""
+        if not self._current_response_message:
+            return
+        await super().close_current_message()
+        # Save conversation after message is added to history
+        await self._save_conversation_to_history()
+
+    async def _save_conversation_to_history(self):
+        """Save current conversation to history with analysis-specific configuration."""
+        config: AiTableChatConfig
+        async with self:
+            config = await self.get_config()
+
+        # Save conversation to history after response is completed
+        await self.save_conversation_to_history(self.get_analysis_type(), config.to_json_dict())

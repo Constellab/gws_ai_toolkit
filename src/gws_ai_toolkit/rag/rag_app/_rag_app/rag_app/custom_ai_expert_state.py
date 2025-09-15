@@ -10,7 +10,6 @@ from gws_core import (BaseModelDTO, EntityTagList, Logger, ResourceModel,
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
 from .reflex.ai_expert.ai_expert_state import AiExpertState
-from .reflex.ai_table.ai_table_state import AiTableState
 from .reflex.chat_base.base_file_analysis_state import BaseFileAnalysisState
 
 
@@ -111,8 +110,8 @@ class CustomAssociatedResourceAiExpertState(AssociatedResourceState, rx.State):
         return await self.get_state(AiExpertState)
 
 
-class CustomAssociatedResourceAiTableState(AssociatedResourceState, rx.State):
-    """Custom AI Table state with associated resource functionality."""
+# class CustomAssociatedResourceAiTableState(AssociatedResourceState, rx.State):
+#     """Custom AI Table state with associated resource functionality."""
 
-    async def get_file_state(self) -> BaseFileAnalysisState:
-        return await self.get_state(AiTableState)
+#     async def get_file_state(self) -> BaseFileAnalysisState:
+#         return await self.get_state(AiTableState)

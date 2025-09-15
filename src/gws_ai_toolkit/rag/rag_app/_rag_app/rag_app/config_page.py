@@ -3,8 +3,6 @@ import reflex as rx
 
 from .reflex.ai_expert.ai_expert_config_component import \
     ai_expert_config_component
-from .reflex.ai_table.chat.ai_table_chat_config_component import \
-    ai_table_chat_config_component
 
 
 def combined_config_page() -> rx.Component:
@@ -27,16 +25,16 @@ def combined_config_page() -> rx.Component:
                 padding_bottom="1em",
             ),
 
-            rx.tabs.content(
-                rx.vstack(
-                    ai_table_chat_config_component(),
-                    spacing="4",
-                    width="100%",
-                ),
-                value="ai_table",
-                padding_top="1em",
-                padding_bottom="1em",
-            ),
+            # rx.tabs.content(
+            #     rx.vstack(
+            #         ai_table_chat_config_component(),
+            #         spacing="4",
+            #         width="100%",
+            #     ),
+            #     value="ai_table",
+            #     padding_top="1em",
+            #     padding_bottom="1em",
+            # ),
 
             default_value="ai_expert",
             width="100%",

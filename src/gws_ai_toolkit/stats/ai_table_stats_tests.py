@@ -434,7 +434,7 @@ class AiTableStatsTests:
             result_text = f"No significant linear correlation (r={correlation:.3f})."
 
         # Generate scatter plot
-        scatter_plot_figure: Figure
+        scatter_plot_figure: Figure | None = None
         if generate_plot:
             scatter_plot_figure = self.plots.generate_scatter_plot(x, y, x_name, y_name, "Pearson")
 
@@ -472,7 +472,7 @@ class AiTableStatsTests:
             result_text = f"No significant monotonic correlation (ρ={correlation:.3f})."
 
         # Generate scatter plot
-        scatter_plot_figure: Figure
+        scatter_plot_figure: Figure | None = None
         if generate_plot:
             scatter_plot_figure = self.plots.generate_scatter_plot(x, y, x_name, y_name, "Spearman")
 
