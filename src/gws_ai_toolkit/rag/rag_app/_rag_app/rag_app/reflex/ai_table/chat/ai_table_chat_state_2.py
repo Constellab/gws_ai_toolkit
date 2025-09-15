@@ -5,10 +5,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import reflex as rx
 from gws_core import BaseModelDTO, File, Logger, ResourceModel
-from openai.types.chat.chat_completion_tool_param import \
-    ChatCompletionToolParam
 from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
-                                    ResponseFunctionCallArgumentsDoneEvent)
+                                    ResponseFunctionCallArgumentsDoneEvent,
+                                    ResponseOutputItemDoneEvent)
 from pydantic import Field
 
 from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
@@ -54,8 +53,6 @@ class AiTableChatState2(BaseFileAnalysisState, rx.State):
         - Conversation history integration
         - Error handling and user feedback
     """
-
-    previous_response_id: Optional[str] = None  # For conversation continuity
 
     # UI configuration
     title = "AI Table Analyst"
@@ -230,22 +227,20 @@ fig.update_layout(title='Chart Title')
 
         instructions = self._create_custom_prompt(table_metadata, table_context)
 
-        tools: list[ChatCompletionToolParam] = [
-            {"type": "function", "name": "generate_plotly_figure",
+        tools = [
+            {"type": "function",
+             "name": "generate_plotly_figure",
              "description":
              "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object.",
              "parameters": PlotlyCodeConfig.model_json_schema()}]
 
-        # Create streaming response with code interpreter and function calling
         with client.responses.stream(
             model=config.model,
             instructions=instructions,
             input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
             temperature=config.temperature,
             previous_response_id=self._previous_external_response_id,
-            tools=tools,
-            # force the model to use the function
-            # tool_choice={"type": "function", "function": {"name": "generate_plotly_figure"}}
+            tools=tools
         ) as stream:
 
             # Process streaming events
@@ -261,12 +256,46 @@ fig.update_layout(title='Chart Title')
                     await self.handle_function_call_arguments_delta(event)
                 elif event.type == "response.function_call_arguments.done":
                     await self.handle_function_call_arguments_done(event)
-                elif event.type in ("response.output_item.added", "response.output_item.done"):
+                elif event.type == "response.output_item.added":
                     await self.close_current_message()
+                elif event.type == "response.output_item.done":
+                    await self.handle_output_item_done(event)
                 elif event.type == "response.created":
                     await self.handle_response_created(event)
                 elif event.type == "response.completed":
                     await self.handle_response_completed()
+
+    async def handle_output_item_done(self, event: ResponseOutputItemDoneEvent):
+        """Handle response.output_item.done event - close current message"""
+        await self.close_current_message()
+
+        # Mark the function as successful if it was a function call
+        if event.item.call_id:
+            # Get the current dataframe from data state
+            config: AiTableChatConfig
+            async with self:
+                config = await self.get_config()
+
+            input_list = []
+            input_list.append({
+                "type": "function_call_output",
+                "call_id": event.item.call_id,
+                "output": json.dumps({
+                    "Plot": "Successfully created the chart."
+                })
+            })
+
+            client = self._get_openai_client()
+
+            response = client.responses.create(
+                model=config.model,
+                instructions="Tool response.",
+                input=input_list,
+                previous_response_id=self._current_external_response_id,
+            )
+
+            async with self:
+                self._current_external_response_id = response.id
 
     async def handle_function_call_arguments_delta(self, event: ResponseFunctionCallArgumentsDeltaEvent):
         """Handle response.function_call_arguments.delta event"""
@@ -332,14 +361,6 @@ fig.update_layout(title='Chart Title')
                 )
             await self.update_current_response_message(success_message)
 
-        except json.JSONDecodeError as e:
-            Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
-                content=f"❌ Error parsing function arguments: {str(e)}",
-                role="assistant",
-                external_id=self._current_external_response_id
-            )
-            await self.update_current_response_message(error_message)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
             error_message = self.create_text_message(

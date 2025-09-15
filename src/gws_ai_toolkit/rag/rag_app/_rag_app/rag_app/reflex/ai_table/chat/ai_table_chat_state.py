@@ -5,7 +5,8 @@ import plotly.graph_objects as go
 import reflex as rx
 from gws_core import BaseModelDTO, File, Logger, ResourceModel
 from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
-                                    ResponseFunctionCallArgumentsDoneEvent)
+                                    ResponseFunctionCallArgumentsDoneEvent,
+                                    ResponseOutputItemDoneEvent)
 from pydantic import Field
 
 from ...chat_base.base_file_analysis_state import BaseFileAnalysisState
@@ -216,12 +217,46 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
                     await self.handle_function_call_arguments_delta(event)
                 elif event.type == "response.function_call_arguments.done":
                     await self.handle_function_call_arguments_done(event)
-                elif event.type == "response.output_item.added" or event.type == "response.output_item.done":
+                elif event.type == "response.output_item.added":
                     await self.close_current_message()
+                elif event.type == "response.output_item.done":
+                    await self.handle_output_item_done(event)
                 elif event.type == "response.created":
                     await self.handle_response_created(event)
                 elif event.type == "response.completed":
                     await self.handle_response_completed()
+
+    async def handle_output_item_done(self, event: ResponseOutputItemDoneEvent):
+        """Handle response.output_item.done event - close current message"""
+        await self.close_current_message()
+
+        # Mark the function as successful if it was a function call
+        if event.item.call_id:
+            # Get the current dataframe from data state
+            config: AiTableChatConfig
+            async with self:
+                config = await self.get_config()
+
+            input_list = []
+            input_list.append({
+                "type": "function_call_output",
+                "call_id": event.item.call_id,
+                "output": json.dumps({
+                    "Plot": "Successfully created the chart."
+                })
+            })
+
+            client = self._get_openai_client()
+
+            response = client.responses.create(
+                model=config.model,
+                instructions="Tool response.",
+                input=input_list,
+                previous_response_id=self._current_external_response_id,
+            )
+
+            async with self:
+                self._current_external_response_id = response.id
 
     async def handle_function_call_arguments_delta(self, event: ResponseFunctionCallArgumentsDeltaEvent):
         """Handle response.function_call_arguments.delta event"""
