@@ -252,10 +252,17 @@ class AiTableStats(AiTableStatsBase):
             if result.p_value <= 0.05:
                 all_normal = False
 
+        # Generate histogram figure for visualization
+        histogram_figure = self._tests.plots.generate_histogram(
+            dataframe,
+            title="Distribution Histogram for Normality Test"
+        )
+
         self._record_test(
             AiTableStatsResults(
                 test_name="Normality summary",
                 result_text="All columns are normal" if all_normal else "At least one column is not normal",
+                result_figure=histogram_figure,
                 details=NormalitySummaryTestDetails(
                     all_normal=all_normal,
                     test_used='Shapiro-Wilk' if num_rows < 50 else 'Kolmogorov-Smirnov',

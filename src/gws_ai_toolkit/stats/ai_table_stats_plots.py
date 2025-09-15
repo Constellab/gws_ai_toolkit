@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
-from plotly.graph_objects import Box, Figure, Heatmap, Scatter
+from plotly.graph_objects import Box, Figure, Heatmap, Histogram, Scatter
 
 
 class AiTableStatsPlots:
@@ -203,6 +203,69 @@ class AiTableStatsPlots:
             xaxis_title="Groups",
             showlegend=False,
             template="plotly_white"
+        )
+
+        return fig
+
+    def generate_histogram(self, dataframe: pd.DataFrame,
+                          title: str = "Distribution Histogram",
+                          bins: Optional[int] = None) -> Figure:
+        """Generate a histogram with multiple series for each dataframe column.
+
+        Args:
+            dataframe: DataFrame containing numeric columns to plot
+            title: Title for the histogram
+            bins: Number of bins for the histogram. If None, uses auto binning
+
+        Returns:
+            plotly.graph_objects.Figure: Histogram figure with multiple series
+        """
+        if dataframe.empty:
+            raise ValueError("DataFrame cannot be empty")
+
+        fig = Figure()
+
+        # Define lighter colors for different series
+        colors = ['lightblue', 'lightcoral', 'lightgreen', 'lightsalmon', 'plum', 'sandybrown', 'lightpink', 'lightgray', 'khaki', 'lightcyan']
+
+        for i, col in enumerate(dataframe.columns):
+            column_data = dataframe[col].dropna()
+
+            if len(column_data) == 0:
+                continue
+
+            color = colors[i % len(colors)]
+
+            fig.add_trace(Histogram(
+                x=column_data,
+                name=col,
+                nbinsx=bins,
+                opacity=0.6,  # Make bars transparent
+                marker=dict(
+                    color=color,
+                    line=dict(color='black', width=1)
+                ),
+                hovertemplate=f'<b>{col}</b><br>Value: %{{x}}<br>Count: %{{y}}<extra></extra>'
+            ))
+
+        fig.update_layout(
+            title={
+                'text': title,
+                'x': 0.5,
+                'xanchor': 'center'
+            },
+            xaxis_title="Values",
+            yaxis_title="Frequency",
+            barmode='overlay',  # Overlay bars so they can be placed at the same position
+            showlegend=True,
+            template="plotly_white",
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=1,
+                xanchor="left",
+                x=1.02
+            )
         )
 
         return fig
