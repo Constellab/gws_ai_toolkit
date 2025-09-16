@@ -242,6 +242,9 @@ fig.update_layout(title='Chart Title')
         """Handle response.output_item.done event - close current message"""
         await self.close_current_message()
 
+        if not hasattr(event.item, 'call_id'):
+            return
+
         # Mark the function as successful if it was a function call
         if event.item.call_id:
             # Get the current dataframe from data state

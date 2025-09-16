@@ -1,10 +1,10 @@
 from typing import cast
 
 from gws_core import (AppConfig, AppType, BoolParam, ConfigParams, ConfigSpecs,
-                      CredentialsDataOther, CredentialsParam, File, InputSpec,
-                      InputSpecs, OutputSpec, OutputSpecs, ReflexResource,
-                      StrParam, Task, TaskInputs, TaskOutputs, Utils,
-                      app_decorator, task_decorator)
+                      CredentialsDataOther, CredentialsParam, File, Folder,
+                      InputSpec, InputSpecs, OutputSpec, OutputSpecs,
+                      ReflexResource, StrParam, Task, TaskInputs, TaskOutputs,
+                      Utils, app_decorator, task_decorator)
 
 from gws_ai_toolkit.rag.common.rag_enums import RagResourceSyncMode
 
@@ -88,9 +88,9 @@ class GenerateDatahubRagDifyApp(Task):
         reflex_resource.set_param('configuration_file_path', app_config_file.path)
 
         # add the history file
-        history_file: File = cast(File, inputs['history_file'])
-        reflex_resource.add_resource(history_file, create_new_resource=False)
-        reflex_resource.set_param('history_file_path', history_file.path)
+        history_folder: Folder = cast(Folder, inputs['history_folder'])
+        reflex_resource.add_resource(history_folder, create_new_resource=False)
+        reflex_resource.set_param('history_folder_path', history_folder.path)
 
         reflex_resource.set_app_config(RagAppAppConfig())
         reflex_resource.name = "DataHub RAG app"

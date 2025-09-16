@@ -224,13 +224,14 @@ def _show_results() -> rx.Component:
             ),
         ),
         _show_additional_test_suggestion(),
-        rx.accordion.root(
-            rx.accordion.item(
-                header="Details",
-                content=rx.accordion.content(
-                    _show_last_run_config(),
-                    rx.cond(
-                        AiTableStatsState.test_history.length() > 0,
+        rx.cond(
+            AiTableStatsState.test_history.length() > 0,
+            rx.accordion.root(
+                rx.accordion.item(
+                    header="Details",
+                    content=rx.accordion.content(
+                        _show_last_run_config(),
+
                         rx.box(
                             rx.heading("Complete Test History", size="3", margin_bottom="0.5em", margin_top="1em"),
                             rx.vstack(
@@ -245,13 +246,14 @@ def _show_results() -> rx.Component:
                         )
                     ),
 
+
                 ),
-                style={"cursor": "pointer"},
+                collapsible=True,
+                width="100%",
+                variant="soft",
+                margin_top="1em",
+                style={".AccordionTrigger": {"cursor": "pointer"}},
             ),
-            collapsible=True,
-            width="100%",
-            variant="soft",
-            margin_top="1em"
         ),
 
     )

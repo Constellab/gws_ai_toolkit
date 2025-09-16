@@ -34,4 +34,4 @@ def upload_section():
                    "transition_timing_function": "ease-in-out", "display": "flex", "align_items": "center",
                    "justify_content": "center", "background_color": "white",
                    "_hover": {"background_color": "var(--accent-2)", "border_color": "var(--accent-10)", }, },),
-        align="start", spacing="3",  width="100%", margin_inline="auto", max_width="48rem")
+        align="start", spacing="3",  width="100%", margin_inline="auto", max_width="48rem", margin_top="1em",)
