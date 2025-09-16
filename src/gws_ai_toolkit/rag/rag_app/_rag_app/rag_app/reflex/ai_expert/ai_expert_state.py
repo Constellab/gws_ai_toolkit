@@ -155,7 +155,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
             for event in stream:
                 # Route events to specific handler methods
                 if event.type == "response.output_text.delta":
-                    await self.handle_output_text_delta(event)
+                    await self.handle_output_text_delta(event.delta)
                 elif event.type == "response.code_interpreter_call_code.delta":
                     await self.handle_code_interpreter_call_code_delta(event)
                 elif event.type == "response.output_text.annotation.added":

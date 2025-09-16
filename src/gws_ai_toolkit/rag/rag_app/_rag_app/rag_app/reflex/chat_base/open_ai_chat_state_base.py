@@ -5,8 +5,7 @@ from typing import Optional
 import reflex as rx
 from openai import OpenAI
 from openai.types.responses import (ResponseCodeInterpreterCallCodeDeltaEvent,
-                                    ResponseCreatedEvent,
-                                    ResponseTextDeltaEvent)
+                                    ResponseCreatedEvent)
 
 from .chat_message_class import ChatMessage
 from .chat_state_base import ChatStateBase
@@ -51,9 +50,8 @@ class OpenAiChatStateBase(ChatStateBase, rx.State, mixin=True):
             self._previous_external_response_id = self._current_external_response_id
             self._current_external_response_id = None
 
-    async def handle_output_text_delta(self, event: ResponseTextDeltaEvent):
+    async def handle_output_text_delta(self, text: str):
         """Handle response.output_text.delta event"""
-        text = event.delta
 
         current_message: Optional[ChatMessage] = None
 

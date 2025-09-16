@@ -13,7 +13,8 @@ from gws_ai_toolkit._app.chat_base import BaseFileAnalysisState, ChatMessage
 
 from ...ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
 from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig
-from .ai_table_plot_file_chat_config_state import AiTablePlotFileChatConfigState
+from .ai_table_plot_file_chat_config_state import \
+    AiTablePlotFileChatConfigState
 
 
 class PlotlyFigureConfig(BaseModelDTO):
@@ -209,7 +210,7 @@ class AiTablePlotFileChatState(BaseFileAnalysisState, rx.State):
             for event in stream:
                 # Route events to specific handler methods
                 if event.type == "response.output_text.delta":
-                    await self.handle_output_text_delta(event)
+                    await self.handle_output_text_delta(event.delta)
                 elif event.type == "response.code_interpreter_call_code.delta":
                     await self.handle_code_interpreter_call_code_delta(event)
                 elif event.type == "response.output_text.annotation.added":
