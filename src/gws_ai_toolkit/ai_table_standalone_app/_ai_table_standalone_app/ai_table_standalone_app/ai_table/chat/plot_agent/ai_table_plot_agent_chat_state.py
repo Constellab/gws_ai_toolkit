@@ -13,9 +13,9 @@ from pydantic import Field
 
 from gws_ai_toolkit._app.chat_base import ChatMessage, OpenAiChatStateBase
 
-from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
-from .ai_table_chat_config import AiTableChatConfig
-from .ai_table_chat_config_state import AiTableChatConfigState
+from ...ai_table_data_state import AiTableDataState
+from .ai_table_plot_agent_chat_config import AiTablePlotAgentChatConfig
+from .ai_table_plot_agent_chat_config_state import AiTablePlotAgentChatConfigState
 
 
 class PlotlyCodeConfig(BaseModelDTO):
@@ -27,7 +27,7 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class AiTableChatState2(OpenAiChatStateBase, rx.State):
+class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
     """State management for AI Table Chat - specialized Excel/CSV-focused chat functionality.
 
     This state class manages the AI Table chat workflow, providing intelligent
@@ -79,13 +79,13 @@ class AiTableChatState2(OpenAiChatStateBase, rx.State):
             return False
         return file.is_csv_or_excel()
 
-    async def get_config(self) -> AiTableChatConfig:
+    async def get_config(self) -> AiTablePlotAgentChatConfig:
         """Get configuration for AI Table analysis
 
         Returns:
-            AiTableChatConfig: Configuration object for AI Table
+            AiTablePlotAgentChatConfig: Configuration object for AI Table
         """
-        app_config_state = await self.get_state(AiTableChatConfigState)
+        app_config_state = await self.get_state(AiTablePlotAgentChatConfigState)
         config = await app_config_state.get_config()
         return config
 
@@ -141,24 +141,6 @@ fig.add_trace(go.Scatter(x=df['column1'], y=df['column2']))
 fig.update_layout(title='Chart Title')
 ```"""
 
-    async def get_active_file_path(self) -> Optional[str]:
-        """Get the file path for the currently active table (original or subtable)"""
-        data_state: AiTableDataState
-        async with self:
-            data_state = await self.get_state(AiTableDataState)
-
-        # If a subtable is active, use its file path
-        if data_state.current_table_id != ORIGINAL_TABLE_ID:
-            table_item = data_state._get_table_dataframe_item_by_id(data_state.current_table_id)
-            if table_item:
-                return table_item.file_path
-
-        # Otherwise use original file
-        if data_state.current_file_path:
-            return data_state.current_file_path
-
-        return None
-
     async def get_active_dataframe(self) -> Optional[pd.DataFrame]:
         """Get the active DataFrame for the currently active table (original or subtable)"""
         data_state: AiTableDataState
@@ -183,7 +165,7 @@ fig.update_layout(title='Chart Title')
         client = self._get_openai_client()
 
         # Get the current dataframe from data state
-        config: AiTableChatConfig
+        config: AiTablePlotAgentChatConfig
         dataframe = await self.get_active_dataframe()
 
         if dataframe is None:
@@ -374,7 +356,7 @@ fig.update_layout(title='Chart Title')
 
     async def _save_conversation_to_history(self):
         """Save current conversation to history with analysis-specific configuration."""
-        config: AiTableChatConfig
+        config: AiTablePlotAgentChatConfig
         async with self:
             config = await self.get_config()
 

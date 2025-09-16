@@ -4,7 +4,7 @@ from reflex_resizable_panels import resizable_panels as rzp
 
 from .ai_table_data_state import AiTableDataState
 from .ai_table_section import table_section
-from .chat.ai_table_chat_component import ai_table_chat_component
+from .chat.plot_agent.ai_table_plot_agent_chat_component import ai_table_plot_agent_chat_component as ai_table_chat_component
 from .stats.ai_table_stats_component import ai_table_stats_component
 
 

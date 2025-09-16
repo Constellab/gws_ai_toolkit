@@ -6,35 +6,36 @@ from gws_core import Logger
 from gws_ai_toolkit._app.chat_base import BaseAnalysisConfig
 from gws_ai_toolkit._app.core import AppConfigState
 
-from .ai_table_chat_config import AiTableChatConfig
+from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig
 
 
-class AiTableChatConfigState(rx.State):
-    """State management for AI Table configuration interface.
+class AiTablePlotFileChatConfigState(rx.State):
+    """State management for AI Table Plot File configuration interface.
 
-    This state class manages the configuration form for AI Table functionality,
-    handling user interactions, form validation, and configuration persistence.
+    This state class manages the configuration form for AI Table Plot File functionality.
+    Unlike the plot_agent version, this configuration has a fixed system prompt that
+    cannot be modified by the user, focusing only on model and temperature settings.
 
     Note:
-        Unlike AiExpertConfigState, this does not include mode or max_chunks
-        configuration as AI Table only operates in full_file mode.
+        The system_prompt is fixed and not configurable for plot_file mode as it
+        uses direct file upload to OpenAI with specific analysis capabilities.
     """
 
     def get_config_section_name(self) -> str:
-        """Get the configuration section name for AI Table
+        """Get the configuration section name for AI Table Plot File
 
         Returns:
-            str: 'ai_table_page' configuration section name
+            str: 'ai_table_plot_file_page' configuration section name
         """
-        return 'ai_table_page'
+        return 'ai_table_plot_file_page'
 
     def get_config_class(self) -> Type[BaseAnalysisConfig]:
-        """Get the configuration class for AI Table
+        """Get the configuration class for AI Table Plot File
 
         Returns:
-            Type[BaseAnalysisConfig]: AiTableConfig class type
+            Type[BaseAnalysisConfig]: AiTablePlotFileChatConfig class type
         """
-        return AiTableChatConfig
+        return AiTablePlotFileChatConfig
 
     async def get_config(self) -> BaseAnalysisConfig:
         """Get the current configuration for this analysis type"""
@@ -44,18 +45,6 @@ class AiTableChatConfigState(rx.State):
             self.get_config_class()
         )
         return cast(BaseAnalysisConfig, config)
-
-    @rx.var
-    async def system_prompt(self) -> str:
-        """Get the system prompt for the analysis type"""
-        config = await self.get_config()
-        return config.system_prompt
-
-    @rx.var
-    async def prompt_file_id_placeholder(self) -> str:
-        """Get the prompt file ID placeholder for readonly display"""
-        config = await self.get_config()
-        return config.prompt_file_placeholder
 
     @rx.var
     async def model(self) -> str:
@@ -69,41 +58,32 @@ class AiTableChatConfigState(rx.State):
         config = await self.get_config()
         return config.temperature
 
-    async def handle_common_config_validation(self, form_data: dict) -> tuple[str, str, float, str]:
-        """Handle common configuration form validation
+    async def handle_config_validation(self, form_data: dict) -> tuple[str, float, str]:
+        """Handle configuration form validation for plot_file mode
 
         Args:
             form_data (dict): Form data from submission
 
         Returns:
-            tuple: (system_prompt, model, temperature, error_message)
+            tuple: (model, temperature, error_message)
                    error_message is empty string if validation passes
         """
         # Get the new values from form data
-        new_system_prompt = form_data.get('system_prompt', '').strip()
         new_model = form_data.get('model', '').strip()
         new_temperature_str = form_data.get('temperature', '').strip()
 
-        if not new_system_prompt:
-            return "", "", 0.0, "System prompt cannot be empty"
-
         if not new_model:
-            return "", "", 0.0, "Model cannot be empty"
+            return "", 0.0, "Model cannot be empty"
 
         # Validate temperature
         try:
             new_temperature = float(new_temperature_str)
             if new_temperature < 0.0 or new_temperature > 2.0:
-                return "", "", 0.0, "Temperature must be between 0.0 and 2.0"
+                return "", 0.0, "Temperature must be between 0.0 and 2.0"
         except ValueError:
-            return "", "", 0.0, "Temperature must be a valid number"
+            return "", 0.0, "Temperature must be a valid number"
 
-        # Check placeholder validation
-        current_config = await self.get_config()
-        if current_config.prompt_file_placeholder not in new_system_prompt:
-            return "", "", 0.0, f"System prompt must include the prompt file placeholder: {current_config.prompt_file_placeholder}"
-
-        return new_system_prompt, new_model, new_temperature, ""
+        return new_model, new_temperature, ""
 
     async def handle_config_save(self, new_config: BaseAnalysisConfig):
         """Save the configuration and show appropriate feedback
@@ -136,20 +116,20 @@ class AiTableChatConfigState(rx.State):
 
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):
-        """Handle the AI Table configuration form submission"""
-        # Use common validation from base class
-        new_system_prompt, new_model, new_temperature, error = await self.handle_common_config_validation(form_data)
+        """Handle the AI Table Plot File configuration form submission"""
+        # Use validation specific to plot_file (no system prompt)
+        new_model, new_temperature, error = await self.handle_config_validation(form_data)
 
         if error:
             return rx.toast.error(error)
 
-        # Get current config to preserve placeholder
+        # Get current config to preserve system prompt and placeholder
         current_config = await self.get_config()
 
-        # Create new config with updated values
-        new_config = AiTableChatConfig(
+        # Create new config with updated values, preserving fixed system prompt
+        new_config = AiTablePlotFileChatConfig(
             prompt_file_placeholder=current_config.prompt_file_placeholder,
-            system_prompt=new_system_prompt,
+            system_prompt=current_config.system_prompt,  # Fixed, not configurable
             model=new_model,
             temperature=new_temperature
         )

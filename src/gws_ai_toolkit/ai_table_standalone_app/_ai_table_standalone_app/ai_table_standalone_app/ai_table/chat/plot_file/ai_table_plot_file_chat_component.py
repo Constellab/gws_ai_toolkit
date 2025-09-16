@@ -5,12 +5,27 @@ from gws_ai_toolkit._app.chat_base import (ChatConfig, chat_input_component,
                                            header_clear_chat_button_component)
 
 from ..ai_table_data_state import AiTableDataState
-from .ai_table_chat_state_2 import AiTableChatState2
+from .ai_table_plot_file_chat_state import AiTablePlotFileChatState
 
 
-def ai_table_chat_component():
+def ai_table_plot_file_chat_component():
+    """AI Table Plot File chat component.
+
+    This component provides a chat interface specifically for AI Table Plot File
+    functionality, which uploads the entire Excel/CSV file to OpenAI for analysis
+    with code interpreter capabilities.
+
+    Features:
+        - File-based analysis with full data access
+        - Interactive Plotly visualizations through function calls
+        - Comprehensive data analysis with pandas
+        - Chat history and conversation management
+
+    Returns:
+        rx.Component: Complete chat interface for AI Table Plot File functionality
+    """
     chat_config = ChatConfig(
-        state=AiTableChatState2
+        state=AiTablePlotFileChatState
     )
 
     return rx.auto_scroll(
@@ -26,7 +41,7 @@ def ai_table_chat_component():
         flex="1",
         display="flex",
         min_height="0",
-        class_name="ai-table-chat-component",
+        class_name="ai-table-plot-file-chat-component",
         flex_direction="column",
         padding="1em",
     )

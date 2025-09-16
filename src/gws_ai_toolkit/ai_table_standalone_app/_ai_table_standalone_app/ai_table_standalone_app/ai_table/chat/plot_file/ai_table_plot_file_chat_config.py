@@ -1,37 +1,8 @@
-
-from dataclasses import dataclass
-from typing import Callable, List
-
-import reflex as rx
-
 from gws_ai_toolkit._app.chat_base import BaseAnalysisConfig
 
 
-@dataclass
-class AiTableChatConfigUI:
-    """UI configuration class for AI Table interface customization.
-
-    This dataclass defines UI-specific configuration options for the AI Table
-    component, allowing customization of the interface elements and behavior.
-
-    Attributes:
-        header_buttons (Callable[[], List[rx.Component]] | None): Optional callable
-            that returns a list of custom header buttons to display in the AI Table
-            chat interface. If None, default header buttons are used.
-
-    Example:
-        def custom_buttons() -> List[rx.Component]:
-            return [rx.button("Custom Action", on_click=custom_handler)]
-
-        config = AiTableConfigUI(header_buttons=custom_buttons)
-    """
-
-    # Add custom button on top right of the header
-    header_buttons: Callable[[], List[rx.Component]] | None = None
-
-
-class AiTableChatConfig(BaseAnalysisConfig):
-    """Configuration class for AI Table functionality.
+class AiTablePlotFileChatConfig(BaseAnalysisConfig):
+    """Configuration class for AI Table with Plot File functionality.
 
     This class defines configurable parameters specific to the AI Table chat system
     for Excel/CSV analysis. It extends BaseAnalysisConfig to inherit common parameters
@@ -39,6 +10,8 @@ class AiTableChatConfig(BaseAnalysisConfig):
 
     The AI Table only supports full_file mode, where the Excel/CSV file is uploaded
     to the AI for complete document analysis with pandas/data processing capabilities.
+
+    Note: The system_prompt is fixed and not configurable for plot_file mode.
     """
 
     system_prompt: str = """You are an AI data analyst specialized in analyzing and answering questions about the Excel/CSV file "[FILE]".

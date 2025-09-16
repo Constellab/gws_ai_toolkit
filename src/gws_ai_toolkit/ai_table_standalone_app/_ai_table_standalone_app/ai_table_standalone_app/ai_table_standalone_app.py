@@ -5,12 +5,13 @@ import reflex as rx
 import reflex_enterprise as rxe
 from gws_reflex_base import add_unauthorized_page, get_theme
 
-from gws_ai_toolkit._app.ai_table import ai_table_chat_config_component
 from gws_ai_toolkit._app.core import NavBarItem, page_component
 from gws_ai_toolkit._app.history import HistoryState, history_component
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState
+from .ai_table.chat.plot_agent.ai_table_plot_agent_chat_config_component import \
+    ai_table_plot_agent_chat_config_component
 # keep import to configure the states
 from .custom_states import CustomAppConfigState, CustomConversationHistoryState
 from .upload_section import upload_section
@@ -50,7 +51,7 @@ def config_page():
     """Configuration page for AI Expert and AI Table settings."""
     return page_component(
         nav_bar_items,
-        ai_table_chat_config_component(),
+        ai_table_plot_agent_chat_config_component(),
     )
 
 # History page - for conversation history

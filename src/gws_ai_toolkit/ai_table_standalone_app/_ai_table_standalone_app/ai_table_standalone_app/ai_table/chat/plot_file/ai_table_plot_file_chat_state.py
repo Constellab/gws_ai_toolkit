@@ -11,9 +11,9 @@ from pydantic import Field
 
 from gws_ai_toolkit._app.chat_base import BaseFileAnalysisState, ChatMessage
 
-from ..ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
-from .ai_table_chat_config import AiTableChatConfig
-from .ai_table_chat_config_state import AiTableChatConfigState
+from ...ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
+from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig
+from .ai_table_plot_file_chat_config_state import AiTablePlotFileChatConfigState
 
 
 class PlotlyFigureConfig(BaseModelDTO):
@@ -25,7 +25,7 @@ class PlotlyFigureConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class AiTableChatState(BaseFileAnalysisState, rx.State):
+class AiTablePlotFileChatState(BaseFileAnalysisState, rx.State):
     """State management for AI Table Chat - specialized Excel/CSV-focused chat functionality.
 
     This state class manages the AI Table chat workflow, providing intelligent
@@ -86,14 +86,15 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
             return False
         return file.is_csv_or_excel()
 
-    async def get_config(self) -> AiTableChatConfig:
+    async def get_config(self) -> AiTablePlotFileChatConfig:
         """Get configuration for AI Table analysis
 
         Returns:
             AiTableConfig: Configuration object for AI Table
         """
-        app_config_state = await self.get_state(AiTableChatConfigState)
-        return await app_config_state.get_config()
+        app_config_state = await self.get_state(AiTablePlotFileChatConfigState)
+        config = await app_config_state.get_config()
+        return config
 
     def get_analysis_type(self) -> str:
         """Return analysis type for history saving
@@ -156,7 +157,7 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         client = self._get_openai_client()
 
         # Get the current dataframe from data state
-        config: AiTableChatConfig
+        config: AiTablePlotFileChatConfig
         data_state: AiTableDataState
         async with self:
             config = await self.get_config()
@@ -233,7 +234,7 @@ class AiTableChatState(BaseFileAnalysisState, rx.State):
         # Mark the function as successful if it was a function call
         if event.item.call_id:
             # Get the current dataframe from data state
-            config: AiTableChatConfig
+            config: AiTablePlotFileChatConfig
             async with self:
                 config = await self.get_config()
 
