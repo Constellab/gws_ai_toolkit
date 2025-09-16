@@ -1,12 +1,13 @@
 import json
-from typing import Optional
+from typing import List, Optional
 
 import pandas as pd
 import plotly.graph_objects as go
 import reflex as rx
-from gws_core import BaseModelDTO, File, Logger, ResourceModel
+from gws_core import BaseModelDTO, File, ResourceModel
 from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
                                     ResponseFunctionCallArgumentsDoneEvent,
+                                    ResponseFunctionToolCall,
                                     ResponseOutputItemDoneEvent)
 from pydantic import Field
 
@@ -59,6 +60,10 @@ class AiTableChatState2(OpenAiChatStateBase, rx.State):
     placeholder_text = "Ask about this Excel/CSV data..."
     empty_state_message = "Start analyzing your Excel/CSV data"
 
+    _consecutive_error_count: int = 0
+
+    MAX_CONSECUTIVE_ERRORS = 5  # Max consecutive errors before stopping analysis
+
     def validate_resource(self, resource: ResourceModel) -> bool:
         """Validate if file is an Excel or CSV file
 
@@ -92,7 +97,7 @@ class AiTableChatState2(OpenAiChatStateBase, rx.State):
         """
         return "ai_table"
 
-    def _create_custom_prompt(self, table_metadata: str, table_context: str) -> str:
+    def _create_custom_prompt(self, table_metadata: str) -> str:
         """Create custom prompt for table analysis with metadata
 
         Args:
@@ -105,8 +110,6 @@ class AiTableChatState2(OpenAiChatStateBase, rx.State):
         return f"""You are an AI assistant specialized in data analysis and visualization. You have access to information about a table/dataset but not the actual data.
 
 {table_metadata}
-
-{table_context}
 
 Your role is to help users analyze and visualize this data. When users request visualizations or charts, you should:
 
@@ -156,51 +159,51 @@ fig.update_layout(title='Chart Title')
 
         return None
 
+    async def get_active_dataframe(self) -> Optional[pd.DataFrame]:
+        """Get the active DataFrame for the currently active table (original or subtable)"""
+        data_state: AiTableDataState
+        async with self:
+            data_state = await self.get_state(AiTableDataState)
+
+        dataframe_item = data_state.get_current_dataframe_item()
+        if not dataframe_item:
+            return None
+        return dataframe_item.get_dataframe()
+
     async def call_ai_chat(self, user_message: str) -> None:
+        """Get streaming response from OpenAI about the table data"""
+
+        async with self:
+            self._consecutive_error_count = 0
+        messages = [{"role": "user", "content": [{"type": "input_text", "text": user_message}]}]
+        await self._call_ai_chat(messages)
+
+    async def _call_ai_chat(self, input_messages: List[dict]) -> None:
         """Get streaming response from OpenAI about the table data"""
         client = self._get_openai_client()
 
         # Get the current dataframe from data state
         config: AiTableChatConfig
-        data_state: AiTableDataState
+        dataframe = await self.get_active_dataframe()
+
+        if dataframe is None:
+            raise ValueError("No active dataframe available for analysis")
+
         async with self:
             config = await self.get_config()
-            data_state = await self.get_state(AiTableDataState)
 
-        # Get active table metadata instead of uploading file
-        active_file_path = await self.get_active_file_path()
-        if not active_file_path:
-            raise ValueError("No active file available for analysis")
+        # Get table metadata
+        column_info = []
+        for col in dataframe.columns:
+            dtype = str(dataframe[col].dtype)
+            column_info.append(f"{col}: {dtype}")
 
-        # Load dataframe to get metadata
-        try:
-            if active_file_path.endswith('.csv'):
-                df = pd.read_csv(active_file_path)
-            else:
-                df = pd.read_excel(active_file_path)
+        table_metadata = f"""Table Information:
+- Columns ({len(dataframe.columns)}): {', '.join(column_info)}
+- Number of rows: {len(dataframe)}
+- Table shape: {dataframe.shape}"""
 
-            # Get table metadata
-            column_info = []
-            for col in df.columns:
-                dtype = str(df[col].dtype)
-                column_info.append(f"{col}: {dtype}")
-
-            table_metadata = f"""Table Information:
-- Columns ({len(df.columns)}): {', '.join(column_info)}
-- Number of rows: {len(df)}
-- Table shape: {df.shape}"""
-
-        except Exception as e:
-            table_metadata = f"Error loading table metadata: {str(e)}"
-
-        # Create custom prompt with table metadata
-        table_context = ""
-        if data_state.current_table_id != ORIGINAL_TABLE_ID:
-            table_context = f"Currently analyzing subtable: {data_state.current_table_name}"
-        else:
-            table_context = f"Currently analyzing original table: {data_state.current_table_name}"
-
-        instructions = self._create_custom_prompt(table_metadata, table_context)
+        instructions = self._create_custom_prompt(table_metadata)
 
         tools = [
             {"type": "function",
@@ -212,7 +215,7 @@ fig.update_layout(title='Chart Title')
         with client.responses.stream(
             model=config.model,
             instructions=instructions,
-            input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
+            input=input_messages,
             temperature=config.temperature,
             previous_response_id=self._previous_external_response_id,
             tools=tools
@@ -220,6 +223,7 @@ fig.update_layout(title='Chart Title')
 
             # Process streaming events
             for event in stream:
+                # print("Received event:", event.type, type(event), type(event.item) if hasattr(event, 'item') else None)
                 # Route events to specific handler methods
                 if event.type == "response.output_text.delta":
                     await self.handle_output_text_delta(event)
@@ -227,8 +231,8 @@ fig.update_layout(title='Chart Title')
                     await self.handle_code_interpreter_call_code_delta(event)
                 elif event.type == "response.function_call_arguments.delta":
                     await self.handle_function_call_arguments_delta(event)
-                elif event.type == "response.function_call_arguments.done":
-                    await self.handle_function_call_arguments_done(event)
+                # elif event.type == "response.function_call_arguments.done":
+                #     await self.handle_function_call_arguments_done(event)
                 elif event.type == "response.output_item.added":
                     await self.close_current_message()
                 elif event.type == "response.output_item.done":
@@ -242,36 +246,60 @@ fig.update_layout(title='Chart Title')
         """Handle response.output_item.done event - close current message"""
         await self.close_current_message()
 
-        if not hasattr(event.item, 'call_id'):
+        if not isinstance(event.item, ResponseFunctionToolCall):
+            return
+
+        try:
+            await self._execute_generated_code(event.item.arguments)
+        except Exception as exec_error:
+            await self._handle_function_error(event.item.call_id, str(exec_error), event.item.to_dict())
+
             return
 
         # Mark the function as successful if it was a function call
-        if event.item.call_id:
-            # Get the current dataframe from data state
-            config: AiTableChatConfig
-            async with self:
-                config = await self.get_config()
+        await self._mark_function_call_as_successful(event.item.call_id, event.item.to_dict())
 
-            input_list = []
-            input_list.append({
-                "type": "function_call_output",
-                "call_id": event.item.call_id,
-                "output": json.dumps({
-                    "Plot": "Successfully created the chart."
-                })
-            })
+    async def _mark_function_call_as_successful(self, call_id: str, item: dict) -> None:
+        """Mark a function call as successful in the current response"""
+        if not self._current_external_response_id:
+            return
 
-            client = self._get_openai_client()
+        await self._call_ai_chat([item,
+                                  {
+                                      "type": "function_call_output",
+                                      "call_id": call_id,
+                                      "output": json.dumps({
+                                          "Plot": "Successfully created the chart."
+                                      })
+                                  }])
 
-            response = client.responses.create(
-                model=config.model,
-                instructions="Tool response.",
-                input=input_list,
-                previous_response_id=self._current_external_response_id,
-            )
+    async def _handle_function_error(self, call_id: str, error_message: str, item: dict) -> None:
+        error_chat_message = await self.create_error_message(error_message)
+        await self.update_current_response_message(error_chat_message)
 
-            async with self:
-                self._current_external_response_id = response.id
+        async with self:
+            self._consecutive_error_count += 1
+
+        messages = [item, {
+            "type": "function_call_output",
+                    "call_id": call_id,
+                    "output": json.dumps({
+                        "Error": error_message
+                    })
+        }]
+
+        if self._consecutive_error_count >= self.MAX_CONSECUTIVE_ERRORS:
+            # If too many consecutive errors, stop further analysis
+            stop_message = await self.create_error_message(
+                "Too many consecutive errors occurred during analysis. Please update your query.")
+            await self.update_current_response_message(stop_message)
+
+            messages.append({"role": "user", "content": [{"type": "input_text", "text": "Stop further analysis."}]})
+        else:
+            # If execution failed, we do not mark the function as successful
+            messages.append({"role": "user", "content": [{"type": "input_text", "text": "Can you fix the code?"}]})
+
+        await self._call_ai_chat(messages)
 
     async def handle_function_call_arguments_delta(self, event: ResponseFunctionCallArgumentsDeltaEvent):
         """Handle response.function_call_arguments.delta event"""
@@ -282,69 +310,59 @@ fig.update_layout(title='Chart Title')
         """Handle response.function_call_arguments.done event - execute the generated code"""
 
         arguments_str = event.arguments
+        await self._execute_generated_code(arguments_str)
+
+    async def _execute_generated_code(self, arguments_str: str) -> None:
 
         # Since we only have one function defined, we can assume it's generate_plotly_figure
+        # Parse arguments
+        arguments = json.loads(arguments_str)
+        code = arguments.get('code', '')
+
+        if not code:
+            raise ValueError("No code provided in function arguments")
+
+        # Load the current dataframe for code execution
+        df = await self.get_active_dataframe()
+
+        # Execute the generated code
+        # Create a safe execution environment with the dataframe
+        execution_globals = {
+            'df': df,
+            'pd': pd,
+            'go': go,
+            '__builtins__': __builtins__
+        }
+
+        # Execute the code and capture the result
         try:
-            # Parse arguments
-            arguments = json.loads(arguments_str)
-            code = arguments.get('code', '')
-
-            if not code:
-                raise ValueError("No code provided in function arguments")
-
-            # Load the current dataframe for code execution
-            active_file_path = await self.get_active_file_path()
-            if not active_file_path:
-                raise ValueError("No active file available for analysis")
-
-            # Load dataframe
-            if active_file_path.endswith('.csv'):
-                df = pd.read_csv(active_file_path)
-            else:
-                df = pd.read_excel(active_file_path)
-
-            # Execute the generated code
-            # Create a safe execution environment with the dataframe
-            execution_globals = {
-                'df': df,
-                'pd': pd,
-                'go': go,
-                '__builtins__': __builtins__
-            }
-
-            # Execute the code and capture the result
             exec(code, execution_globals)
+        except Exception as exec_error:
+            raise RuntimeError(f"Error executing generated code: {exec_error}")
 
-            # The code should have created a 'fig' variable or returned a figure
-            # Look for common variable names that might contain the figure
-            fig = None
-            for var_name in ['fig', 'figure', 'plot']:
-                if var_name in execution_globals and hasattr(execution_globals[var_name], 'to_dict'):
-                    fig = execution_globals[var_name]
-                    break
+        # The code should have created a 'fig' variable or returned a figure
+        # Look for common variable names that might contain the figure
+        if 'fig' not in execution_globals:
+            # If 'fig' is not defined, check if the code returned a figure directly
+            raise Exception(
+                "The executed code did not define a variable named 'fig'. Make sure to assign the plotly figure to a variable named 'fig'.")
 
-            if fig is None:
-                raise ValueError(
-                    "The executed code did not produce a Plotly figure. Make sure to assign the figure to a variable named 'fig'.")
+        fig = execution_globals['fig']
 
-            # Create a success message showing the chart has been created
-            success_message: ChatMessage
-            async with self:
-                success_message = await self.create_plotly_message(
-                    figure=fig,
-                    role="assistant",
-                    external_id=self._current_external_response_id
-                )
-            await self.update_current_response_message(success_message)
+        # If fig is not a plotly figure, raise an error
+        if not isinstance(fig, go.Figure):
+            raise Exception(
+                "The 'fig' variable is not a Plotly figure. Make sure to assign a plotly `Figure` object to a variable named 'fig'.")
 
-        except Exception as e:
-            Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
-                content=f"❌ Error executing generated code: {str(e)}",
+        # Create a success message showing the chart has been created
+        success_message: ChatMessage
+        async with self:
+            success_message = await self.create_plotly_message(
+                figure=fig,
                 role="assistant",
                 external_id=self._current_external_response_id
             )
-            await self.update_current_response_message(error_message)
+        await self.update_current_response_message(success_message)
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""

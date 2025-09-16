@@ -45,6 +45,8 @@ class OpenAiChatStateBase(ChatStateBase, rx.State, mixin=True):
     async def handle_response_completed(self):
         """Handle response.completed event"""
         await self.close_current_message()
+        if not self._current_external_response_id:
+            return
         async with self:
             self._previous_external_response_id = self._current_external_response_id
             self._current_external_response_id = None

@@ -39,7 +39,7 @@ class AiTableDataState(rx.State):
     extract_dialog_open: bool = False
     use_first_row_as_header: bool = False
 
-    def _get_current_dataframe_item(self) -> Optional[DataFrameItem]:
+    def get_current_dataframe_item(self) -> Optional[DataFrameItem]:
         """Create DataFrameItem from current file info"""
         if not self.current_file_path or not os.path.exists(self.current_file_path):
             return None
@@ -48,7 +48,7 @@ class AiTableDataState(rx.State):
     def _get_table_dataframe_item_by_id(self, table_id: str) -> Optional[DataFrameItem]:
         """Get DataFrameItem for a table by ID"""
         if table_id == ORIGINAL_TABLE_ID:
-            return self._get_current_dataframe_item()
+            return self.get_current_dataframe_item()
 
         return self._tables.get(table_id)
 
@@ -63,7 +63,7 @@ class AiTableDataState(rx.State):
         self.current_file_name = os.path.splitext(os.path.basename(file.path))[0]
 
         # Test if file can be loaded
-        df_item = self._get_current_dataframe_item()
+        df_item = self.get_current_dataframe_item()
         if df_item:
             test_df = df_item.get_default_dataframe()
             if test_df.empty:
@@ -88,7 +88,7 @@ class AiTableDataState(rx.State):
     @rx.event
     def switch_sheet(self, sheet_name: str):
         """Switch to a different sheet in the current dataframe"""
-        df_item = self._get_current_dataframe_item()
+        df_item = self.get_current_dataframe_item()
         if df_item and sheet_name in df_item.get_sheet_names():
             self.current_sheet_name = sheet_name
 
@@ -108,7 +108,7 @@ class AiTableDataState(rx.State):
     @rx.var
     def get_sheet_names(self) -> List[str]:
         """Get sheet names for the current dataframe"""
-        df_item = self._get_current_dataframe_item()
+        df_item = self.get_current_dataframe_item()
         if df_item:
             return df_item.get_sheet_names()
         return []
@@ -184,14 +184,10 @@ class AiTableDataState(rx.State):
 
         return row_data
 
-    def get_current_dataframe_item(self) -> Optional[DataFrameItem]:
-        """Get the current dataframe item for chat integration"""
-        return self._get_current_dataframe_item()
-
     @rx.var
     def has_multiple_sheets(self) -> bool:
         """Check if current file has multiple sheets"""
-        df_item = self._get_current_dataframe_item()
+        df_item = self.get_current_dataframe_item()
         return df_item.has_multiple_sheets() if df_item else False
 
     # Selection and extraction methods

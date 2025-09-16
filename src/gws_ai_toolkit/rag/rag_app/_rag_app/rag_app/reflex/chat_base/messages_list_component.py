@@ -3,9 +3,9 @@ import plotly.graph_objects as go
 import reflex as rx
 
 from .chat_config import ChatConfig
-from .chat_message_class import (ChatMessageCode, ChatMessageFront,
-                                 ChatMessageImageFront, ChatMessagePlotlyFront,
-                                 ChatMessageText)
+from .chat_message_class import (ChatMessageCode, ChatMessageError,
+                                 ChatMessageFront, ChatMessageImageFront,
+                                 ChatMessagePlotlyFront, ChatMessageText)
 from .chat_state_base import ChatStateBase
 
 
@@ -182,6 +182,7 @@ def _message_content(message: ChatMessageFront) -> rx.Component:
         ("image", _image_content(message)),
         ("code", _code_content(message)),
         ("plotly", _plotly_content(message)),
+        ("error", _error_content(message)),
         rx.text(f"Unsupported message type {message.type}.")
     )
 
@@ -250,4 +251,31 @@ def _plotly_content(message: ChatMessagePlotlyFront) -> rx.Component:
             data=rx.cond(message.figure, message.figure, go.Figure()),
             width="100%",
         )
+    )
+
+
+def _error_content(message: ChatMessageError) -> rx.Component:
+    """Renders error content with distinctive error styling.
+
+    Args:
+        message (ChatMessageError): Error message to render
+
+    Returns:
+        rx.Component: Error content with red background and warning styling
+    """
+    return rx.box(
+        rx.hstack(
+            rx.icon("triangle-alert", size=16, color="red"),
+            rx.text(
+                message.error,
+                font_size="14px",
+                color="red",
+            ),
+            spacing="2",
+            align_items="center",
+        ),
+        background_color="rgba(239, 68, 68, 0.1)",
+        border_left="4px solid red",
+        padding="12px",
+        border_radius="8px",
     )

@@ -181,8 +181,30 @@ class ChatMessagePlotlyFront(ChatMessageBase):
         arbitrary_types_allowed = True
 
 
+class ChatMessageError(ChatMessageBase):
+    """Chat message representing an error.
+
+    Specialized chat message for conveying error information within the
+    chat conversation. Used to inform users about issues or problems
+    encountered during interactions.
+
+    Attributes:
+        type: Fixed as "error" to identify this as an error message
+        content (str): The error message content
+
+    Example:
+        error_msg = ChatMessageError(
+            role="assistant",
+            content="An error occurred while processing your request.",
+            id="msg_error_123"
+        )
+    """
+    type: Literal["error"] = "error"
+    error: str
+
+
 # Type used for the storage and internal processing
-ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly
+ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly | ChatMessageError
 
 # Type used  for front-end rendering
-ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotlyFront
+ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotlyFront | ChatMessageError

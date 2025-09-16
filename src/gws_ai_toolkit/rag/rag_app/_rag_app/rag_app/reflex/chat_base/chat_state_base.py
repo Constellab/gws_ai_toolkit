@@ -18,9 +18,10 @@ from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
 from ..history.conversation_history_state import ConversationHistoryState
 from .chat_message_class import (ChatMessage, ChatMessageCode,
-                                 ChatMessageFront, ChatMessageImage,
-                                 ChatMessageImageFront, ChatMessagePlotly,
-                                 ChatMessagePlotlyFront, ChatMessageText)
+                                 ChatMessageError, ChatMessageFront,
+                                 ChatMessageImage, ChatMessageImageFront,
+                                 ChatMessagePlotly, ChatMessagePlotlyFront,
+                                 ChatMessageText)
 
 
 class ChatStateBase(ReflexMainState, rx.State, mixin=True):
@@ -279,6 +280,18 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             filename=filename,
             external_id=external_id,
             sources=sources or []
+        )
+
+    async def create_error_message(self,
+                                   error_text: str,
+                                   role: Literal['user', 'assistant'] = "assistant",
+                                   external_id: Optional[str] = None) -> ChatMessageError:
+        """Create an error message"""
+        return ChatMessageError(
+            id=str(uuid.uuid4()),
+            role=role,
+            error=error_text,
+            external_id=external_id
         )
 
     def _save_image_to_temp(self, image: Image.Image) -> str:
