@@ -9,11 +9,10 @@ from openai.types.responses import (ResponseFunctionToolCall,
                                     ResponseOutputItemDoneEvent)
 from pydantic import Field
 
-from .plotly_agent_ai_events import (
-    PlotAgentEvent, TextDeltaEvent, PlotGeneratedEvent,
-    ErrorEvent, ResponseCreatedEvent, ResponseCompletedEvent,
-    OutputItemAddedEvent, OutputItemDoneEvent
-)
+from .plotly_agent_ai_events import (ErrorEvent, PlotAgentEvent,
+                                     PlotGeneratedEvent,
+                                     ResponseCompletedEvent,
+                                     ResponseCreatedEvent, TextDeltaEvent)
 
 
 class PlotlyCodeConfig(BaseModelDTO):
@@ -26,52 +25,113 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class PlotyAgentAi:
+class SuccessValidationResponse(BaseModelDTO):
+    items: list[dict]
+
+
+InternalPlotEvent = PlotAgentEvent | SuccessValidationResponse
+
+
+class PlotlyAgentAi:
     """Standalone plot agent service for data visualization using OpenAI"""
 
     MAX_CONSECUTIVE_ERRORS = 5
+    MAX_GENERATION_ATTEMPTS = 3
 
     _openai_client: OpenAI
-    _consecutive_error_count: int
     _dataframe: pd.DataFrame
     _model: str
     _temperature: float
+    _previous_response_id: Optional[str]
+    _events_emitted: List[PlotAgentEvent]
 
     def __init__(self, openai_client: OpenAI,
                  dataframe: pd.DataFrame,
                  model: str,
                  temperature: float):
         self._openai_client = openai_client
-        self._consecutive_error_count = 0
         self._dataframe = dataframe
         self._model = model
         self._temperature = temperature
+        self._previous_response_id = None
+        self._events_emitted = []
+        self._success_inputs = None
 
     def generate_plot_stream(
         self,
         user_query: str,
-        previous_response_id: Optional[str] = None
     ) -> Generator[PlotAgentEvent, None, None]:
         """Generate plot with streaming events
 
         Args:
             user_query: User's request for visualization
-            previous_response_id: Previous OpenAI response ID for conversation continuity
 
         Yields:
             PlotAgentEvent: Stream of events during plot generation
         """
-        self._consecutive_error_count = 0
+        consecutive_error_count = 0
 
-        # Prepare messages and prompt
         messages = [{"role": "user", "content": [{"type": "input_text", "text": user_query}]}]
-        for event in self._generate_plot_stream_internal(messages, previous_response_id):
-            yield event
+
+        # Main generation loop - replace recursion with iteration
+        while (consecutive_error_count < self.MAX_CONSECUTIVE_ERRORS):
+
+            success_function_call_id: str | None = None
+            error_event: ErrorEvent | None = None
+
+            # Generate events for this attempt
+            for event in self._generate_plot_stream_internal(messages):
+                self._events_emitted.append(event)
+                yield event
+
+                if isinstance(event, PlotGeneratedEvent):
+                    # Plot was successfully generated
+                    success_function_call_id = event.call_id
+
+                elif isinstance(event, ErrorEvent):
+                    error_event = event
+
+            # If plot was successfully generated, call OpenAI for success response
+            # Update the current message and call openai in next iteration
+            if success_function_call_id:
+                messages = [{
+                    "type": "function_call_output",
+                    "call_id": success_function_call_id,
+                    "output": json.dumps({
+                        "Plot": "Successfully created the chart."
+                    })
+                }]
+                continue
+
+            # If there was an error during the function call, prepare error message for next iteration
+
+            if error_event and error_event.call_id:
+                messages = [
+                    {
+                        "type": "function_call_output",
+                        "call_id": error_event.call_id,
+                        "output": json.dumps({
+                            "Plot": f"Error: {error_event.message}"
+                        })
+                    },
+                    {"role": "user", "content": [{"type": "input_text", "text": "Can you fix the code?"}]}
+                ]
+                continue
+
+            # If there were no function call (no plot) and no error, we are done
+            if not success_function_call_id and not error_event:
+                break
+
+        if consecutive_error_count >= self.MAX_CONSECUTIVE_ERRORS:
+            yield ErrorEvent(
+                message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached",
+                code=None,
+                error_type="max_errors_reached",
+            )
 
     def _generate_plot_stream_internal(
         self,
         input_messages: List[dict],
-        previous_response_id: Optional[str] = None
     ) -> Generator[PlotAgentEvent, None, None]:
         """Internal method for plot generation with streaming"""
 
@@ -94,7 +154,7 @@ class PlotyAgentAi:
             instructions=prompt,
             input=input_messages,
             temperature=self._temperature,
-            previous_response_id=previous_response_id,
+            previous_response_id=self._previous_response_id,
             tools=tools
         ) as stream:
 
@@ -103,17 +163,14 @@ class PlotyAgentAi:
                 # Yield streaming events to consumer
                 if event.type == "response.output_text.delta":
                     yield TextDeltaEvent(delta=event.delta)
-                elif event.type == "response.output_item.added":
-                    yield OutputItemAddedEvent(
-                        item_data=event.to_dict() if hasattr(event, 'to_dict') else str(event)
-                    )
+
                 elif event.type == "response.created":
-                    current_response_id = event.response.id if hasattr(event, 'response') else None
+                    current_response_id = event.response.id
                     yield ResponseCreatedEvent(response_id=current_response_id)
                 elif event.type == "response.completed":
+                    self._previous_response_id = event.response.id
                     yield ResponseCompletedEvent()
                 elif event.type == "response.output_item.done":
-                    yield OutputItemDoneEvent(item_data=event)
                     for item_event in self._handle_output_item_done(event, current_response_id):
                         yield item_event
 
@@ -121,39 +178,48 @@ class PlotyAgentAi:
                                  current_response_id: Optional[str]) -> Generator[PlotAgentEvent, None, None]:
         """Handle output item done event"""
         # Handle function call completion
-        if self._is_function_call_event(event):
-            function_args = self._parse_function_arguments(event)
-            call_id = self._get_function_call_id(event)
 
-            if function_args:
-                try:
-                    figure, code = self._execute_generated_code(function_args)
+        if not isinstance(event, ResponseOutputItemDoneEvent) or \
+                not isinstance(event.item, ResponseFunctionToolCall):
+            return
 
-                    yield PlotGeneratedEvent(
-                        figure=figure,
-                        code=code,
-                        call_id=call_id,
-                        response_id=current_response_id
-                    )
+        function_args = event.item.arguments
+        call_id = event.item.call_id
 
-                    # For now, just return after successful plot generation
-                    # TODO: In the future, we might want to continue the conversation
-                    return
+        if not function_args:
+            yield ErrorEvent(
+                message=str("No function arguments provided for plot generation."),
+                code=None,
+                call_id=call_id,
+                error_type="execution_error",
+            )
+            return
 
-                except Exception as exec_error:
-                    self._consecutive_error_count += 1
+        try:
+            figure, code = self._execute_generated_code(function_args)
 
-                    yield ErrorEvent(
-                        message=str(exec_error),
-                        code=None,
-                        error_type="execution_error",
-                        consecutive_error_count=self._consecutive_error_count,
-                        is_recoverable=self._consecutive_error_count < self.MAX_CONSECUTIVE_ERRORS
-                    )
+            yield PlotGeneratedEvent(
+                figure=figure,
+                code=code,
+                call_id=call_id,
+                response_id=current_response_id
+            )
 
-                    # For now, just return after error - no recursive recovery
-                    # TODO: In the future, implement error recovery with conversation continuation
-                    return
+            # Plot generation successful - no recursion needed
+            # The success response will be handled in the main loop
+            return
+
+        except Exception as exec_error:
+
+            yield ErrorEvent(
+                message=str(exec_error),
+                code=None,
+                call_id=call_id,
+                error_type="execution_error",
+            )
+
+            # Return after error - the main loop will handle retry logic
+            return
 
     def _execute_generated_code(self, arguments_str: str) -> tuple[go.Figure, str]:
         """Execute generated code and return figure and code
@@ -197,12 +263,8 @@ class PlotyAgentAi:
             raise ValueError("No code provided")
 
         # Create safe execution environment
-        execution_globals = {
-            'df': self._dataframe,
-            'pd': pd,
-            'go': go,
-            '__builtins__': __builtins__
-        }
+        execution_globals = self._get_code_execution_globals()
+        execution_globals['df'] = self._dataframe
 
         # Execute the code
         try:
@@ -227,26 +289,13 @@ class PlotyAgentAi:
 
         return fig
 
-    def _parse_function_arguments(self, event_data) -> Optional[str]:
-        """Parse function arguments from OpenAI event"""
-        if isinstance(
-                event_data, ResponseOutputItemDoneEvent) and isinstance(
-                event_data.item, ResponseFunctionToolCall):
-            return event_data.item.arguments
-        return None
-
-    def _get_function_call_id(self, event_data) -> Optional[str]:
-        """Get function call ID from OpenAI event"""
-        if isinstance(
-                event_data, ResponseOutputItemDoneEvent) and isinstance(
-                event_data.item, ResponseFunctionToolCall):
-            return event_data.item.call_id
-        return None
-
-    def _is_function_call_event(self, event_data) -> bool:
-        """Check if event is a function call"""
-        return (isinstance(event_data, ResponseOutputItemDoneEvent) and
-                isinstance(event_data.item, ResponseFunctionToolCall))
+    def _get_code_execution_globals(self) -> dict:
+        """Get globals for code execution environment"""
+        return {
+            'pd': pd,
+            # 'go': go,
+            '__builtins__': __builtins__
+        }
 
     def _get_table_metadata(self) -> str:
         """Get table metadata for prompt creation

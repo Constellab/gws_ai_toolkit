@@ -4,7 +4,7 @@ import pandas as pd
 import reflex as rx
 
 from gws_ai_toolkit._app.chat_base import OpenAiChatStateBase
-from gws_ai_toolkit.core.agents.plotly_agent_ai import PlotyAgentAi
+from gws_ai_toolkit.core.agents.plotly_agent_ai import PlotlyAgentAi
 from gws_ai_toolkit.core.agents.plotly_agent_ai_events import PlotAgentEvent
 
 from ...ai_table_data_state import AiTableDataState
@@ -86,21 +86,18 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
         openai_client = self._get_openai_client()
 
         # Create plot agent service
-        plot_service = PlotyAgentAi(openai_client, dataframe,
-                                    model=config.model,
-                                    temperature=config.temperature)
+        plot_service = PlotlyAgentAi(openai_client, dataframe,
+                                     model=config.model,
+                                     temperature=config.temperature)
 
         # Stream plot generation events
         for event in plot_service.generate_plot_stream(
             user_query=user_message,
-            previous_response_id=self._previous_external_response_id
         ):
             await self._handle_plot_agent_event(event)
 
     async def _handle_plot_agent_event(self, event: PlotAgentEvent) -> None:
         """Handle events from the plot agent service"""
-        print(f'Handling event: {event.type}')
-
         if event.type == "text_delta":
             await self.handle_output_text_delta(event.delta)
         elif event.type == "plot_generated":
@@ -133,8 +130,6 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
         async with self:
             self._current_external_response_id = response_id
             self._previous_external_response_id = response_id
-
-    # Old methods removed - now handled by PlotAgentService
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""

@@ -1,5 +1,4 @@
-from datetime import datetime
-from typing import Any, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 import plotly.graph_objects as go
 from gws_core import BaseModelDTO
@@ -9,11 +8,6 @@ from gws_core import BaseModelDTO
 class TextDeltaEvent(BaseModelDTO):
     type: Literal["text_delta"] = "text_delta"
     delta: str
-
-
-class FunctionCallStartedEvent(BaseModelDTO):
-    type: Literal["function_call_started"] = "function_call_started"
-    call_data: Any
 
 
 class PlotGeneratedEvent(BaseModelDTO):
@@ -32,8 +26,7 @@ class ErrorEvent(BaseModelDTO):
     message: str
     code: Optional[str]
     error_type: str
-    consecutive_error_count: int
-    is_recoverable: bool
+    call_id: str | None = None
 
 
 class ResponseCreatedEvent(BaseModelDTO):
@@ -45,24 +38,11 @@ class ResponseCompletedEvent(BaseModelDTO):
     type: Literal["response_completed"] = "response_completed"
 
 
-class OutputItemAddedEvent(BaseModelDTO):
-    type: Literal["output_item_added"] = "output_item_added"
-    item_data: Any
-
-
-class OutputItemDoneEvent(BaseModelDTO):
-    type: Literal["output_item_done"] = "output_item_done"
-    item_data: Any
-
-
 # Union type for all events
 PlotAgentEvent = Union[
     TextDeltaEvent,
-    FunctionCallStartedEvent,
     PlotGeneratedEvent,
     ErrorEvent,
     ResponseCreatedEvent,
-    ResponseCompletedEvent,
-    OutputItemAddedEvent,
-    OutputItemDoneEvent
+    ResponseCompletedEvent
 ]
