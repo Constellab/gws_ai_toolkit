@@ -11,53 +11,21 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
 ### Directory Structure
 - `src/gws_ai_toolkit/` - Main RAG implementations
   - `rag/` - RAG services and integrations
-    - `common/` - Shared base classes and utilities
-    - `dify/` - Dify platform integration  
-    - `ragflow/` - RagFlow platform integration
-    - `rag_app/_rag_app/` - Standalone Reflex-based RAG application
-    - `datahub_dify_app/` - DataHub integration app for Dify
   - `stats/` - Tools to perform statistical analysis and generate visualizations
+  - `core/` - Core utilities and helpers
+  - `ai_table_standalone_app/` - Standalone Reflex-based AI Table application
 - `tests/test_gws_ai_toolkit/` - Test files
 
-### Core Components
 
-#### Common RAG Infrastructure (`src/gws_ai_toolkit/rag/common/`)
-- `base_rag_service.py` - Abstract base class defining the common interface for all RAG services
-- `rag_models.py` - Shared data models (RagDocument, RagChunk, RagChatStreamResponse, etc.)
-- `rag_service_factory.py` - Factory pattern for creating RAG service instances
-- `rag_enums.py` - Common enumerations used across RAG services
-- `datahub_rag_resource.py` - DataHub resource integration
-- `rag_datahub_service.py` - Service for DataHub RAG operations
-
-#### Service Architecture Pattern
-All RAG services implement the `BaseRagService` abstract class with these key methods:
-
-#### Dify Integration (`src/gws_ai_toolkit/rag/dify/`)
-- `dify_service.py` - Direct Dify API implementation with HTTP requests
-- `rag_dify_service.py` - Wrapper implementing BaseRagService interface
-- `dify_class.py` - Data models and DTOs for Dify API responses
-- `dify_send_file_to_knownledge_base.py` - File upload operations
-
-#### RagFlow Integration (`src/gws_ai_toolkit/rag/ragflow/`)
-- `ragflow_service.py` - Direct RagFlow SDK wrapper implementation  
-- `rag_ragflow_service.py` - Wrapper implementing BaseRagService interface
-- `ragflow_class.py` - Data models using ragflow-sdk types
-- `ragflow_send_file_to_dataset.py` - File upload operations
-
-## RAG Application
+## Applications
 - RAG app directory: `src/gws_ai_toolkit/rag/rag_app/_rag_app/`
-- This app is the main part of the repository. It is an app built using the Reflex framework and is responsible for providing the user interface and interaction layer for the RAG services (chat and configuration of the RAG).
+  - CONFIG_FILE_PATH: `src/gws_ai_toolkit/rag/rag_app/_rag_app/dev_config.json`
+- Ai Table app directory: `src/gws_ai_toolkit/ai_table_standalone_app/_ai_table_standalone_app/`
+  - CONFIG_FILE_PATH: `src/gws_ai_toolkit/ai_table_standalone_app/_ai_table_standalone_app/dev_config.json`
 
 ### Dependencies
 - `gws_core` (v0.16.1) - Core Constellab functionality including BaseModelDTO, credentials, external API services
-- `reflex` (v0.8.2) - Web framework for the RAG application
-
-### Routes
-- `/` - That chat page and the main entry point of the Reflex app
-- `/history` - History page to view and browse past conversations with scrollable sidebar and read-only chat display
-- `/ai-expert/:resourceId` - Page to chat with an AI with the full document. For test use `/ai-expert/c9797bc487e911f0bde1323f673eb2db`
-- `/resource` - Page to manage resources and sync with the knowledge base
-- `/config` - Configuration page
+- `reflex` (v0.8.8) - Web framework for the RAG application
 
 ### Development best practises
 - Follow a modular architecture for components and pages
@@ -73,7 +41,7 @@ All RAG services implement the `BaseRagService` abstract class with these key me
 - set the imports on top of the file
 
 ### Start RAG app
-- Run the RAG app locally: `gws reflex run-dev src/gws_ai_toolkit/rag/rag_app/_rag_app/dev_config.json` 
+- Run the RAG app locally: `gws reflex run-dev [CONFIG_FILE_PATH]` 
 - The app is available once the following log is print : `Running app in dev mode{env_txt}, DO NOT USE IN PRODUCTION. You can access the app at {url}`
 - Allow approximately 20 seconds for full initialization
 - If you encounter port conflicts:

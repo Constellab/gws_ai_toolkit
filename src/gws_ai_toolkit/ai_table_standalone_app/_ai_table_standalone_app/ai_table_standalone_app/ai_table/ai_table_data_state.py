@@ -12,6 +12,7 @@ from gws_ai_toolkit.core.dataframe_item import DataFrameItem
 ORIGINAL_TABLE_ID = "original"
 
 RightPanelState = Literal["closed", "chat", "stats"]
+ChatMode = Literal["plot", "transform"]
 
 
 class AiTableDataState(rx.State):
@@ -29,6 +30,7 @@ class AiTableDataState(rx.State):
 
     # UI state
     right_panel_state: RightPanelState = "closed"
+    current_chat_mode: ChatMode = "plot"
 
     # Table
     _tables: Dict[str, DataFrameItem] = {}  # Dict with ID as key: DataFrameItem
@@ -99,6 +101,11 @@ class AiTableDataState(rx.State):
             self.right_panel_state = "closed"
         else:
             self.right_panel_state = state
+
+    @rx.event
+    def set_chat_mode(self, mode: ChatMode):
+        """Set the current chat mode (plot, transform)"""
+        self.current_chat_mode = mode
 
     @rx.var
     def right_panel_opened(self) -> bool:
@@ -356,3 +363,29 @@ class AiTableDataState(rx.State):
                     "file_path": table_item.file_path
                 })
         return subtables
+
+    async def set_transformed_dataframe(self, transformed_df: pd.DataFrame) -> None:
+        """Set a transformed DataFrame as the current active DataFrame
+
+        Args:
+            transformed_df: The transformed DataFrame to set as current
+        """
+        # Get the current table name for creating the transformed version name
+        if self.current_table_id == ORIGINAL_TABLE_ID:
+            source_name = self.current_file_name
+        else:
+            table_item = self._tables.get(self.current_table_id)
+            source_name = table_item.name if table_item else "table"
+
+        # Create a name for the transformed table
+        transformed_name = f"{source_name}_transformed"
+
+        # Create temporary file with transformed data
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, prefix=f"{transformed_name}_") as temp_file:
+            transformed_df.to_csv(temp_file.name, index=False)
+            temp_file_path = temp_file.name
+
+        # Create new table entry for the transformed data
+        table_id = f"transformed_{uuid.uuid4()}"
+        self._tables[table_id] = DataFrameItem(transformed_name, temp_file_path)
+        self.current_table_id = table_id
