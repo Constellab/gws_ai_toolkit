@@ -1,7 +1,7 @@
 
 import os
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -39,7 +39,7 @@ class TestPlotyAgentAiIntegration(unittest.TestCase):
         user_query = "Create a scatter plot with x_values as x-axis and y_values as y-axis"
 
         # Collect all events from the stream
-        events = list(agent.generate_plot_stream(user_query))
+        events = list(agent.call_agent(user_query))
 
         # Verify we received events
         self.assertGreater(len(events), 0)
@@ -68,7 +68,7 @@ class TestPlotyAgentAiIntegration(unittest.TestCase):
         # Check that discussion continuation is working by generating another plot
         user_query2 = "Change the color of the markers to red"
 
-        events2 = list(agent.generate_plot_stream(user_query2))
+        events2 = list(agent.call_agent(user_query2))
         plot_events2 = [e for e in events2 if isinstance(e, PlotGeneratedEvent)]
         self.assertGreater(len(plot_events2), 0)
         plot_event2 = plot_events2[0]
@@ -114,7 +114,7 @@ class TestPlotyAgentAiIntegration(unittest.TestCase):
         user_query = "Create a scatter plot with x_values as x-axis and y_values as y-axis"
 
         # Collect all events from the stream
-        events = list(agent.generate_plot_stream(user_query))
+        events = list(agent.call_agent(user_query))
 
         # Verify we received events
         self.assertGreater(len(events), 0)

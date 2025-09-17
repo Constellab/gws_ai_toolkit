@@ -1,18 +1,16 @@
 import json
-from typing import Generator, List, Optional
+from typing import Generator, List
 
 import pandas as pd
 import plotly.graph_objects as go
-from gws_core import BaseModelDTO
+from gws_core import BaseModelDTO, Table
 from openai import OpenAI
-from openai.types.responses import (ResponseFunctionToolCall,
-                                    ResponseOutputItemDoneEvent)
+from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
-from .plotly_agent_ai_events import (ErrorEvent, PlotAgentEvent,
-                                     PlotGeneratedEvent,
-                                     ResponseCompletedEvent,
-                                     ResponseCreatedEvent, TextDeltaEvent)
+from .base_function_agent_ai import BaseFunctionAgentAi
+from .plotly_agent_ai_events import (ErrorEvent, PlotGeneratedEvent,
+                                     PlotlyAgentEvent)
 
 
 class PlotlyCodeConfig(BaseModelDTO):
@@ -25,173 +23,49 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class PlotlyAgentAi:
+class PlotlyAgentAiDTO(BaseModelDTO):
+    model: str
+    temperature: float
+    previous_response_id: str | None = None
+    emitted_events: List[PlotlyAgentEvent] = []
+
+
+class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
     """Standalone plot agent service for data visualization using OpenAI"""
 
-    MAX_CONSECUTIVE_ERRORS = 5
-    MAX_CONSECUTIVE_CALLS = 10
-
-    _openai_client: OpenAI
     _dataframe: pd.DataFrame
-    _model: str
-    _temperature: float
-    _previous_response_id: Optional[str]
-    _emitted_events: List[PlotAgentEvent]
 
     def __init__(self, openai_client: OpenAI,
                  dataframe: pd.DataFrame,
                  model: str,
                  temperature: float):
-        self._openai_client = openai_client
+        super().__init__(openai_client, model, temperature)
         self._dataframe = dataframe
-        self._model = model
-        self._temperature = temperature
-        self._previous_response_id = None
-        self._emitted_events = []
-        self._success_inputs = None
 
-    def generate_plot_stream(
-        self,
-        user_query: str,
-    ) -> Generator[PlotAgentEvent, None, None]:
-        """Generate plot with streaming events
-
-        Args:
-            user_query: User's request for visualization
-
-        Yields:
-            PlotAgentEvent: Stream of events during plot generation
-        """
-        consecutive_error_count = 0
-        consecutive_call_count = 0
-
-        messages = [{"role": "user", "content": [{"type": "input_text", "text": user_query}]}]
-
-        # Main generation loop - replace recursion with iteration
-        while (consecutive_error_count < self.MAX_CONSECUTIVE_ERRORS and
-               consecutive_call_count < self.MAX_CONSECUTIVE_CALLS):
-            consecutive_call_count += 1
-
-            success_function_call_id: str | None = None
-            error_event: ErrorEvent | None = None
-
-            # Generate events for this attempt
-            for event in self._generate_plot_stream_internal(messages):
-                self._emitted_events.append(event)
-                yield event
-
-                if isinstance(event, PlotGeneratedEvent):
-                    # Plot was successfully generated
-                    success_function_call_id = event.call_id
-
-                elif isinstance(event, ErrorEvent):
-                    error_event = event
-
-            # If plot was successfully generated, call OpenAI for success response
-            # Update the current message and call openai in next iteration
-            if success_function_call_id:
-                messages = [{
-                    "type": "function_call_output",
-                    "call_id": success_function_call_id,
-                    "output": json.dumps({
-                        "Plot": "Successfully created the chart."
-                    })
-                }]
-                continue
-
-            # If there was an error during the function call, prepare error message for next iteration
-
-            if error_event:
-                consecutive_error_count += 1
-                if not error_event.call_id:
-                    # If no call_id, we cannot proceed with function call output
-                    break
-                messages = [
-                    {
-                        "type": "function_call_output",
-                        "call_id": error_event.call_id,
-                        "output": json.dumps({
-                            "Plot": f"Error: {error_event.message}"
-                        })
-                    },
-                    {"role": "user", "content": [{"type": "input_text", "text": "Can you fix the code?"}]}
-                ]
-                continue
-
-            # If there were no function call (no plot) and no error, we are done
-            if not success_function_call_id and not error_event:
-                break
-
-        if consecutive_error_count >= self.MAX_CONSECUTIVE_ERRORS:
-            yield ErrorEvent(
-                message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached",
-                code=None,
-                error_type="max_errors_reached",
-            )
-
-        if consecutive_call_count >= self.MAX_CONSECUTIVE_CALLS:
-            yield ErrorEvent(
-                message=f"Maximum consecutive calls ({self.MAX_CONSECUTIVE_CALLS}) reached",
-                code=None,
-                error_type="max_calls_reached",
-            )
-
-    def _generate_plot_stream_internal(
-        self,
-        input_messages: List[dict],
-    ) -> Generator[PlotAgentEvent, None, None]:
-        """Internal method for plot generation with streaming"""
-
-        # Create prompt with table metadata
-        table_metadata = self._get_table_metadata()
-        prompt = self._create_plot_prompt(table_metadata)
-
-        # Define tools for OpenAI
-        tools = [
+    def _get_tools(self) -> List[dict]:
+        """Get tools configuration for OpenAI"""
+        return [
             {"type": "function", "name": "generate_plotly_figure",
              "description":
              "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object.",
-             "parameters": PlotlyCodeConfig.model_json_schema()}]
+             "parameters": PlotlyCodeConfig.model_json_schema()}
+        ]
 
-        current_response_id = None
+    def _get_success_response(self) -> dict:
+        """Get success response for function call output"""
+        return {"Plot": "Successfully created the chart."}
 
-        # Stream OpenAI response directly
-        with self._openai_client.responses.stream(
-            model=self._model,
-            instructions=prompt,
-            input=input_messages,
-            temperature=self._temperature,
-            previous_response_id=self._previous_response_id,
-            tools=tools
-        ) as stream:
+    def _get_error_response(self, error_message: str) -> dict:
+        """Get error response for function call output"""
+        return {"Plot": f"Error: {error_message}"}
 
-            # Process streaming events
-            for event in stream:
-                # Yield streaming events to consumer
-                if event.type == "response.output_text.delta":
-                    yield TextDeltaEvent(delta=event.delta)
-
-                elif event.type == "response.created":
-                    current_response_id = event.response.id
-                    yield ResponseCreatedEvent(response_id=current_response_id)
-                elif event.type == "response.completed":
-                    self._previous_response_id = event.response.id
-                    yield ResponseCompletedEvent()
-                elif event.type == "response.output_item.done":
-                    for item_event in self._handle_output_item_done(event, current_response_id):
-                        yield item_event
-
-    def _handle_output_item_done(self, event: ResponseOutputItemDoneEvent,
-                                 current_response_id: Optional[str]) -> Generator[PlotAgentEvent, None, None]:
+    def _handle_function_call(self, event_item: ResponseFunctionToolCall,
+                              current_response_id: str) -> Generator[PlotlyAgentEvent, None, None]:
         """Handle output item done event"""
         # Handle function call completion
 
-        if not isinstance(event, ResponseOutputItemDoneEvent) or \
-                not isinstance(event.item, ResponseFunctionToolCall):
-            return
-
-        function_args = event.item.arguments
-        call_id = event.item.call_id
+        function_args = event_item.arguments
+        call_id = event_item.call_id
 
         if not function_args:
             yield ErrorEvent(
@@ -248,27 +122,6 @@ class PlotlyAgentAi:
         if not code.strip():
             raise ValueError("No code provided in function arguments")
 
-        # Execute code
-        figure = self._execute_plotly_code(code)
-
-        return figure, code
-
-    def _execute_plotly_code(self, code: str) -> go.Figure:
-        """Execute generated Plotly code and return figure
-
-        Args:
-            code: Python code to execute
-
-        Returns:
-            Plotly Figure object
-
-        Raises:
-            RuntimeError: If code execution fails
-            ValueError: If code doesn't produce valid figure
-        """
-        if not code.strip():
-            raise ValueError("No code provided")
-
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
         execution_globals['df'] = self._dataframe
@@ -294,43 +147,24 @@ class PlotlyAgentAi:
                 "Make sure to assign a plotly Figure object to a variable named 'fig'."
             )
 
-        return fig
+        return fig, code
 
     def _get_code_execution_globals(self) -> dict:
         """Get globals for code execution environment"""
         return {
             'pd': pd,
-            # 'go': go,
+            'go': go,
             '__builtins__': __builtins__
         }
 
-    def _get_table_metadata(self) -> str:
-        """Get table metadata for prompt creation
-
-        Args:
-            dataframe: DataFrame to analyze
-
-        Returns:
-            String containing table metadata
-        """
-        column_info = []
-        for col in self._dataframe.columns:
-            dtype = str(self._dataframe[col].dtype)
-            column_info.append(f"{col}: {dtype}")
-
-        return f"""Table Information:
-- Columns ({len(self._dataframe.columns)}): {', '.join(column_info)}
-- Number of rows: {len(self._dataframe)}"""
-
-    def _create_plot_prompt(self, table_metadata: str) -> str:
+    def _get_ai_instruction(self) -> str:
         """Create prompt for OpenAI with table metadata
-
-        Args:
-            table_metadata: String containing table metadata
 
         Returns:
             Formatted prompt for OpenAI
         """
+
+        table_metadata = Table(self._dataframe).get_ai_description()
         return f"""You are an AI assistant specialized in data analysis and visualization. You have access to information about a table/dataset but not the actual data.
 
 {table_metadata}
@@ -366,6 +200,24 @@ fig.add_trace(go.Scatter(x=df['column1'], y=df['column2']))
 fig.update_layout(title='Chart Title')
 ```"""
 
-    def get_emitted_events(self) -> List[PlotAgentEvent]:
-        """Get all events emitted during the last generation"""
-        return self._emitted_events
+    def to_dto(self) -> PlotlyAgentAiDTO:
+        """Convert agent state to DTO"""
+        return PlotlyAgentAiDTO(
+            model=self._model,
+            temperature=self._temperature,
+            previous_response_id=self._previous_response_id,
+            emitted_events=self._emitted_events.copy()  # Create a copy of the list
+        )
+
+    @classmethod
+    def from_dto(cls, dto: PlotlyAgentAiDTO, openai_client: OpenAI, dataframe: pd.DataFrame) -> "PlotlyAgentAi":
+        """Create agent instance from DTO"""
+        agent = cls(
+            openai_client=openai_client,
+            dataframe=dataframe,
+            model=dto.model,
+            temperature=dto.temperature
+        )
+        agent._previous_response_id = dto.previous_response_id
+        agent._emitted_events = dto.emitted_events.copy()  # Create a copy of the list
+        return agent
