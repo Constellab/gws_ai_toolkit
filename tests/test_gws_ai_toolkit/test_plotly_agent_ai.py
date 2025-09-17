@@ -10,7 +10,7 @@ from openai import OpenAI
 
 from gws_ai_toolkit.core.agents.plotly_agent_ai import PlotlyAgentAi
 from gws_ai_toolkit.core.agents.plotly_agent_ai_events import (
-    ErrorEvent, PlotGeneratedEvent)
+    FunctionErrorEvent, PlotGeneratedEvent)
 
 
 # test_plotly_agent_ai.py
@@ -120,7 +120,7 @@ class TestPlotyAgentAiIntegration(unittest.TestCase):
         # Verify we received events
         self.assertGreater(len(events), 0)
 
-        error_events = [e for e in events if isinstance(e, ErrorEvent)]
+        error_events = [e for e in events if isinstance(e, FunctionErrorEvent)]
         self.assertEqual(len(error_events), 1)
         self.assertIn("name 'go' is not defined", error_events[0].message)
 

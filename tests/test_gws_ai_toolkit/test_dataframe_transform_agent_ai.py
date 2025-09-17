@@ -9,7 +9,7 @@ from openai import OpenAI
 from gws_ai_toolkit.core.agents.table_transform_agent_ai import \
     TableTransformAgentAi
 from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import (
-    ErrorEvent, TableTransformEvent)
+    FunctionErrorEvent, TableTransformEvent)
 
 
 # test_dataframe_transform_agent_ai.py
@@ -177,7 +177,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         self.assertGreater(len(events), 0)
 
         # Should have error events due to missing 'pd'
-        error_events = [e for e in events if isinstance(e, ErrorEvent)]
+        error_events = [e for e in events if isinstance(e, FunctionErrorEvent)]
         self.assertEqual(len(error_events), 1)
         self.assertIn("name 'pd' is not defined", error_events[0].message)
 

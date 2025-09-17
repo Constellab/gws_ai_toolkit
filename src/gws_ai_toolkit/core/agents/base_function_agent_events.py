@@ -11,17 +11,21 @@ class TextDeltaEvent(BaseModelDTO):
 
 # abstract base class for function result events
 class FunctionResultEventBase(BaseModelDTO):
-    code: str
-    call_id: Optional[str]
-    response_id: Optional[str]
+    call_id: str
+    response_id: str
+
+
+class FunctionErrorEvent(FunctionResultEventBase):
+    type: Literal["function_error"] = "function_error"
+    message: str
+    code: Optional[str]
+    error_type: str
 
 
 class ErrorEvent(BaseModelDTO):
     type: Literal["error"] = "error"
     message: str
-    code: Optional[str]
     error_type: str
-    call_id: str | None = None
 
 
 class ResponseCreatedEvent(BaseModelDTO):
@@ -37,6 +41,7 @@ class ResponseCompletedEvent(BaseModelDTO):
 BaseFunctionAgentEvent = Union[
     TextDeltaEvent,
     FunctionResultEventBase,
+    FunctionErrorEvent,
     ErrorEvent,
     ResponseCreatedEvent,
     ResponseCompletedEvent

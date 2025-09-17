@@ -7,7 +7,8 @@ from openai import OpenAI
 from openai.types.responses import (ResponseFunctionToolCall,
                                     ResponseOutputItemDoneEvent)
 
-from .base_function_agent_events import (ErrorEvent, FunctionResultEventBase,
+from .base_function_agent_events import (ErrorEvent, FunctionErrorEvent,
+                                         FunctionResultEventBase,
                                          ResponseCompletedEvent,
                                          ResponseCreatedEvent, TextDeltaEvent)
 
@@ -41,7 +42,6 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     def call_agent(
         self,
         user_query: str,
-        new_table_name: Optional[str] = None,
     ) -> Generator[T, None, None]:
         """Generate response with streaming events
 
@@ -63,19 +63,23 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             consecutive_call_count += 1
 
             success_function_call_id: str | None = None
-            error_event: ErrorEvent | None = None
+            error_event: FunctionErrorEvent | None = None
 
             # Generate events for this attempt
             for event in self._generate_stream_internal(messages):
                 self._emitted_events.append(event)
                 yield event
 
-                if isinstance(event, FunctionResultEventBase):
-                    # Success event was generated
-                    success_function_call_id = event.call_id
+                # we check the function result events to determine if we need to continue
+                # we only filter the events for the current response_id
+                # this is usefule to ignore events from sub agents in case of delegation
+                if isinstance(event, FunctionResultEventBase) and event.response_id == self._last_response_id:
 
-                elif isinstance(event, ErrorEvent):
-                    error_event = event
+                    if isinstance(event, FunctionErrorEvent):
+                        error_event = event
+                    else:
+                        # this is a successful function call
+                        success_function_call_id = event.call_id
 
             # If function was successfully called, prepare success response
             if success_function_call_id:
@@ -109,14 +113,12 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         if consecutive_error_count >= self.MAX_CONSECUTIVE_ERRORS:
             yield cast(T, ErrorEvent(
                 message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached",
-                code=None,
                 error_type="max_errors_reached",
             ))
 
         if consecutive_call_count >= self.MAX_CONSECUTIVE_CALLS:
             yield cast(T, ErrorEvent(
                 message=f"Maximum consecutive calls ({self.MAX_CONSECUTIVE_CALLS}) reached",
-                code=None,
                 error_type="max_calls_reached",
             ))
 
@@ -152,6 +154,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
                 elif event.type == "response.created":
                     current_response_id = event.response.id
+                    self.set_last_response_id(event.response.id)
                     yield cast(T, ResponseCreatedEvent(response_id=current_response_id))
                 elif event.type == "response.completed":
                     self.set_last_response_id(event.response.id)
@@ -218,7 +221,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         """Get all events emitted during the last generation"""
         return self._emitted_events
 
-    def set_last_response_id(self, response_id: str) -> None:
+    def set_last_response_id(self, response_id: str | None) -> None:
         """Set the public response ID for the next generation"""
         self._last_response_id = response_id
 

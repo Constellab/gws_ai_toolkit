@@ -3,6 +3,8 @@ import reflex as rx
 from ..ai_table_data_state import AiTableDataState
 from .plot_agent.ai_table_plot_agent_chat_component import \
     ai_table_plot_agent_chat_component
+from .table_agent.ai_table_table_agent_chat_component import \
+    ai_table_table_agent_chat_component
 from .transform_agent.ai_table_transform_agent_chat_component import \
     ai_table_transform_agent_chat_component
 
@@ -51,14 +53,10 @@ def ai_table_unified_chat_component():
     """
     return rx.vstack(
         # Chat mode selector
-        _chat_mode_selector(),
+        # _chat_mode_selector(),
 
         # Chat component based on current mode
-        rx.match(
-            AiTableDataState.current_chat_mode,
-            ("plot", ai_table_plot_agent_chat_component()),
-            ("transform", ai_table_transform_agent_chat_component()),
-        ),
+        ai_table_table_agent_chat_component(),
 
         width="100%",
         height="100%",

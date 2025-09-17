@@ -78,7 +78,7 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
                 # Update the active DataFrame with the transformed version
                 await self.update_current_table(event.table, event.table_name or "Transformed Table")
 
-        elif event.type == "error":
+        elif event.type == "error" or event.type == "function_error":
             # Handle errors
             error_message = await self.create_error_message(event.message)
             await self.update_current_response_message(error_message)

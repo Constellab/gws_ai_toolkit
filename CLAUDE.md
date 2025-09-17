@@ -13,6 +13,7 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
   - `rag/` - RAG services and integrations
   - `stats/` - Tools to perform statistical analysis and generate visualizations
   - `core/` - Core utilities and helpers
+    - `agents/` - Base and specialized agent implementations
   - `ai_table_standalone_app/` - Standalone Reflex-based AI Table application
 - `tests/test_gws_ai_toolkit/` - Test files
 

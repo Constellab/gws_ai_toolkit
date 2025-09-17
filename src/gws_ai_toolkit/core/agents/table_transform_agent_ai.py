@@ -10,7 +10,8 @@ from pydantic import Field
 
 from .base_function_agent_ai import BaseFunctionAgentAi
 from .table_transform_agent_ai_events import (DataFrameTransformAgentEvent,
-                                              ErrorEvent, TableTransformEvent)
+                                              FunctionErrorEvent,
+                                              TableTransformEvent)
 
 
 class TableTransformConfig(BaseModelDTO):
@@ -69,11 +70,12 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
         call_id = event_item.call_id
 
         if not function_args:
-            yield ErrorEvent(
+            yield FunctionErrorEvent(
                 message=str("No function arguments provided for DataFrame transformation."),
                 code=None,
                 call_id=call_id,
                 error_type="execution_error",
+                response_id=current_response_id
             )
             return
 
@@ -94,11 +96,12 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
 
         except Exception as exec_error:
 
-            yield ErrorEvent(
+            yield FunctionErrorEvent(
                 message=str(exec_error),
                 code=None,
                 call_id=call_id,
                 error_type="execution_error",
+                response_id=current_response_id
             )
 
             # Return after error - the main loop will handle retry logic
