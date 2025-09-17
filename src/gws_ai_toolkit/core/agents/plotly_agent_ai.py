@@ -33,14 +33,14 @@ class PlotlyAgentAiDTO(BaseModelDTO):
 class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
     """Standalone plot agent service for data visualization using OpenAI"""
 
-    _dataframe: pd.DataFrame
+    _table: Table
 
     def __init__(self, openai_client: OpenAI,
-                 dataframe: pd.DataFrame,
+                 table: Table,
                  model: str,
                  temperature: float):
         super().__init__(openai_client, model, temperature)
-        self._dataframe = dataframe
+        self._table = table
 
     def _get_tools(self) -> List[dict]:
         """Get tools configuration for OpenAI"""
@@ -124,7 +124,7 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
 
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
-        execution_globals['df'] = self._dataframe
+        execution_globals['df'] = self._table.get_data()
 
         # Execute the code
         try:
@@ -164,7 +164,7 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             Formatted prompt for OpenAI
         """
 
-        table_metadata = Table(self._dataframe).get_ai_description()
+        table_metadata = self._table.get_ai_description()
         return f"""You are an AI assistant specialized in data analysis and visualization. You have access to information about a table/dataset but not the actual data.
 
 {table_metadata}
@@ -210,11 +210,11 @@ fig.update_layout(title='Chart Title')
         )
 
     @classmethod
-    def from_dto(cls, dto: PlotlyAgentAiDTO, openai_client: OpenAI, dataframe: pd.DataFrame) -> "PlotlyAgentAi":
+    def from_dto(cls, dto: PlotlyAgentAiDTO, openai_client: OpenAI, table: Table) -> "PlotlyAgentAi":
         """Create agent instance from DTO"""
         agent = cls(
             openai_client=openai_client,
-            dataframe=dataframe,
+            table=table,
             model=dto.model,
             temperature=dto.temperature
         )

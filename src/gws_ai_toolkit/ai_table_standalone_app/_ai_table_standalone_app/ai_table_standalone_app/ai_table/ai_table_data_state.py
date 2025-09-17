@@ -1,13 +1,12 @@
 import os
-import tempfile
 import uuid
 from typing import Dict, List, Literal, Optional
 
 import pandas as pd
 import reflex as rx
-from gws_core import File, Logger
+from gws_core import File, Logger, Table
 
-from gws_ai_toolkit.core.dataframe_item import DataFrameItem
+from gws_ai_toolkit.core.table_item import TableItem
 
 ORIGINAL_TABLE_ID = "original"
 
@@ -33,7 +32,7 @@ class AiTableDataState(rx.State):
     current_chat_mode: ChatMode = "plot"
 
     # Table
-    _tables: Dict[str, DataFrameItem] = {}  # Dict with ID as key: DataFrameItem
+    _tables: Dict[str, TableItem] = {}
     current_table_id: str = ORIGINAL_TABLE_ID  # Default to original table
 
     # Selection and table management
@@ -41,18 +40,24 @@ class AiTableDataState(rx.State):
     extract_dialog_open: bool = False
     use_first_row_as_header: bool = False
 
-    def get_current_dataframe_item(self) -> Optional[DataFrameItem]:
+    def get_current_dataframe_item(self) -> Optional[TableItem]:
         """Create DataFrameItem from current file info"""
-        if not self.current_file_path or not os.path.exists(self.current_file_path):
-            return None
-        return DataFrameItem(self.current_file_name, self.current_file_path)
+        return self._tables.get(self.current_table_id)
 
-    def _get_table_dataframe_item_by_id(self, table_id: str) -> Optional[DataFrameItem]:
-        """Get DataFrameItem for a table by ID"""
-        if table_id == ORIGINAL_TABLE_ID:
-            return self.get_current_dataframe_item()
+    def get_current_table(self) -> Optional[Table]:
+        """Get the current active table (original or subtable)"""
+        table_item = self.get_current_dataframe_item()
+        if table_item:
+            return table_item.get_table(self.current_sheet_name)
+        return None
 
-        return self._tables.get(table_id)
+    def get_current_dataframe(self) -> Optional[pd.DataFrame]:
+        """Get the current active dataframe (original or subtable)"""
+        # Get dataframe item for current table
+        table_item = self.get_current_dataframe_item()
+        if table_item:
+            return table_item.get_dataframe(self.current_sheet_name)
+        return None
 
     def set_resource(self, file: File):
         """Set the resource file to load data from
@@ -64,28 +69,15 @@ class AiTableDataState(rx.State):
         self.current_file_path = file.path
         self.current_file_name = os.path.splitext(os.path.basename(file.path))[0]
 
-        # Test if file can be loaded
-        df_item = self.get_current_dataframe_item()
-        if df_item:
-            test_df = df_item.get_default_dataframe()
-            if test_df.empty:
-                Logger.error(f"The dataframe is empty: {file.path}")
-                return
+        # Add original table to the tables dictionary
+        table_item = TableItem.from_file(
+            f"{self.current_file_name}",
+            self.current_file_path
+        )
+        self._tables[ORIGINAL_TABLE_ID] = table_item
 
-            # Set default sheet for Excel files
-            if df_item.get_sheet_names():
-                self.current_sheet_name = df_item.get_sheet_names()[0]
-            else:
-                self.current_sheet_name = ""
-
-            # Add original table to the tables dictionary
-            self._tables[ORIGINAL_TABLE_ID] = DataFrameItem(
-                f"{self.current_file_name} (Original)",
-                self.current_file_path
-            )
-
-            # Set current table to original
-            self.current_table_id = ORIGINAL_TABLE_ID
+        # Set current table to original
+        self.current_table_id = ORIGINAL_TABLE_ID
 
     @rx.event
     def switch_sheet(self, sheet_name: str):
@@ -121,19 +113,6 @@ class AiTableDataState(rx.State):
         return []
 
     @rx.var
-    def current_dataframe(self) -> Optional[pd.DataFrame]:
-        """Get the current active dataframe (original or subtable)"""
-        # Get dataframe item for current table
-        table_item = self._get_table_dataframe_item_by_id(self.current_table_id)
-        if table_item:
-            # For original table, respect sheet selection
-            if self.current_table_id == ORIGINAL_TABLE_ID and self.current_sheet_name:
-                return table_item.get_dataframe(self.current_sheet_name)
-            else:
-                return table_item.get_default_dataframe()
-        return None
-
-    @rx.var
     def dataframe_loaded(self) -> bool:
         """Check if dataframe is loaded"""
         return bool(self.current_file_path and os.path.exists(self.current_file_path))
@@ -141,19 +120,19 @@ class AiTableDataState(rx.State):
     @rx.var
     def nb_rows(self) -> int:
         """Get the number of rows in the current data"""
-        current_df = self.current_dataframe
+        current_df = self.get_current_dataframe()
         return current_df.shape[0] if current_df is not None and not current_df.empty else 0
 
     @rx.var
     def nb_columns(self) -> int:
         """Get the number of columns in the current data"""
-        current_df = self.current_dataframe
+        current_df = self.get_current_dataframe()
         return current_df.shape[1] if current_df is not None and not current_df.empty else 0
 
     @rx.var
     def ag_grid_column_defs(self) -> List[dict]:
         """Get column definitions for AG Grid"""
-        current_df = self.current_dataframe
+        current_df = self.get_current_dataframe()
         if current_df is None or current_df.empty:
             return []
 
@@ -172,7 +151,7 @@ class AiTableDataState(rx.State):
     @rx.var
     def ag_grid_row_data(self) -> List[dict]:
         """Get row data for AG Grid as list of dictionaries"""
-        current_df = self.current_dataframe
+        current_df = self.get_current_dataframe()
         if current_df is None or current_df.empty:
             return []
 
@@ -228,7 +207,7 @@ class AiTableDataState(rx.State):
         selection = self.current_selection[0]
 
         # Get the source dataframe (original or current table)
-        source_df = self.current_dataframe
+        source_df = self.get_current_dataframe()
         if self.current_table_id == ORIGINAL_TABLE_ID:
             source_name = self.current_file_name
         else:
@@ -245,6 +224,7 @@ class AiTableDataState(rx.State):
         columns = selection.get('columns', [])
 
         # Extract the subset of data
+        selected_data: pd.DataFrame
         if columns:
             # Select specific columns and rows
             selected_data = source_df.loc[start_row:end_row, columns]
@@ -262,15 +242,9 @@ class AiTableDataState(rx.State):
         # Create subtable filename
         subtable_name = f"{source_name}_subtable"
 
-        # Create temporary file with extraction data
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, prefix=f"{subtable_name}_") as temp_file:
-            selected_data.to_csv(temp_file.name, index=False)
-            temp_file_path = temp_file.name
-
-        # Create new table entry
-        table_id = str(uuid.uuid4())
-        self._tables[table_id] = DataFrameItem(subtable_name, temp_file_path)
-        self.current_table_id = table_id
+        # Add new subtable
+        new_table = Table(selected_data)
+        self.set_current_table(new_table, subtable_name)
 
         # Close the dialog
         self.close_extract_dialog()
@@ -293,22 +267,19 @@ class AiTableDataState(rx.State):
             self.current_table_id = table_id
 
     @rx.event
-    def remove_subtable(self, table_id: str):
+    def remove_current_table(self):
         """Remove a subtable"""
         # Don't allow removing the original table
-        if table_id == ORIGINAL_TABLE_ID:
+        if self.current_table_id == ORIGINAL_TABLE_ID:
             return
 
-        table_item = self._tables.get(table_id)
+        table_item = self._tables.get(self.current_table_id)
         if table_item:
             # Remove from dictionary
-            del self._tables[table_id]
+            del self._tables[self.current_table_id]
             # Switch to original if this was the current table
-            if self.current_table_id == table_id:
+            if self.current_table_id == self.current_table_id:
                 self.current_table_id = ORIGINAL_TABLE_ID
-            # Clean up temp file
-            if os.path.exists(table_item.file_path):
-                os.unlink(table_item.file_path)
 
     @rx.var
     def can_extract(self) -> bool:
@@ -341,17 +312,6 @@ class AiTableDataState(rx.State):
             return table_item.name if table_item else "Unknown Table"
 
     @rx.var
-    def tables(self) -> Dict[str, Dict[str, str]]:
-        """Public property to access tables data for UI - returns dict format for compatibility"""
-        result = {}
-        for table_id, table_item in self._tables.items():
-            result[table_id] = {
-                "name": table_item.name,
-                "file_path": table_item.file_path
-            }
-        return result
-
-    @rx.var
     def subtables_list(self) -> List[Dict[str, str]]:
         """Get list of subtables (excluding original) for UI iteration"""
         subtables = []
@@ -359,33 +319,17 @@ class AiTableDataState(rx.State):
             if table_id != ORIGINAL_TABLE_ID:
                 subtables.append({
                     "id": table_id,
-                    "name": table_item.name,
-                    "file_path": table_item.file_path
+                    "name": table_item.name
                 })
         return subtables
 
-    async def set_transformed_dataframe(self, transformed_df: pd.DataFrame) -> None:
+    def set_current_table(self, table: Table, name: str) -> None:
         """Set a transformed DataFrame as the current active DataFrame
 
         Args:
             transformed_df: The transformed DataFrame to set as current
         """
-        # Get the current table name for creating the transformed version name
-        if self.current_table_id == ORIGINAL_TABLE_ID:
-            source_name = self.current_file_name
-        else:
-            table_item = self._tables.get(self.current_table_id)
-            source_name = table_item.name if table_item else "table"
-
-        # Create a name for the transformed table
-        transformed_name = f"{source_name}_transformed"
-
-        # Create temporary file with transformed data
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, prefix=f"{transformed_name}_") as temp_file:
-            transformed_df.to_csv(temp_file.name, index=False)
-            temp_file_path = temp_file.name
-
         # Create new table entry for the transformed data
         table_id = f"transformed_{uuid.uuid4()}"
-        self._tables[table_id] = DataFrameItem(transformed_name, temp_file_path)
+        self._tables[table_id] = TableItem.from_table(name, table)
         self.current_table_id = table_id

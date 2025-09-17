@@ -126,10 +126,11 @@ class AiTablePlotFileChatState(BaseFileAnalysisState, rx.State):
             data_state = await self.get_state(AiTableDataState)
 
         # If a subtable is active, use its file path
-        if data_state.current_table_id != ORIGINAL_TABLE_ID:
-            table_item = data_state._get_table_dataframe_item_by_id(data_state.current_table_id)
-            if table_item:
-                return table_item.file_path
+        # TODO TO FIX
+        # if data_state.current_table_id != ORIGINAL_TABLE_ID:
+        #     table_item = data_state._get_table_dataframe_item_by_id(data_state.current_table_id)
+        #     if table_item:
+        #         return table_item.file_path
 
         # Otherwise use original file
         if data_state.current_file_path:

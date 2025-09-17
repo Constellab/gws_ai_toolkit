@@ -4,7 +4,8 @@ from reflex_resizable_panels import resizable_panels as rzp
 
 from .ai_table_data_state import AiTableDataState
 from .ai_table_section import table_section
-from .chat.ai_table_unified_chat_component import ai_table_unified_chat_component as ai_table_chat_component
+from .chat.ai_table_unified_chat_component import \
+    ai_table_unified_chat_component as ai_table_chat_component
 from .stats.ai_table_stats_component import ai_table_stats_component
 
 
@@ -43,7 +44,7 @@ def table_selector():
                     "❌ Remove",
                     variant="outline",
                     color_scheme="red",
-                    on_click=AiTableDataState.remove_subtable(AiTableDataState.current_table_id),
+                    on_click=AiTableDataState.remove_current_table(),
                     size="2",
                 ),
                 rx.box(),

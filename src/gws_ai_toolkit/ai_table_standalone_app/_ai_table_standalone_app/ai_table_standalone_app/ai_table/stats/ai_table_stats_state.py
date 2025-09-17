@@ -72,7 +72,7 @@ class AiTableStatsState(rx.State):
 
                 # Get current dataframe to extract column names
             ai_table_state = await self.get_state(AiTableDataState)
-            current_df = ai_table_state.current_dataframe
+            current_df = ai_table_state.get_current_dataframe
 
             if current_df is None or current_df.empty:
                 return rx.toast.error("No dataframe available. Please load a file first.")

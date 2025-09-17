@@ -1,6 +1,6 @@
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
-import pandas as pd
+from gws_core import Table
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
     ErrorEvent, FunctionResultEventBase, ResponseCompletedEvent,
@@ -9,9 +9,10 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
 # Typed event classes with literal types and direct attributes
 
 
-class DataFrameTransformEvent(FunctionResultEventBase):
+class TableTransformEvent(FunctionResultEventBase):
     type: Literal["dataframe_transform"] = "dataframe_transform"
-    dataframe: pd.DataFrame
+    table: Table
+    table_name: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True  # Allow non-pydantic types like pd.DataFrame
@@ -20,7 +21,7 @@ class DataFrameTransformEvent(FunctionResultEventBase):
 # Union type for all events
 DataFrameTransformAgentEvent = Union[
     TextDeltaEvent,
-    DataFrameTransformEvent,
+    TableTransformEvent,
     ErrorEvent,
     ResponseCreatedEvent,
     ResponseCompletedEvent

@@ -1,7 +1,7 @@
 from typing import Optional
 
-import pandas as pd
 import reflex as rx
+from gws_core import Table
 
 from gws_ai_toolkit._app.chat_base import OpenAiChatStateBase
 from gws_ai_toolkit.core.agents.dataframe_transform_agent_ai import (
@@ -74,21 +74,10 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
         if event.type == "text_delta":
             await self.handle_output_text_delta(event.delta)
         elif event.type == "dataframe_transform":
-            # Handle successful DataFrame transformation
-            transformed_df = event.dataframe
-            response_id = event.response_id
-
             async with self:
                 # Update the active DataFrame with the transformed version
-                await self._update_active_dataframe(transformed_df)
+                await self.update_current_table(event.table, event.table_name or "Transformed Table")
 
-                # Create a message showing the transformation result
-                message = self.create_text_message(
-                    content=f"✅ DataFrame transformed successfully!\n\nNew shape: {transformed_df.shape[0]} rows × {transformed_df.shape[1]} columns\n\nTransformation code:\n```python\n{event.code}\n```",
-                    role="assistant",
-                    external_id=response_id
-                )
-            await self.update_current_response_message(message)
         elif event.type == "error":
             # Handle errors
             error_message = await self.create_error_message(event.message)
@@ -131,23 +120,24 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
             openai_client = self._get_openai_client()
 
             # Get required data
-            dataframe = await self._get_active_dataframe()
-            if dataframe is None:
+            table = await self._get_current_table()
+            if table is None:
                 raise ValueError("No active dataframe available for transformation")
 
             if self._transform_agent_dto:
                 return DataFrameTransformAgentAi.from_dto(
                     dto=self._transform_agent_dto,
                     openai_client=openai_client,
-                    dataframe=dataframe,
+                    table=table,
                 )
             else:
                 config = await self._get_config()
                 return DataFrameTransformAgentAi(
                     openai_client=openai_client,
-                    dataframe=dataframe,
+                    table=table,
                     model=config.model,
-                    temperature=config.temperature
+                    temperature=config.temperature,
+                    table_name=table.name
                 )
 
     async def _get_config(self) -> AiTableTransformAgentChatConfig:
@@ -160,21 +150,18 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
         config = await app_config_state.get_config()
         return config
 
-    async def _get_active_dataframe(self) -> Optional[pd.DataFrame]:
+    async def _get_current_table(self) -> Optional[Table]:
         """Get the active DataFrame for the currently active table (original or subtable)"""
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
 
-        dataframe_item = data_state.get_current_dataframe_item()
-        if not dataframe_item:
-            return None
-        return dataframe_item.get_dataframe()
+        return data_state.get_current_table()
 
-    async def _update_active_dataframe(self, new_dataframe: pd.DataFrame) -> None:
+    async def update_current_table(self, new_table: Table, name: str) -> None:
         """Update the active DataFrame with a transformed version"""
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
 
         # Create a new dataframe item with the transformed data
-        await data_state.set_transformed_dataframe(new_dataframe)
+        data_state.set_current_table(new_table, name)
 
     def _after_chat_cleared(self):
         super()._after_chat_cleared()

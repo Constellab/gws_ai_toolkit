@@ -1,5 +1,5 @@
 import json
-from typing import Generator, List
+from typing import Generator, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -10,8 +10,8 @@ from pydantic import Field
 
 from .base_function_agent_ai import BaseFunctionAgentAi
 from .dataframe_transform_agent_ai_events import (DataFrameTransformAgentEvent,
-                                                  DataFrameTransformEvent,
-                                                  ErrorEvent)
+                                                  ErrorEvent,
+                                                  TableTransformEvent)
 
 
 class DataFrameTransformConfig(BaseModelDTO):
@@ -27,6 +27,7 @@ class DataFrameTransformConfig(BaseModelDTO):
 class DataFrameTransformAgentAiDTO(BaseModelDTO):
     model: str
     temperature: float
+    table_name: Optional[str] = None
     previous_response_id: str | None = None
     emitted_events: List[DataFrameTransformAgentEvent] = []
 
@@ -34,14 +35,17 @@ class DataFrameTransformAgentAiDTO(BaseModelDTO):
 class DataFrameTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
     """Standalone DataFrame transform agent service for data manipulation using OpenAI"""
 
-    _dataframe: pd.DataFrame
+    _table: Table
+    _table_name: Optional[str]
 
     def __init__(self, openai_client: OpenAI,
-                 dataframe: pd.DataFrame,
+                 table: Table,
                  model: str,
-                 temperature: float):
+                 temperature: float,
+                 table_name: Optional[str] = None):
         super().__init__(openai_client, model, temperature)
-        self._dataframe = dataframe
+        self._table = table
+        self._table_name = table_name
 
     def _get_tools(self) -> List[dict]:
         """Get tools configuration for OpenAI"""
@@ -80,11 +84,12 @@ class DataFrameTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent
         try:
             transformed_df, code = self._execute_generated_code(function_args)
 
-            yield DataFrameTransformEvent(
-                dataframe=transformed_df,
+            yield TableTransformEvent(
+                table=Table(transformed_df),
                 code=code,
                 call_id=call_id,
-                response_id=current_response_id
+                response_id=current_response_id,
+                table_name=self._new_table_name
             )
 
             # Transform successful - no recursion needed
@@ -125,7 +130,7 @@ class DataFrameTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent
 
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
-        execution_globals['df'] = self._dataframe.copy()  # Use a copy to avoid modifying original
+        execution_globals['df'] = self._table.get_data()
 
         # Execute the code
         try:
@@ -166,7 +171,7 @@ class DataFrameTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent
             Formatted prompt for OpenAI
         """
 
-        table_metadata = Table(self._dataframe).get_ai_description()
+        table_metadata = self._table.get_ai_description()
         return f"""You are an AI assistant specialized in data cleaning, transformation, and manipulation. You have access to information about a table/dataset but not the actual data.
 
 {table_metadata}
@@ -218,18 +223,20 @@ transformed_df['new_column'] = transformed_df['existing_column'] * 2
         return DataFrameTransformAgentAiDTO(
             model=self._model,
             temperature=self._temperature,
+            table_name=self._table_name,
             previous_response_id=self._previous_response_id,
             emitted_events=self._emitted_events.copy()  # Create a copy of the list
         )
 
     @classmethod
-    def from_dto(cls, dto: DataFrameTransformAgentAiDTO, openai_client: OpenAI, dataframe: pd.DataFrame) -> "DataFrameTransformAgentAi":
+    def from_dto(cls, dto: DataFrameTransformAgentAiDTO, openai_client: OpenAI, table: Table) -> "DataFrameTransformAgentAi":
         """Create agent instance from DTO"""
         agent = cls(
             openai_client=openai_client,
-            dataframe=dataframe,
+            table=table,
             model=dto.model,
-            temperature=dto.temperature
+            temperature=dto.temperature,
+            table_name=dto.table_name
         )
         agent._previous_response_id = dto.previous_response_id
         agent._emitted_events = dto.emitted_events.copy()  # Create a copy of the list

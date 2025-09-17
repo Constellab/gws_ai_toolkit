@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import plotly.graph_objects as go
+from gws_core import Table
 from openai import OpenAI
 
 from gws_ai_toolkit.core.agents.plotly_agent_ai import PlotlyAgentAi
@@ -30,7 +31,7 @@ class TestPlotyAgentAiIntegration(unittest.TestCase):
         # Create PlotyAgentAi instance
         agent = PlotlyAgentAi(
             openai_client=openai_client,
-            dataframe=test_dataframe,
+            table=Table(test_dataframe),
             model="gpt-4o",  # Use cheaper model for testing
             temperature=0.1
         )
@@ -105,7 +106,7 @@ class TestPlotyAgentAiIntegration(unittest.TestCase):
         # Create PlotyAgentAi instance
         agent = PlotlyAgentAi(
             openai_client=openai_client,
-            dataframe=test_dataframe,
+            table=Table(test_dataframe),
             model="gpt-4o",  # Use cheaper model for testing
             temperature=0.1
         )

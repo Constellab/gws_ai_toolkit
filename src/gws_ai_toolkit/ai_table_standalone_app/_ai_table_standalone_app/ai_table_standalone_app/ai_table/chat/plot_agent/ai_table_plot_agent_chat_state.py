@@ -1,7 +1,7 @@
 from typing import Optional
 
-import pandas as pd
 import reflex as rx
+from gws_core import Table
 
 from gws_ai_toolkit._app.chat_base import OpenAiChatStateBase
 from gws_ai_toolkit.core.agents.plotly_agent_ai import (PlotlyAgentAi,
@@ -124,21 +124,21 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
             openai_client = self._get_openai_client()
 
             # Get required data
-            dataframe = await self._get_active_dataframe()
-            if dataframe is None:
-                raise ValueError("No active dataframe available for analysis")
+            table = await self._get_current_table()
+            if table is None:
+                raise ValueError("No active table available for analysis")
 
             if self._plotly_agent_dto:
                 return PlotlyAgentAi.from_dto(
                     dto=self._plotly_agent_dto,
                     openai_client=openai_client,
-                    dataframe=dataframe,
+                    table=table,
                 )
             else:
                 config = await self._get_config()
                 return PlotlyAgentAi(
                     openai_client=openai_client,
-                    dataframe=dataframe,
+                    table=table,
                     model=config.model,
                     temperature=config.temperature
                 )
@@ -155,14 +155,11 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
 
     # Prompt creation now handled by PlotAgentService
 
-    async def _get_active_dataframe(self) -> Optional[pd.DataFrame]:
+    async def _get_current_table(self) -> Optional[Table]:
         """Get the active DataFrame for the currently active table (original or subtable)"""
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
 
-        dataframe_item = data_state.get_current_dataframe_item()
-        if not dataframe_item:
-            return None
-        return dataframe_item.get_dataframe()
+        return data_state.get_current_table()
 
     def _after_chat_cleared(self):
         super()._after_chat_cleared()

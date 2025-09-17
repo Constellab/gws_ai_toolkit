@@ -3,12 +3,13 @@ import unittest
 from unittest.mock import patch
 
 import pandas as pd
+from gws_core import Table
 from openai import OpenAI
 
 from gws_ai_toolkit.core.agents.dataframe_transform_agent_ai import \
     DataFrameTransformAgentAi
 from gws_ai_toolkit.core.agents.dataframe_transform_agent_ai_events import (
-    DataFrameTransformEvent, ErrorEvent)
+    ErrorEvent, TableTransformEvent)
 
 
 # test_dataframe_transform_agent_ai.py
@@ -30,7 +31,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         # Create DataFrameTransformAgentAi instance
         agent = DataFrameTransformAgentAi(
             openai_client=openai_client,
-            dataframe=test_dataframe,
+            table=Table(test_dataframe),
             model="gpt-4o",  # Use cheaper model for testing
             temperature=0.1
         )
@@ -45,17 +46,17 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         self.assertGreater(len(events), 0)
 
         # Look for DataFrameTransformEvent
-        transform_events = [e for e in events if isinstance(e, DataFrameTransformEvent)]
+        transform_events = [e for e in events if isinstance(e, TableTransformEvent)]
 
         # Should have at least one transform event
         self.assertEqual(len(transform_events), 1)
 
         # Verify the transformed DataFrame
         transform_event = transform_events[0]
-        self.assertIsInstance(transform_event.dataframe, pd.DataFrame)
+        self.assertIsInstance(transform_event.table, Table)
 
         # Verify the new column was added
-        transformed_df = transform_event.dataframe
+        transformed_df = transform_event.table.to_dataframe()
         self.assertIn('salary_per_year_exp', transformed_df.columns)
 
         # Verify the calculation is correct
@@ -75,14 +76,14 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         user_query2 = "Filter the dataframe to keep only rows where age is greater than 30"
 
         events2 = list(agent.call_agent(user_query2))
-        transform_events2 = [e for e in events2 if isinstance(e, DataFrameTransformEvent)]
+        transform_events2 = [e for e in events2 if isinstance(e, TableTransformEvent)]
         self.assertGreater(len(transform_events2), 0)
 
         transform_event2 = transform_events2[0]
-        self.assertIsInstance(transform_event2.dataframe, pd.DataFrame)
+        self.assertIsInstance(transform_event2.table, Table)
 
         # Verify filtering worked
-        transformed_df2 = transform_event2.dataframe
+        transformed_df2 = transform_event2.table.to_dataframe()
         self.assertTrue(all(transformed_df2['age'] > 30))
         self.assertEqual(len(transformed_df2), 3)  # Should have 3 rows with age > 30
 
@@ -101,7 +102,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         # Create DataFrameTransformAgentAi instance
         agent = DataFrameTransformAgentAi(
             openai_client=openai_client,
-            dataframe=test_dataframe,
+            table=Table(test_dataframe),
             model="gpt-4o",
             temperature=0.1
         )
@@ -116,14 +117,14 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         self.assertGreater(len(events), 0)
 
         # Look for DataFrameTransformEvent
-        transform_events = [e for e in events if isinstance(e, DataFrameTransformEvent)]
+        transform_events = [e for e in events if isinstance(e, TableTransformEvent)]
 
         # Should have at least one transform event
         self.assertEqual(len(transform_events), 1)
 
         # Verify the transformed DataFrame
         transform_event = transform_events[0]
-        transformed_df = transform_event.dataframe
+        transformed_df = transform_event.table.to_dataframe()
 
         # Verify no missing values in score column
         self.assertFalse(transformed_df['score'].isna().any())
@@ -161,7 +162,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         # Create DataFrameTransformAgentAi instance
         agent = DataFrameTransformAgentAi(
             openai_client=openai_client,
-            dataframe=test_dataframe,
+            table=Table(test_dataframe),
             model="gpt-4o",
             temperature=0.1
         )
@@ -181,17 +182,17 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         self.assertIn("name 'pd' is not defined", error_events[0].message)
 
         # Look for DataFrameTransformEvent (should still succeed after retry)
-        transform_events = [e for e in events if isinstance(e, DataFrameTransformEvent)]
+        transform_events = [e for e in events if isinstance(e, TableTransformEvent)]
 
         # Should have at least one transform event
         self.assertEqual(len(transform_events), 1)
 
         # Verify the transformed DataFrame
         transform_event = transform_events[0]
-        self.assertIsInstance(transform_event.dataframe, pd.DataFrame)
+        self.assertIsInstance(transform_event.table, Table)
 
         # Verify the new column was added correctly
-        transformed_df = transform_event.dataframe
+        transformed_df = transform_event.table.to_dataframe()
         self.assertIn('grade_category', transformed_df.columns)
 
         # Verify the categorization is correct
