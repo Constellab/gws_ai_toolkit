@@ -25,25 +25,18 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class SuccessValidationResponse(BaseModelDTO):
-    items: list[dict]
-
-
-InternalPlotEvent = PlotAgentEvent | SuccessValidationResponse
-
-
 class PlotlyAgentAi:
     """Standalone plot agent service for data visualization using OpenAI"""
 
     MAX_CONSECUTIVE_ERRORS = 5
-    MAX_GENERATION_ATTEMPTS = 3
+    MAX_CONSECUTIVE_CALLS = 10
 
     _openai_client: OpenAI
     _dataframe: pd.DataFrame
     _model: str
     _temperature: float
     _previous_response_id: Optional[str]
-    _events_emitted: List[PlotAgentEvent]
+    _emitted_events: List[PlotAgentEvent]
 
     def __init__(self, openai_client: OpenAI,
                  dataframe: pd.DataFrame,
@@ -54,7 +47,7 @@ class PlotlyAgentAi:
         self._model = model
         self._temperature = temperature
         self._previous_response_id = None
-        self._events_emitted = []
+        self._emitted_events = []
         self._success_inputs = None
 
     def generate_plot_stream(
@@ -70,18 +63,21 @@ class PlotlyAgentAi:
             PlotAgentEvent: Stream of events during plot generation
         """
         consecutive_error_count = 0
+        consecutive_call_count = 0
 
         messages = [{"role": "user", "content": [{"type": "input_text", "text": user_query}]}]
 
         # Main generation loop - replace recursion with iteration
-        while (consecutive_error_count < self.MAX_CONSECUTIVE_ERRORS):
+        while (consecutive_error_count < self.MAX_CONSECUTIVE_ERRORS and
+               consecutive_call_count < self.MAX_CONSECUTIVE_CALLS):
+            consecutive_call_count += 1
 
             success_function_call_id: str | None = None
             error_event: ErrorEvent | None = None
 
             # Generate events for this attempt
             for event in self._generate_plot_stream_internal(messages):
-                self._events_emitted.append(event)
+                self._emitted_events.append(event)
                 yield event
 
                 if isinstance(event, PlotGeneratedEvent):
@@ -105,7 +101,11 @@ class PlotlyAgentAi:
 
             # If there was an error during the function call, prepare error message for next iteration
 
-            if error_event and error_event.call_id:
+            if error_event:
+                consecutive_error_count += 1
+                if not error_event.call_id:
+                    # If no call_id, we cannot proceed with function call output
+                    break
                 messages = [
                     {
                         "type": "function_call_output",
@@ -127,6 +127,13 @@ class PlotlyAgentAi:
                 message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached",
                 code=None,
                 error_type="max_errors_reached",
+            )
+
+        if consecutive_call_count >= self.MAX_CONSECUTIVE_CALLS:
+            yield ErrorEvent(
+                message=f"Maximum consecutive calls ({self.MAX_CONSECUTIVE_CALLS}) reached",
+                code=None,
+                error_type="max_calls_reached",
             )
 
     def _generate_plot_stream_internal(
@@ -313,8 +320,7 @@ class PlotlyAgentAi:
 
         return f"""Table Information:
 - Columns ({len(self._dataframe.columns)}): {', '.join(column_info)}
-- Number of rows: {len(self._dataframe)}
-- Table shape: {self._dataframe.shape}"""
+- Number of rows: {len(self._dataframe)}"""
 
     def _create_plot_prompt(self, table_metadata: str) -> str:
         """Create prompt for OpenAI with table metadata
@@ -348,6 +354,7 @@ When generating code, make sure it:
 - Provide the figure in a variable named 'fig'
 - Do not use function definitions
 - Do not use return statements
+- Do not call fig.show()
 
 Call the function only once per user request for a chart.
 
@@ -358,3 +365,7 @@ fig = go.Figure()
 fig.add_trace(go.Scatter(x=df['column1'], y=df['column2']))
 fig.update_layout(title='Chart Title')
 ```"""
+
+    def get_emitted_events(self) -> List[PlotAgentEvent]:
+        """Get all events emitted during the last generation"""
+        return self._emitted_events
