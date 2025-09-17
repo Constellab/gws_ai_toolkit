@@ -4,9 +4,9 @@ import reflex as rx
 from gws_core import Table
 
 from gws_ai_toolkit._app.chat_base import OpenAiChatStateBase
-from gws_ai_toolkit.core.agents.dataframe_transform_agent_ai import (
-    DataFrameTransformAgentAi, DataFrameTransformAgentAiDTO)
-from gws_ai_toolkit.core.agents.dataframe_transform_agent_ai_events import \
+from gws_ai_toolkit.core.agents.table_transform_agent_ai import \
+    TableTransformAgentAi
+from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import \
     DataFrameTransformAgentEvent
 
 from ...ai_table_data_state import AiTableDataState
@@ -50,7 +50,7 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
     placeholder_text = "Ask me to transform, clean, or manipulate this data..."
     empty_state_message = "Start transforming your DataFrame"
 
-    _transform_agent_dto: Optional[DataFrameTransformAgentAiDTO] = None
+    _last_response_id: Optional[str] = None
 
     ANALYSIS_TYPE = "ai_table_transform"
 
@@ -67,7 +67,7 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
 
         async with self:
             # Save the DataFrameTransformAgentAi state for continuity in future interactions
-            self._transform_agent_dto = transform_agent.to_dto()
+            self._last_response_id = transform_agent.get_last_response_id()
 
     async def _handle_transform_agent_event(self, event: DataFrameTransformAgentEvent) -> None:
         """Handle events from the transform agent service"""
@@ -114,7 +114,7 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
         # Save conversation to history after response is completed
         await self.save_conversation_to_history(self.ANALYSIS_TYPE, config.to_json_dict())
 
-    async def _get_transform_agent(self) -> DataFrameTransformAgentAi:
+    async def _get_transform_agent(self) -> TableTransformAgentAi:
         """Get or create DataFrameTransformAgentAi instance"""
         async with self:
             openai_client = self._get_openai_client()
@@ -124,21 +124,19 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
             if table is None:
                 raise ValueError("No active dataframe available for transformation")
 
-            if self._transform_agent_dto:
-                return DataFrameTransformAgentAi.from_dto(
-                    dto=self._transform_agent_dto,
-                    openai_client=openai_client,
-                    table=table,
-                )
-            else:
-                config = await self._get_config()
-                return DataFrameTransformAgentAi(
-                    openai_client=openai_client,
-                    table=table,
-                    model=config.model,
-                    temperature=config.temperature,
-                    table_name=table.name
-                )
+            config = await self._get_config()
+            table_agent = TableTransformAgentAi(
+                openai_client=openai_client,
+                table=table,
+                model=config.model,
+                temperature=config.temperature,
+                table_name=table.name
+            )
+
+            if self._last_response_id:
+                table_agent.set_last_response_id(self._last_response_id)
+
+            return table_agent
 
     async def _get_config(self) -> AiTableTransformAgentChatConfig:
         """Get configuration for AI Table Transform Agent analysis
@@ -165,4 +163,4 @@ class AiTableTransformAgentChatState(OpenAiChatStateBase, rx.State):
 
     def _after_chat_cleared(self):
         super()._after_chat_cleared()
-        self._transform_agent_dto = None
+        self._last_response_id = None

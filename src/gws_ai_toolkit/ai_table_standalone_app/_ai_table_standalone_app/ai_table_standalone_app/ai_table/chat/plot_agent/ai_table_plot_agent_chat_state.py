@@ -4,8 +4,7 @@ import reflex as rx
 from gws_core import Table
 
 from gws_ai_toolkit._app.chat_base import OpenAiChatStateBase
-from gws_ai_toolkit.core.agents.plotly_agent_ai import (PlotlyAgentAi,
-                                                        PlotlyAgentAiDTO)
+from gws_ai_toolkit.core.agents.plotly_agent_ai import PlotlyAgentAi
 from gws_ai_toolkit.core.agents.plotly_agent_ai_events import PlotlyAgentEvent
 
 from ...ai_table_data_state import AiTableDataState
@@ -47,7 +46,7 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
     placeholder_text = "Ask about this Excel/CSV data..."
     empty_state_message = "Start analyzing your Excel/CSV data"
 
-    _plotly_agent_dto: Optional[PlotlyAgentAiDTO] = None
+    _last_response_id: Optional[str] = None
 
     ANALYSIS_TYPE = "ai_table"
 
@@ -64,7 +63,7 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
 
         async with self:
             # Save the PlotlyAgentAi state for continuity in future interactions
-            self._plotly_agent_dto = plotly_agent.to_dto()
+            self._last_response_id = plotly_agent.get_last_response_id()
 
     async def _handle_plot_agent_event(self, event: PlotlyAgentEvent) -> None:
         """Handle events from the plot agent service"""
@@ -128,20 +127,18 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
             if table is None:
                 raise ValueError("No active table available for analysis")
 
-            if self._plotly_agent_dto:
-                return PlotlyAgentAi.from_dto(
-                    dto=self._plotly_agent_dto,
-                    openai_client=openai_client,
-                    table=table,
-                )
-            else:
-                config = await self._get_config()
-                return PlotlyAgentAi(
-                    openai_client=openai_client,
-                    table=table,
-                    model=config.model,
-                    temperature=config.temperature
-                )
+            config = await self._get_config()
+            plotly_agent = PlotlyAgentAi(
+                openai_client=openai_client,
+                table=table,
+                model=config.model,
+                temperature=config.temperature
+            )
+
+            if self._last_response_id:
+                plotly_agent.set_last_response_id(self._last_response_id)
+
+            return plotly_agent
 
     async def _get_config(self) -> AiTablePlotAgentChatConfig:
         """Get configuration for AI Table analysis
@@ -163,4 +160,4 @@ class AiTablePlotAgentChatState(OpenAiChatStateBase, rx.State):
 
     def _after_chat_cleared(self):
         super()._after_chat_cleared()
-        self._plotly_agent_dto = None
+        self._last_response_id = None

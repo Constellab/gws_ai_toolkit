@@ -25,7 +25,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     _openai_client: OpenAI
     _model: str
     _temperature: float
-    _previous_response_id: Optional[str]
+    _last_response_id: Optional[str]
     _emitted_events: List[T]
     _new_table_name: Optional[str]
 
@@ -35,7 +35,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         self._openai_client = openai_client
         self._model = model
         self._temperature = temperature
-        self._previous_response_id = None
+        self._last_response_id = None
         self._emitted_events = []
         self._success_inputs = None
         self._new_table_name = None
@@ -143,7 +143,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             instructions=prompt,
             input=input_messages,
             temperature=self._temperature,
-            previous_response_id=self._previous_response_id,
+            previous_response_id=self._last_response_id,
             tools=tools
         ) as stream:
 
@@ -157,7 +157,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                     current_response_id = event.response.id
                     yield cast(T, ResponseCreatedEvent(response_id=current_response_id))
                 elif event.type == "response.completed":
-                    self._previous_response_id = event.response.id
+                    self.set_last_response_id(event.response.id)
                     yield cast(T, ResponseCompletedEvent())
                 elif event.type == "response.output_item.done":
                     for item_event in self._handle_response_output_item_done_event(event, current_response_id):
@@ -220,3 +220,11 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     def get_emitted_events(self) -> List[T]:
         """Get all events emitted during the last generation"""
         return self._emitted_events
+
+    def set_last_response_id(self, response_id: str) -> None:
+        """Set the public response ID for the next generation"""
+        self._last_response_id = response_id
+
+    def get_last_response_id(self) -> Optional[str]:
+        """Get the last response ID used in generation"""
+        return self._last_response_id

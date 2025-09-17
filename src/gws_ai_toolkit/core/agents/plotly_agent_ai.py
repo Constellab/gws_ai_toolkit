@@ -23,13 +23,6 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class PlotlyAgentAiDTO(BaseModelDTO):
-    model: str
-    temperature: float
-    previous_response_id: str | None = None
-    emitted_events: List[PlotlyAgentEvent] = []
-
-
 class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
     """Standalone plot agent service for data visualization using OpenAI"""
 
@@ -199,25 +192,3 @@ fig = go.Figure()
 fig.add_trace(go.Scatter(x=df['column1'], y=df['column2']))
 fig.update_layout(title='Chart Title')
 ```"""
-
-    def to_dto(self) -> PlotlyAgentAiDTO:
-        """Convert agent state to DTO"""
-        return PlotlyAgentAiDTO(
-            model=self._model,
-            temperature=self._temperature,
-            previous_response_id=self._previous_response_id,
-            emitted_events=self._emitted_events.copy()  # Create a copy of the list
-        )
-
-    @classmethod
-    def from_dto(cls, dto: PlotlyAgentAiDTO, openai_client: OpenAI, table: Table) -> "PlotlyAgentAi":
-        """Create agent instance from DTO"""
-        agent = cls(
-            openai_client=openai_client,
-            table=table,
-            model=dto.model,
-            temperature=dto.temperature
-        )
-        agent._previous_response_id = dto.previous_response_id
-        agent._emitted_events = dto.emitted_events.copy()  # Create a copy of the list
-        return agent

@@ -6,9 +6,9 @@ import pandas as pd
 from gws_core import Table
 from openai import OpenAI
 
-from gws_ai_toolkit.core.agents.dataframe_transform_agent_ai import \
-    DataFrameTransformAgentAi
-from gws_ai_toolkit.core.agents.dataframe_transform_agent_ai_events import (
+from gws_ai_toolkit.core.agents.table_transform_agent_ai import \
+    TableTransformAgentAi
+from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import (
     ErrorEvent, TableTransformEvent)
 
 
@@ -29,7 +29,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
         # Create DataFrameTransformAgentAi instance
-        agent = DataFrameTransformAgentAi(
+        agent = TableTransformAgentAi(
             openai_client=openai_client,
             table=Table(test_dataframe),
             model="gpt-4o",  # Use cheaper model for testing
@@ -100,7 +100,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
         # Create DataFrameTransformAgentAi instance
-        agent = DataFrameTransformAgentAi(
+        agent = TableTransformAgentAi(
             openai_client=openai_client,
             table=Table(test_dataframe),
             model="gpt-4o",
@@ -137,7 +137,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         self.assertTrue(any(keyword in transform_event.code.lower()
                             for keyword in ['fillna', 'fill', 'mean']))
 
-    @patch.object(DataFrameTransformAgentAi, '_get_code_execution_globals')
+    @patch.object(TableTransformAgentAi, '_get_code_execution_globals')
     def test_real_transformation_with_error_recovery(self, mock_get_globals):
         """
         Test real DataFrame transformation with OpenAI API
@@ -160,7 +160,7 @@ class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
         openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
         # Create DataFrameTransformAgentAi instance
-        agent = DataFrameTransformAgentAi(
+        agent = TableTransformAgentAi(
             openai_client=openai_client,
             table=Table(test_dataframe),
             model="gpt-4o",

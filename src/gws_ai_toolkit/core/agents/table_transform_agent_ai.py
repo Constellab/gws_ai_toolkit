@@ -9,12 +9,11 @@ from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
 from .base_function_agent_ai import BaseFunctionAgentAi
-from .dataframe_transform_agent_ai_events import (DataFrameTransformAgentEvent,
-                                                  ErrorEvent,
-                                                  TableTransformEvent)
+from .table_transform_agent_ai_events import (DataFrameTransformAgentEvent,
+                                              ErrorEvent, TableTransformEvent)
 
 
-class DataFrameTransformConfig(BaseModelDTO):
+class TableTransformConfig(BaseModelDTO):
     """Configuration for DataFrame transformation code generation"""
     code: str = Field(
         description="Python code to transform a DataFrame. The code should use a DataFrame variable named 'df' as input and assign the transformed result to a variable named 'transformed_df'.",
@@ -24,15 +23,7 @@ class DataFrameTransformConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class DataFrameTransformAgentAiDTO(BaseModelDTO):
-    model: str
-    temperature: float
-    table_name: Optional[str] = None
-    previous_response_id: str | None = None
-    emitted_events: List[DataFrameTransformAgentEvent] = []
-
-
-class DataFrameTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
+class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
     """Standalone DataFrame transform agent service for data manipulation using OpenAI"""
 
     _table: Table
@@ -53,7 +44,7 @@ class DataFrameTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent
             {"type": "function", "name": "transform_dataframe",
              "description":
              "Generate Python code that transforms a DataFrame. The code should use 'df' as the input DataFrame variable and assign the result to 'transformed_df'.",
-             "parameters": DataFrameTransformConfig.model_json_schema()}
+             "parameters": TableTransformConfig.model_json_schema()}
         ]
 
     def _get_success_response(self) -> dict:
@@ -217,27 +208,3 @@ transformed_df = df.copy()
 transformed_df = transformed_df.dropna()
 transformed_df['new_column'] = transformed_df['existing_column'] * 2
 ```"""
-
-    def to_dto(self) -> DataFrameTransformAgentAiDTO:
-        """Convert agent state to DTO"""
-        return DataFrameTransformAgentAiDTO(
-            model=self._model,
-            temperature=self._temperature,
-            table_name=self._table_name,
-            previous_response_id=self._previous_response_id,
-            emitted_events=self._emitted_events.copy()  # Create a copy of the list
-        )
-
-    @classmethod
-    def from_dto(cls, dto: DataFrameTransformAgentAiDTO, openai_client: OpenAI, table: Table) -> "DataFrameTransformAgentAi":
-        """Create agent instance from DTO"""
-        agent = cls(
-            openai_client=openai_client,
-            table=table,
-            model=dto.model,
-            temperature=dto.temperature,
-            table_name=dto.table_name
-        )
-        agent._previous_response_id = dto.previous_response_id
-        agent._emitted_events = dto.emitted_events.copy()  # Create a copy of the list
-        return agent
