@@ -27,4 +27,6 @@ class MainState(ReflexMainState, rx.State):
 
         # Set resource in both states
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
-        data_state.set_resource(File(temp_file_path))
+        # Pass the original filename (without extension) to preserve correct naming
+        original_name = os.path.splitext(file.name)[0]
+        data_state.set_resource(File(temp_file_path), original_name)

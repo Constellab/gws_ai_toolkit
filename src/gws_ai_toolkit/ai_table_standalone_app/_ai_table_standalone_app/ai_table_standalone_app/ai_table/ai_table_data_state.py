@@ -59,15 +59,17 @@ class AiTableDataState(rx.State):
             return table_item.get_dataframe(self.current_sheet_name)
         return None
 
-    def set_resource(self, file: File):
+    def set_resource(self, file: File, name: Optional[str] = None):
         """Set the resource file to load data from
 
         Args:
             file (File): File to set
+            name (Optional[str]): Optional name to use instead of extracting from file path
         """
 
         self.current_file_path = file.path
-        self.current_file_name = os.path.splitext(os.path.basename(file.path))[0]
+        # Use provided name or extract from file path as fallback
+        self.current_file_name = name or os.path.splitext(os.path.basename(file.path))[0]
 
         # Add original table to the tables dictionary
         table_item = TableItem.from_file(
@@ -306,7 +308,7 @@ class AiTableDataState(rx.State):
     def current_table_name(self) -> str:
         """Get the name of the currently active table"""
         if self.current_table_id == ORIGINAL_TABLE_ID:
-            return f"{self.current_file_name} (Original)"
+            return f"{self.current_file_name}"
         else:
             table_item = self._tables.get(self.current_table_id)
             return table_item.name if table_item else "Unknown Table"

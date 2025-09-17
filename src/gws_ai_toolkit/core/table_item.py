@@ -66,7 +66,11 @@ class TableItem:
             tables = TableImporter.import_excel_multiple_sheets(file, {})
 
         for sheet_name, table in tables.items():
-            table.name = f"{name}_{sheet_name}"
+            if sheet_name == name:
+                # Avoid duplicate names
+                table.name = f"{name}"
+            else:
+                table.name = f"{name}_{sheet_name}"
             item.add_table(sheet_name=sheet_name, table=table)
 
         return item

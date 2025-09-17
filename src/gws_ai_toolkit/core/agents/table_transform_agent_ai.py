@@ -19,6 +19,11 @@ class TableTransformConfig(BaseModelDTO):
         description="Python code to transform a DataFrame. The code should use a DataFrame variable named 'df' as input and assign the transformed result to a variable named 'transformed_df'.",
     )
 
+    transformed_table_name: Optional[str] = Field(
+        default=None,
+        description="Optional new name for the transformed table. Based on transformations and original table name (if provided). Keep it concise.",
+    )
+
     class Config:
         extra = "forbid"  # Prevent additional properties
 
@@ -73,14 +78,14 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
             return
 
         try:
-            transformed_df, code = self._execute_generated_code(function_args)
+            transformed_df, code, transformed_table_name = self._execute_generated_code(function_args)
 
             yield TableTransformEvent(
                 table=Table(transformed_df),
                 code=code,
                 call_id=call_id,
                 response_id=current_response_id,
-                table_name=self._new_table_name
+                table_name=transformed_table_name
             )
 
             # Transform successful - no recursion needed
@@ -99,7 +104,7 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
             # Return after error - the main loop will handle retry logic
             return
 
-    def _execute_generated_code(self, arguments_str: str) -> tuple[pd.DataFrame, str]:
+    def _execute_generated_code(self, arguments_str: str) -> tuple[pd.DataFrame, str, str]:
         """Execute generated code and return transformed DataFrame and code
 
         Args:
@@ -144,7 +149,9 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
                 "Make sure to assign a pandas DataFrame object to a variable named 'transformed_df'."
             )
 
-        return transformed_df, code
+        transformed_table_name = arguments.get('transformed_table_name')
+
+        return transformed_df, code, transformed_table_name
 
     def _get_code_execution_globals(self) -> dict:
         """Get globals for code execution environment"""
@@ -163,8 +170,10 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
         """
 
         table_metadata = self._table.get_ai_description()
+        table_name = f"Original table name : {self._table_name}" if self._table_name else ""
         return f"""You are an AI assistant specialized in data cleaning, transformation, and manipulation. You have access to information about a table/dataset but not the actual data.
 
+{table_name}
 {table_metadata}
 
 Your role is to help users transform, clean, and manipulate this data. When users request data transformations, you should:

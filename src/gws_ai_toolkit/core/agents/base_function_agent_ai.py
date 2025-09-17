@@ -27,7 +27,6 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     _temperature: float
     _last_response_id: Optional[str]
     _emitted_events: List[T]
-    _new_table_name: Optional[str]
 
     def __init__(self, openai_client: OpenAI,
                  model: str,
@@ -38,7 +37,6 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         self._last_response_id = None
         self._emitted_events = []
         self._success_inputs = None
-        self._new_table_name = None
 
     def call_agent(
         self,
@@ -54,7 +52,6 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         Yields:
             PlotAgentEvent: Stream of events during generation
         """
-        self._new_table_name = new_table_name
         consecutive_error_count = 0
         consecutive_call_count = 0
 
