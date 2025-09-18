@@ -64,7 +64,6 @@ def ai_table():
                         "Go to Home",
                         on_click=rx.redirect("/"),
                         size="3",
-                        cursor="pointer",
                     ),
                     align="center",
                     spacing="4",

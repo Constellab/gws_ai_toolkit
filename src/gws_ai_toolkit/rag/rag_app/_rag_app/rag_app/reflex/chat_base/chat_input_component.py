@@ -22,7 +22,6 @@ def chat_input_component(config: ChatConfig) -> rx.Component:
                 rx.icon("send", size=18),
                 type="submit",
                 disabled=config.state.is_streaming,
-                cursor="pointer",
                 variant="ghost",
                 size="3",
                 border_radius="50%",

@@ -24,7 +24,6 @@ def uploaded_files_list():
                                 AiTableDataState.switch_table(table["id"]),
                                 rx.redirect("/ai-table"),
                             ],
-                            cursor="pointer",
                         ),
                         justify="between",
                         align="center",

@@ -18,7 +18,6 @@ def table_selector():
             rx.select.root(
                 rx.select.trigger(
                     placeholder="Select table",
-                    cursor="pointer",
                 ),
                 rx.select.content(
                     # Table options - iterate over all tables
@@ -27,7 +26,6 @@ def table_selector():
                         lambda table: rx.select.item(
                             rx.text("📋 ", table["name"]),
                             value=table["id"],
-                            cursor="pointer",
                         ),
                     ),
                 ),
@@ -41,7 +39,6 @@ def table_selector():
                 color_scheme="red",
                 on_click=AiTableDataState.remove_current_table,
                 size="2",
-                cursor="pointer",
             ),
             spacing="2",
             align="center",
@@ -86,13 +83,11 @@ def _table_header():
             "💬 Chat",
             on_click=lambda: AiTableDataState.toggle_right_panel_state('chat'),
             variant="solid",
-            cursor="pointer",
         ),
         rx.button(
             "📈 Stats",
             on_click=lambda: AiTableDataState.toggle_right_panel_state('stats'),
             variant="solid",
-            cursor="pointer",
         ),
         align_items="center",
         width="100%",

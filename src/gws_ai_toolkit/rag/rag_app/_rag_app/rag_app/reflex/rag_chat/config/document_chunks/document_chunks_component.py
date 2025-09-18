@@ -1,6 +1,7 @@
 import reflex as rx
 
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
+
 from .document_chunks_state import DocumentChunksState
 
 
@@ -115,5 +116,4 @@ def load_chunks_button(dataset_id: str, document_id: str):
         ],
         variant="outline",
         color_scheme="blue",
-        cursor="pointer",
     )

@@ -123,7 +123,6 @@ def _show_additional_test_suggestion() -> rx.Component:
                                 rx.text(f"Run {AiTableStatsState.suggested_additional_test}")
                             ),
                             type="submit",
-                            cursor="pointer",
                             disabled=AiTableStatsState.is_processing
                         ),
                         spacing="2"
@@ -252,7 +251,6 @@ def _show_results() -> rx.Component:
                 width="100%",
                 variant="soft",
                 margin_top="1em",
-                style={".AccordionTrigger": {"cursor": "pointer"}},
             ),
         ),
 

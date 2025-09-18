@@ -101,7 +101,6 @@ def _conversations_sidebar() -> rx.Component:
                     variant="ghost",
                     size="2",
                     on_click=HistoryState.load_conversations,
-                    cursor="pointer",
                 ),
                 width="100%",
                 align_items="center",
@@ -179,7 +178,6 @@ def _header_buttons(state: ReadOnlyChatState) -> List[rx.Component]:
             "Configuration",
             variant="outline",
             size="2",
-            cursor="pointer",
             on_click=state.open_config_dialog
         )
     ]

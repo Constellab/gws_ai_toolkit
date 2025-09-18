@@ -20,7 +20,6 @@ def table_section():
                 on_click=AiTableSelectionState.open_extract_dialog,
                 disabled=~AiTableSelectionState.can_extract,
                 variant="outline",
-                cursor="pointer",
             ),
             spacing="4",
             align="center",

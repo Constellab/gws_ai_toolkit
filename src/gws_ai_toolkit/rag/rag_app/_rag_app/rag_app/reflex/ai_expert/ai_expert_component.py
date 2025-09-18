@@ -37,7 +37,6 @@ def ai_expert_header_default_buttons_component(state: ChatStateBase) -> List[rx.
             "View document",
             on_click=lambda: AiExpertState.open_current_resource_file,
             variant='outline',
-            cursor="pointer",
             size="2",
         ),
         header_clear_chat_button_component(state)

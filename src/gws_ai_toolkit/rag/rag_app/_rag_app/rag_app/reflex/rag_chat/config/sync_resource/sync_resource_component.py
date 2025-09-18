@@ -2,8 +2,7 @@ import reflex as rx
 
 from ..document_chunks.document_chunks_component import (
     document_chunks_dialog, load_chunks_button)
-from .sync_resource_state import (
-    ResourceDTO, SyncResourceState)
+from .sync_resource_state import ResourceDTO, SyncResourceState
 
 
 def _resource_box(resource: ResourceDTO, hovered: bool):
@@ -13,7 +12,6 @@ def _resource_box(resource: ResourceDTO, hovered: bool):
         padding="8px 16px",
         style={"background-color": "var(--gray-5)"} if hovered else {},
         # style=style,
-        cursor="pointer",
         on_click=lambda: SyncResourceState.select_resource(resource.id)
     )
 

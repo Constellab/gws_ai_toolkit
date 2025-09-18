@@ -26,7 +26,6 @@ def ai_table_selection_dialog():
                             "Cancel",
                             variant="outline",
                             color_scheme="gray",
-                            cursor="pointer",
                         ),
                         on_click=AiTableSelectionState.close_extract_dialog,
                     ),
@@ -34,7 +33,6 @@ def ai_table_selection_dialog():
                         rx.button(
                             "Extract",
                             variant="solid",
-                            cursor="pointer",
                         ),
                         on_click=AiTableSelectionState.extract_selection,
                     ),
