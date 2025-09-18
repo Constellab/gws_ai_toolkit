@@ -51,7 +51,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                  model: str,
                  temperature: float,
                  table_name: Optional[str] = None):
-        super().__init__(openai_client, model, temperature)
+        super().__init__(openai_client, model, temperature, skip_success_response=False)
         self._table = table
         self._table_name = table_name
 
@@ -110,7 +110,10 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                     openai_client=self._openai_client,
                     table=self._table,
                     model=self._model,
-                    temperature=self._temperature
+                    temperature=self._temperature,
+                    # skip success to avoid double success events because
+                    # the main agent will handle it
+                    skip_success_response=True
                 )
                 yield from self._handle_request(plotly_agent, user_request, call_id, current_response_id)
             elif function_name == "transform_table":
@@ -119,7 +122,10 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                     table=self._table,
                     model=self._model,
                     temperature=self._temperature,
-                    table_name=self._table_name
+                    table_name=self._table_name,
+                    # skip success to avoid double success events because
+                    # the main agent will handle it
+                    skip_success_response=True
                 )
                 yield from self._handle_request(transform_agent, user_request, call_id, current_response_id)
             else:

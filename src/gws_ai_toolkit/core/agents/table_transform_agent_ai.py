@@ -39,8 +39,9 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
                  table: Table,
                  model: str,
                  temperature: float,
-                 table_name: Optional[str] = None):
-        super().__init__(openai_client, model, temperature)
+                 table_name: Optional[str] = None,
+                 skip_success_response: bool = False):
+        super().__init__(openai_client, model, temperature, skip_success_response=skip_success_response)
         self._table = table
         self._table_name = table_name
 

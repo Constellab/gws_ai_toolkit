@@ -31,8 +31,9 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
     def __init__(self, openai_client: OpenAI,
                  table: Table,
                  model: str,
-                 temperature: float):
-        super().__init__(openai_client, model, temperature)
+                 temperature: float,
+                 skip_success_response: bool = False):
+        super().__init__(openai_client, model, temperature, skip_success_response=skip_success_response)
         self._table = table
 
     def _get_tools(self) -> List[dict]:

@@ -29,16 +29,19 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     _temperature: float
     _last_response_id: Optional[str]
     _emitted_events: List[T]
+    _skip_success_response: bool
 
     def __init__(self, openai_client: OpenAI,
                  model: str,
-                 temperature: float):
+                 temperature: float,
+                 skip_success_response: bool = False):
         self._openai_client = openai_client
         self._model = model
         self._temperature = temperature
         self._last_response_id = None
         self._emitted_events = []
         self._success_inputs = None
+        self._skip_success_response = skip_success_response
 
     def call_agent(
         self,
@@ -79,7 +82,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                     if isinstance(event, FunctionErrorEvent):
                         error_event = event
 
-                    if isinstance(event, FunctionSuccessEvent):
+                    if isinstance(event, FunctionSuccessEvent) and not self._skip_success_response:
                         # this is a successful function call
                         success_event = event
 
