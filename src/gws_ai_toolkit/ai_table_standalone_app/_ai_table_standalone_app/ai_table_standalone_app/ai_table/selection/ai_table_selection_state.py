@@ -44,7 +44,6 @@ class AiTableSelectionState(rx.State):
     async def extract_selection(self):
         """Extract the selected data and create a new subtable"""
 
-        print(f"Current selection: {self.current_selection}")
         if not self.current_selection or len(self.current_selection) != 1:
             return
 

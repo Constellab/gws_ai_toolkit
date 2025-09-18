@@ -4,8 +4,8 @@ from reflex_resizable_panels import resizable_panels as rzp
 
 from .ai_table_data_state import AiTableDataState
 from .ai_table_section import table_section
-from .chat.table_agent.ai_table_table_agent_chat_component import \
-    ai_table_table_agent_chat_component
+from .chat.table_agent.ai_table_agent_chat_component import \
+    ai_table_agent_chat_component
 from .stats.ai_table_stats_component import ai_table_stats_component
 
 
@@ -105,7 +105,7 @@ def _right_panel() -> rx.Component:
     return rx.box(
         rx.match(
             AiTableDataState.right_panel_state,
-            ("chat", ai_table_table_agent_chat_component()),
+            ("chat", ai_table_agent_chat_component()),
             ("stats", ai_table_stats_component()),
         ),
         background_color="var(--gray-2)",

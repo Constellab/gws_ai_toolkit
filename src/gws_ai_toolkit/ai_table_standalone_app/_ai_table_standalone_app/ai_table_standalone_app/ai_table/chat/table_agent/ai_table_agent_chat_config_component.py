@@ -1,9 +1,9 @@
 import reflex as rx
 
-from .ai_table_table_agent_chat_config_state import AiTableTableAgentChatConfigState
+from .ai_table_agent_chat_config_state import AiTableAgentChatConfigState
 
 
-def ai_table_table_agent_chat_config_component() -> rx.Component:
+def ai_table_agent_chat_config_component() -> rx.Component:
     """AI Table Agent configuration interface component.
 
     This component provides a form-based interface for configuring AI Table Agent
@@ -52,7 +52,7 @@ def ai_table_table_agent_chat_config_component() -> rx.Component:
                 rx.input(
                     placeholder="Enter model name (e.g., gpt-4o, gpt-4o-mini)...",
                     name="model",
-                    default_value=AiTableTableAgentChatConfigState.model,
+                    default_value=AiTableAgentChatConfigState.model,
                     width="100%",
                 ),
 
@@ -65,8 +65,8 @@ def ai_table_table_agent_chat_config_component() -> rx.Component:
                     placeholder="0.3",
                     name="temperature",
                     default_value=rx.cond(
-                        AiTableTableAgentChatConfigState.temperature,
-                        AiTableTableAgentChatConfigState.temperature.to_string(),
+                        AiTableAgentChatConfigState.temperature,
+                        AiTableAgentChatConfigState.temperature.to_string(),
                         "0.3"
                     ),
                     type="number",
@@ -84,7 +84,7 @@ def ai_table_table_agent_chat_config_component() -> rx.Component:
                 spacing="3",
                 width="100%"
             ),
-            on_submit=AiTableTableAgentChatConfigState.handle_config_form_submit,
+            on_submit=AiTableAgentChatConfigState.handle_config_form_submit,
             width="100%"
         ),
         spacing="0",

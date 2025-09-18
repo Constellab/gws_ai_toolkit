@@ -8,12 +8,11 @@ from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table_agent_ai_events import TableAgentEvent
 
 from ...ai_table_data_state import AiTableDataState
-from .ai_table_table_agent_chat_config import AiTableTableAgentChatConfig
-from .ai_table_table_agent_chat_config_state import \
-    AiTableTableAgentChatConfigState
+from .ai_table_agent_chat_config import AiTableAgentChatConfig
+from .ai_table_agent_chat_config_state import AiTableAgentChatConfigState
 
 
-class AiTableTableAgentChatState(OpenAiChatStateBase, rx.State):
+class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
     """State management for AI Table Agent Chat - unified table operations functionality.
 
     This state class manages the AI Table Agent chat workflow, providing intelligent
@@ -121,7 +120,7 @@ class AiTableTableAgentChatState(OpenAiChatStateBase, rx.State):
 
     async def _save_conversation_to_history(self):
         """Save current conversation to history with analysis-specific configuration."""
-        config: AiTableTableAgentChatConfig
+        config: AiTableAgentChatConfig
         async with self:
             config = await self._get_config()
 
@@ -155,13 +154,13 @@ class AiTableTableAgentChatState(OpenAiChatStateBase, rx.State):
 
             return table_agent
 
-    async def _get_config(self) -> AiTableTableAgentChatConfig:
+    async def _get_config(self) -> AiTableAgentChatConfig:
         """Get configuration for AI Table Agent analysis
 
         Returns:
             AiTableTableAgentChatConfig: Configuration object for AI Table Agent
         """
-        app_config_state = await self.get_state(AiTableTableAgentChatConfigState)
+        app_config_state = await self.get_state(AiTableAgentChatConfigState)
         return await app_config_state.get_config()
 
     async def update_current_table(self, new_table: Table, name: str) -> None:

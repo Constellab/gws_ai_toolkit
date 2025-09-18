@@ -1,7 +1,7 @@
 from gws_core import BaseModelDTO
 
 
-class AiTableTableAgentChatConfig(BaseModelDTO):
+class AiTableAgentChatConfig(BaseModelDTO):
     """Configuration class for AI Table with unified Table Agent functionality.
 
     This class extends BaseModelDTO to provide a specialized configuration

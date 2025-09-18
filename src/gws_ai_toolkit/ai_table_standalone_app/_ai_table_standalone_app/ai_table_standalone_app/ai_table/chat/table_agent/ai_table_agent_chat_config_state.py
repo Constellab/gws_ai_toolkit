@@ -4,10 +4,10 @@ import reflex as rx
 
 from gws_ai_toolkit._app.core import AppConfigState
 
-from .ai_table_table_agent_chat_config import AiTableTableAgentChatConfig
+from .ai_table_agent_chat_config import AiTableAgentChatConfig
 
 
-class AiTableTableAgentChatConfigState(rx.State):
+class AiTableAgentChatConfigState(rx.State):
     """State management for AI Table Agent configuration interface.
 
     This state class manages the configuration form for AI Table Agent functionality,
@@ -34,14 +34,14 @@ class AiTableTableAgentChatConfigState(rx.State):
         """
         return 'ai_table_table_agent_page'
 
-    async def get_config(self) -> AiTableTableAgentChatConfig:
+    async def get_config(self) -> AiTableAgentChatConfig:
         """Get the current configuration for this analysis type"""
         app_config_state = await AppConfigState.get_config_state(self)
         config = await app_config_state.get_config_section(
             self.get_config_section_name(),
-            AiTableTableAgentChatConfig
+            AiTableAgentChatConfig
         )
-        return cast(AiTableTableAgentChatConfig, config)
+        return cast(AiTableAgentChatConfig, config)
 
     @rx.var
     async def model(self) -> str:
@@ -82,7 +82,7 @@ class AiTableTableAgentChatConfigState(rx.State):
 
         return new_model, new_temperature, ""
 
-    async def handle_config_save(self, new_config: AiTableTableAgentChatConfig):
+    async def handle_config_save(self, new_config: AiTableAgentChatConfig):
         """Save the configuration and show appropriate feedback
 
         Args:
@@ -108,7 +108,7 @@ class AiTableTableAgentChatConfigState(rx.State):
             return rx.toast.error(error)
 
         # Create new config with updated values
-        new_config = AiTableTableAgentChatConfig(
+        new_config = AiTableAgentChatConfig(
             model=new_model,
             temperature=new_temperature
         )

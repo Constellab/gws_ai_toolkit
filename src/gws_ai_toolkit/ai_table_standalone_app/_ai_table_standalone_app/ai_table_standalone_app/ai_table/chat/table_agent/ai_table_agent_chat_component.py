@@ -5,10 +5,10 @@ from gws_ai_toolkit._app.chat_base import (ChatConfig, chat_input_component,
                                            header_clear_chat_button_component)
 
 from ...ai_table_data_state import AiTableDataState
-from .ai_table_table_agent_chat_state import AiTableTableAgentChatState
+from .ai_table_agent_chat_state import AiTableAgentChatState
 
 
-def ai_table_table_agent_chat_component():
+def ai_table_agent_chat_component():
     """AI Table Agent chat component.
 
     This component provides a unified chat interface for AI Table operations,
@@ -40,7 +40,7 @@ def ai_table_table_agent_chat_component():
         rx.Component: Complete chat interface for unified AI Table Agent functionality
     """
     chat_config = ChatConfig(
-        state=AiTableTableAgentChatState
+        state=AiTableAgentChatState
     )
 
     return rx.auto_scroll(
