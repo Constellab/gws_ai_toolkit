@@ -1,6 +1,8 @@
+import asyncio
 import json
 from abc import ABC, abstractmethod
-from typing import Generator, Generic, List, Optional, TypeVar, cast
+from typing import (AsyncGenerator, Generator, Generic, List, Optional,
+                    TypeVar, cast)
 
 from gws_core import BaseModelDTO
 from openai import OpenAI
@@ -42,6 +44,21 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         self._emitted_events = []
         self._success_inputs = None
         self._skip_success_response = skip_success_response
+
+    async def call_agent_async(
+        self,
+        user_query: str,
+    ) -> AsyncGenerator[T, None]:
+        """Asynchronous wrapper for call_agent to collect all events into a list
+
+        Args:
+            user_query: User's request
+        Returns:
+            List of all events emitted during generation
+        """
+        loop = asyncio.get_event_loop()
+        for event in await loop.run_in_executor(None, lambda: list(self.call_agent(user_query))):
+            yield event
 
     def call_agent(
         self,

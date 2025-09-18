@@ -140,7 +140,7 @@ def chat_component(config: ChatConfig) -> rx.Component:
             rx.box(
                 rx.cond(
                     # When there are messages, show normal layout with fixed input
-                    config.state.messages_to_display,
+                    config.state.front_chat_messages,
                     # Layout with messages - fixed input at bottom
                     _chat_with_messages(config),
                     # When no messages, center the input vertically

@@ -219,7 +219,7 @@ def _show_results() -> rx.Component:
             AiTableStatsState.ai_summary_response,
             rx.box(
                 rx.heading("AI Summary", size="3", margin_bottom="0.5em", margin_top="1em"),
-                rx.text(AiTableStatsState.ai_summary_response),
+                rx.markdown(AiTableStatsState.ai_summary_response, class_name='dense-markdown'),
                 width="100%"
             ),
         ),

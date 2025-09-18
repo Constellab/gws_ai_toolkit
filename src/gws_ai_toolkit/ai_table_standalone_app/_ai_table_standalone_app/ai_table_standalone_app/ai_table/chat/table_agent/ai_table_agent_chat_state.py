@@ -57,7 +57,7 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
         table_agent = await self._get_table_agent()
 
         # Stream table operation events
-        for event in table_agent.call_agent(
+        async for event in table_agent.call_agent_async(
             user_query=user_message,
         ):
             await self._handle_table_agent_event(event)
@@ -81,7 +81,7 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
                     role="assistant",
                     external_id=response_id
                 )
-            await self.update_current_response_message(message)
+                await self.add_message(message)
         elif event.type == "dataframe_transform":
             # Handle successful table transformation
             transformed_table = event.table

@@ -127,7 +127,8 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
 
         # Show empty state message when no messages exist
         rx.cond(
-            (config.state.messages_to_display.length() == 0) & ~config.state.current_response_message & ~config.state.is_streaming,
+            (config.state.front_chat_messages.length() ==
+             0) & ~config.state.current_response_message & ~config.state.is_streaming,
             rx.box(
                 rx.text(
                     config.state.empty_state_message if hasattr(
@@ -144,7 +145,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
             ),
             rx.box(
                 rx.foreach(
-                    config.state.messages_to_display,
+                    config.state.front_chat_messages,
                     lambda message: _message_bubble(message, config)
                 ),
                 # Display current response message separately

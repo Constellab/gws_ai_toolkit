@@ -62,24 +62,25 @@ class AiTableStatsState(rx.State):
         if self.is_processing:
             return rx.toast.error("Analysis already in progress. Please wait.")
 
-        current_df: DataFrame | None
-        async with self:
-            self.clear_test_results()
+        prompt = form_data.get("ai_prompt", "").strip()
+        if not prompt:
+            return rx.toast.error("Please enter a prompt describing your analysis.")
 
-            prompt = form_data.get("ai_prompt", "").strip()
-            if not prompt:
-                return rx.toast.error("Please enter a prompt describing your analysis.")
+        async with self:
+            self.is_processing = True
+
+        try:
+            current_df: DataFrame | None
+            async with self:
+                self.clear_test_results()
 
                 # Get current dataframe to extract column names
-            ai_table_state = await self.get_state(AiTableDataState)
-            current_df = ai_table_state.get_current_dataframe
+                ai_table_state = await self.get_state(AiTableDataState)
+                current_df = ai_table_state.get_current_dataframe()
 
             if current_df is None or current_df.empty:
                 return rx.toast.error("No dataframe available. Please load a file first.")
 
-            self.is_processing = True
-
-        try:
             # Convert prompt to analysis parameters using OpenAI
             last_run_config = await self._convert_prompt_to_analysis_params(
                 prompt=prompt,

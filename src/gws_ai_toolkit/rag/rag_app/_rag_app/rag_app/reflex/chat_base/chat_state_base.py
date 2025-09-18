@@ -65,6 +65,7 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
 
     # Required properties
     _chat_messages: List[ChatMessage]
+    front_chat_messages: List[ChatMessageFront]
     _current_response_message: Optional[ChatMessage]
     is_streaming: bool
 
@@ -79,6 +80,9 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
     clear_button_text: str = "New chat"
     show_chat_code_block: bool = False
 
+    _images_folder: Optional[str] = None
+    _plots_folder: Optional[str] = None
+
     @abstractmethod
     async def call_ai_chat(self, user_message: str) -> None:
         """Handle user message and call AI chat service.
@@ -90,18 +94,6 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
     @abstractmethod
     def _after_chat_cleared(self):
         """Hook called after chat is cleared to reset analysis-specific state"""
-
-    @rx.var()
-    async def messages_to_display(self) -> List[ChatMessageFront]:
-        """Get the list of messages to display in the chat."""
-        messages = self._chat_messages
-        if not self.show_chat_code_block:
-            messages = [msg for msg in messages if msg.type != "code"]
-
-        image_folder = await self.get_images_folder_path()
-        plot_folder = await self.get_plots_folder_path()
-        messages = [self._convert_to_front_message_sync(msg, image_folder, plot_folder) for msg in messages]
-        return [msg for msg in messages if msg is not None]  # type: ignore
 
     @rx.var
     async def current_response_message(self) -> Optional[ChatMessageFront]:
@@ -163,8 +155,8 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         )
 
         async with self:
-            self._chat_messages.append(message)
             self.is_streaming = True
+            await self.add_message(message)
 
         try:
             await self.call_ai_chat(user_message)
@@ -202,9 +194,9 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
         """Close the current streaming message and add it to the chat history"""
         if not self._current_response_message:
             return
-        async with self:
-            if self._current_response_message:
-                self._chat_messages.append(self._current_response_message)
+        if self._current_response_message:
+            async with self:
+                await self.add_message(self._current_response_message)
                 self._current_response_message = None
 
     def set_external_conversation_id(self, external_conversation_id: str) -> None:
@@ -213,6 +205,7 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
     @rx.event
     def clear_chat(self) -> None:
         self._chat_messages = []
+        self.front_chat_messages = []
         self._current_response_message = None
         self._conversation_id = None
         self.external_conversation_id = None
@@ -310,11 +303,15 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
 
         return file_path
 
-    def add_message(self, message: ChatMessage) -> None:
+    async def add_message(self, message: ChatMessage) -> None:
         """Add a message to the chat history"""
-        if not self.is_streaming:
-            return
         self._chat_messages.append(message)
+
+        image_folder = await self.get_images_folder_path()
+        plot_folder = await self.get_plots_folder_path()
+        front_message = self._convert_to_front_message_sync(message, image_folder, plot_folder)
+        if front_message:
+            self.front_chat_messages.append(front_message)
 
     @rx.event
     def open_ai_expert(self, rag_document_id: str):
@@ -375,10 +372,14 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
 
     async def get_images_folder_path(self) -> str:
         """Get the folder path where chat images are stored."""
-        history_state = await ConversationHistoryState.get_instance(self)
-        return await history_state.get_images_folder_full_path()
+        if not self._images_folder:
+            history_state = await ConversationHistoryState.get_instance(self)
+            self._images_folder = await history_state.get_images_folder_full_path()
+        return self._images_folder
 
     async def get_plots_folder_path(self) -> str:
         """Get the folder path where chat plots are stored."""
-        history_state = await ConversationHistoryState.get_instance(self)
-        return await history_state.get_plots_folder_full_path()
+        if not self._plots_folder:
+            history_state = await ConversationHistoryState.get_instance(self)
+            self._plots_folder = await history_state.get_plots_folder_full_path()
+        return self._plots_folder

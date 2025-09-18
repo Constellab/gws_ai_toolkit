@@ -44,24 +44,24 @@ def _read_only_empty_chat(config: ChatConfig) -> rx.Component:
 
 def read_only_chat_component(config: ChatConfig) -> rx.Component:
     """Read-only chat interface for viewing historical conversations.
-    
+
     This component provides a chat interface identical to the main chat component
     but with disabled input functionality. It's designed for viewing historical
     conversations without allowing new message input.
-    
+
     Features:
         - Complete message display with all message types
         - Source citations and references
         - Disabled input field for read-only viewing
         - Adaptive layout based on message presence
         - Consistent styling with active chat interfaces
-        
+
     Args:
         config (ChatConfig): Chat configuration with read-only state
-        
+
     Returns:
         rx.Component: Complete read-only chat interface with disabled input
-        
+
     Example:
         readonly_config = ChatConfig(state=ReadOnlyChatState)
         readonly_chat = read_only_chat_component(readonly_config)
@@ -71,7 +71,7 @@ def read_only_chat_component(config: ChatConfig) -> rx.Component:
     return rx.box(
         rx.cond(
             # When there are messages, show normal layout with disabled input
-            config.state.messages_to_display,
+            config.state.front_chat_messages,
             # Layout with messages - disabled input at bottom
             _read_only_chat_with_messages(config),
             # When no messages, center the disabled input vertically

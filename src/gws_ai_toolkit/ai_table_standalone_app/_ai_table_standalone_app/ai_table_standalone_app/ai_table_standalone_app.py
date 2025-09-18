@@ -17,7 +17,8 @@ from .custom_states import CustomAppConfigState, CustomConversationHistoryState
 from .home_page import home_page
 
 app = rxe.App(
-    theme=get_theme()
+    theme=get_theme(),
+    stylesheets=["/style.css"],
 )
 
 nav_bar_items: List[NavBarItem] = [
