@@ -169,7 +169,7 @@ class AiTableTableAgentChatState(OpenAiChatStateBase, rx.State):
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
 
         # Create a new dataframe item with the transformed data
-        data_state.set_current_table(new_table, name)
+        data_state.add_table(new_table, name)
 
     async def _get_current_table(self) -> Optional[Table]:
         """Get the current active table from AiTableDataState

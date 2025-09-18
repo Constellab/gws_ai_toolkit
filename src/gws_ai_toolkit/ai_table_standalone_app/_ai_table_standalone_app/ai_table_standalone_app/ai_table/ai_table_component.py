@@ -10,44 +10,38 @@ from .stats.ai_table_stats_component import ai_table_stats_component
 
 
 def table_selector():
-    """Select dropdown for switching between original table and subtables"""
+    """Select dropdown for switching between tables"""
     return rx.cond(
-        AiTableDataState.subtables_list,  # Only show if there are subtables
+        AiTableDataState.tables_list,  # Only show if there are tables
         rx.hstack(
             rx.text("Table:", font_weight="bold"),
             rx.select.root(
                 rx.select.trigger(
                     placeholder="Select table",
+                    cursor="pointer",
                 ),
                 rx.select.content(
-                    # Original table option
-                    rx.select.item(
-                        "📊 Original Table",
-                        value="original",
-                    ),
-                    # Subtable options - iterate over subtables list
+                    # Table options - iterate over all tables
                     rx.foreach(
-                        AiTableDataState.subtables_list,
-                        lambda subtable: rx.select.item(
-                            rx.text("📋 ", subtable["name"]),
-                            value=subtable["id"],
+                        AiTableDataState.tables_list,
+                        lambda table: rx.select.item(
+                            rx.text("📋 ", table["name"]),
+                            value=table["id"],
+                            cursor="pointer",
                         ),
                     ),
                 ),
                 value=AiTableDataState.current_table_id,
                 on_change=AiTableDataState.switch_table,
             ),
-            # Remove button for current subtable (only show if subtable is selected)
-            rx.cond(
-                AiTableDataState.current_table_id != "original",
-                rx.button(
-                    "❌ Remove",
-                    variant="outline",
-                    color_scheme="red",
-                    on_click=AiTableDataState.remove_current_table(),
-                    size="2",
-                ),
-                rx.box(),
+            # Remove button for current table
+            rx.button(
+                "❌ Remove",
+                variant="outline",
+                color_scheme="red",
+                on_click=AiTableDataState.remove_current_table,
+                size="2",
+                cursor="pointer",
             ),
             spacing="2",
             align="center",

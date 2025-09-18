@@ -40,7 +40,7 @@ class AiTableState(rx.State):
 
         # Set resource in both states
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
-        data_state.set_resource(file)
+        data_state.add_file(file)
 
         # chat_state: AiTableChatState = await self.get_state(AiTableChatState)
         # chat_state: AiTableChatState2 = await self.get_state(AiTableChatState2)

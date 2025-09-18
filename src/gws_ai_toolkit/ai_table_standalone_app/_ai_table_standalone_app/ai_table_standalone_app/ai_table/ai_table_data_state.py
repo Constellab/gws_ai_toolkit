@@ -8,10 +8,7 @@ from gws_core import File, Logger, Table
 
 from gws_ai_toolkit.core.table_item import TableItem
 
-ORIGINAL_TABLE_ID = "original"
-
 RightPanelState = Literal["closed", "chat", "stats"]
-ChatMode = Literal["plot", "transform"]
 
 
 class AiTableDataState(rx.State):
@@ -24,16 +21,13 @@ class AiTableDataState(rx.State):
 
     # Current dataframe management (serializable)
     current_sheet_name: str = ""
-    current_file_path: str = ""
-    current_file_name: str = ""
 
     # UI state
     right_panel_state: RightPanelState = "closed"
-    current_chat_mode: ChatMode = "plot"
 
     # Table
     _tables: Dict[str, TableItem] = {}
-    current_table_id: str = ORIGINAL_TABLE_ID  # Default to original table
+    current_table_id: str = ""  # Current active table ID
 
     # Selection and table management
     current_selection: List[dict] = []
@@ -59,28 +53,6 @@ class AiTableDataState(rx.State):
             return table_item.get_dataframe(self.current_sheet_name)
         return None
 
-    def set_resource(self, file: File, name: Optional[str] = None):
-        """Set the resource file to load data from
-
-        Args:
-            file (File): File to set
-            name (Optional[str]): Optional name to use instead of extracting from file path
-        """
-
-        self.current_file_path = file.path
-        # Use provided name or extract from file path as fallback
-        self.current_file_name = name or os.path.splitext(os.path.basename(file.path))[0]
-
-        # Add original table to the tables dictionary
-        table_item = TableItem.from_file(
-            f"{self.current_file_name}",
-            self.current_file_path
-        )
-        self._tables[ORIGINAL_TABLE_ID] = table_item
-
-        # Set current table to original
-        self.current_table_id = ORIGINAL_TABLE_ID
-
     @rx.event
     def switch_sheet(self, sheet_name: str):
         """Switch to a different sheet in the current dataframe"""
@@ -95,11 +67,6 @@ class AiTableDataState(rx.State):
             self.right_panel_state = "closed"
         else:
             self.right_panel_state = state
-
-    @rx.event
-    def set_chat_mode(self, mode: ChatMode):
-        """Set the current chat mode (plot, transform)"""
-        self.current_chat_mode = mode
 
     @rx.var
     def right_panel_opened(self) -> bool:
@@ -117,7 +84,7 @@ class AiTableDataState(rx.State):
     @rx.var
     def dataframe_loaded(self) -> bool:
         """Check if dataframe is loaded"""
-        return bool(self.current_file_path and os.path.exists(self.current_file_path))
+        return self.get_current_dataframe() is not None
 
     @rx.var
     def nb_rows(self) -> int:
@@ -208,13 +175,10 @@ class AiTableDataState(rx.State):
 
         selection = self.current_selection[0]
 
-        # Get the source dataframe (original or current table)
+        # Get the source dataframe from current table
         source_df = self.get_current_dataframe()
-        if self.current_table_id == ORIGINAL_TABLE_ID:
-            source_name = self.current_file_name
-        else:
-            table_item = self._tables.get(self.current_table_id)
-            source_name = table_item.name if table_item else "table"
+        table_item = self._tables.get(self.current_table_id)
+        source_name = table_item.name if table_item else "table"
 
         if source_df is None or source_df.empty:
             Logger.error("No valid dataframe available for extraction")
@@ -246,42 +210,28 @@ class AiTableDataState(rx.State):
 
         # Add new subtable
         new_table = Table(selected_data)
-        self.set_current_table(new_table, subtable_name)
+        self.add_table(new_table, subtable_name)
 
         # Close the dialog
         self.close_extract_dialog()
 
     @rx.event
-    def switch_to_original(self):
-        """Switch back to original table"""
-        self.current_table_id = ORIGINAL_TABLE_ID
-
-    @rx.event
-    def switch_to_subtable(self, table_id: str):
-        """Switch to a specific table"""
-        if table_id == ORIGINAL_TABLE_ID or table_id in self._tables:
-            self.current_table_id = table_id
-
-    @rx.event
     def switch_table(self, table_id: str):
-        """Switch to original table or a specific table based on ID"""
-        if table_id == ORIGINAL_TABLE_ID or table_id in self._tables:
+        """Switch to a specific table based on ID"""
+        if table_id in self._tables:
             self.current_table_id = table_id
 
     @rx.event
     def remove_current_table(self):
-        """Remove a subtable"""
-        # Don't allow removing the original table
-        if self.current_table_id == ORIGINAL_TABLE_ID:
-            return
-
-        table_item = self._tables.get(self.current_table_id)
-        if table_item:
+        """Remove the current table"""
+        if self.current_table_id and self.current_table_id in self._tables:
             # Remove from dictionary
             del self._tables[self.current_table_id]
-            # Switch to original if this was the current table
-            if self.current_table_id == self.current_table_id:
-                self.current_table_id = ORIGINAL_TABLE_ID
+            # Switch to the first available table or empty if no tables
+            if self._tables:
+                self.current_table_id = next(iter(self._tables.keys()))
+            else:
+                self.current_table_id = ""
 
     @rx.var
     def can_extract(self) -> bool:
@@ -307,31 +257,46 @@ class AiTableDataState(rx.State):
     @rx.var
     def current_table_name(self) -> str:
         """Get the name of the currently active table"""
-        if self.current_table_id == ORIGINAL_TABLE_ID:
-            return f"{self.current_file_name}"
-        else:
-            table_item = self._tables.get(self.current_table_id)
-            return table_item.name if table_item else "Unknown Table"
+        table_item = self._tables.get(self.current_table_id)
+        return table_item.name if table_item else "No Table Selected"
 
     @rx.var
-    def subtables_list(self) -> List[Dict[str, str]]:
-        """Get list of subtables (excluding original) for UI iteration"""
-        subtables = []
+    def tables_list(self) -> List[Dict[str, str]]:
+        """Get list of all tables for UI iteration"""
+        tables = []
         for table_id, table_item in self._tables.items():
-            if table_id != ORIGINAL_TABLE_ID:
-                subtables.append({
-                    "id": table_id,
-                    "name": table_item.name
-                })
-        return subtables
+            tables.append({
+                "id": table_id,
+                "name": table_item.name
+            })
+        return tables
 
-    def set_current_table(self, table: Table, name: str) -> None:
+    def add_file(self, file: File, name: Optional[str] = None):
+        """Set the resource file to load data from
+
+        Args:
+            file (File): File to set
+            name (Optional[str]): Optional name to use instead of extracting from file path
+        """
+
+        table_item = TableItem.from_file(
+            name or file.name,
+            file.path
+        )
+
+        self.add_table(table_item.get_table(), table_item.name)
+
+    def add_table(self, table: Table, name: str) -> None:
         """Set a transformed DataFrame as the current active DataFrame
 
         Args:
             transformed_df: The transformed DataFrame to set as current
         """
         # Create new table entry for the transformed data
-        table_id = f"transformed_{uuid.uuid4()}"
+        table_id = f"{uuid.uuid4()}"
         self._tables[table_id] = TableItem.from_table(name, table)
         self.current_table_id = table_id
+
+    def count_tables(self) -> int:
+        """Count the number of tables currently loaded"""
+        return len(self._tables)

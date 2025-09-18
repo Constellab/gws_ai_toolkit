@@ -11,7 +11,7 @@ from pydantic import Field
 
 from gws_ai_toolkit._app.chat_base import BaseFileAnalysisState, ChatMessage
 
-from ...ai_table_data_state import ORIGINAL_TABLE_ID, AiTableDataState
+from ...ai_table_data_state import AiTableDataState
 from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig
 from .ai_table_plot_file_chat_config_state import \
     AiTablePlotFileChatConfigState
@@ -174,14 +174,9 @@ class AiTablePlotFileChatState(BaseFileAnalysisState, rx.State):
         uploaded_file_id = await self.upload_active_file_to_openai(active_file_path)
 
         # Update system prompt with context about current table
-        table_context = ""
-        if data_state.current_table_id != ORIGINAL_TABLE_ID:
-            table_context = f" (Currently analyzing subtable: {data_state.current_table_name})"
-        else:
-            table_context = f" (Currently analyzing original table: {data_state.current_table_name})"
 
         system_prompt = config.system_prompt.replace(
-            config.prompt_file_placeholder, uploaded_file_id) + table_context
+            config.prompt_file_placeholder, uploaded_file_id)
 
         instructions = system_prompt
 
