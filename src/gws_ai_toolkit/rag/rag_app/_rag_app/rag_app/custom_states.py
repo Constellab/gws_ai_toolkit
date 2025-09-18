@@ -30,8 +30,8 @@ class CustomRagConfigState(RagConfigState, rx.State):
         base_state = await self.get_state(RagAppState)
         params = await base_state.get_params()
         return RagConfigStateConfig(
-            rag_provider=params.get("rag_provider"),
-            resource_sync_mode=params.get("resource_sync_mode"),
+            rag_provider=params.get("rag_provider", 'ragflow'),
+            resource_sync_mode=params.get("resource_sync_mode", "tag"),
             dataset_id=params.get("dataset_id"),
             dataset_credentials_name=params.get("dataset_credentials_name"),
             chat_id=params.get("chat_id"),

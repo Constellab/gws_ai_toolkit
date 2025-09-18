@@ -33,7 +33,7 @@ class GenerateDatahubRagDifyApp(Task):
 
     input_specs = InputSpecs({
         'app_config': InputSpec(File, human_name="App config file", short_description="The app config file to use"),
-        'history_file': InputSpec(File, human_name="History file", short_description="The history file to use")
+        'history_folder': InputSpec(Folder, human_name="History folder", short_description="The history folder to use")
     })
     output_specs = OutputSpecs({
         'streamlit_app': OutputSpec(ReflexResource)
@@ -87,7 +87,7 @@ class GenerateDatahubRagDifyApp(Task):
         reflex_resource.add_resource(app_config_file, create_new_resource=False)
         reflex_resource.set_param('configuration_file_path', app_config_file.path)
 
-        # add the history file
+        # Add the history folder to the reflex resource and set the history folder path
         history_folder: Folder = cast(Folder, inputs['history_folder'])
         reflex_resource.add_resource(history_folder, create_new_resource=False)
         reflex_resource.set_param('history_folder_path', history_folder.path)
@@ -112,8 +112,8 @@ class GenerateDatahubRagFlowApp(Task):
     input_specs = InputSpecs({
         'app_config': InputSpec(File, human_name="App config file",
                                 short_description="The app config will be saved in this file. Can be empty to use the default config."),
-        'history_file': InputSpec(File, human_name="History file",
-                                  short_description="The history file will be saved in this file. Can be empty to use the default history.")
+        'history_folder': InputSpec(Folder, human_name="History folder", short_description="The history folder to use")
+
     })
     output_specs = OutputSpecs({
         'streamlit_app': OutputSpec(ReflexResource)
@@ -162,10 +162,10 @@ class GenerateDatahubRagFlowApp(Task):
         reflex_resource.add_resource(app_config_file, create_new_resource=False)
         reflex_resource.set_param('configuration_file_path', app_config_file.path)
 
-        # Add the history file to the reflex resource and set the history file path
-        history_file: File = cast(File, inputs['history_file'])
-        reflex_resource.add_resource(history_file, create_new_resource=False)
-        reflex_resource.set_param('history_file_path', history_file.path)
+        # Add the history folder to the reflex resource and set the history folder path
+        history_folder: Folder = cast(Folder, inputs['history_folder'])
+        reflex_resource.add_resource(history_folder, create_new_resource=False)
+        reflex_resource.set_param('history_folder_path', history_folder.path)
 
         reflex_resource.set_app_config(RagAppAppConfig())
         reflex_resource.name = "DataHub RAG app"
