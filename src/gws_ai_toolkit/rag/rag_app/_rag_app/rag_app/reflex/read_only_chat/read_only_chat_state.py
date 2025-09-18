@@ -36,7 +36,7 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
     show_config_dialog: bool = False
     current_configuration: dict = {}
 
-    def initialize_with_conversation(self, conversation: ConversationHistory) -> None:
+    async def initialize_with_conversation(self, conversation: ConversationHistory) -> None:
         """Initialize the state with a historical conversation.
 
         Args:
@@ -44,7 +44,8 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
         """
         self._conversation_id = conversation.conversation_id
         self.external_conversation_id = conversation.external_conversation_id
-        self._chat_messages = conversation.messages.copy()
+        for message in conversation.messages:
+            await self.add_message(message)
         self._current_response_message = None
         self.is_streaming = False
         self.current_configuration = conversation.configuration

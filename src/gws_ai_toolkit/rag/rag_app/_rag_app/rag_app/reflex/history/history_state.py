@@ -63,7 +63,7 @@ class HistoryState(rx.State):
         selected_conv = next((c for c in self.conversations if c.conversation_id == conversation_id), None)
         if selected_conv:
             read_only_state: ReadOnlyChatState = await self.get_state(ReadOnlyChatState)
-            read_only_state.initialize_with_conversation(selected_conv)
+            await read_only_state.initialize_with_conversation(selected_conv)
 
     @rx.var
     def selected_conversation(self) -> Optional[ConversationHistory]:
