@@ -53,14 +53,6 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
              "parameters": TableTransformConfig.model_json_schema()}
         ]
 
-    def _get_success_response(self) -> dict:
-        """Get success response for function call output"""
-        return {"Transform": "Successfully transformed the DataFrame."}
-
-    def _get_error_response(self, error_message: str) -> dict:
-        """Get error response for function call output"""
-        return {"Transform": f"Error: {error_message}"}
-
     def _handle_function_call(self, event_item: ResponseFunctionToolCall,
                               current_response_id: str) -> Generator[DataFrameTransformAgentEvent, None, None]:
         """Handle output item done event"""
@@ -87,7 +79,8 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
                 code=code,
                 call_id=call_id,
                 response_id=current_response_id,
-                table_name=transformed_table_name
+                table_name=transformed_table_name,
+                function_response="Successfully transformed the DataFrame.",
             )
 
             # Transform successful - no recursion needed

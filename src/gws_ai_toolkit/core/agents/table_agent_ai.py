@@ -6,6 +6,8 @@ from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
+from gws_ai_toolkit.core.agents.base_function_agent_events import \
+    FunctionSuccessEvent
 from gws_ai_toolkit.core.agents.plotly_agent_ai_events import \
     PlotGeneratedEvent
 from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import \
@@ -70,14 +72,6 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             }
         ]
 
-    def _get_success_response(self) -> dict:
-        """Get success response for function call output"""
-        return {"Result": "Successfully completed the table operation."}
-
-    def _get_error_response(self, error_message: str) -> dict:
-        """Get error response for function call output"""
-        return {"Result": f"Error: {error_message}"}
-
     def _handle_function_call(self, event_item: ResponseFunctionToolCall,
                               current_response_id: str) -> Generator[TableAgentEvent, None, None]:
         """Handle function call by delegating to appropriate specialized agent"""
@@ -112,9 +106,22 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 return
 
             if function_name == "generate_plot":
-                yield from self._handle_plot_request(user_request, call_id, current_response_id)
+                plotly_agent = PlotlyAgentAi(
+                    openai_client=self._openai_client,
+                    table=self._table,
+                    model=self._model,
+                    temperature=self._temperature
+                )
+                yield from self._handle_request(plotly_agent, user_request, call_id, current_response_id)
             elif function_name == "transform_table":
-                yield from self._handle_transform_request(user_request, call_id, current_response_id)
+                transform_agent = TableTransformAgentAi(
+                    openai_client=self._openai_client,
+                    table=self._table,
+                    model=self._model,
+                    temperature=self._temperature,
+                    table_name=self._table_name
+                )
+                yield from self._handle_request(transform_agent, user_request, call_id, current_response_id)
             else:
                 yield FunctionErrorEvent(
                     message=f"Unknown function: {function_name}",
@@ -141,69 +148,46 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 response_id=current_response_id
             )
 
-    def _handle_plot_request(self, user_request: str, call_id: str,
-                             response_id: str) -> Generator[TableAgentEvent, None, None]:
+    def _handle_request(self,
+                        ai_agent: BaseFunctionAgentAi,
+                        user_request: str,
+                        call_id: str,
+                        response_id: str) -> Generator[TableAgentEvent, None, None]:
         """Handle plot generation request by delegating to PlotlyAgentAi"""
-
-        # Create plot agent
-        plot_agent = PlotlyAgentAi(
-            openai_client=self._openai_client,
-            table=self._table,
-            model=self._model,
-            temperature=self._temperature
-        )
 
         # Set the last response ID to maintain conversation context
         # plot_agent.set_last_response_id(self.get_last_response_id())
 
         # Delegate to plot agent and yield events directly
-        success_response_id = ""
-        success_call_id = ""
-        for event in plot_agent.call_agent(user_request):
+        success_event: Optional[FunctionSuccessEvent] = None
+        table_event: Optional[TableTransformEvent] = None
+        for event in ai_agent.call_agent(user_request):
             yield event
-            # If we get a PlotGeneratedEvent, we can yield a SubAgentSuccess
-            if isinstance(event, PlotGeneratedEvent):
-                success_response_id = response_id
-                success_call_id = call_id
+            # If we get a FunctionSuccessEvent, we can yield a SubAgentSuccess
+            if isinstance(event, FunctionSuccessEvent):
+                success_event = event
 
-        # if success_call_id and success_response_id:
-        #     yield SubAgentSuccess(
-        #         call_id=success_call_id,
-        #         response_id=success_response_id,
-        #     )
-
-    def _handle_transform_request(self, user_request: str, call_id: str,
-                                  response_id: str) -> Generator[TableAgentEvent, None, None]:
-        """Handle table transformation request by delegating to TableTransformAgentAi"""
-
-        # Create transform agent
-        transform_agent = TableTransformAgentAi(
-            openai_client=self._openai_client,
-            table=self._table,
-            model=self._model,
-            temperature=self._temperature,
-            table_name=self._table_name
-        )
-
-        # Set the last response ID to maintain conversation context
-        # transform_agent.set_last_response_id(self.get_last_response_id())
-
-        # Delegate to transform agent and yield events directly
-        success_response_id = ""
-        success_call_id = ""
-        for event in transform_agent.call_agent(user_request):
-            yield event
-            # If we get a TableTransformEvent, we need to update our table
             if isinstance(event, TableTransformEvent):
-                self._table = event.table  # Update the table with the transformed version
-                success_response_id = response_id
-                success_call_id = call_id
+                table_event = event
 
-        # if success_call_id and success_response_id:
-        #     yield SubAgentSuccess(
-        #         call_id=success_call_id,
-        #         response_id=success_response_id,
-        #     )
+        if table_event:
+            # Update internal table reference if transformed
+            self._set_table(table_event.table, table_event.table_name)
+
+        if success_event:
+            yield SubAgentSuccess(
+                call_id=call_id,
+                response_id=response_id,
+                function_response=f"{success_event.function_response} Continue with next steps if needed."
+            )
+
+    def _set_table(self, table: Table, table_name: Optional[str] = None):
+        """Update the internal table reference"""
+        self._table = table
+        if table_name:
+            self._table_name = table_name
+        else:
+            self._table_name = table.name
 
     def _get_ai_instruction(self) -> str:
         """Create prompt for OpenAI with table metadata"""
@@ -236,8 +220,13 @@ You can help users with two main types of operations:
 - Analyze the user's request carefully to determine if they want visualization OR transformation
 - Choose the appropriate function based on the user's intent
 - Pass the complete user request to the selected function
-- Call only ONE function per user request
-- Be specific about what the user wants to achieve
+- **CRITICAL: Call EXACTLY ONE function per response - NEVER call multiple functions simultaneously**
+- **If the user requests multiple operations in sequence (e.g., "multiply columns by 10, then make a scatter plot"):**
+  - Identify the FIRST operation that needs to be performed (in this case: transformation)
+  - Call ONLY that function (transform_table)
+  - The user will provide new input after this operation completes to request the next step
+- **Sequential Processing**: Data transformations must be completed before visualizations can use the transformed data
+- Be specific about what the user wants to achieve with the current function call
 
 **Examples:**
 - "Show me a scatter plot of X vs Y" → Use `generate_plot`
@@ -246,8 +235,9 @@ You can help users with two main types of operations:
 - "Add a new column calculating profit margin" → Use `transform_table`
 - "Filter the data to show only records from 2023" → Use `transform_table`
 
-You should call the appropriate function based on the user's request and let the specialized agent handle the detailed implementation."""
+**Sequential Request Examples (ONLY do the FIRST operation):**
+- "Multiply all columns by 10, then make a scatter plot" → Call ONLY `transform_table` with "Multiply all columns by 10"
+- "Filter data for 2023, then create a bar chart" → Call ONLY `transform_table` with "Filter data for 2023"
+- "Add profit column, then show distribution plot" → Call ONLY `transform_table` with "Add profit column"
 
-    def _get_success_response(self) -> dict:
-        """Get success response for function call output"""
-        return {"Response": "Success. Do not respond to the user with this message."}
+You should call the appropriate function based on the user's request and let the specialized agent handle the detailed implementation."""

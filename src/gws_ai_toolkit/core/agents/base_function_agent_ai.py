@@ -9,6 +9,7 @@ from openai.types.responses import (ResponseFunctionToolCall,
 
 from .base_function_agent_events import (ErrorEvent, FunctionErrorEvent,
                                          FunctionResultEventBase,
+                                         FunctionSuccessEvent,
                                          ResponseCompletedEvent,
                                          ResponseCreatedEvent, TextDeltaEvent)
 
@@ -62,7 +63,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                consecutive_call_count < self.MAX_CONSECUTIVE_CALLS):
             consecutive_call_count += 1
 
-            success_function_call_id: str | None = None
+            success_event: FunctionSuccessEvent | None = None
             error_event: FunctionErrorEvent | None = None
 
             # Generate events for this attempt
@@ -77,16 +78,17 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
                     if isinstance(event, FunctionErrorEvent):
                         error_event = event
-                    else:
+
+                    if isinstance(event, FunctionSuccessEvent):
                         # this is a successful function call
-                        success_function_call_id = event.call_id
+                        success_event = event
 
             # If function was successfully called, prepare success response
-            if success_function_call_id:
+            if success_event:
                 messages = [{
                     "type": "function_call_output",
-                    "call_id": success_function_call_id,
-                    "output": json.dumps(self._get_success_response())
+                    "call_id": success_event.call_id,
+                    "output": json.dumps({'Result': success_event.function_response})
                 }]
                 continue
 
@@ -100,14 +102,14 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                     {
                         "type": "function_call_output",
                         "call_id": error_event.call_id,
-                        "output": json.dumps(self._get_error_response(error_event.message))
+                        "output": json.dumps({'Result': error_event.message})
                     },
                     {"role": "user", "content": [{"type": "input_text", "text": "Can you fix the code?"}]}
                 ]
                 continue
 
             # If there were no function call and no error, we are done
-            if not success_function_call_id and not error_event:
+            if not success_event and not error_event:
                 break
 
         if consecutive_error_count >= self.MAX_CONSECUTIVE_ERRORS:
@@ -143,7 +145,8 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             input=input_messages,
             temperature=self._temperature,
             previous_response_id=self._last_response_id,
-            tools=tools
+            tools=tools,
+            parallel_tool_calls=False  # Disable parallel function calls for iterative processing
         ) as stream:
 
             # Process streaming events
@@ -208,14 +211,6 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         Returns:
             List of tool configurations
         """
-
-    def _get_success_response(self) -> dict:
-        """Get success response for function call output"""
-        return {"Result": "Successfully completed the task."}
-
-    def _get_error_response(self, error_message: str) -> dict:
-        """Get error response for function call output"""
-        return {"Result": f"Error: {error_message}"}
 
     def get_emitted_events(self) -> List[T]:
         """Get all events emitted during the last generation"""

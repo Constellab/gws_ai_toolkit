@@ -22,7 +22,7 @@ class TestTableAgentAiIntegration(unittest.TestCase):
         """Test that TableAgentAi correctly delegates plot requests to PlotlyAgentAi"""
         # Create simple dataframe with two numeric columns
         test_dataframe = pd.DataFrame({
-            'x_values': [1, 2, 3, 4, 5],
+            'hello': [1, 2, 3, 4, 5],
             'y_values': [2, 4, 1, 8, 6]
         })
 
@@ -40,7 +40,7 @@ class TestTableAgentAiIntegration(unittest.TestCase):
 
         # Request plot generation - should trigger plot delegation
         # user_query = "Create a scatter plot showing the relationship between x_values and y_values"
-        user_query = "Can you multiply all column by 10, then make a scatter plot with column x_values as x and column y_values as y"
+        user_query = "Can you rename the column 'hello' to 'x_values', then make a scatter plot with column x_values as x and column y_values as y"
 
         events = list(agent.call_agent(user_query))
 
@@ -56,7 +56,7 @@ class TestTableAgentAiIntegration(unittest.TestCase):
         # Create simple dataframe
         # Create simple dataframe with two numeric columns
         test_dataframe = pd.DataFrame({
-            'x_values': [1, 2, 3, 4, 5],
+            'hello': [1, 2, 3, 4, 5],
             'y_values': [2, 4, 1, 8, 6]
         })
 
@@ -72,7 +72,7 @@ class TestTableAgentAiIntegration(unittest.TestCase):
             table_name="test_data"
         )
 
-        events = list(agent.call_agent("Can you multiply all column by 10"))
+        events = list(agent.call_agent("Rename the column 'hello' to 'x_values'"))
 
         transform_events = [e for e in events if isinstance(e, TableTransformEvent)]
         self.assertEqual(len(transform_events), 1)

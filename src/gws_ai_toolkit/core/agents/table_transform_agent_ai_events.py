@@ -3,13 +3,13 @@ from typing import Literal, Optional, Union
 from gws_core import Table
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
-    ErrorEvent, FunctionErrorEvent, FunctionResultEventBase,
+    ErrorEvent, FunctionErrorEvent, FunctionSuccessEvent,
     ResponseCompletedEvent, ResponseCreatedEvent, TextDeltaEvent)
 
 # Typed event classes with literal types and direct attributes
 
 
-class TableTransformEvent(FunctionResultEventBase):
+class TableTransformEvent(FunctionSuccessEvent):
     type: Literal["dataframe_transform"] = "dataframe_transform"
     table: Table
     table_name: Optional[str] = None

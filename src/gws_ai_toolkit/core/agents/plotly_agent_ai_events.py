@@ -3,13 +3,13 @@ from typing import Literal, Union
 import plotly.graph_objects as go
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
-    ErrorEvent, FunctionErrorEvent, FunctionResultEventBase,
+    ErrorEvent, FunctionErrorEvent, FunctionSuccessEvent,
     ResponseCompletedEvent, ResponseCreatedEvent, TextDeltaEvent)
 
 # Typed event classes with literal types and direct attributes
 
 
-class PlotGeneratedEvent(FunctionResultEventBase):
+class PlotGeneratedEvent(FunctionSuccessEvent):
     type: Literal["plot_generated"] = "plot_generated"
     figure: go.Figure
     code: str  # The Python code that generated the figure

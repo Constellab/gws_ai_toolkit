@@ -44,14 +44,6 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
              "parameters": PlotlyCodeConfig.model_json_schema()}
         ]
 
-    def _get_success_response(self) -> dict:
-        """Get success response for function call output"""
-        return {"Plot": "Successfully created the chart."}
-
-    def _get_error_response(self, error_message: str) -> dict:
-        """Get error response for function call output"""
-        return {"Plot": f"Error: {error_message}"}
-
     def _handle_function_call(self, event_item: ResponseFunctionToolCall,
                               current_response_id: str) -> Generator[PlotlyAgentEvent, None, None]:
         """Handle output item done event"""
@@ -77,7 +69,8 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
                 figure=figure,
                 code=code,
                 call_id=call_id,
-                response_id=current_response_id
+                response_id=current_response_id,
+                function_response="Successfully generated the plot.",
             )
 
             # Plot generation successful - no recursion needed

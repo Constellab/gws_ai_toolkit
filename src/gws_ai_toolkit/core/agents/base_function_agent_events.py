@@ -15,6 +15,10 @@ class FunctionResultEventBase(BaseModelDTO):
     response_id: str
 
 
+class FunctionSuccessEvent(FunctionResultEventBase):
+    function_response: str
+
+
 class FunctionErrorEvent(FunctionResultEventBase):
     type: Literal["function_error"] = "function_error"
     message: str
