@@ -203,8 +203,30 @@ class ChatMessageError(ChatMessageBase):
     error: str
 
 
+class ChatMessageHint(ChatMessageBase):
+    """Chat message containing hint content.
+
+    Specialized chat message for providing hints, tips, or helpful suggestions
+    to users during their chat conversation. Used to offer guidance or provide
+    contextual information without being a direct response.
+
+    Attributes:
+        type: Fixed as "hint" to identify this as a hint message
+        content (str): The hint message content
+
+    Example:
+        hint_msg = ChatMessageHint(
+            role="assistant",
+            content="Try asking about specific topics for better results.",
+            id="msg_hint_123"
+        )
+    """
+    type: Literal["hint"] = "hint"
+    content: str
+
+
 # Type used for the storage and internal processing
-ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly | ChatMessageError
+ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly | ChatMessageError | ChatMessageHint
 
 # Type used  for front-end rendering
-ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotlyFront | ChatMessageError
+ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotlyFront | ChatMessageError | ChatMessageHint

@@ -19,9 +19,9 @@ from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from ..history.conversation_history_state import ConversationHistoryState
 from .chat_message_class import (ChatMessage, ChatMessageCode,
                                  ChatMessageError, ChatMessageFront,
-                                 ChatMessageImage, ChatMessageImageFront,
-                                 ChatMessagePlotly, ChatMessagePlotlyFront,
-                                 ChatMessageText)
+                                 ChatMessageHint, ChatMessageImage,
+                                 ChatMessageImageFront, ChatMessagePlotly,
+                                 ChatMessagePlotlyFront, ChatMessageText)
 
 
 class ChatStateBase(ReflexMainState, rx.State, mixin=True):
@@ -285,6 +285,20 @@ class ChatStateBase(ReflexMainState, rx.State, mixin=True):
             role=role,
             error=error_text,
             external_id=external_id
+        )
+
+    def create_hint_message(self,
+                            content: str,
+                            role: Literal['user', 'assistant'] = "assistant",
+                            external_id: Optional[str] = None,
+                            sources: Optional[List[RagChatSource]] = None) -> ChatMessageHint:
+        """Create a hint message"""
+        return ChatMessageHint(
+            id=str(uuid.uuid4()),
+            role=role,
+            content=content,
+            external_id=external_id,
+            sources=sources or []
         )
 
     def _save_image_to_temp(self, image: Image.Image) -> str:

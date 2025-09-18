@@ -76,12 +76,12 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
             response_id = event.response_id
 
             async with self:
-                message = await self.create_plotly_message(
+                plot_message = await self.create_plotly_message(
                     figure=figure,
                     role="assistant",
                     external_id=response_id
                 )
-                await self.add_message(message)
+                await self.add_message(plot_message)
         elif event.type == "dataframe_transform":
             # Handle successful table transformation
             transformed_table = event.table
@@ -90,6 +90,11 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
 
             async with self:
                 await self.update_current_table(transformed_table, table_name)
+                text_message = self.create_hint_message(
+                    content=f"New table '{table_name}' created and defined as current table",
+                    role="assistant",
+                )
+                await self.add_message(text_message)
 
         elif event.type == "error" or event.type == "function_error":
             # Handle errors
@@ -178,3 +183,7 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
         """
         data_state = await self.get_state(AiTableDataState)
         return data_state.get_current_table()
+
+    def _after_chat_cleared(self):
+        super()._after_chat_cleared()
+        self._last_response_id = None

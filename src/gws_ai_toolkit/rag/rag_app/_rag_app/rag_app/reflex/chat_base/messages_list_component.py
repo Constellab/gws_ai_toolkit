@@ -4,8 +4,9 @@ import reflex as rx
 
 from .chat_config import ChatConfig
 from .chat_message_class import (ChatMessageCode, ChatMessageError,
-                                 ChatMessageFront, ChatMessageImageFront,
-                                 ChatMessagePlotlyFront, ChatMessageText)
+                                 ChatMessageFront, ChatMessageHint,
+                                 ChatMessageImageFront, ChatMessagePlotlyFront,
+                                 ChatMessageText)
 from .chat_state_base import ChatStateBase
 
 
@@ -184,6 +185,7 @@ def _message_content(message: ChatMessageFront) -> rx.Component:
         ("code", _code_content(message)),
         ("plotly", _plotly_content(message)),
         ("error", _error_content(message)),
+        ("hint", _hint_content(message)),
         rx.text(f"Unsupported message type {message.type}.")
     )
 
@@ -277,6 +279,33 @@ def _error_content(message: ChatMessageError) -> rx.Component:
         ),
         background_color="rgba(239, 68, 68, 0.1)",
         border_left="4px solid red",
+        padding="12px",
+        border_radius="8px",
+    )
+
+
+def _hint_content(message: ChatMessageHint) -> rx.Component:
+    """Renders hint content with distinctive hint styling.
+
+    Args:
+        message (ChatMessageHint): Hint message to render
+
+    Returns:
+        rx.Component: Hint content with blue background and lightbulb icon
+    """
+    return rx.box(
+        rx.hstack(
+            rx.icon("lightbulb", size=16, color="var(--accent-9)"),
+            rx.text(
+                message.content,
+                font_size="14px",
+                color="var(--accent-11)",
+            ),
+            spacing="2",
+            align_items="center",
+        ),
+        background_color="var(--accent-3)",
+        border_left="4px solid var(--accent-9)",
         padding="12px",
         border_radius="8px",
     )
