@@ -2,53 +2,8 @@ import reflex as rx
 import reflex_enterprise as rxe
 
 from .ai_table_data_state import AiTableDataState
-
-
-def extract_dialog():
-    """Dialog component for extracting table selection"""
-    return rx.dialog.root(
-        rx.dialog.content(
-            rx.dialog.title("Extract Table Selection"),
-            rx.dialog.description("Configure how to extract the selected data"),
-            rx.vstack(
-                rx.text(AiTableDataState.selection_info, font_weight="bold", color="blue.600"),
-                rx.hstack(
-                    rx.checkbox(
-                        "Use first row as header",
-                        checked=AiTableDataState.use_first_row_as_header,
-                        on_change=AiTableDataState.toggle_first_row_as_header,
-                    ),
-                    spacing="2",
-                    align="center",
-                ),
-                rx.hstack(
-                    rx.dialog.close(
-                        rx.button(
-                            "Cancel",
-                            variant="outline",
-                            color_scheme="gray",
-                        ),
-                        on_click=AiTableDataState.close_extract_dialog,
-                    ),
-                    rx.dialog.close(
-                        rx.button(
-                            "Extract",
-                            variant="solid",
-                            color_scheme="green",
-                        ),
-                        on_click=AiTableDataState.extract_selection,
-                    ),
-                    spacing="2",
-                    justify="end",
-                ),
-                spacing="4",
-                align="stretch",
-            ),
-            max_width="500px",
-        ),
-        open=AiTableDataState.extract_dialog_open,
-        on_open_change=AiTableDataState.close_extract_dialog,
-    )
+from .selection.ai_table_selection_dialog import ai_table_selection_dialog
+from .selection.ai_table_selection_state import AiTableSelectionState
 
 
 def table_section():
@@ -62,10 +17,10 @@ def table_section():
             rx.spacer(),
             rx.button(
                 "Extract Selection",
-                on_click=AiTableDataState.open_extract_dialog,
-                disabled=AiTableDataState.can_extract == False,
+                on_click=AiTableSelectionState.open_extract_dialog,
+                disabled=~AiTableSelectionState.can_extract,
                 variant="outline",
-                color_scheme="green",
+                cursor="pointer",
             ),
             spacing="4",
             align="center",
@@ -77,7 +32,7 @@ def table_section():
                 id="ai_table_ag_grid",
                 column_defs=AiTableDataState.ag_grid_column_defs,
                 row_data=AiTableDataState.ag_grid_row_data,
-                on_cell_selection_changed=AiTableDataState.on_cell_selection_changed,
+                on_cell_selection_changed=AiTableSelectionState.on_cell_selection_changed,
                 cell_selection=True,
                 theme="quartz",
                 width="100%",
@@ -89,7 +44,7 @@ def table_section():
             padding="0 1em 1em 1em"
         ),
         # Extract dialog
-        extract_dialog(),
+        ai_table_selection_dialog(),
         height="100%",
         width="100%",
         spacing="0"

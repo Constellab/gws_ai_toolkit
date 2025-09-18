@@ -1,10 +1,9 @@
-import os
 import uuid
 from typing import Dict, List, Literal, Optional
 
 import pandas as pd
 import reflex as rx
-from gws_core import File, Logger, Table
+from gws_core import File, Table
 
 from gws_ai_toolkit.core.table_item import TableItem
 
@@ -29,10 +28,6 @@ class AiTableDataState(rx.State):
     _tables: Dict[str, TableItem] = {}
     current_table_id: str = ""  # Current active table ID
 
-    # Selection and table management
-    current_selection: List[dict] = []
-    extract_dialog_open: bool = False
-    use_first_row_as_header: bool = False
 
     def get_current_dataframe_item(self) -> Optional[TableItem]:
         """Create DataFrameItem from current file info"""
@@ -145,75 +140,6 @@ class AiTableDataState(rx.State):
         df_item = self.get_current_dataframe_item()
         return df_item.has_multiple_sheets() if df_item else False
 
-    # Selection and extraction methods
-    @rx.event
-    def on_cell_selection_changed(self, selected_cells):
-        """Handle cell selection changes in AG Grid"""
-        self.current_selection = selected_cells
-
-    @rx.event
-    def open_extract_dialog(self):
-        """Open the extract dialog"""
-        self.extract_dialog_open = True
-
-    @rx.event
-    def close_extract_dialog(self):
-        """Close the extract dialog"""
-        self.extract_dialog_open = False
-        self.use_first_row_as_header = False
-
-    @rx.event
-    def toggle_first_row_as_header(self):
-        """Toggle the first row as header checkbox"""
-        self.use_first_row_as_header = not self.use_first_row_as_header
-
-    @rx.event
-    def extract_selection(self):
-        """Extract the selected data and create a new subtable"""
-        if not self.current_selection or len(self.current_selection) != 1:
-            return
-
-        selection = self.current_selection[0]
-
-        # Get the source dataframe from current table
-        source_df = self.get_current_dataframe()
-        table_item = self._tables.get(self.current_table_id)
-        source_name = table_item.name if table_item else "table"
-
-        if source_df is None or source_df.empty:
-            Logger.error("No valid dataframe available for extraction")
-            return
-
-        # Extract row and column ranges
-        start_row = selection.get('startRow', 0)
-        end_row = selection.get('endRow', 0)
-        columns = selection.get('columns', [])
-
-        # Extract the subset of data
-        selected_data: pd.DataFrame
-        if columns:
-            # Select specific columns and rows
-            selected_data = source_df.loc[start_row:end_row, columns]
-        else:
-            # Select all columns for the row range
-            selected_data = source_df.iloc[start_row:end_row + 1]
-
-        # Handle header option
-        if self.use_first_row_as_header and not selected_data.empty:
-            # Use first row as header
-            new_columns = selected_data.iloc[0].values
-            selected_data = selected_data.iloc[1:]
-            selected_data.columns = new_columns
-
-        # Create subtable filename
-        subtable_name = f"{source_name}_subtable"
-
-        # Add new subtable
-        new_table = Table(selected_data)
-        self.add_table(new_table, subtable_name)
-
-        # Close the dialog
-        self.close_extract_dialog()
 
     @rx.event
     def switch_table(self, table_id: str):
@@ -233,26 +159,6 @@ class AiTableDataState(rx.State):
             else:
                 self.current_table_id = ""
 
-    @rx.var
-    def can_extract(self) -> bool:
-        """Check if selection can be extracted"""
-        return len(self.current_selection) == 1 and self.current_selection[0] is not None
-
-    @rx.var
-    def selection_info(self) -> str:
-        """Get information about current selection"""
-        if not self.current_selection or len(self.current_selection) != 1:
-            return "No valid selection"
-
-        selection = self.current_selection[0]
-        start_row = selection.get('startRow', 0)
-        end_row = selection.get('endRow', 0)
-        columns = selection.get('columns', [])
-
-        row_count = end_row - start_row + 1
-        col_count = len(columns) if columns else self.nb_columns
-
-        return f"Selected: {row_count} rows, {col_count} columns"
 
     @rx.var
     def current_table_name(self) -> str:
