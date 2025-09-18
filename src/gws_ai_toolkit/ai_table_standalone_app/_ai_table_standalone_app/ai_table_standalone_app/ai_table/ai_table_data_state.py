@@ -28,7 +28,6 @@ class AiTableDataState(rx.State):
     _tables: Dict[str, TableItem] = {}
     current_table_id: str = ""  # Current active table ID
 
-
     def get_current_dataframe_item(self) -> Optional[TableItem]:
         """Create DataFrameItem from current file info"""
         return self._tables.get(self.current_table_id)
@@ -140,7 +139,6 @@ class AiTableDataState(rx.State):
         df_item = self.get_current_dataframe_item()
         return df_item.has_multiple_sheets() if df_item else False
 
-
     @rx.event
     def switch_table(self, table_id: str):
         """Switch to a specific table based on ID"""
@@ -158,7 +156,6 @@ class AiTableDataState(rx.State):
                 self.current_table_id = next(iter(self._tables.keys()))
             else:
                 self.current_table_id = ""
-
 
     @rx.var
     def current_table_name(self) -> str:
@@ -190,7 +187,7 @@ class AiTableDataState(rx.State):
             file.path
         )
 
-        self.add_table(table_item.get_table(), table_item.name)
+        self.add_table_item(table_item)
 
     def add_table(self, table: Table, name: str) -> None:
         """Set a transformed DataFrame as the current active DataFrame
@@ -199,8 +196,16 @@ class AiTableDataState(rx.State):
             transformed_df: The transformed DataFrame to set as current
         """
         # Create new table entry for the transformed data
+        self.add_table_item(TableItem.from_table(name, table))
+
+    def add_table_item(self, table_item: TableItem) -> None:
+        """Add a TableItem directly to the tables list
+
+        Args:
+            table_item (TableItem): TableItem to add
+        """
         table_id = f"{uuid.uuid4()}"
-        self._tables[table_id] = TableItem.from_table(name, table)
+        self._tables[table_id] = table_item
         self.current_table_id = table_id
 
     def count_tables(self) -> int:
