@@ -12,8 +12,8 @@ from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import (
     FunctionErrorEvent, TableTransformEvent)
 
 
-# test_dataframe_transform_agent_ai.py
-class TestDataFrameTransformAgentAiIntegration(unittest.TestCase):
+# test_table_transform_agent_ai.py
+class TestTableTransformAgentAiIntegration(unittest.TestCase):
     """Integration test using real OpenAI API"""
 
     def test_real_dataframe_transformation_add_column(self):
