@@ -1,16 +1,16 @@
 services:
   es01:
-    container_name: ragflow-es-01
+    container_name: ${CONTAINER_PREFIX}-ragflow-es-01
     profiles:
       - elasticsearch
     image: elasticsearch:8.11.3
-    # volumes:
-    #   - /app/prod/data/extension/ragflow/esdata01:/usr/share/elasticsearch/data
+    volumes:
+      - ${LAB_VOLUME_HOST}/esdata01:/usr/share/elasticsearch/data
     # ports:
     #   - 1200:9200
     environment:
       - node.name=es01
-      - ELASTIC_PASSWORD=infini_rag_flow
+      - ELASTIC_PASSWORD=${PASSWORD}
       - bootstrap.memory_lock=false
       - discovery.type=single-node
       - xpack.security.enabled=true
@@ -37,9 +37,9 @@ services:
   mysql:
     # mysql:5.7 linux/arm64 image is unavailable.
     image: mysql:8.0.39
-    container_name: ragflow-mysql
+    container_name: ${CONTAINER_PREFIX}-ragflow-mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=infini_rag_flow
+      - MYSQL_ROOT_PASSWORD=${PASSWORD}
       - TZ=Asia/Shanghai
     command:
       --max_connections=1000
@@ -52,12 +52,12 @@ services:
     # ports:
     #   - 5455:3306
     volumes:
-      # - /app/prod/data/extension/ragflow/mysql_data:/var/lib/mysql
+      - ${LAB_VOLUME_HOST}/mysql_data:/var/lib/mysql
       - ./init.sql:/data/application/init.sql
     networks:
       - ragflow
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-uroot", "-pinfini_rag_flow"]
+      test: ["CMD", "mysqladmin" ,"ping", "-uroot", "-p${PASSWORD}"]
       interval: 10s
       timeout: 10s
       retries: 3
@@ -65,17 +65,17 @@ services:
 
   minio:
     image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
-    container_name: ragflow-minio
+    container_name: ${CONTAINER_PREFIX}-ragflow-minio
     command: server --console-address ":9001" /data
     # ports:
     #   - 9000:9000
     #   - 9001:9001
     environment:
       - MINIO_ROOT_USER=rag_flow
-      - MINIO_ROOT_PASSWORD=infini_rag_flow
+      - MINIO_ROOT_PASSWORD=${PASSWORD}
       - TZ=Asia/Shanghai
-    # volumes:
-    #   - /app/prod/data/extension/ragflow/minio_data:/data
+    volumes:
+      - ${LAB_VOLUME_HOST}/minio_data:/data
     networks:
       - ragflow
     # restart: on-failure
@@ -88,17 +88,17 @@ services:
   redis:
     # swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/valkey/valkey:8
     image: valkey/valkey:8
-    container_name: ragflow-redis
-    command: redis-server --requirepass infini_rag_flow --maxmemory 128mb --maxmemory-policy allkeys-lru
+    container_name: ${CONTAINER_PREFIX}-ragflow-redis
+    command: redis-server --requirepass ${PASSWORD} --maxmemory 128mb --maxmemory-policy allkeys-lru
     ports:
       - 6379:6379
-    # volumes:
-    #   - /app/prod/data/extension/ragflow/redis_data:/data
+    volumes:
+      - ${LAB_VOLUME_HOST}/redis_data:/data
     networks:
       - ragflow
     # restart: on-failure
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "infini_rag_flow", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${PASSWORD}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 3
@@ -110,7 +110,7 @@ services:
         condition: service_healthy
     image: infiniflow/ragflow:v0.20.3-slim
 
-    container_name: ragflow-server
+    container_name: ${CONTAINER_PREFIX}-ragflow-server
     # ports:
     #   # - 80:80
     #   - 5678:5678
@@ -121,7 +121,7 @@ services:
       - ./nginx/ragflow.conf:/etc/nginx/conf.d/ragflow.conf
       - ./nginx/proxy.conf:/etc/nginx/proxy.conf
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ../history_data_agent:/ragflow/history_data_agent
+      - ${LAB_VOLUME_HOST}/history_data_agent:/ragflow/history_data_agent
       - ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
       - ./entrypoint.sh:/ragflow/entrypoint.sh
     environment:
@@ -147,14 +147,6 @@ services:
       - "traefik.http.routers.ragflow-web-router.tls=true"
       - "traefik.http.routers.ragflow-web-router.tls.certresolver=myresolver"
       - "traefik.docker.network=gencovery-network-prod" # define which network traefik should use
-
-      # - "traefik.http.routers.ragflow2-web-router.rule=host(`ragflow-ha.new-rio.gencovery.io`)"
-      # - "traefik.http.routers.ragflow2-web-router.service=ragflow2-web-service"
-      # - "traefik.http.services.ragflow2-web-service.loadbalancer.server.port=9380"
-      # # Enable HTTPS
-      # - "traefik.http.routers.ragflow2-web-router.entrypoints=websecure"
-      # - "traefik.http.routers.ragflow2-web-router.tls=true"
-      # - "traefik.http.routers.ragflow2-web-router.tls.certresolver=myresolver"
 
 
 networks:
