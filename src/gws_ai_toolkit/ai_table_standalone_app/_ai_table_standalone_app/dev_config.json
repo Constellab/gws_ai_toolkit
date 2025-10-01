@@ -6,5 +6,6 @@
         "history_folder_path": "/lab/user/bricks/gws_ai_toolkit/_data/history_standalone_ai_table"
     },
     "env_type": "NONE",
-    "env_file_path": ""
+    "env_file_path": "",
+    "is_reflex_enterprise": true
 }
