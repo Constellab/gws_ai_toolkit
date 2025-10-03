@@ -1,8 +1,6 @@
 services:
   es01:
     container_name: ${CONTAINER_PREFIX}-es-01
-    profiles:
-      - elasticsearch
     image: elasticsearch:8.11.3
     volumes:
       - ${LAB_VOLUME_HOST}/esdata01:/usr/share/elasticsearch/data
