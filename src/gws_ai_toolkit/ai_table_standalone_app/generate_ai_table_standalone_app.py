@@ -51,6 +51,8 @@ class GenerateAiTableStandaloneApp(Task):
         reflex_app.add_resource(history_folder, create_new_resource=False)
         reflex_app.set_param('history_folder_path', history_folder.path)
 
+        reflex_app.set_enterprise_app(True)
+
         # TODO to remove
         # For the test, we disable the authentication
         reflex_app.set_requires_authentication(False)
