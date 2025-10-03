@@ -1,7 +1,7 @@
 from typing import List
 
 import reflex as rx
-from gws_core import AuthenticateUser, Logger
+from gws_core import AuthenticateUser, Logger, User
 
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
 
@@ -58,16 +58,18 @@ class DocumentChunksState(rx.State):
             return
 
         config_state: RagConfigState
+        user: User
         async with self:
             self.chunks_loading = True
             self.chunks_page = page
             config_state = await RagConfigState.get_instance(self)
+            user = await config_state.get_and_check_current_user()
 
         try:
             rag_app_service = await config_state.get_dataset_rag_app_service()
 
             if rag_app_service:
-                with AuthenticateUser(await config_state.get_and_check_current_user()):
+                with AuthenticateUser(user):
                     rag_service = rag_app_service.get_rag_service()
 
                     # Load chunks using get_document_chunks method

@@ -1,7 +1,7 @@
 from typing import List, Literal
 
 import reflex as rx
-from gws_core import AuthenticateUser
+from gws_core import AuthenticateUser, Logger, User
 
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
@@ -71,21 +71,24 @@ class SyncAllResourcesDialogState(rx.State):
     @rx.event(background=True)
     async def sync_resources_to_rag(self):
         config_state: RagConfigState
+        user: User
         async with self:
             self.sync_resource_progress = 0
             self.sync_errors = []
             config_state = await RagConfigState.get_instance(self)
+            user = await config_state.get_and_check_current_user()
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
         for resource in self.resources_to_sync:
 
             try:
-                with AuthenticateUser(await config_state.get_and_check_current_user()):
+                with AuthenticateUser(user):
                     rag_service.send_resource_to_rag(resource,
                                                      upload_options=None)
 
             except Exception as e:
+                Logger.log_exception_stack_trace(e)
                 async with self:
                     self.sync_errors.append(
                         f"Error syncing resource '{resource.resource_model.name}' {resource.resource_model.id}: {e}")

@@ -58,6 +58,16 @@ class GenerateDatahubRagDifyApp(Task):
             allowed_values=Utils.get_literal_values(RagResourceSyncMode),
             default_value='datahub'
         ),
+        'resource_tag_key': StrParam(
+            human_name="Resource tag key",
+            short_description="Tag key for resources to sync (only used when resource_sync_mode is 'tag')",
+            optional=True
+        ),
+        'resource_tag_value': StrParam(
+            human_name="Resource tag value",
+            short_description="Tag value for resources to sync (only used when resource_sync_mode is 'tag')",
+            optional=True
+        ),
         'show_config_page': BoolParam(
             human_name="Show config page",
             short_description="Show the config page",
@@ -81,6 +91,11 @@ class GenerateDatahubRagDifyApp(Task):
         reflex_resource.set_param('show_config_page', params['show_config_page'])
         reflex_resource.set_param('rag_provider', 'dify')
         reflex_resource.set_param('chat_id', None)
+
+        if params.get('resource_tag_key'):
+            reflex_resource.set_param('resource_tag_key', params['resource_tag_key'])
+        if params.get('resource_tag_value'):
+            reflex_resource.set_param('resource_tag_value', params['resource_tag_value'])
 
         # add the config file to the reflex resource and set the configuration file path
         app_config_file: File = cast(File, inputs['app_config'])
@@ -130,6 +145,16 @@ class GenerateDatahubRagFlowApp(Task):
             human_name="Dataset ID",
             short_description="ID of the dataset to use",
         ),
+        'resource_tag_key': StrParam(
+            human_name="Resource tag key",
+            short_description="Tag key for resources to sync",
+            optional=True
+        ),
+        'resource_tag_value': StrParam(
+            human_name="Resource tag value",
+            short_description="Tag value for resources to sync",
+            optional=True
+        ),
         'show_config_page': BoolParam(
             human_name="Show config page",
             short_description="Show the config page",
@@ -158,6 +183,11 @@ class GenerateDatahubRagFlowApp(Task):
         reflex_resource.set_param('show_config_page', params['show_config_page'])
         reflex_resource.set_param('chat_id', params['chat_id'])
         reflex_resource.set_param('rag_provider', 'ragflow')
+
+        if params.get('resource_tag_key'):
+            reflex_resource.set_param('resource_tag_key', params['resource_tag_key'])
+        if params.get('resource_tag_value'):
+            reflex_resource.set_param('resource_tag_value', params['resource_tag_value'])
 
         # add the config file to the reflex resource and set the configuration file path
         app_config_file: File = cast(File, inputs['app_config'])

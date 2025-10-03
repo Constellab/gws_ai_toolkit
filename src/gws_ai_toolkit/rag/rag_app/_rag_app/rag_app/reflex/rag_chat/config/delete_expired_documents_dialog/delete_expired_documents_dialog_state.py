@@ -1,7 +1,7 @@
 from typing import List, Literal
 
 import reflex as rx
-from gws_core import AuthenticateUser
+from gws_core import AuthenticateUser, Logger, User
 
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
 
@@ -74,19 +74,22 @@ class DeleteExpiredDocumentsDialogState(rx.State):
     @rx.event(background=True)
     async def delete_expired_documents_from_rag(self):
         config_state: RagConfigState
+        user: User
         async with self:
             self.delete_documents_progress = 0
             self.delete_errors = []
             config_state = await RagConfigState.get_instance(self)
+            user = await config_state.get_and_check_current_user()
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
         for document in self.documents_to_delete:
             try:
-                with AuthenticateUser(await config_state.get_and_check_current_user()):
+                with AuthenticateUser(user):
                     rag_service.delete_rag_document(document.id)
 
             except Exception as e:
+                Logger.error(f"Error deleting document '{document.name}' {document.id}: {e}")
                 async with self:
                     self.delete_errors.append(
                         f"Error deleting document '{document.name}' {document.id}: {e}")

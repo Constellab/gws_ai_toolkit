@@ -33,7 +33,10 @@ class DatahubRagAppService(BaseRagAppService):
     # Number max of folder supported by the filter
     FOLDER_LIMIT = 20
 
-    def __init__(self, rag_service: BaseRagService, dataset_id: str) -> None:
+    def __init__(self, rag_service: BaseRagService, dataset_id: str, additional_config: Dict[str, Any] = None) -> None:
+        if additional_config is None:
+            additional_config = {}
+
         if not isinstance(rag_service, RagDifyService):
             raise ValueError("Only Dify Rag is compatible with the DatahubRagAppService")
         super().__init__(rag_service, dataset_id)

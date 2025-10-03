@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Optional, cast
 
 import reflex as rx
-from gws_core import BaseModelDTO, Credentials, CredentialsDataOther
+from gws_core import BaseModelDTO, Credentials, CredentialsDataOther, User
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import \
@@ -12,6 +12,7 @@ from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
 
 from ...core.utils import Utils
+from gws_reflex_main import ReflexMainState
 
 
 class RagConfigStateConfig(BaseModelDTO):
@@ -21,23 +22,25 @@ class RagConfigStateConfig(BaseModelDTO):
     dataset_credentials_name: Optional[str]
     chat_id: Optional[str]
     chat_credentials_name: Optional[str]
+    resource_tag_key: Optional[str]
+    resource_tag_value: Optional[str]
 
 
-class RagConfigState(rx.State, mixin=True):
+class RagConfigState(ReflexMainState, rx.State, mixin=True):
     """State management for RAG configuration and service integration.
-    
+
     This state class manages the configuration of RAG services, handling provider
     settings, credentials, dataset connections, and service instantiation. It serves
     as the central point for RAG system configuration and provides service instances
     to other components.
-    
+
     Key Responsibilities:
         - RAG provider configuration (Dify, RagFlow)
         - Credentials management for external services
         - Dataset and chat service configuration
         - Service factory integration
         - Resource synchronization mode settings
-        
+
     The state uses a mixin pattern for configuration and provides methods to
     instantiate configured RAG services for use throughout the application.
     """
@@ -124,8 +127,16 @@ class RagConfigState(rx.State, mixin=True):
         rag_service = RagServiceFactory.create_service(provider, credentials)
 
         dataset_id = await self.get_dataset_id()
+        config = await self.get_rag_config()
+
+        additional_config = {}
+        if config.resource_tag_key:
+            additional_config['tag_key'] = config.resource_tag_key
+        if config.resource_tag_value:
+            additional_config['tag_value'] = config.resource_tag_value
+
         return RagAppServiceFactory.create_service(await self.get_resource_sync_mode(),
-                                                   rag_service, dataset_id or "")
+                                                   rag_service, dataset_id or "", additional_config)
 
     @staticmethod
     async def get_instance(state: rx.State) -> 'RagConfigState':

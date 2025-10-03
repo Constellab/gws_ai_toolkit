@@ -36,4 +36,6 @@ class CustomRagConfigState(RagConfigState, rx.State):
             dataset_credentials_name=params.get("dataset_credentials_name"),
             chat_id=params.get("chat_id"),
             chat_credentials_name=params.get("chat_credentials_name"),
+            resource_tag_key=params.get("resource_tag_key"),
+            resource_tag_value=params.get("resource_tag_value"),
         )
