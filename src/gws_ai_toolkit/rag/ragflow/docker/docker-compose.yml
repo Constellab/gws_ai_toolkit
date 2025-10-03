@@ -1,6 +1,6 @@
 services:
   es01:
-    container_name: ${CONTAINER_PREFIX}-ragflow-es-01
+    container_name: ${CONTAINER_PREFIX}-es-01
     profiles:
       - elasticsearch
     image: elasticsearch:8.11.3
@@ -37,7 +37,7 @@ services:
   mysql:
     # mysql:5.7 linux/arm64 image is unavailable.
     image: mysql:8.0.39
-    container_name: ${CONTAINER_PREFIX}-ragflow-mysql
+    container_name: ${CONTAINER_PREFIX}-mysql
     environment:
       - MYSQL_ROOT_PASSWORD=${PASSWORD}
       - TZ=Asia/Shanghai
@@ -49,6 +49,7 @@ services:
       --tls_version="TLSv1.2,TLSv1.3"
       --init-file /data/application/init.sql
       --binlog_expire_logs_seconds=604800
+      --bind-address=0.0.0.0  #  allow external connections, otherwise ragflow server can't connect (because we don't want to map ports)
     # ports:
     #   - 5455:3306
     volumes:
@@ -65,7 +66,7 @@ services:
 
   minio:
     image: quay.io/minio/minio:RELEASE.2025-06-13T11-33-47Z
-    container_name: ${CONTAINER_PREFIX}-ragflow-minio
+    container_name: ${CONTAINER_PREFIX}-minio
     command: server --console-address ":9001" /data
     # ports:
     #   - 9000:9000
@@ -88,7 +89,7 @@ services:
   redis:
     # swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/valkey/valkey:8
     image: valkey/valkey:8
-    container_name: ${CONTAINER_PREFIX}-ragflow-redis
+    container_name: ${CONTAINER_PREFIX}-redis
     command: redis-server --requirepass ${PASSWORD} --maxmemory 128mb --maxmemory-policy allkeys-lru
     ports:
       - 6379:6379
@@ -110,7 +111,7 @@ services:
         condition: service_healthy
     image: infiniflow/ragflow:v0.20.3-slim
 
-    container_name: ${CONTAINER_PREFIX}-ragflow-server
+    container_name: ${CONTAINER_PREFIX}-server
     # ports:
     #   # - 80:80
     #   - 5678:5678
@@ -128,6 +129,10 @@ services:
       - TZ=Asia/Shanghai
       - HF_ENDPOINT=
       - MACOS=
+      - MYSQL_PASSWORD=${PASSWORD}
+      - REDIS_PASSWORD=${PASSWORD}
+      - ELASTIC_PASSWORD=${PASSWORD}
+      - MINIO_PASSWORD=${PASSWORD}
     networks:
       - ragflow
       - gencovery-network-prod
