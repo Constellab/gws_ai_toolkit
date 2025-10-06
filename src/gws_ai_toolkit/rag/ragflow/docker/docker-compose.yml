@@ -133,27 +133,18 @@ services:
       - MINIO_PASSWORD=${PASSWORD}
     networks:
       - ragflow
-      - gencovery-network-prod
+      - ${LAB_NETWORK}
     # restart: on-failure
     # https://docs.docker.com/engine/daemon/prometheus/#create-a-prometheus-configuration
     # If you use Docker Desktop, the --add-host flag is optional. This flag ensures that the host's internal IP is exposed to the Prometheus container.
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    labels:
-      - "traefik.enable=true"
-      # Config for the HTTPS glab domain to port 3080
-      - "traefik.http.routers.ragflow-web-router.rule=host(`ragflow.new-rio.gencovery.io`)"
-      - "traefik.http.routers.ragflow-web-router.service=ragflow-web-service"
-      - "traefik.http.services.ragflow-web-service.loadbalancer.server.port=80"
-      # Enable HTTPS
-      - "traefik.http.routers.ragflow-web-router.entrypoints=websecure"
-      - "traefik.http.routers.ragflow-web-router.tls=true"
-      - "traefik.http.routers.ragflow-web-router.tls.certresolver=myresolver"
-      - "traefik.docker.network=gencovery-network-prod" # define which network traefik should use
-
-
+    x-gws-config:
+      - x-gws-https:
+          name: ragflow-web
+          internalPort: 80
+          subDomain: ragflow
+    
 networks:
-  ragflow:
+  ${CONTAINER_PREFIX}:
     driver: bridge
-  gencovery-network-prod:
-     external: true
