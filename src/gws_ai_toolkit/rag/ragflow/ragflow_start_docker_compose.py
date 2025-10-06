@@ -4,7 +4,7 @@ from typing import cast
 from gws_core import (ConfigParams, ConfigSpecs, CredentialsDataBasic,
                       CredentialsService, DockerService, InputSpecs,
                       OutputSpecs, Task, TaskInputs, TaskOutputs, TypingStyle,
-                      task_decorator)
+                      task_decorator, DockerComposeStatus)
 
 
 @task_decorator(
@@ -86,13 +86,22 @@ class RagflowStartDockerCompose(Task):
             }
         )
 
-        self.log_info_message("Waiting for RagFlow services to be ready...")
+        self.log_info_message("Docker Compose started, waiting for ready status...")
 
         # Wait for the compose to be ready
-        docker_service.wait_for_compose_status(
+        response = docker_service.wait_for_compose_status(
             brick_name="gws_ai_toolkit",
-            unique_name="ragflow"
+            unique_name="ragflow",
+            interval_seconds=10,
+            max_attempts=20
         )
+
+        if response.info:
+            self.log_info_message(f"Docker Compose info: {response.info}")
+
+        if response.status != DockerComposeStatus.UP:
+            raise Exception(f"Docker Compose did not start successfully, status: {response.status.value}")
+
 
         self.log_success_message("RagFlow docker compose services started successfully!")
 
