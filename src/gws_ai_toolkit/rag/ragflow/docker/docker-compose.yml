@@ -29,7 +29,7 @@ services:
       timeout: 10s
       retries: 120
     networks:
-      - ragflow
+      - ${CONTAINER_PREFIX}
     # restart: on-failure
 
   mysql:
@@ -54,7 +54,7 @@ services:
       - ${LAB_VOLUME_HOST}/mysql_data:/var/lib/mysql
       - ./init.sql:/data/application/init.sql
     networks:
-      - ragflow
+      - ${CONTAINER_PREFIX}
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-uroot", "-p${PASSWORD}"]
       interval: 10s
@@ -76,7 +76,7 @@ services:
     volumes:
       - ${LAB_VOLUME_HOST}/minio_data:/data
     networks:
-      - ragflow
+      - ${CONTAINER_PREFIX}
     # restart: on-failure
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -94,7 +94,7 @@ services:
     volumes:
       - ${LAB_VOLUME_HOST}/redis_data:/data
     networks:
-      - ragflow
+      - ${CONTAINER_PREFIX}
     # restart: on-failure
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${PASSWORD}", "ping"]
@@ -132,7 +132,7 @@ services:
       - ELASTIC_PASSWORD=${PASSWORD}
       - MINIO_PASSWORD=${PASSWORD}
     networks:
-      - ragflow
+      - ${CONTAINER_PREFIX}
       - ${LAB_NETWORK}
     # restart: on-failure
     # https://docs.docker.com/engine/daemon/prometheus/#create-a-prometheus-configuration
