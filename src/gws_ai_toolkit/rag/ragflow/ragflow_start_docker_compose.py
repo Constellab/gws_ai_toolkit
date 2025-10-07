@@ -1,4 +1,5 @@
 import os
+from time import sleep
 from typing import cast
 
 from gws_core import (ConfigParams, ConfigSpecs, CredentialsDataBasic,
@@ -85,6 +86,8 @@ class RagflowStartDockerCompose(Task):
                 "PASSWORD": credentials_data.password
             }
         )
+
+        sleep(5)  # Give some time for the registration to complete
 
         self.log_info_message("Docker Compose started, waiting for ready status...")
 

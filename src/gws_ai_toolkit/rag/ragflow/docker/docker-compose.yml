@@ -140,7 +140,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     x-gws-config:
-      - x-gws-https:
+      - https:
           name: ragflow-web
           internalPort: 80
           subDomain: ragflow
