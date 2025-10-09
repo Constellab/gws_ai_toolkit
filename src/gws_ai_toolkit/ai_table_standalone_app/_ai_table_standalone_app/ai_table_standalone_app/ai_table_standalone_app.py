@@ -3,10 +3,9 @@ from typing import List
 
 import reflex as rx
 import reflex_enterprise as rxe
-from gws_reflex_base import add_unauthorized_page, get_theme
-
 from gws_ai_toolkit._app.core import NavBarItem, page_component
 from gws_ai_toolkit._app.history import HistoryState, history_component
+from gws_reflex_main import add_unauthorized_page, get_theme
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState

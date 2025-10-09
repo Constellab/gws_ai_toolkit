@@ -2,17 +2,15 @@ from abc import abstractmethod
 from typing import Optional, cast
 
 import reflex as rx
-from gws_core import BaseModelDTO, Credentials, CredentialsDataOther, User
-
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import \
     RagAppServiceFactory
 from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
                                                  RagResourceSyncMode)
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
+from gws_core import BaseModelDTO, Credentials, CredentialsDataOther, User
 
 from ...core.utils import Utils
-from gws_reflex_main import ReflexMainState
 
 
 class RagConfigStateConfig(BaseModelDTO):
@@ -26,7 +24,7 @@ class RagConfigStateConfig(BaseModelDTO):
     resource_tag_value: Optional[str]
 
 
-class RagConfigState(ReflexMainState, rx.State, mixin=True):
+class RagConfigState(rx.State, mixin=True):
     """State management for RAG configuration and service integration.
 
     This state class manages the configuration of RAG services, handling provider

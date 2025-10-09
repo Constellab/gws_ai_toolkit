@@ -2,7 +2,7 @@ from typing import List
 
 import reflex as rx
 import reflex_enterprise as rxe
-from gws_reflex_base import add_unauthorized_page, get_theme
+from gws_reflex_main import add_unauthorized_page, get_theme
 
 from .config_page import combined_config_page
 from .custom_ai_expert_component import custom_left_sidebar

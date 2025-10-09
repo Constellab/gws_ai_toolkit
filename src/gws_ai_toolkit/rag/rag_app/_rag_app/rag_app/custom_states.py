@@ -1,7 +1,7 @@
 
 import reflex as rx
+from gws_reflex_main import ReflexMainState
 
-from .rag_main_state import RagAppState
 from .reflex.core.app_config_state import AppConfigState
 from .reflex.history.conversation_history_state import ConversationHistoryState
 from .reflex.rag_chat.config.rag_config_state import (RagConfigState,
@@ -11,7 +11,7 @@ from .reflex.rag_chat.config.rag_config_state import (RagConfigState,
 class CustomAppConfigState(AppConfigState, rx.State):
 
     async def _get_config_file_path(self) -> str:
-        base_state = await self.get_state(RagAppState)
+        base_state = await self.get_state(ReflexMainState)
         config = await base_state.get_param('configuration_file_path')
         return config or ''
 
@@ -19,7 +19,7 @@ class CustomAppConfigState(AppConfigState, rx.State):
 class CustomConversationHistoryState(ConversationHistoryState, rx.State):
 
     async def _get_history_folder_path_param(self) -> str:
-        base_state = await self.get_state(RagAppState)
+        base_state = await self.get_state(ReflexMainState)
         config = await base_state.get_param('history_folder_path')
         return config or ''
 
@@ -27,7 +27,7 @@ class CustomConversationHistoryState(ConversationHistoryState, rx.State):
 class CustomRagConfigState(RagConfigState, rx.State):
 
     async def _get_rag_config_data(self) -> RagConfigStateConfig:
-        base_state = await self.get_state(RagAppState)
+        base_state = await self.get_state(ReflexMainState)
         params = await base_state.get_params()
         return RagConfigStateConfig(
             rag_provider=params.get("rag_provider", 'ragflow'),

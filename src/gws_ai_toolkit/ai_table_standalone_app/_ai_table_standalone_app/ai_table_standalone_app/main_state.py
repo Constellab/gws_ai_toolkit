@@ -4,12 +4,11 @@ from typing import List
 
 import reflex as rx
 from gws_core import File
-from gws_reflex_main import ReflexMainState
 
 from .ai_table.ai_table_data_state import AiTableDataState
 
 
-class MainState(ReflexMainState, rx.State):
+class MainState(rx.State):
     """Main state for handling CSV/Excel data upload and management"""
 
     @rx.event
