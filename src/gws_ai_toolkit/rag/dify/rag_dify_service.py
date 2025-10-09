@@ -1,13 +1,12 @@
 from typing import Any, Generator, List, Optional, Union
 
-from gws_core import CredentialsDataOther, DifyChunkRecord
-
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatStreamResponse,
                                                   RagChunk, RagDocument)
+from gws_core import CredentialsDataOther
 
-from .dify_class import (DifyDatasetDocument, DifyMetadata,
+from .dify_class import (DifyChunkRecord, DifyDatasetDocument, DifyMetadata,
                          DifySendDocumentOptions,
                          DifySendEndMessageStreamResponse,
                          DifySendMessageStreamResponse,
