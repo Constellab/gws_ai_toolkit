@@ -56,9 +56,7 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
         if not function_args:
             yield FunctionErrorEvent(
                 message=str("No function arguments provided for plot generation."),
-                code=None,
                 call_id=call_id,
-                error_type="execution_error",
                 response_id=current_response_id
             )
             return
@@ -82,9 +80,7 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
 
             yield FunctionErrorEvent(
                 message=str(exec_error),
-                code=None,
                 call_id=call_id,
-                error_type="execution_error",
                 response_id=current_response_id
             )
 

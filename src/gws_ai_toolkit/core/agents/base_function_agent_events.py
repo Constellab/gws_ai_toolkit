@@ -16,14 +16,18 @@ class FunctionResultEventBase(BaseModelDTO):
 
 
 class FunctionSuccessEvent(FunctionResultEventBase):
+    """Event triggered when the agent finished its job in success state
+
+    Must be extended to specific the type attribute
+    """
     function_response: str
 
 
 class FunctionErrorEvent(FunctionResultEventBase):
+    """Event triggered when the agent finished its job in error state
+    """
     type: Literal["function_error"] = "function_error"
     message: str
-    code: Optional[str]
-    error_type: str
 
 
 class ErrorEvent(BaseModelDTO):

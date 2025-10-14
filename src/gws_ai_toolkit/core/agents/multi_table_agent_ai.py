@@ -10,8 +10,8 @@ from pydantic import Field
 
 from .base_function_agent_ai import BaseFunctionAgentAi
 from .multi_table_agent_ai_events import (FunctionErrorEvent,
-                                         MultiTableTransformAgentEvent,
-                                         MultiTableTransformEvent)
+                                          MultiTableTransformAgentEvent,
+                                          MultiTableTransformEvent)
 
 
 class MultiTableTransformConfig(BaseModelDTO):
@@ -64,9 +64,7 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
         if not function_args:
             yield FunctionErrorEvent(
                 message=str("No function arguments provided for multi-table transformation."),
-                code=None,
                 call_id=call_id,
-                error_type="execution_error",
                 response_id=current_response_id
             )
             return
@@ -91,9 +89,7 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
 
             yield FunctionErrorEvent(
                 message=str(exec_error),
-                code=None,
                 call_id=call_id,
-                error_type="execution_error",
                 response_id=current_response_id
             )
 

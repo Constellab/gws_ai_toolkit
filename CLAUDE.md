@@ -46,7 +46,7 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
 - set the imports on top of the file
 
 ### Start RAG app
-- Run the RAG app locally: `gws reflex run-dev [CONFIG_FILE_PATH]` 
+- Run the RAG app locally: `gws reflex run [CONFIG_FILE_PATH]` 
 - The app is available once the following log is print : `Running app in dev mode{env_txt}, DO NOT USE IN PRODUCTION. You can access the app at {url}`
 - Allow approximately 20 seconds for full initialization
 - If you encounter port conflicts:

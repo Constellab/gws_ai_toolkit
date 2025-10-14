@@ -1,17 +1,16 @@
 import json
 from typing import Generator, List, Optional
 
-from gws_core import BaseModelDTO, Table
-from openai import OpenAI
-from openai.types.responses import ResponseFunctionToolCall
-from pydantic import Field
-
 from gws_ai_toolkit.core.agents.base_function_agent_events import \
     FunctionSuccessEvent
 from gws_ai_toolkit.core.agents.plotly_agent_ai_events import \
     PlotGeneratedEvent
 from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import \
     TableTransformEvent
+from gws_core import BaseModelDTO, Table
+from openai import OpenAI
+from openai.types.responses import ResponseFunctionToolCall
+from pydantic import Field
 
 from .base_function_agent_ai import BaseFunctionAgentAi
 from .plotly_agent_ai import PlotlyAgentAi
@@ -83,9 +82,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
         if not function_args:
             yield FunctionErrorEvent(
                 message=f"No function arguments provided for {function_name}.",
-                code=None,
                 call_id=call_id,
-                error_type="execution_error",
                 response_id=current_response_id
             )
             return
@@ -98,9 +95,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             if not user_request.strip():
                 yield FunctionErrorEvent(
                     message="No user request provided in function arguments.",
-                    code=None,
                     call_id=call_id,
-                    error_type="execution_error",
                     response_id=current_response_id
                 )
                 return
@@ -131,26 +126,20 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             else:
                 yield FunctionErrorEvent(
                     message=f"Unknown function: {function_name}",
-                    code=None,
                     call_id=call_id,
-                    error_type="execution_error",
                     response_id=current_response_id
                 )
 
         except json.JSONDecodeError as e:
             yield FunctionErrorEvent(
                 message=f"Invalid JSON in function arguments: {e}",
-                code=None,
                 call_id=call_id,
-                error_type="execution_error",
                 response_id=current_response_id
             )
         except Exception as e:
             yield FunctionErrorEvent(
                 message=f"Error handling {function_name}: {e}",
-                code=None,
                 call_id=call_id,
-                error_type="execution_error",
                 response_id=current_response_id
             )
 
