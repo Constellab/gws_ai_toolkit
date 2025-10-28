@@ -4,7 +4,7 @@ import tempfile
 from typing import Generator, List, Optional
 
 from gws_core import (BaseModelDTO, CondaShellProxy, MambaShellProxy,
-                      MessageDispatcher, PipEnvShellProxy)
+                      MessageDispatcher, PipShellProxy)
 from gws_core.core.classes.observer.message_observer import \
     BasicMessageObserver
 from openai import OpenAI
@@ -33,7 +33,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
     """AI agent for generating and installing conda/mamba/pipenv environment files
 
     This agent helps users create working conda/mamba environment files or Pipfiles and
-    automatically attempts to install them using CondaShellProxy, MambaShellProxy, or PipEnvShellProxy.
+    automatically attempts to install them using CondaShellProxy, MambaShellProxy, or PipShellProxy.
     """
 
     _existing_env_content: Optional[str]
@@ -137,7 +137,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
         return env_file_content
 
     def _install_environment(self, env_file_content: str, call_id: str,
-                           current_response_id: str) -> Generator[EnvAgentAiEvent, None, None]:
+                             current_response_id: str) -> Generator[EnvAgentAiEvent, None, None]:
         """Attempt to install the generated environment
 
         Args:
@@ -157,7 +157,6 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                 response_id=current_response_id,
                 function_response="Installation started"
             )
-
 
             # Create a temporary directory for the environment
             temp_dir = tempfile.mkdtemp(prefix=f"{self._env_type}_env_")
@@ -186,7 +185,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                     message_dispatcher=message_dispatcher
                 )
             elif self._env_type == "pipenv":
-                shell_proxy = PipEnvShellProxy(
+                shell_proxy = PipShellProxy(
                     env_file_path=env_file_path,
                     working_dir=temp_dir,
                     message_dispatcher=message_dispatcher
@@ -224,7 +223,6 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                     function_response=f"Environment installed successfully"
                 )
 
-
         except Exception as install_error:
             error_message = str(install_error)
 
@@ -233,8 +231,6 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                 call_id=call_id,
                 response_id=current_response_id
             )
-
-
 
     def _get_ai_instruction(self) -> str:
         """Create prompt for OpenAI with environment specifications

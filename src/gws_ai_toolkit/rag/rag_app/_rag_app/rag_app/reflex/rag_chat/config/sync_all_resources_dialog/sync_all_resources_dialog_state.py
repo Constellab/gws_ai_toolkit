@@ -1,9 +1,9 @@
 from typing import List, Literal
 
 import reflex as rx
-from gws_core import AuthenticateUser, Logger, User
-
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_core import AuthenticateUser, Logger, User
+from gws_reflex_main import ReflexMainState
 
 from ..rag_config_state import RagConfigState
 
@@ -76,7 +76,8 @@ class SyncAllResourcesDialogState(rx.State):
             self.sync_resource_progress = 0
             self.sync_errors = []
             config_state = await RagConfigState.get_instance(self)
-            user = await config_state.get_and_check_current_user()
+            main_state = await self.get_state(ReflexMainState)
+            user = await main_state.get_and_check_current_user()
 
         rag_service = await config_state.get_dataset_rag_app_service()
 

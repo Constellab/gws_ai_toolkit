@@ -1,11 +1,11 @@
 from typing import List, Optional
 
 import reflex as rx
-from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
-                      ResourceSearchBuilder, User)
-
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
+                      ResourceSearchBuilder, User)
+from gws_reflex_main import ReflexMainState
 
 from ..rag_config_state import RagConfigState
 
@@ -149,7 +149,8 @@ class SyncResourceState(rx.State):
         async with self:
             self.send_to_rag_is_loading = True
             config_state = await RagConfigState.get_instance(self)
-            user = await config_state.get_and_check_current_user()
+            main_state = await self.get_state(ReflexMainState)
+            user = await main_state.get_and_check_current_user()
 
         try:
             rag_service = await config_state.get_dataset_rag_app_service()
@@ -181,7 +182,8 @@ class SyncResourceState(rx.State):
         async with self:
             self.delete_from_rag_is_loading = True
             config_state = await RagConfigState.get_instance(self)
-            user = await config_state.get_and_check_current_user()
+            main_state = await self.get_state(ReflexMainState)
+            user = await main_state.get_and_check_current_user()
 
         try:
             rag_service = await config_state.get_dataset_rag_app_service()
@@ -210,7 +212,8 @@ class SyncResourceState(rx.State):
         async with self:
             self.parse_document_is_loading = True
             config_state = await RagConfigState.get_instance(self)
-            user = await config_state.get_and_check_current_user()
+            main_state = await self.get_state(ReflexMainState)
+            user = await main_state.get_and_check_current_user()
 
         try:
             dataset_id = self.selected_resource_dataset_id
