@@ -1,7 +1,7 @@
 {
     "name": "gws_ai_toolkit",
     "author": "Gencovery",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "variables": {
         "skeleton:testdata_dir": "${CURRENT_DIR}/tests/testdata"
     },
