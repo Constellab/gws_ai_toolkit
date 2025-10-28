@@ -11,6 +11,8 @@ from .ai_table.ai_table_data_state import AiTableDataState
 class MainState(rx.State):
     """Main state for handling CSV/Excel data upload and management"""
 
+    is_uploading: bool = False
+
     @rx.event
     async def handle_upload(self, files: List[rx.UploadFile]):
         """Handle file upload event and load CSV or Excel data from uploaded files."""
@@ -38,6 +40,14 @@ class MainState(rx.State):
             original_name = os.path.splitext(file.name)[0] if file.name else "untitled"
             data_state.add_file(File(temp_file_path), original_name)
 
+        self.is_uploading = False
         # If this was the first upload (no tables before), redirect to AI Table page
         if tables_before_upload == 0 and data_state.count_tables() > 0:
             return rx.redirect("/ai-table")
+
+    @rx.event
+    def handle_upload_progress(self, progress: dict):
+        if progress["progress"] == 1:
+            self.is_uploading = False
+        else:
+            self.is_uploading = True
