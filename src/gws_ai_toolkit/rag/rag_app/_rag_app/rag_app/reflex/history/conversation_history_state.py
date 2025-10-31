@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import reflex as rx
-from gws_core.core.utils.logger import Logger
+from gws_core import Logger
 from PIL import Image
 from plotly.graph_objs import Figure
 

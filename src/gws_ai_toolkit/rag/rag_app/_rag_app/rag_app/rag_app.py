@@ -2,7 +2,7 @@ from typing import List
 
 import reflex as rx
 import reflex_enterprise as rxe
-from gws_reflex_main import add_unauthorized_page, get_theme
+from gws_reflex_main import register_gws_reflex_app
 
 from .config_page import combined_config_page
 from .custom_ai_expert_component import custom_left_sidebar
@@ -22,10 +22,7 @@ from .reflex.history.history_state import HistoryState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
 from .reflex.rag_chat.rag_chat_component import rag_chat_component
 
-app = rxe.App(
-    theme=get_theme(),
-    stylesheets=["/style.css"],
-)
+app = register_gws_reflex_app(rxe.App())
 
 nav_bar_items: List[NavBarItem] = [
     NavBarItem(text="Chat", icon="message-circle", url="/"),
@@ -98,8 +95,3 @@ def ai_expert():
 #         ai_table_component(),
 #         disable_padding=True
 #     )
-
-
-# Add the unauthorized page to the app.
-# This page will be displayed if the user is not authenticated
-add_unauthorized_page(app)

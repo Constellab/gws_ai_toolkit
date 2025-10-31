@@ -6,14 +6,14 @@ from abc import abstractmethod
 from typing import List, Literal, Optional
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.rag_models import RagChatSource
-from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_core import (AuthenticateUser, GenerateShareLinkDTO,
+from gws_core import (AuthenticateUser, GenerateShareLinkDTO, Logger,
                       ShareLinkEntityType, ShareLinkService)
-from gws_core.core.utils.logger import Logger
 from gws_reflex_main import ReflexMainState
 from PIL import Image
 from plotly.graph_objects import Figure
+
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
 from ..history.conversation_history_state import ConversationHistoryState
 from .chat_message_class import (ChatMessage, ChatMessageCode,

@@ -5,7 +5,7 @@ import reflex as rx
 import reflex_enterprise as rxe
 from gws_ai_toolkit._app.core import NavBarItem, page_component
 from gws_ai_toolkit._app.history import HistoryState, history_component
-from gws_reflex_main import add_unauthorized_page, get_theme
+from gws_reflex_main import register_gws_reflex_app
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState
@@ -15,10 +15,7 @@ from .ai_table.chat.table_agent.ai_table_agent_chat_config_component import \
 from .custom_states import CustomAppConfigState, CustomConversationHistoryState
 from .home_page import home_page
 
-app = rxe.App(
-    theme=get_theme(),
-    stylesheets=["/style.css"],
-)
+app = register_gws_reflex_app(rxe.App())
 
 nav_bar_items: List[NavBarItem] = [
     NavBarItem(text="Home", icon="home", url="/"),
@@ -95,8 +92,3 @@ def history():
         nav_bar_items,
         history_component(CustomConversationHistoryState)
     )
-
-
-# Add the unauthorized page to the app.
-# This page will be displayed if the user is not authenticated
-add_unauthorized_page(app)

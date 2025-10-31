@@ -5,8 +5,6 @@ from typing import Generator, List, Optional
 
 from gws_core import (BaseModelDTO, CondaShellProxy, MambaShellProxy,
                       MessageDispatcher, PipShellProxy)
-from gws_core.core.classes.observer.message_observer import \
-    BasicMessageObserver
 from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
@@ -175,8 +173,6 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
 
             # Import the appropriate shell proxy
             message_dispatcher = MessageDispatcher(interval_time_merging_message=0, interval_time_dispatched_buffer=0)
-            basic_observer = BasicMessageObserver()
-            message_dispatcher.attach(basic_observer)
 
             if self._env_type == "mamba":
                 shell_proxy = MambaShellProxy(
