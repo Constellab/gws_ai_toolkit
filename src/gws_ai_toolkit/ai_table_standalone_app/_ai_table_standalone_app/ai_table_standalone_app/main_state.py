@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 from typing import List
 
@@ -16,38 +17,40 @@ class MainState(rx.State):
     @rx.event
     async def handle_upload(self, files: List[rx.UploadFile]):
         """Handle file upload event and load CSV or Excel data from uploaded files."""
-        if not files:
-            return
 
-        data_state: AiTableDataState = await self.get_state(AiTableDataState)
-        tables_before_upload = data_state.count_tables()
+        try:
+            if not files:
+                return
 
-        # Process all uploaded files
-        for file in files:
-            if not file.name:
-                continue
+            data_state: AiTableDataState = await self.get_state(AiTableDataState)
+            tables_before_upload = data_state.count_tables()
 
-            data = await file.read()
+            # Process all uploaded files
+            for file in files:
+                if not file.name:
+                    continue
 
-            # Save uploaded file to temporary location
-            file_extension = os.path.splitext(file.name)[1] if file.name else ".csv"
-            with tempfile.NamedTemporaryFile(delete=False,
-                                             suffix=file_extension) as temp_file:
-                temp_file.write(data)
-                temp_file_path = temp_file.name
+                data = await file.read()
 
-            # Pass the original filename (without extension) to preserve correct naming
-            original_name = os.path.splitext(file.name)[0] if file.name else "untitled"
-            data_state.add_file(File(temp_file_path), original_name)
+                # Save uploaded file to temporary location
+                file_extension = os.path.splitext(file.name)[1] if file.name else ".csv"
+                with tempfile.NamedTemporaryFile(delete=False,
+                                                 suffix=file_extension) as temp_file:
+                    temp_file.write(data)
+                    temp_file_path = temp_file.name
 
-        self.is_uploading = False
-        # If this was the first upload (no tables before), redirect to AI Table page
-        if tables_before_upload == 0 and data_state.count_tables() > 0:
-            return rx.redirect("/ai-table")
+                # Pass the original filename (without extension) to preserve correct naming
+                original_name = os.path.splitext(file.name)[0] if file.name else "untitled"
+                data_state.add_file(File(temp_file_path), original_name)
+
+            self.is_uploading = False
+            # If this was the first upload (no tables before), redirect to AI Table page
+            if tables_before_upload == 0 and data_state.count_tables() > 0:
+                return rx.redirect("/ai-table")
+        finally:
+            self.is_uploading = False
 
     @rx.event
     def handle_upload_progress(self, progress: dict):
-        if progress["progress"] == 1:
-            self.is_uploading = False
-        else:
+        if progress["progress"] < 1:
             self.is_uploading = True

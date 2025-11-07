@@ -55,15 +55,17 @@ class TableItem:
         extension = file.extension
 
         if not file.is_csv_or_excel():
-            raise ValueError(f"Unsupported file extension: {extension}")
+            raise ValueError(f"Unsupported file extension: {extension} !!")
 
         tables: Dict[str, Table] = {}
         if extension == "csv":
-            table = cast(Table, TableImporter.call(file, {}))
+            # set format_header_names to True to ensure consistent naming because aggrid
+            # component has some problem with column names with special caracter (like dot or ")
+            table = cast(Table, TableImporter.call(file, {'format_header_names': True}))
             table.name = name
             tables[name] = table
         else:  # Excel file
-            tables = TableImporter.import_excel_multiple_sheets(file, {})
+            tables = TableImporter.import_excel_multiple_sheets(file, {'format_header_names': True})
 
         for sheet_name, table in tables.items():
             if sheet_name == name:
