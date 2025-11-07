@@ -17,7 +17,6 @@ services:
       - cluster.routing.allocation.disk.watermark.low=5gb
       - cluster.routing.allocation.disk.watermark.high=3gb
       - cluster.routing.allocation.disk.watermark.flood_stage=2gb
-      - TZ=Asia/Shanghai
     mem_limit: 8073741824
     ulimits:
       memlock:
@@ -38,7 +37,6 @@ services:
     container_name: ${CONTAINER_PREFIX}-mysql
     environment:
       - MYSQL_ROOT_PASSWORD=${PASSWORD}
-      - TZ=Asia/Shanghai
     command:
       --max_connections=1000
       --character-set-server=utf8mb4
@@ -72,7 +70,6 @@ services:
     environment:
       - MINIO_ROOT_USER=rag_flow
       - MINIO_ROOT_PASSWORD=${PASSWORD}
-      - TZ=Asia/Shanghai
     volumes:
       - ${LAB_VOLUME_HOST}/minio_data:/data
     networks:
@@ -107,7 +104,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    image: infiniflow/ragflow:v0.20.3-slim
+    image: infiniflow/ragflow:v0.21.1-slim
 
     container_name: ${CONTAINER_PREFIX}-server
     # ports:
@@ -124,7 +121,6 @@ services:
       - ${LAB_VOLUME_HOST}/ragflow-logs:/ragflow/logs
       - ${LAB_VOLUME_HOST}/history_data_agent:/ragflow/history_data_agent
     environment:
-      - TZ=Asia/Shanghai
       - HF_ENDPOINT=
       - MACOS=
       - MYSQL_PASSWORD=${PASSWORD}

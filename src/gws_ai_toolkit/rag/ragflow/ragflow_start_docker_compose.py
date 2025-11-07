@@ -1,11 +1,10 @@
 import os
-from time import sleep
 from typing import cast
 
 from gws_core import (ConfigParams, ConfigSpecs, CredentialsDataBasic,
-                      CredentialsService, DockerService, InputSpecs,
-                      OutputSpecs, Task, TaskInputs, TaskOutputs, TypingStyle,
-                      task_decorator, DockerComposeStatus)
+                      CredentialsService, DockerComposeStatus, DockerService,
+                      InputSpecs, OutputSpecs, Task, TaskInputs, TaskOutputs,
+                      TypingStyle, task_decorator)
 
 
 @task_decorator(
@@ -87,8 +86,6 @@ class RagflowStartDockerCompose(Task):
             }
         )
 
-        sleep(5)  # Give some time for the registration to complete
-
         self.log_info_message("Docker Compose started, waiting for ready status...")
 
         # Wait for the compose to be ready
@@ -96,15 +93,15 @@ class RagflowStartDockerCompose(Task):
             brick_name="gws_ai_toolkit",
             unique_name="ragflow",
             interval_seconds=10,
-            max_attempts=20
+            max_attempts=20,
+            message_dispatcher=self.message_dispatcher
         )
 
-        if response.info:
-            self.log_info_message(f"Docker Compose info: {response.info}")
-
-        if response.status != DockerComposeStatus.UP:
-            raise Exception(f"Docker Compose did not start successfully, status: {response.status.value}")
-
+        if response.composeStatus.status != DockerComposeStatus.UP:
+            text = f"Docker Compose did not start successfully, status: {response.composeStatus.status.value}."
+            if response.composeStatus.info:
+                text += f" Info: {response.composeStatus.info}."
+            raise Exception(text)
 
         self.log_success_message("RagFlow docker compose services started successfully!")
 
