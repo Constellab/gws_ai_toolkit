@@ -42,6 +42,10 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
         Args:
             conversation: The conversation history to display
         """
+        # Clear existing messages before loading new conversation
+        self._chat_messages = []
+        self.front_chat_messages = []
+
         self._conversation_id = conversation.conversation_id
         self.external_conversation_id = conversation.external_conversation_id
         for message in conversation.messages:
