@@ -1,0 +1,20 @@
+{
+    "app_dir_path": "",
+    "source_ids": [],
+    "params": {
+        "chat_credentials_name": "Ragflow pre-prod",
+        "dataset_credentials_name": "Ragflow pre-prod",
+        "dataset_id": "6c9b6b007dc711f091c576e267429a63",
+        "chat_id": "dcd98b3e7dc911f0a2f576e267429a63",
+        "rag_provider": "ragflow",
+        "resource_sync_mode": "tag",
+        "resource_tag_key": "send_to_rag",
+        "resource_tag_value": "true",
+        "show_config_page": true,
+        "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/_data/app_configuration.json",
+        "history_folder_path": "/lab/user/bricks/gws_ai_toolkit/_data/history"
+    },
+    "env_type": "NONE",
+    "env_file_path": "",
+    "requires_authentication": true
+}

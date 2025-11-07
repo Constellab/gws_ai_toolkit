@@ -1,8 +1,8 @@
 import reflex as rx
 
-from gws_ai_toolkit._app.chat_base import (ChatConfig, chat_input_component,
-                                           chat_messages_list_component,
-                                           header_clear_chat_button_component)
+from gws_ai_toolkit._app.ai_rag import (ChatConfig, chat_input_component,
+                                        chat_messages_list_component,
+                                        header_clear_chat_button_component)
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_agent_chat_state import AiTableAgentChatState

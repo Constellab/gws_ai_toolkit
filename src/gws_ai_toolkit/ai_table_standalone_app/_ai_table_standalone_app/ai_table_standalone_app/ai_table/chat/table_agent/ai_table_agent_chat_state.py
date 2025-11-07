@@ -3,7 +3,7 @@ from typing import Optional
 import reflex as rx
 from gws_core import Table
 
-from gws_ai_toolkit._app.chat_base import OpenAiChatStateBase
+from gws_ai_toolkit._app.ai_rag import OpenAiChatStateBase
 from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table_agent_ai_events import TableAgentEvent
 

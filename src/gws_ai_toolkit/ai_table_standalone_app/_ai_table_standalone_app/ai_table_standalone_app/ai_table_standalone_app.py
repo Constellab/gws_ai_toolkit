@@ -3,9 +3,10 @@ from typing import List
 
 import reflex as rx
 import reflex_enterprise as rxe
-from gws_ai_toolkit._app.core import NavBarItem, page_component
-from gws_ai_toolkit._app.history import HistoryState, history_component
 from gws_reflex_main import register_gws_reflex_app
+
+from gws_ai_toolkit._app.ai_rag import (HistoryState, NavBarItem,
+                                        history_component, page_component)
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState

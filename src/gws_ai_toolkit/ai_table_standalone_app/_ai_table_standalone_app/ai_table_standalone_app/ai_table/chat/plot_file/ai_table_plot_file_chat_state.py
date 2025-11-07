@@ -9,7 +9,7 @@ from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
                                     ResponseOutputItemDoneEvent)
 from pydantic import Field
 
-from gws_ai_toolkit._app.chat_base import BaseFileAnalysisState, ChatMessage
+from gws_ai_toolkit._app.ai_rag import BaseFileAnalysisState, ChatMessage
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig

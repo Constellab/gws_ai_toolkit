@@ -2,7 +2,7 @@ from typing import cast
 
 import reflex as rx
 
-from gws_ai_toolkit._app.core import AppConfigState
+from gws_ai_toolkit._app.ai_rag import AppConfigState
 
 from .ai_table_agent_chat_config import AiTableAgentChatConfig
 

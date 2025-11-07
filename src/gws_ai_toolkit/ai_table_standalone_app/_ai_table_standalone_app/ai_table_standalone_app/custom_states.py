@@ -1,7 +1,7 @@
 import reflex as rx
-from gws_ai_toolkit._app.core import AppConfigState
-from gws_ai_toolkit._app.history import ConversationHistoryState
 from gws_reflex_main import ReflexMainState
+
+from gws_ai_toolkit._app.ai_rag import AppConfigState, ConversationHistoryState
 
 
 class CustomAppConfigState(AppConfigState, rx.State):

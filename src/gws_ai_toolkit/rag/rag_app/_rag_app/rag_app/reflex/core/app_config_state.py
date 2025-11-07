@@ -55,6 +55,9 @@ class AppConfigState(rx.State, mixin=True):
     async def get_config_section(self, key: str, type_: Type[BaseModelDTO]) -> BaseModelDTO:
         """Get a specific section of the configuration as a DTO."""
         config = await self.config()
+        if key not in config:
+            Logger.warning(f"Config section '{key}' not found. Returning empty instance of {type_.__name__}.")
+            return type_()
         section_data = config.get(key, {})
         return type_(**section_data)
 

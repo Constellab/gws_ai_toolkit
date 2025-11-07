@@ -3,8 +3,7 @@ from typing import Type, cast
 import reflex as rx
 from gws_core import Logger
 
-from gws_ai_toolkit._app.chat_base import BaseAnalysisConfig
-from gws_ai_toolkit._app.core import AppConfigState
+from gws_ai_toolkit._app.ai_rag import AppConfigState, BaseAnalysisConfig
 
 from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig
 
