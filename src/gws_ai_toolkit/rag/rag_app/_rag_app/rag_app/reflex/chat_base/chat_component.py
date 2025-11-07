@@ -19,15 +19,14 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
     Returns:
         rx.Component: Layout with scrollable messages and fixed bottom input
     """
-    return rx.fragment(
+    return rx.box(
         rx.vstack(
             chat_header_component(config),
             chat_messages_list_component(config),
             width="100%",
-            max_width="800px",
-            margin="auto",
             padding="1em 1em 5em 1em",
             flex="1",
+            overflow_y="auto",
         ),
         # Fixed input at bottom
         rx.box(
@@ -49,7 +48,12 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
             padding="0 20px",
             width="800px",
             max_width="90%",
-        )
+        ),
+        position="relative",
+        width="100%",
+        height="100%",
+        display="flex",
+        flex_direction="column",
     )
 
 
