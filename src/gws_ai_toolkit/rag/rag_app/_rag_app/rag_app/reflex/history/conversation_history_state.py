@@ -11,7 +11,6 @@ from PIL import Image
 from plotly.graph_objs import Figure
 
 from ..chat_base.chat_message_class import ChatMessage
-from ..core.utils import Utils
 from .conversation_history_class import (ConversationFullHistory,
                                          ConversationHistory)
 

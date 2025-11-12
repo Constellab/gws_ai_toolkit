@@ -11,8 +11,6 @@ from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
                                                  RagResourceSyncMode)
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
 
-from ...core.utils import Utils
-
 
 class RagConfigStateConfig(BaseModelDTO):
     rag_provider: RagProvider

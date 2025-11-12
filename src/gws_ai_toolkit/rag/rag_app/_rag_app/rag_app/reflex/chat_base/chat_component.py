@@ -138,9 +138,10 @@ def chat_component(config: ChatConfig) -> rx.Component:
 
     return rx.auto_scroll(
         rx.hstack(
-            rx.box(config.left_section(config.state) if config.left_section else None,
-                   flex="1",
-                   height="100%"),
+            rx.box(
+                config.left_section(config.state) if config.left_section else None,
+                flex="1",
+                height="100%"),
             rx.box(
                 rx.cond(
                     # When there are messages, show normal layout with fixed input

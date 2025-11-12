@@ -83,13 +83,7 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
         if not document_id:
             return None
 
-        rag_resource = RagResource.from_document_id(document_id)
-        if not rag_resource:
-            # If that fails, try to load from resource id
-            rag_resource = RagResource.from_resource_model_id(document_id)
-
-        if not rag_resource:
-            raise ValueError("Resource not found or not linked to RAG document")
+        rag_resource = RagResource.from_document_or_resource_id_and_check(document_id)
 
         return rag_resource.resource_model
 

@@ -6,8 +6,6 @@ from typing import Type
 import reflex as rx
 from gws_core import BaseModelDTO, Logger
 
-from .utils import Utils
-
 
 class AppConfigState(rx.State, mixin=True):
     """Application configuration management state.

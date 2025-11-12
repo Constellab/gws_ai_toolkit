@@ -244,3 +244,9 @@ class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
 
         self.subtitle = resource_model.name
         return resource_model
+
+    @rx.var
+    async def current_resource_model_id(self) -> Optional[str]:
+        """Get the currently loaded resource model (reactive variable)."""
+        current_resource_model = await self.get_current_resource_model()
+        return current_resource_model.id if current_resource_model else None

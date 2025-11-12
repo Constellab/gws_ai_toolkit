@@ -5,22 +5,26 @@ import reflex_enterprise as rxe
 from gws_reflex_main import register_gws_reflex_app
 
 from gws_ai_toolkit._app.ai_rag import (
-    AiExpertState, AppConfigState, ChatConfig, HistoryState, NavBarItem,
+    AiExpertState, AppConfigState, ChatConfig, ChatStateBase,
+    ConversationHistoryState, HistoryState, NavBarItem, RagChatState,
     RagConfigState, ai_expert_component,
-    ai_expert_header_default_buttons_component, history_component,
-    page_component, rag_chat_component, rag_config_component)
+    ai_expert_header_default_buttons_component, custom_sources_list_component,
+    get_default_source_menu_items, history_component, page_component,
+    rag_chat_component, rag_config_component)
 from gws_ai_toolkit._app.ai_table import AiTableState, ai_table_component
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
+from .associated_resources_component import (associated_resources_dialog,
+                                             associated_resources_section)
+from .associated_resources_state import AssociatedResourcesState
 from .config_page import combined_config_page
-from .custom_ai_expert_component import custom_left_sidebar
-from .custom_ai_expert_state import CustomAssociatedResourceAiExpertState
 from .custom_states import (CustomAppConfigState,
                             CustomConversationHistoryState,
                             CustomRagConfigState)
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 RagConfigState.set_rag_config_state_class_type(CustomRagConfigState)
-# Import custom states to let reflex instantiate them
+ConversationHistoryState.set_conversation_history_state_class_type(CustomConversationHistoryState)
 
 app = register_gws_reflex_app(rxe.App())
 
@@ -32,12 +36,34 @@ nav_bar_items: List[NavBarItem] = [
 ]
 
 
+def custom_source_menu_items(source: RagChatSource, state: ChatStateBase):
+    items = get_default_source_menu_items(source, state)
+    items.append(
+        rx.menu.item(
+            rx.icon("link", size=16),
+            "Associated resources",
+            on_click=lambda: AssociatedResourcesState.open_associated_resources_dialog(source.document_id),
+        )
+    )
+    return items
+
+
+sources_component_builder = custom_sources_list_component(custom_source_menu_items)
+
+
 @rx.page(route="/")
 def index():
     """Main chat page."""
+    chat_config = ChatConfig(
+        state=RagChatState,
+        sources_component=sources_component_builder
+    )
     return page_component(
         nav_bar_items,
-        rag_chat_component()
+        rx.fragment(
+            rag_chat_component(chat_config),
+            associated_resources_dialog()
+        )
     )
 
 
@@ -67,7 +93,10 @@ def history():
     """History page for viewing conversation history."""
     return page_component(
         nav_bar_items,
-        history_component(CustomConversationHistoryState)
+        rx.fragment(
+            history_component(CustomConversationHistoryState, sources_component_builder=sources_component_builder),
+            associated_resources_dialog()
+        )
     )
 
 
@@ -78,7 +107,7 @@ def ai_expert():
     config = ChatConfig(
         state=AiExpertState,
         header_buttons=ai_expert_header_default_buttons_component,
-        left_section=lambda x: custom_left_sidebar(x, CustomAssociatedResourceAiExpertState)
+        left_section=associated_resources_section
     )
     return page_component(
         nav_bar_items,

@@ -5,8 +5,6 @@ import reflex_enterprise as rxe
 from gws_reflex_main import register_gws_reflex_app
 
 from .config_page import combined_config_page
-from .custom_ai_expert_component import custom_left_sidebar
-from .custom_ai_expert_state import CustomAssociatedResourceAiExpertState
 from .custom_states import (CustomAppConfigState,
                             CustomConversationHistoryState,
                             CustomRagConfigState)
@@ -17,6 +15,7 @@ from .reflex.chat_base.chat_config import ChatConfig
 from .reflex.core.app_config_state import AppConfigState
 from .reflex.core.nav_bar_component import NavBarItem
 from .reflex.core.page_component import page_component
+from .reflex.history.conversation_history_state import ConversationHistoryState
 from .reflex.history.history_component import history_component
 from .reflex.history.history_state import HistoryState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
@@ -25,6 +24,9 @@ from .reflex.rag_chat.rag_chat_component import rag_chat_component
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 RagConfigState.set_rag_config_state_class_type(CustomRagConfigState)
+ConversationHistoryState.set_conversation_history_state_class_type(CustomConversationHistoryState)
+
+
 app = register_gws_reflex_app(rxe.App())
 
 nav_bar_items: List[NavBarItem] = [
@@ -81,7 +83,6 @@ def ai_expert():
     config = ChatConfig(
         state=AiExpertState,
         header_buttons=ai_expert_header_default_buttons_component,
-        left_section=lambda x: custom_left_sidebar(x, CustomAssociatedResourceAiExpertState)
     )
     return page_component(
         nav_bar_items,

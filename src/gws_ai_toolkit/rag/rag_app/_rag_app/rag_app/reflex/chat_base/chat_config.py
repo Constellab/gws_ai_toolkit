@@ -3,9 +3,8 @@ from typing import Callable, List, Type
 
 import reflex as rx
 
-from gws_ai_toolkit.rag.common.rag_models import RagChunk
-
 from .chat_state_base import ChatStateBase
+from .sources_list_component import SourcesComponentBuilder
 
 
 @dataclass
@@ -31,7 +30,7 @@ class ChatConfig:
             Optional function that returns custom header buttons. Takes the chat
             state as parameter and returns list of Reflex components.
 
-        sources_component (Callable[[List[RagChunk], ChatStateBase], rx.Component] | None):
+        sources_component (SourcesComponentBuilder | None):
             Optional component function for displaying source references.
             Takes list of RAG chunks and chat state, returns display component.
 
@@ -54,7 +53,7 @@ class ChatConfig:
     # Add custom button on top right of the header
     header_buttons: Callable[[ChatStateBase], List[rx.Component]] | None = None
 
-    sources_component: Callable[[List[RagChunk], ChatStateBase], rx.Component] | None = None
+    sources_component: SourcesComponentBuilder | None = None
 
     # Optional left and right sections to display alongside the chat
     left_section: Callable[[ChatStateBase], rx.Component] | None = None

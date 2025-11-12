@@ -227,3 +227,12 @@ class RagResource():
             return None
 
         return cls(resource_model)
+
+    @classmethod
+    def from_document_or_resource_id_and_check(cls, id_: str) -> 'RagResource':
+        """Create a resource wrapper from either a document id or a resource model id."""
+        rag_resource = cls.from_document_id(id_)
+        if rag_resource:
+            return rag_resource
+
+        return cls.from_resource_model_id(id_)

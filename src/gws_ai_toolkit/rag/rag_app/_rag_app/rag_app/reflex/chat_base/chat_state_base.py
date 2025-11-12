@@ -7,12 +7,12 @@ from typing import List, Literal, Optional
 
 import reflex as rx
 from anyio import sleep
-from gws_core import (AuthenticateUser, GenerateShareLinkDTO, Logger,
-                      ShareLinkEntityType, ShareLinkService)
+from gws_core import Logger
 from gws_reflex_main import ReflexMainState
 from PIL import Image
 from plotly.graph_objects import Figure
 
+from gws_ai_toolkit.core.utils import Utils
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
@@ -346,23 +346,14 @@ class ChatStateBase(rx.State, mixin=True):
     async def open_document_from_resource(self, resource_id: str):
         """Redirect the user to an external URL."""
 
-        # Generate a public share link for the document
-        generate_link_dto = GenerateShareLinkDTO.get_1_hour_validity(
-            entity_id=resource_id,
-            entity_type=ShareLinkEntityType.RESOURCE
-        )
-
         main_state = await self.get_state(ReflexMainState)
-        user = await main_state.get_and_check_current_user()
 
-        with AuthenticateUser(user):
-            share_link = ShareLinkService.get_or_create_valid_public_share_link(generate_link_dto)
+        with await main_state.authenticate_user():
+            public_link = Utils.generate_temp_share_resource_link(resource_id)
 
-        if share_link:
-            public_link = share_link.get_public_link()
-            if public_link:
-                # Redirect the user to the share link URL
-                return rx.redirect(public_link, is_external=True)
+        if public_link:
+            # Redirect the user to the share link URL
+            return rx.redirect(public_link, is_external=True)
 
     @rx.var
     async def has_no_message(self) -> bool:

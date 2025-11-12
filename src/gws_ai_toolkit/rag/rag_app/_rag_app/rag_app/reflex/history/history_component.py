@@ -3,7 +3,8 @@ from typing import List, Type
 import reflex as rx
 
 from ..chat_base.chat_config import ChatConfig
-from ..chat_base.sources_list_component import sources_list_component
+from ..chat_base.sources_list_component import (SourcesComponentBuilder,
+                                                sources_list_component)
 from ..read_only_chat.read_only_chat_interface import read_only_chat_component
 from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
 from .conversation_history_class import ConversationHistory
@@ -183,13 +184,8 @@ def _header_buttons(state: ReadOnlyChatState) -> List[rx.Component]:
     ]
 
 
-def _conversation_display() -> rx.Component:
+def _conversation_display(config: ChatConfig) -> rx.Component:
     """Right side conversation display."""
-    config = ChatConfig(
-        state=ReadOnlyChatState,
-        sources_component=sources_list_component,
-        header_buttons=_header_buttons
-    )
 
     return rx.box(
         rx.cond(
@@ -225,7 +221,8 @@ def _conversation_display() -> rx.Component:
     )
 
 
-def history_component(conversation_history_state: Type[ConversationHistoryState]):
+def history_component(conversation_history_state: Type[ConversationHistoryState],
+                      sources_component_builder: SourcesComponentBuilder | None = None) -> rx.Component:
     """Complete conversation history interface with sidebar and display panel.
 
     This component provides a two-panel interface for browsing and viewing
@@ -254,11 +251,15 @@ def history_component(conversation_history_state: Type[ConversationHistoryState]
         raise ValueError(
             "conversation_history_state must be a subclass of ConversationHistoryState, not the base class itself")
 
-    ConversationHistoryState.set_conversation_history_state_class_type(conversation_history_state)
+    config = ChatConfig(
+        state=ReadOnlyChatState,
+        sources_component=sources_component_builder or sources_list_component,
+        header_buttons=_header_buttons
+    )
 
     return rx.hstack(
         _conversations_sidebar(),
-        _conversation_display(),
+        _conversation_display(config),
         spacing="0",
         width="100%",
         flex="1",
