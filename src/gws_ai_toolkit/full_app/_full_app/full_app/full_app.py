@@ -5,7 +5,8 @@ import reflex_enterprise as rxe
 from gws_reflex_main import register_gws_reflex_app
 
 from gws_ai_toolkit._app.ai_rag import (
-    AiExpertState, ChatConfig, HistoryState, NavBarItem, ai_expert_component,
+    AiExpertState, AppConfigState, ChatConfig, HistoryState, NavBarItem,
+    RagConfigState, ai_expert_component,
     ai_expert_header_default_buttons_component, history_component,
     page_component, rag_chat_component, rag_config_component)
 from gws_ai_toolkit._app.ai_table import AiTableState, ai_table_component
@@ -17,6 +18,8 @@ from .custom_states import (CustomAppConfigState,
                             CustomConversationHistoryState,
                             CustomRagConfigState)
 
+AppConfigState.set_config_state_class_type(CustomAppConfigState)
+RagConfigState.set_rag_config_state_class_type(CustomRagConfigState)
 # Import custom states to let reflex instantiate them
 
 app = register_gws_reflex_app(rxe.App())

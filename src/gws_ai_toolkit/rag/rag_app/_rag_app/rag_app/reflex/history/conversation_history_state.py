@@ -3,7 +3,7 @@ import os
 import uuid
 from abc import abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 import reflex as rx
 from gws_core import Logger
@@ -25,6 +25,8 @@ class ConversationHistoryState(rx.State, mixin=True):
     PLOTS_FOLDER_NAME: str = 'plots'
 
     _history_folder_path: str = ''
+
+    __sub_class_type__: Type['ConversationHistoryState'] | None = None
 
     @abstractmethod
     async def _get_history_folder_path_param(self) -> str:
@@ -208,10 +210,25 @@ class ConversationHistoryState(rx.State, mixin=True):
     async def get_instance(state: rx.State) -> 'ConversationHistoryState':
         """Get the ConversationHistoryState instance from any state."""
 
-        config_state = await Utils.get_first_state_of_type(state, ConversationHistoryState)
+        if ConversationHistoryState.__sub_class_type__ is None:
+            raise Exception(
+                "ConversationHistoryState subclass not registered. You must call "
+                "set_conversation_history_state_class_type() during app initialization to register "
+                "your custom ConversationHistoryState subclass."
+            )
 
-        if config_state:
-            return config_state
-        else:
+        return await state.get_state(ConversationHistoryState.__sub_class_type__)
+
+    @staticmethod
+    def set_conversation_history_state_class_type(state_type: Type['ConversationHistoryState']):
+        """Set the ConversationHistoryState subclass type for the app.
+
+        Args:
+            state_type (Type[ConversationHistoryState]): The ConversationHistoryState subclass type.
+        """
+
+        if ConversationHistoryState.__sub_class_type__ is not None:
             raise ValueError(
-                "ConversationHistoryState subclass not found. You must define a subclass of ConversationHistoryState in your app to configure it.")
+                "ConversationHistoryState subclass type is already set. Use Utils.get_first_state_of_type to get the instance.")
+
+        ConversationHistoryState.__sub_class_type__ = state_type

@@ -32,6 +32,8 @@ class AppConfigState(rx.State, mixin=True):
 
     _config_file_path: str = ''
 
+    __sub_class_type__: Type['AppConfigState'] | None = None
+
     @abstractmethod
     async def _get_config_file_path(self) -> str:
         pass
@@ -101,13 +103,26 @@ class AppConfigState(rx.State, mixin=True):
             raise ValueError(f"Error writing config file: {e}")
 
     @staticmethod
-    async def get_config_state(state: rx.State) -> 'AppConfigState':
+    async def get_instance(state: rx.State) -> 'AppConfigState':
         """Get the AppConfigState instance from any state."""
 
-        config_state = await Utils.get_first_state_of_type(state, AppConfigState)
+        if AppConfigState.__sub_class_type__ is None:
+            raise Exception(
+                "AppConfigState subclass not registered. You must call "
+                "set_config_state_class_type() during app initialization to register "
+                "your custom AppConfigState subclass."
+            )
 
-        if config_state:
-            return config_state
-        else:
-            raise ValueError(
-                "AppConfigState subclass not found. You must define a subclass of AppConfigState in your app to configure it.")
+        return await state.get_state(AppConfigState.__sub_class_type__)
+
+    @staticmethod
+    def set_config_state_class_type(state_type: Type['AppConfigState']):
+        """Set the AppConfigState subclass type for the app.
+
+        This method should be called during app initialization to register
+        the custom AppConfigState subclass.
+
+        Args:
+            state_type (Type[AppConfigState]): The subclass of AppConfigState to register.
+        """
+        AppConfigState.__sub_class_type__ = state_type

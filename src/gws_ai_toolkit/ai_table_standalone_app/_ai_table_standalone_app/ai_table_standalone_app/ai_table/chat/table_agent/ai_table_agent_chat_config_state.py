@@ -36,7 +36,7 @@ class AiTableAgentChatConfigState(rx.State):
 
     async def get_config(self) -> AiTableAgentChatConfig:
         """Get the current configuration for this analysis type"""
-        app_config_state = await AppConfigState.get_config_state(self)
+        app_config_state = await AppConfigState.get_instance(self)
         config = await app_config_state.get_config_section(
             self.get_config_section_name(),
             AiTableAgentChatConfig
@@ -92,7 +92,7 @@ class AiTableAgentChatConfigState(rx.State):
             Toast result for user feedback
         """
         # Update the config in AppConfigState
-        app_config_state = await AppConfigState.get_config_state(self)
+        app_config_state = await AppConfigState.get_instance(self)
         return await app_config_state.update_config_section(
             self.get_config_section_name(),
             new_config

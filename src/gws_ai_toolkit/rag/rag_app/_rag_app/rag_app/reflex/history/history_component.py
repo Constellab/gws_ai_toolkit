@@ -254,6 +254,8 @@ def history_component(conversation_history_state: Type[ConversationHistoryState]
         raise ValueError(
             "conversation_history_state must be a subclass of ConversationHistoryState, not the base class itself")
 
+    ConversationHistoryState.set_conversation_history_state_class_type(conversation_history_state)
+
     return rx.hstack(
         _conversations_sidebar(),
         _conversation_display(),

@@ -37,7 +37,7 @@ class AiExpertConfigState(rx.State):
     current_form_mode: AiExpertChatMode = 'full_file'
 
     async def get_config(self) -> AiExpertConfig:
-        app_config_state = await AppConfigState.get_config_state(self)
+        app_config_state = await AppConfigState.get_instance(self)
         config = await app_config_state.get_config_section('ai_expert_page', AiExpertConfig)
         return cast(AiExpertConfig, config)
 
@@ -144,7 +144,7 @@ class AiExpertConfigState(rx.State):
 
             # Update the config in AppConfigState
 
-            app_config_state = await AppConfigState.get_config_state(self)
+            app_config_state = await AppConfigState.get_instance(self)
             result = await app_config_state.update_config_section('ai_expert_page', new_config)
 
             # Show success message

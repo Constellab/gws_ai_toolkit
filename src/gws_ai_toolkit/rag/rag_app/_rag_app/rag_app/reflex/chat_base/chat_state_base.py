@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import List, Literal, Optional
 
 import reflex as rx
+from anyio import sleep
 from gws_core import (AuthenticateUser, GenerateShareLinkDTO, Logger,
                       ShareLinkEntityType, ShareLinkService)
 from gws_reflex_main import ReflexMainState
@@ -157,6 +158,7 @@ class ChatStateBase(rx.State, mixin=True):
             self.is_streaming = True
             await self.add_message(message)
 
+        await sleep(0)  # Allow UI to update before starting streaming
         try:
             await self.call_ai_chat(user_message)
         except Exception as e:
@@ -361,6 +363,11 @@ class ChatStateBase(rx.State, mixin=True):
             if public_link:
                 # Redirect the user to the share link URL
                 return rx.redirect(public_link, is_external=True)
+
+    @rx.var
+    async def has_no_message(self) -> bool:
+        """Check if there are no messages in the chat."""
+        return len(self._chat_messages) == 0 and not self._current_response_message and not self.is_streaming
 
     async def save_conversation_to_history(self, mode: str, configuration: dict):
         """Save the current conversation to history with the given configuration."""

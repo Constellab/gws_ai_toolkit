@@ -7,7 +7,6 @@ from gws_reflex_main import register_gws_reflex_app
 from .config_page import combined_config_page
 from .custom_ai_expert_component import custom_left_sidebar
 from .custom_ai_expert_state import CustomAssociatedResourceAiExpertState
-# Import custom states to let reflex instantiate them
 from .custom_states import (CustomAppConfigState,
                             CustomConversationHistoryState,
                             CustomRagConfigState)
@@ -15,13 +14,17 @@ from .reflex.ai_expert.ai_expert_component import (
     ai_expert_component, ai_expert_header_default_buttons_component)
 from .reflex.ai_expert.ai_expert_state import AiExpertState
 from .reflex.chat_base.chat_config import ChatConfig
+from .reflex.core.app_config_state import AppConfigState
 from .reflex.core.nav_bar_component import NavBarItem
 from .reflex.core.page_component import page_component
 from .reflex.history.history_component import history_component
 from .reflex.history.history_state import HistoryState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
+from .reflex.rag_chat.config.rag_config_state import RagConfigState
 from .reflex.rag_chat.rag_chat_component import rag_chat_component
 
+AppConfigState.set_config_state_class_type(CustomAppConfigState)
+RagConfigState.set_rag_config_state_class_type(CustomRagConfigState)
 app = register_gws_reflex_app(rxe.App())
 
 nav_bar_items: List[NavBarItem] = [
