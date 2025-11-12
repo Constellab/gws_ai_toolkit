@@ -42,12 +42,12 @@ class AssociatedResourcesState(rx.State):
 
         async with self:
             expert_state = await self.get_state(AiExpertState)
-            resource_id = await expert_state.current_resource_model_id
+            resource_model = await expert_state.get_current_resource_model()
 
-        if not resource_id:
+        if not resource_model:
             return
 
-        await self._load_for_resource(resource_id)
+        await self._load_for_resource(resource_model.id)
 
     @rx.event(background=True)  # type: ignore
     async def open_associated_resources_dialog(self, source_id: str) -> None:

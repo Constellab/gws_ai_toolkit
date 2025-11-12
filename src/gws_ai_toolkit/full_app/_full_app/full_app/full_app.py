@@ -101,7 +101,8 @@ def history():
 
 
 # AI Expert page - document-specific chat
-@rx.page(route="/ai-expert/[document_id]")
+@rx.page(route="/ai-expert/[document_id]",
+         on_load=[AiExpertState.load_resource_from_url, AssociatedResourcesState.load_from_expert_state])
 def ai_expert():
     """AI Expert page for document-specific chat."""
     config = ChatConfig(

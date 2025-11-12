@@ -224,12 +224,9 @@ class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
 
     async def get_current_resource_model(self) -> Optional[ResourceModel]:
         """Get the currently loaded resource model."""
-        if not self._current_resource_model:
-            self._current_resource_model = await self._load_resource_from_url()
-
         return self._current_resource_model
 
-    async def _load_resource_from_url(self) -> Optional[ResourceModel]:
+    async def load_resource_from_url(self) -> None:
         """Handle page load - get resource ID from router state"""
 
         resource_model = self._load_resource()
@@ -243,10 +240,5 @@ class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
             self.clear_chat()
 
         self.subtitle = resource_model.name
-        return resource_model
-
-    @rx.var
-    async def current_resource_model_id(self) -> Optional[str]:
-        """Get the currently loaded resource model (reactive variable)."""
-        current_resource_model = await self.get_current_resource_model()
-        return current_resource_model.id if current_resource_model else None
+        # raise Exception("Debug break")
+        self._current_resource_model = resource_model

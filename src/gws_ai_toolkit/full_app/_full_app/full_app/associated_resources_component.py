@@ -1,7 +1,5 @@
 
 
-from typing import Callable
-
 import reflex as rx
 from gws_reflex_main import dialog_header, loader_section
 
@@ -73,7 +71,6 @@ def associated_resources_section(_: ChatStateBase) -> rx.Component:
                     spacing="2", align="stretch",),
                 is_loading=AssociatedResourcesState.is_loading,),
             spacing="3", width="100%"),
-        on_mount=AssociatedResourcesState.load_from_expert_state
     )
 
 
