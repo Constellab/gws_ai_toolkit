@@ -1,4 +1,4 @@
-from typing import Any, Generator, List, Optional
+from typing import Generator, List, Optional
 
 from gws_core import CredentialsDataOther
 from ragflow_sdk import Chat, Chunk, DataSet, Document, RAGFlow, Session
@@ -13,7 +13,7 @@ from gws_ai_toolkit.rag.ragflow.ragflow_class import (
 class RagFlowService:
     """Service to interact with RagFlow using the Python SDK"""
 
-    _client: RAGFlow  # RagFlow client instance
+    _client: RAGFlow | None  # RagFlow client instance
     base_url: str
     api_key: str
 
@@ -104,7 +104,7 @@ class RagFlowService:
     ################################# DOCUMENT MANAGEMENT #################################
 
     def upload_documents(self, doc_paths: List[str], dataset_id: str,
-                         filenames: List[str] = None) -> List[Document]:
+                         filenames: List[str] | None = None) -> List[Document]:
         """Upload multiple documents using SDK."""
         try:
             # Get dataset object using our helper method
@@ -130,7 +130,7 @@ class RagFlowService:
             raise RuntimeError(f"Error uploading documents: {str(e)}") from e
 
     def upload_document(self, doc_paths: str, dataset_id: str,
-                        filename: str = None) -> Document:
+                        filename: str | None = None) -> Document:
         """Upload single document using SDK."""
         response = self.upload_documents([doc_paths], dataset_id, [filename] if filename else None)
         return response[0]
@@ -269,15 +269,50 @@ class RagFlowService:
     ################################# CHAT MANAGEMENT #################################
 
     def create_chat(self, chat: RagFlowCreateChatRequest) -> Chat:
-        """Create chat assistant using SDK."""
+        """Create chat assistant using SDK.
+
+        Parameters
+        ----------
+        chat : RagFlowCreateChatRequest
+            Chat configuration containing:
+            - name: Identifier for the chat assistant (required)
+            - avatar: Base64-encoded image data (optional, defaults to "")
+            - knowledgebases: List of dataset IDs to associate (optional, defaults to [])
+            - llm: Language model configuration (optional, uses system defaults if None)
+            - prompt: System instructions configuration (optional, uses system defaults if None)
+
+        Returns
+        -------
+        Chat
+            Created chat assistant object from SDK
+
+        Raises
+        ------
+        RuntimeError
+            If chat creation fails
+        """
         client = self._get_client()
 
         try:
-            sdk_chat = client.create_chat(
-                name=chat.name,
-                dataset_ids=chat.knowledgebases,
-                llm=chat.llm
-            )
+            # Build parameters for SDK call
+            params = {
+                'name': chat.name,
+            }
+
+            # Add optional parameters only if provided
+            if chat.avatar:
+                params['avatar'] = chat.avatar
+
+            if chat.knowledgebases:
+                params['dataset_ids'] = chat.knowledgebases
+
+            if chat.llm is not None:
+                params['llm'] = chat.llm
+
+            if chat.prompt is not None:
+                params['prompt'] = chat.prompt
+
+            sdk_chat = client.create_chat(**params)
 
             return sdk_chat
 
@@ -402,7 +437,7 @@ class RagFlowService:
             chat = self.get_chat(chat_id=chat_id)
 
             # Get or create session
-            session: Session = None
+            session: Session | None = None
             if session_id:
                 sessions = chat.list_sessions(id=session_id)
                 if len(sessions) > 0:

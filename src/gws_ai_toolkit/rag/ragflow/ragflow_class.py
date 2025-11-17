@@ -37,10 +37,10 @@ class RagFlowUpdateDatasetRequest(BaseModelDTO):
 class RagFlowCreateChatRequest(BaseModelDTO):
     """Request model for creating a chat assistant."""
     name: str
-    avatar: Optional[str] = None
-    knowledgebases: List[str]
-    llm: Dict[str, Any]
-    prompt: str
+    avatar: Optional[str] = ""
+    knowledgebases: Optional[List[str]] = []
+    llm: Optional[Dict[str, Any]] = None
+    prompt: Optional[Dict[str, Any]] = None
 
 
 class RagFlowUpdateChatRequest(BaseModelDTO):
