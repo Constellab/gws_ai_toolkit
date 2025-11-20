@@ -26,7 +26,10 @@ def nav_bar_component(items: List[NavBarItem]) -> rx.Component:
     """Navigation component for switching between pages."""
     return rx.box(
         rx.hstack(
-            *[_navbar_link(item) for item in items],
+            rx.foreach(
+                items,
+                _navbar_link,
+            ),
             spacing="5",
             align_items="center",
         ),

@@ -4,6 +4,8 @@ from ...ai_table_standalone_app._ai_table_standalone_app.ai_table_standalone_app
     AiTableDataState
 from ...ai_table_standalone_app._ai_table_standalone_app.ai_table_standalone_app.ai_table.ai_table_state import \
     AiTableState
+from ...ai_table_standalone_app._ai_table_standalone_app.ai_table_standalone_app.ai_table.chat.table_agent.ai_table_agent_chat_config_component import \
+    ai_table_agent_chat_config_component
 # Stats
 from ...ai_table_standalone_app._ai_table_standalone_app.ai_table_standalone_app.ai_table.stats.ai_table_stats_component import \
     ai_table_stats_component
@@ -23,4 +25,7 @@ __all__ = [
 
     # Component functions - Stats
     "ai_table_stats_component",
+
+    # Component functions - Chat Config
+    "ai_table_agent_chat_config_component",
 ]
