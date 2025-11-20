@@ -361,7 +361,3 @@ When generating the environment file:
 
 Call the function only once per user request for an environment file.
 """
-
-
-# Backward compatibility alias
-CondaEnvAgentAi = EnvAgentAi

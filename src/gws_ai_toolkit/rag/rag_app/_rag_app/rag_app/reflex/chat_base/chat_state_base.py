@@ -158,7 +158,7 @@ class ChatStateBase(rx.State, mixin=True):
             self.is_streaming = True
             await self.add_message(message)
 
-        await sleep(0)  # Allow UI to update before starting streaming
+        await sleep(0.1)  # Allow UI to update before starting streaming
         try:
             await self.call_ai_chat(user_message)
         except Exception as e:
