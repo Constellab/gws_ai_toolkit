@@ -1,8 +1,9 @@
 from typing import Any, Dict, List, Optional
 
-from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_core import Logger, ResourceModel
 from pyparsing import abstractmethod
+
+from gws_ai_toolkit.rag.common.rag_models import RagDocument
 
 from .base_rag_service import BaseRagService
 from .rag_resource import RagResource
@@ -169,7 +170,7 @@ class BaseRagAppService():
                             query: str,
                             conversation_id: Optional[str] = None,
                             chat_id: Optional[str] = None,
-                            user: str = None,
+                            user_id: str | None = None,
                             filters: Optional[Dict[str, Any]] = None):
         """Send a message stream.
         Override get_chat_default_filters to enable default filtering
@@ -196,7 +197,7 @@ class BaseRagAppService():
         # Use the underlying RAG service's chat_stream method
         return self.rag_service.chat_stream(
             query=query,
-            user=user,
+            user_id=user_id,
             conversation_id=conversation_id,
             chat_id=chat_id,
             inputs=filtered_inputs

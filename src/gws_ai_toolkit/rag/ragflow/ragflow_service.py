@@ -449,7 +449,6 @@ class RagFlowService:
             # Ask question with streaming - return raw SDK responses
             for answer in session.ask(question=query, stream=True):
                 yield RagflowAskStreamResponse(
-                    id=None,  # there is not answer id in the SDK response
                     content=answer.content,
                     role=answer.role,
                     reference=answer.reference,

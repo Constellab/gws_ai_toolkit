@@ -50,8 +50,6 @@
         "server",
         "test",
         "${input:testFileName}",
-        "--brick-name",
-        "${input:brickName}"
       ],
       "name": "Test and debug a single file",
       "type": "debugpy",
@@ -70,11 +68,6 @@
       "id": "testFileName",
       "type": "promptString",
       "description": "Name of the test files to run. It supports multiple filenames separated with space"
-    },
-    {
-      "id": "brickName",
-      "type": "promptString",
-      "description": "Name of the brick that contains the tests file."
     }
   ]
 }

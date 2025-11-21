@@ -2,6 +2,8 @@ import uuid
 from typing import List
 
 import reflex as rx
+from gws_reflex_main import ReflexMainState
+from streamlit import user
 
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatSource,
@@ -37,8 +39,13 @@ class RagChatState(ChatStateBase, rx.State):
         """Get streaming response from the assistant."""
 
         rag_app_state: RagConfigState
+        user_id: str | None = None
         async with self:
             rag_app_state = await RagConfigState.get_instance(self)
+            main_state = await self.get_state(ReflexMainState)
+            current_user = await main_state.get_current_user()
+            if current_user:
+                user_id = current_user.id
 
         datahub_rag_service = await rag_app_state.get_chat_rag_app_service()
         if not datahub_rag_service:
@@ -59,7 +66,7 @@ class RagChatState(ChatStateBase, rx.State):
         for stream_response in datahub_rag_service.send_message_stream(
             query=user_message,
             conversation_id=self.external_conversation_id,
-            user=None,  # TODO handle user
+            user_id=user_id,
             chat_id=chat_id,
         ):
             if isinstance(stream_response, RagChatStreamResponse):

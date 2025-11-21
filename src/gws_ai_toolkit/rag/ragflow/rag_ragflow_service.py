@@ -82,7 +82,7 @@ class RagRagFlowService(BaseRagService):
     def chat_stream(self,
                     query: str,
                     conversation_id: Optional[str] = None,
-                    user: Optional[str] = None,
+                    user_id: Optional[str] = None,
                     chat_id: Optional[str] = None,
                     **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
@@ -106,7 +106,7 @@ class RagRagFlowService(BaseRagService):
                     yield chat_end
                 else:
                     yield RagChatStreamResponse(
-                        id=answer.id,
+                        id=None,  # there is not id in the SDK response
                         answer=answer.content,
                         is_from_beginning=True,
                         session_id=answer.session_id

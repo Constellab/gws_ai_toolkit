@@ -1,10 +1,11 @@
 from typing import Any, Generator, List, Optional, Union
 
+from gws_core import CredentialsDataOther
+
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatStreamResponse,
                                                   RagChunk, RagDocument)
-from gws_core import CredentialsDataOther
 
 from .dify_class import (DifyChunkRecord, DifyDatasetDocument, DifyMetadata,
                          DifySendDocumentOptions,
@@ -117,11 +118,11 @@ class RagDifyService(BaseRagService):
         return [self._convert_to_rag_chunk(chunk) for chunk in response]
 
     def chat_stream(self, query: str, conversation_id: Optional[str] = None,
-                    user: Optional[str] = None, chat_id: Optional[str] = None, **kwargs) -> Generator[
+                    user_id: Optional[str] = None, chat_id: Optional[str] = None, **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
     ]:
         """Send a query and get streaming chat response."""
-        for response in self._dify_service.send_message_stream(query, user, conversation_id, **kwargs):
+        for response in self._dify_service.send_message_stream(query, user_id, conversation_id, **kwargs):
             if isinstance(response, DifySendMessageStreamResponse):
                 yield RagChatStreamResponse(
                     id=response.id,

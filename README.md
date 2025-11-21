@@ -70,6 +70,14 @@ Replace `[TEST_FILE_NAME]` with the name of the test file (without `.py`) in the
 gws server test all
 ```
 
+**RagFlow Tests**: Some tests (e.g., `test_ragflow_service`) require RagFlow credentials. Create a `.env.test` file in the brick root with:
+```bash
+RAGFLOW_API_KEY=your-api-key
+RAGFLOW_BASE_URL=http://localhost:9380
+RAGFLOW_DATASET_ID=your-dataset-id
+RAGFLOW_CHAT_ID=your-chat-id
+```
+
 📌 VSCode users can use the predefined run configuration in `.vscode/launch.json`.
 
 ## 🤗 Community

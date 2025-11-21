@@ -78,7 +78,7 @@ class BaseRagService(ABC):
     def chat_stream(self,
                     query: str,
                     conversation_id: Optional[str] = None,
-                    user: Optional[str] = None,
+                    user_id: Optional[str] = None,
                     chat_id: Optional[str] = None,
                     **kwargs) -> Generator[
         Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
