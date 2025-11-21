@@ -2,29 +2,25 @@ from typing import List
 
 import reflex as rx
 import reflex_enterprise as rxe
-from gws_reflex_main import register_gws_reflex_app
-
 from gws_ai_toolkit._app.ai_rag import (
-    AiExpertState, AppConfigState, ChatConfig, ChatStateBase,
-    ConversationHistoryState, HistoryState, NavBarItem, RagChatState,
-    RagConfigState, ai_expert_component,
-    ai_expert_header_default_buttons_component, custom_sources_list_component,
-    get_default_source_menu_items, history_component, page_component,
-    rag_chat_component, rag_config_component)
+    AiExpertState, AppConfigState, ChatConfig, ChatStateBase, HistoryState,
+    NavBarItem, RagChatState, RagConfigState, RagConfigStateFromParams,
+    ai_expert_component, ai_expert_header_default_buttons_component,
+    custom_sources_list_component, get_default_source_menu_items,
+    history_component, page_component, rag_chat_component,
+    rag_config_component)
 from gws_ai_toolkit._app.ai_table import AiTableState, ai_table_component
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+from gws_reflex_main import register_gws_reflex_app
 
 from .associated_resources_component import (associated_resources_dialog,
                                              associated_resources_section)
 from .associated_resources_state import AssociatedResourcesState
 from .config_page import combined_config_page
-from .custom_states import (CustomAppConfigState,
-                            CustomConversationHistoryState,
-                            CustomRagConfigState)
+from .custom_states import CustomAppConfigState
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
-RagConfigState.set_rag_config_state_class_type(CustomRagConfigState)
-ConversationHistoryState.set_conversation_history_state_class_type(CustomConversationHistoryState)
+RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
 app = register_gws_reflex_app(rxe.App())
 
@@ -94,7 +90,7 @@ def history():
     return page_component(
         nav_bar_items,
         rx.fragment(
-            history_component(CustomConversationHistoryState, sources_component_builder=sources_component_builder),
+            history_component(sources_component_builder=sources_component_builder),
             associated_resources_dialog()
         )
     )

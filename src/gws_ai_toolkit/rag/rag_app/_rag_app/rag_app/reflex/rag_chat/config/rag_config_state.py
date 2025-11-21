@@ -2,23 +2,24 @@ from abc import abstractmethod
 from typing import Optional, Type, cast
 
 import reflex as rx
-from gws_core import BaseModelDTO, Credentials, CredentialsDataOther, User
-
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import \
     RagAppServiceFactory
 from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
                                                  RagResourceSyncMode)
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
+from gws_core import BaseModelDTO, Credentials, CredentialsDataOther
+from gws_reflex_main import ReflexMainState
 
 
 class RagConfigStateConfig(BaseModelDTO):
+    chat_app_name: str  # TODO NOT THE BEST. THIS CONFIG MIGHT BE BETTER PLACED ELSEWHERE
     rag_provider: RagProvider
     resource_sync_mode: RagResourceSyncMode
-    dataset_id: Optional[str]
-    dataset_credentials_name: Optional[str]
-    chat_id: Optional[str]
-    chat_credentials_name: Optional[str]
+    rag_dataset_id: Optional[str]
+    rag_dataset_credentials_name: Optional[str]
+    rag_chat_id: Optional[str]
+    rag_chat_credentials_name: Optional[str]
     resource_tag_key: Optional[str]
     resource_tag_value: Optional[str]
 
@@ -58,6 +59,11 @@ class RagConfigState(rx.State, mixin=True):
             self._rag_config = await self._get_rag_config_data()
         return self._rag_config
 
+    async def get_chat_app_name(self) -> str:
+        """Get the chat app name."""
+        config = await self.get_rag_config()
+        return config.chat_app_name
+
     async def get_rag_provider(self) -> RagProvider:
         """Get the RAG provider."""
         config = await self.get_rag_config()
@@ -66,12 +72,12 @@ class RagConfigState(rx.State, mixin=True):
     async def get_dataset_id(self) -> Optional[str]:
         """Get the dataset ID."""
         config = await self.get_rag_config()
-        return config.dataset_id
+        return config.rag_dataset_id
 
     async def get_chat_id(self) -> Optional[str]:
         """Get the chat ID."""
         config = await self.get_rag_config()
-        return config.chat_id
+        return config.rag_chat_id
 
     async def get_resource_sync_mode(self) -> RagResourceSyncMode:
         """Get the resource sync mode."""
@@ -82,9 +88,9 @@ class RagConfigState(rx.State, mixin=True):
         """Get the dataset credentials."""
         if not self._credentials:
             config = await self.get_rag_config()
-            if not config.dataset_credentials_name:
+            if not config.rag_dataset_credentials_name:
                 return None
-            ds_creds = Credentials.find_by_name_and_check(config.dataset_credentials_name)
+            ds_creds = Credentials.find_by_name_and_check(config.rag_dataset_credentials_name)
             self._credentials = cast(CredentialsDataOther, ds_creds.get_data_object())
 
         return self._credentials
@@ -93,9 +99,9 @@ class RagConfigState(rx.State, mixin=True):
         """Get the chat credentials."""
         if not self._credentials:
             config = await self.get_rag_config()
-            if not config.chat_credentials_name:
+            if not config.rag_chat_credentials_name:
                 return None
-            chat_creds = Credentials.find_by_name_and_check(config.chat_credentials_name)
+            chat_creds = Credentials.find_by_name_and_check(config.rag_chat_credentials_name)
             self._credentials = cast(CredentialsDataOther, chat_creds.get_data_object())
 
         return self._credentials
@@ -163,3 +169,27 @@ class RagConfigState(rx.State, mixin=True):
                 "RagConfigState subclass type is already set. Use Utils.get_first_state_of_type to get the instance.")
 
         RagConfigState.__sub_class_type__ = state_type
+
+
+class RagConfigStateFromParams(RagConfigState, rx.State):
+    """Load the RagConfigState from the params
+
+    Args:
+        RagConfigState (_type_): _description_
+        rx (_type_): _description_
+    """
+
+    async def _get_rag_config_data(self) -> RagConfigStateConfig:
+        base_state = await self.get_state(ReflexMainState)
+        params = await base_state.get_params()
+        return RagConfigStateConfig(
+            chat_app_name=params.get("chat_app_name", ""),
+            rag_provider=params.get("rag_provider", 'ragflow'),
+            resource_sync_mode=params.get("resource_sync_mode", "tag"),
+            rag_dataset_id=params.get("rag_dataset_id"),
+            rag_dataset_credentials_name=params.get("rag_dataset_credentials_name"),
+            rag_chat_id=params.get("rag_chat_id"),
+            rag_chat_credentials_name=params.get("rag_chat_credentials_name"),
+            resource_tag_key=params.get("resource_tag_key"),
+            resource_tag_value=params.get("resource_tag_value"),
+        )

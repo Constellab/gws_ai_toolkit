@@ -71,7 +71,7 @@ def read_only_chat_component(config: ChatConfig) -> rx.Component:
     return rx.box(
         rx.cond(
             # When there are messages, show normal layout with disabled input
-            config.state.front_chat_messages,
+            config.state.chat_messages,
             # Layout with messages - disabled input at bottom
             _read_only_chat_with_messages(config),
             # When no messages, center the disabled input vertically

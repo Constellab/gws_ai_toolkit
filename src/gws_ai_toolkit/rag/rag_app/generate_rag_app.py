@@ -1,12 +1,11 @@
 from typing import cast
 
+from gws_ai_toolkit.rag.common.rag_enums import RagResourceSyncMode
 from gws_core import (AppConfig, AppType, BoolParam, ConfigParams, ConfigSpecs,
                       CredentialsDataOther, CredentialsParam, File, Folder,
                       InputSpec, InputSpecs, OutputSpec, OutputSpecs,
                       ReflexResource, StrParam, Task, TaskInputs, TaskOutputs,
                       Utils, app_decorator, task_decorator)
-
-from gws_ai_toolkit.rag.common.rag_enums import RagResourceSyncMode
 
 
 @app_decorator("RagAppAppConfig", app_type=AppType.REFLEX,
@@ -33,13 +32,16 @@ class GenerateDatahubRagDifyApp(Task):
 
     input_specs = InputSpecs({
         'app_config': InputSpec(File, human_name="App config file", short_description="The app config file to use"),
-        'history_folder': InputSpec(Folder, human_name="History folder", short_description="The history folder to use")
     })
     output_specs = OutputSpecs({
         'streamlit_app': OutputSpec(ReflexResource)
     })
 
     config_specs = ConfigSpecs({
+        'chat_app_name': StrParam(
+            human_name="Chat app name",
+            short_description="Name chat app to use",
+        ),
         'chat_credentials': CredentialsParam(
             human_name="Chat credentials",
             short_description="Credentials to access the RAG platform chat",
@@ -80,17 +82,20 @@ class GenerateDatahubRagDifyApp(Task):
 
         reflex_resource = ReflexResource()
 
+        # set the chat app name
+        reflex_resource.set_param('chat_app_name', params.get('chat_app_name'))
+
         chat_credentials_data: CredentialsDataOther = params['chat_credentials']
-        reflex_resource.set_param('chat_credentials_name', chat_credentials_data.meta.name)
+        reflex_resource.set_param('rag_chat_credentials_name', chat_credentials_data.meta.name)
 
         dataset_credentials_data: CredentialsDataOther = params['dataset_credentials']
-        reflex_resource.set_param('dataset_credentials_name', dataset_credentials_data.meta.name)
+        reflex_resource.set_param('rag_dataset_credentials_name', dataset_credentials_data.meta.name)
 
-        reflex_resource.set_param('dataset_id', params['dataset_id'])
+        reflex_resource.set_param('rag_dataset_id', params['rag_dataset_id'])
         reflex_resource.set_param('resource_sync_mode', params['resource_sync_mode'])
         reflex_resource.set_param('show_config_page', params['show_config_page'])
         reflex_resource.set_param('rag_provider', 'dify')
-        reflex_resource.set_param('chat_id', None)
+        reflex_resource.set_param('rag_chat_id', None)
 
         if params.get('resource_tag_key'):
             reflex_resource.set_param('resource_tag_key', params['resource_tag_key'])
@@ -101,11 +106,6 @@ class GenerateDatahubRagDifyApp(Task):
         app_config_file: File = cast(File, inputs['app_config'])
         reflex_resource.add_resource(app_config_file, create_new_resource=False)
         reflex_resource.set_param('configuration_file_path', app_config_file.path)
-
-        # Add the history folder to the reflex resource and set the history folder path
-        history_folder: Folder = cast(Folder, inputs['history_folder'])
-        reflex_resource.add_resource(history_folder, create_new_resource=False)
-        reflex_resource.set_param('history_folder_path', history_folder.path)
 
         reflex_resource.set_app_config(RagAppAppConfig())
         reflex_resource.name = "DataHub RAG app"
@@ -129,7 +129,6 @@ class GenerateDatahubRagFlowApp(Task):
     input_specs = InputSpecs({
         'app_config': InputSpec(File, human_name="App config file",
                                 short_description="The app config will be saved in this file. Can be empty to use the default config."),
-        'history_folder': InputSpec(Folder, human_name="History folder", short_description="The history folder to use")
 
     })
     output_specs = OutputSpecs({
@@ -137,13 +136,21 @@ class GenerateDatahubRagFlowApp(Task):
     })
 
     config_specs = ConfigSpecs({
+        'chat_app_name': StrParam(
+            human_name="Chat app name",
+            short_description="Name chat app to use",
+        ),
         'ragflow_credentials': CredentialsParam(
             human_name="RAGFlow credentials",
             short_description="Credentials to access RAGFlow",
         ),
-        'dataset_id': StrParam(
-            human_name="Dataset ID",
-            short_description="ID of the dataset to use",
+        'rag_dataset_id': StrParam(
+            human_name="Ragflow dataset ID",
+            short_description="ID of the Ragflow dataset to use",
+        ),
+        'rag_chat_id': StrParam(
+            human_name="Ragflow chat ID",
+            short_description="ID of the Ragflow chat to use",
         ),
         'resource_tag_key': StrParam(
             human_name="Resource tag key",
@@ -160,10 +167,6 @@ class GenerateDatahubRagFlowApp(Task):
             short_description="Show the config page",
             default_value=True
         ),
-        'chat_id': StrParam(
-            human_name="Chat ID",
-            short_description="ID of the chat to use",
-        )
     })
 
     def run(self, params: ConfigParams, inputs: TaskInputs) -> TaskOutputs:
@@ -171,33 +174,12 @@ class GenerateDatahubRagFlowApp(Task):
 
         reflex_resource = ReflexResource()
 
-        # set both credentials using the ragflow_credentials
-        ragflow_credentials_data: CredentialsDataOther = params['ragflow_credentials']
-        reflex_resource.set_param('chat_credentials_name', ragflow_credentials_data.meta.name)
-        reflex_resource.set_param('dataset_credentials_name', ragflow_credentials_data.meta.name)
-
-        # For Ragflow, only the Tag resource mode is supported
-        resource_sync_mode: RagResourceSyncMode = 'tag'
-        reflex_resource.set_param('resource_sync_mode', resource_sync_mode)
-        reflex_resource.set_param('dataset_id', params['dataset_id'])
-        reflex_resource.set_param('show_config_page', params['show_config_page'])
-        reflex_resource.set_param('chat_id', params['chat_id'])
-        reflex_resource.set_param('rag_provider', 'ragflow')
-
-        if params.get('resource_tag_key'):
-            reflex_resource.set_param('resource_tag_key', params['resource_tag_key'])
-        if params.get('resource_tag_value'):
-            reflex_resource.set_param('resource_tag_value', params['resource_tag_value'])
+        # configure the reflex resource using the class method
+        reflex_resource = self.configure_reflex_resource(reflex_resource, params)
 
         # add the config file to the reflex resource and set the configuration file path
         app_config_file: File = cast(File, inputs['app_config'])
-        reflex_resource.add_resource(app_config_file, create_new_resource=False)
-        reflex_resource.set_param('configuration_file_path', app_config_file.path)
-
-        # Add the history folder to the reflex resource and set the history folder path
-        history_folder: Folder = cast(Folder, inputs['history_folder'])
-        reflex_resource.add_resource(history_folder, create_new_resource=False)
-        reflex_resource.set_param('history_folder_path', history_folder.path)
+        reflex_resource = self.set_configuration_file_path(reflex_resource, app_config_file)
 
         reflex_resource.set_app_config(RagAppAppConfig())
         reflex_resource.name = "DataHub RAG app"
@@ -209,3 +191,40 @@ class GenerateDatahubRagFlowApp(Task):
         reflex_resource.set_enterprise_app(True)
 
         return {"streamlit_app": reflex_resource}
+
+    @classmethod
+    def configure_reflex_resource(cls,
+                                  reflex_resource: ReflexResource,
+                                  params: ConfigParams) -> ReflexResource:
+        """ Build a ReflexResource for the Datahub RAGFlow app. """
+
+        reflex_resource.set_param('chat_app_name', params['chat_app_name'])
+        # set both credentials using the ragflow_credentials
+        ragflow_credentials_data: CredentialsDataOther = params['ragflow_credentials']
+        reflex_resource.set_param('rag_chat_credentials_name', ragflow_credentials_data.meta.name)
+        reflex_resource.set_param('rag_dataset_credentials_name', ragflow_credentials_data.meta.name)
+
+        # For Ragflow, only the Tag resource mode is supported
+        resource_sync_mode: RagResourceSyncMode = 'tag'
+        reflex_resource.set_param('resource_sync_mode', resource_sync_mode)
+        reflex_resource.set_param('rag_dataset_id', params['rag_dataset_id'])
+        reflex_resource.set_param('show_config_page', params['show_config_page'])
+        reflex_resource.set_param('rag_chat_id', params['rag_chat_id'])
+        reflex_resource.set_param('rag_provider', 'ragflow')
+
+        if params.get('resource_tag_key'):
+            reflex_resource.set_param('resource_tag_key', params['resource_tag_key'])
+        if params.get('resource_tag_value'):
+            reflex_resource.set_param('resource_tag_value', params['resource_tag_value'])
+
+        return reflex_resource
+
+    @classmethod
+    def set_configuration_file_path(cls,
+                                    reflex_resource: ReflexResource,
+                                    app_config_file: File) -> ReflexResource:
+        """ Set the configuration file path in the reflex resource. """
+        reflex_resource.add_resource(app_config_file, create_new_resource=False)
+        reflex_resource.set_param('configuration_file_path', app_config_file.path)
+
+        return reflex_resource

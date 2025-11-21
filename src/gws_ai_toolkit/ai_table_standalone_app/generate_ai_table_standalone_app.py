@@ -25,7 +25,6 @@ class GenerateAiTableStandaloneApp(Task):
 
     input_specs = InputSpecs({
         'app_config': InputSpec(File, human_name="App config file", short_description="The app config file to use"),
-        'history_folder': InputSpec(Folder, human_name="History folder", short_description="The history folder to use")
     })
     output_specs = OutputSpecs({
         'reflex_app': OutputSpec(ReflexResource)
@@ -45,11 +44,6 @@ class GenerateAiTableStandaloneApp(Task):
         app_config_file: File = cast(File, inputs['app_config'])
         reflex_app.add_resource(app_config_file, create_new_resource=False)
         reflex_app.set_param('configuration_file_path', app_config_file.path)
-
-        # add the history folder
-        history_folder: Folder = cast(Folder, inputs['history_folder'])
-        reflex_app.add_resource(history_folder, create_new_resource=False)
-        reflex_app.set_param('history_folder_path', history_folder.path)
 
         reflex_app.set_enterprise_app(True)
 

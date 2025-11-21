@@ -5,9 +5,7 @@ import reflex_enterprise as rxe
 from gws_reflex_main import register_gws_reflex_app
 
 from .config_page import combined_config_page
-from .custom_states import (CustomAppConfigState,
-                            CustomConversationHistoryState,
-                            CustomRagConfigState)
+from .custom_states import CustomAppConfigState
 from .reflex.ai_expert.ai_expert_component import (
     ai_expert_component, ai_expert_header_default_buttons_component)
 from .reflex.ai_expert.ai_expert_state import AiExpertState
@@ -15,16 +13,15 @@ from .reflex.chat_base.chat_config import ChatConfig
 from .reflex.core.app_config_state import AppConfigState
 from .reflex.core.nav_bar_component import NavBarItem
 from .reflex.core.page_component import page_component
-from .reflex.history.conversation_history_state import ConversationHistoryState
 from .reflex.history.history_component import history_component
 from .reflex.history.history_state import HistoryState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
-from .reflex.rag_chat.config.rag_config_state import RagConfigState
+from .reflex.rag_chat.config.rag_config_state import (RagConfigState,
+                                                      RagConfigStateFromParams)
 from .reflex.rag_chat.rag_chat_component import rag_chat_component
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
-RagConfigState.set_rag_config_state_class_type(CustomRagConfigState)
-ConversationHistoryState.set_conversation_history_state_class_type(CustomConversationHistoryState)
+RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
 
 app = register_gws_reflex_app(rxe.App())
@@ -72,7 +69,7 @@ def history():
     """History page for viewing conversation history."""
     return page_component(
         nav_bar_items,
-        history_component(CustomConversationHistoryState)
+        history_component()
     )
 
 

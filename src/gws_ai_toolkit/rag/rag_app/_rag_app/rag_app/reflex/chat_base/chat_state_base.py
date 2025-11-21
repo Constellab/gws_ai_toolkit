@@ -1,27 +1,19 @@
-import json
-import os
-import tempfile
+
 import uuid
 from abc import abstractmethod
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 import reflex as rx
 from anyio import sleep
-from gws_core import Logger
-from gws_reflex_main import ReflexMainState
-from PIL import Image
-from plotly.graph_objects import Figure
-
 from gws_ai_toolkit.core.utils import Utils
+from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageDTO,
+                                                         ChatMessageText)
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_core import Logger
+from gws_reflex_main import ReflexMainState
 
 from ..history.conversation_history_state import ConversationHistoryState
-from .chat_message_class import (ChatMessage, ChatMessageCode,
-                                 ChatMessageError, ChatMessageFront,
-                                 ChatMessageHint, ChatMessageImage,
-                                 ChatMessageImageFront, ChatMessagePlotly,
-                                 ChatMessagePlotlyFront, ChatMessageText)
 
 
 class ChatStateBase(rx.State, mixin=True):
@@ -42,7 +34,7 @@ class ChatStateBase(rx.State, mixin=True):
         - Configurable UI properties
 
     State Attributes:
-        _chat_messages (List[ChatMessage]): Complete message history
+        chat_messages (List[ChatMessage]): Complete message history
         _current_response_message (Optional[ChatMessage]): Currently streaming message
         is_streaming (bool): Flag indicating if AI is currently responding
         conversation_id (Optional[str]): Unique ID for conversation continuity
@@ -64,9 +56,8 @@ class ChatStateBase(rx.State, mixin=True):
     """
 
     # Required properties
-    _chat_messages: List[ChatMessage]
-    front_chat_messages: List[ChatMessageFront]
-    _current_response_message: Optional[ChatMessage]
+    chat_messages: List[ChatMessageDTO]
+    current_response_message: Optional[ChatMessageDTO]
     is_streaming: bool
 
     _conversation_id: Optional[str] = None
@@ -95,47 +86,6 @@ class ChatStateBase(rx.State, mixin=True):
     def _after_chat_cleared(self):
         """Hook called after chat is cleared to reset analysis-specific state"""
 
-    @rx.var
-    async def current_response_message(self) -> Optional[ChatMessageFront]:
-        """Get the current response message being streamed."""
-        current_message = self._current_response_message
-
-        if not current_message:
-            return None
-        if not self.show_chat_code_block and current_message and current_message.type == "code":
-            return None
-
-        image_folder = await self.get_images_folder_path()
-        plot_folder = await self.get_plots_folder_path()
-        return self._convert_to_front_message_sync(current_message, image_folder, plot_folder)
-
-    def _convert_to_front_message_sync(
-            self, message: ChatMessage, image_folder: str, plot_folder: str) -> ChatMessageFront | None:
-        """Convert internal ChatMessage to front-end ChatMessageFront type."""
-        if isinstance(message, ChatMessageImage):
-            figure_path = os.path.join(image_folder, message.filename)
-            return ChatMessageImageFront(
-                id=message.id,
-                role=message.role,
-                sources=message.sources,
-                image=Image.open(figure_path)  # Now using image_name as full path
-            )
-        if isinstance(message, ChatMessagePlotly):
-            figure_path = os.path.join(plot_folder, message.filename)
-            try:
-                with open(figure_path, 'r', encoding='utf-8') as file:
-                    figure_json = json.load(file)
-            except Exception as e:
-                Logger.log_exception_stack_trace(e)
-                return None
-            return ChatMessagePlotlyFront(
-                id=message.id,
-                role=message.role,
-                sources=message.sources,
-                figure=Figure(figure_json)
-            )
-        return message
-
     @rx.event(background=True)  # type: ignore
     async def submit_input_form(self, form_data: dict) -> None:
         """On chat input form submit, check message and call AI chat
@@ -150,7 +100,6 @@ class ChatStateBase(rx.State, mixin=True):
         message = ChatMessageText(
             role="user",
             content=user_message,
-            id=str(uuid.uuid4()),
             sources=[]
         )
 
@@ -166,7 +115,6 @@ class ChatStateBase(rx.State, mixin=True):
             error_message = ChatMessageText(
                 role="assistant",
                 content=f"Error: {str(e)}",
-                id=str(uuid.uuid4()),
                 sources=[]
             )
             await self.update_current_response_message(error_message)
@@ -176,157 +124,45 @@ class ChatStateBase(rx.State, mixin=True):
                 self.is_streaming = False
             await self.close_current_message()
 
-    async def update_current_response_message(self, message: ChatMessage) -> None:
+    async def update_current_response_message(self, message: ChatMessageDTO) -> None:
         """Set the current streaming response message"""
         if not self.is_streaming:
             return
         async with self:
-            self._current_response_message = message
+            self.current_response_message = message
 
     async def update_current_message_sources(self, sources: List[RagChatSource]) -> None:
         """Update the sources of the current streaming message"""
         if not self.is_streaming:
             return
         async with self:
-            if self._current_response_message:
-                self._current_response_message.sources = sources
+            if self.current_response_message:
+                self.current_response_message.sources = sources
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history"""
-        if not self._current_response_message:
+        if not self.current_response_message:
             return
-        if self._current_response_message:
+        if self.current_response_message:
             async with self:
-                await self.add_message(self._current_response_message)
-                self._current_response_message = None
+                await self.add_message(self.current_response_message)
+                self.current_response_message = None
 
     def set_external_conversation_id(self, external_conversation_id: str) -> None:
         self.external_conversation_id = external_conversation_id
 
     @rx.event
     def clear_chat(self) -> None:
-        self._chat_messages = []
-        self.front_chat_messages = []
-        self._current_response_message = None
+        self.chat_messages = []
+        self.current_response_message = None
         self._conversation_id = None
         self.external_conversation_id = None
         self.is_streaming = False
         self._after_chat_cleared()
 
-    # Helper methods to create different message types
-    def create_text_message(
-            self,
-            content: str,
-            role: Literal['user', 'assistant'] = "assistant",
-            external_id: Optional[str] = None,
-            sources: Optional[List[RagChatSource]] = None) -> ChatMessageText:
-        """Create a text message"""
-        return ChatMessageText(
-            id=str(uuid.uuid4()),
-            role=role,
-            content=content,
-            external_id=external_id,
-            sources=sources or []
-        )
-
-    def create_code_message(
-            self,
-            content: str,
-            role: Literal['user', 'assistant'] = "assistant",
-            external_id: Optional[str] = None,
-            sources: Optional[List[RagChatSource]] = None) -> ChatMessageCode:
-        """Create a code message"""
-        return ChatMessageCode(
-            id=str(uuid.uuid4()),
-            role=role,
-            code=content,
-            external_id=external_id,
-            sources=sources or []
-        )
-
-    async def create_image_message(self, image: Image.Image,
-                                   role: Literal['user', 'assistant'] = "assistant",
-                                   external_id: Optional[str] = None,
-                                   sources: Optional[List[RagChatSource]] = None) -> ChatMessageImage:
-        """Create an image message by saving the PIL Image to the history images folder"""
-        history_state = await ConversationHistoryState.get_instance(self)
-        filename = await history_state.save_image_to_history(image)
-
-        return ChatMessageImage(
-            id=str(uuid.uuid4()),
-            role=role,
-            filename=filename,  # Store the full path
-            external_id=external_id,
-            sources=sources or []
-        )
-
-    async def create_plotly_message(self,
-                                    figure: Figure,
-                                    role: Literal['user', 'assistant'] = "assistant",
-                                    external_id: Optional[str] = None,
-                                    sources: Optional[List[RagChatSource]] = None) -> ChatMessagePlotly:
-        """Create a Plotly message with interactive figure"""
-        history_state = await ConversationHistoryState.get_instance(self)
-        filename = await history_state.save_plotly_figure_to_history(figure)
-        return ChatMessagePlotly(
-            id=str(uuid.uuid4()),
-            role=role,
-            filename=filename,
-            external_id=external_id,
-            sources=sources or []
-        )
-
-    async def create_error_message(self,
-                                   error_text: str,
-                                   role: Literal['user', 'assistant'] = "assistant",
-                                   external_id: Optional[str] = None) -> ChatMessageError:
-        """Create an error message"""
-        return ChatMessageError(
-            id=str(uuid.uuid4()),
-            role=role,
-            error=error_text,
-            external_id=external_id
-        )
-
-    def create_hint_message(self,
-                            content: str,
-                            role: Literal['user', 'assistant'] = "assistant",
-                            external_id: Optional[str] = None,
-                            sources: Optional[List[RagChatSource]] = None) -> ChatMessageHint:
-        """Create a hint message"""
-        return ChatMessageHint(
-            id=str(uuid.uuid4()),
-            role=role,
-            content=content,
-            external_id=external_id,
-            sources=sources or []
-        )
-
-    def _save_image_to_temp(self, image: Image.Image) -> str:
-        """Save PIL Image to temporary directory and return the file path"""
-        # Create temp directory if it doesn't exist
-        temp_dir = tempfile.gettempdir()
-        chat_temp_dir = os.path.join(temp_dir, "chat_images")
-        os.makedirs(chat_temp_dir, exist_ok=True)
-
-        # Generate unique filename
-        filename = f"image_{uuid.uuid4().hex}.png"
-        file_path = os.path.join(chat_temp_dir, filename)
-
-        # Save image
-        image.save(file_path, format="PNG")
-
-        return file_path
-
-    async def add_message(self, message: ChatMessage) -> None:
+    async def add_message(self, message: ChatMessageDTO) -> None:
         """Add a message to the chat history"""
-        self._chat_messages.append(message)
-
-        image_folder = await self.get_images_folder_path()
-        plot_folder = await self.get_plots_folder_path()
-        front_message = self._convert_to_front_message_sync(message, image_folder, plot_folder)
-        if front_message:
-            self.front_chat_messages.append(front_message)
+        self.chat_messages.append(message)
 
     @rx.event
     def open_ai_expert(self, rag_document_id: str):
@@ -358,42 +194,26 @@ class ChatStateBase(rx.State, mixin=True):
     @rx.var
     async def has_no_message(self) -> bool:
         """Check if there are no messages in the chat."""
-        return len(self._chat_messages) == 0 and not self._current_response_message and not self.is_streaming
+        return len(self.chat_messages) == 0 and not self.current_response_message and not self.is_streaming
 
     async def save_conversation_to_history(self, mode: str, configuration: dict):
         """Save the current conversation to history with the given configuration."""
-        if not self._chat_messages:
+        if not self.chat_messages:
             return
 
-        if self._conversation_id is None:
-            async with self:
-                self._conversation_id = str(uuid.uuid4())
-
         try:
-            history_state: ConversationHistoryState
             async with self:
-                history_state = await ConversationHistoryState.get_instance(self)
-                await history_state.add_conversation(
+                history_state = await self.get_state(ConversationHistoryState)
+                conversation = await history_state.save_conversation(
                     conversation_id=self._conversation_id,
-                    messages=self._chat_messages,
+                    messages=self.chat_messages,
                     mode=mode,
                     configuration=configuration,
                     external_conversation_id=self.external_conversation_id
                 )
+
+                if conversation:
+                    self._conversation_id = conversation.id
         except Exception as e:
             Logger.error(f"Error saving conversation to history: {e}")
             Logger.log_exception_stack_trace(e)
-
-    async def get_images_folder_path(self) -> str:
-        """Get the folder path where chat images are stored."""
-        if not self._images_folder:
-            history_state = await ConversationHistoryState.get_instance(self)
-            self._images_folder = await history_state.get_images_folder_full_path()
-        return self._images_folder
-
-    async def get_plots_folder_path(self) -> str:
-        """Get the folder path where chat plots are stored."""
-        if not self._plots_folder:
-            history_state = await ConversationHistoryState.get_instance(self)
-            self._plots_folder = await history_state.get_plots_folder_full_path()
-        return self._plots_folder

@@ -18,10 +18,6 @@ from ...rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_header_component impo
     chat_header_component, header_clear_chat_button_component)
 from ...rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_input_component import \
     chat_input_component
-from ...rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_message_class import (
-    ChatMessage, ChatMessageBase, ChatMessageCode, ChatMessageFront,
-    ChatMessageImage, ChatMessageImageFront, ChatMessagePlotly,
-    ChatMessagePlotlyFront, ChatMessageText)
 from ...rag.rag_app._rag_app.rag_app.reflex.chat_base.chat_state_base import \
     ChatStateBase
 from ...rag.rag_app._rag_app.rag_app.reflex.chat_base.messages_list_component import \
@@ -37,8 +33,6 @@ from ...rag.rag_app._rag_app.rag_app.reflex.core.nav_bar_component import (
     NavBarItem, nav_bar_component)
 from ...rag.rag_app._rag_app.rag_app.reflex.core.page_component import \
     page_component
-from ...rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_class import (
-    ConversationFullHistory, ConversationHistory)
 from ...rag.rag_app._rag_app.rag_app.reflex.history.conversation_history_state import \
     ConversationHistoryState
 from ...rag.rag_app._rag_app.rag_app.reflex.history.history_component import \
@@ -50,7 +44,7 @@ from ...rag.rag_app._rag_app.rag_app.reflex.history.history_state import \
 from ...rag.rag_app._rag_app.rag_app.reflex.rag_chat.config.rag_config_component import \
     rag_config_component
 from ...rag.rag_app._rag_app.rag_app.reflex.rag_chat.config.rag_config_state import (
-    RagConfigState, RagConfigStateConfig)
+    RagConfigState, RagConfigStateConfig, RagConfigStateFromParams)
 from ...rag.rag_app._rag_app.rag_app.reflex.rag_chat.rag_chat_component import \
     rag_chat_component
 from ...rag.rag_app._rag_app.rag_app.reflex.rag_chat.rag_chat_state import \
@@ -61,15 +55,6 @@ __all__ = [
     "BaseAnalysisConfig",
     "BaseFileAnalysisState",
     "ChatConfig",
-    "ChatMessage",
-    "ChatMessageBase",
-    "ChatMessageCode",
-    "ChatMessageFront",
-    "ChatMessageImage",
-    "ChatMessageImageFront",
-    "ChatMessagePlotly",
-    "ChatMessagePlotlyFront",
-    "ChatMessageText",
     "ChatStateBase",
     "OpenAiChatStateBase",
 
@@ -84,9 +69,6 @@ __all__ = [
     "custom_sources_list_component",
     "SourcesComponentBuilder",
 
-    # Classes - Data Models
-    "ConversationHistory",
-    "ConversationFullHistory",
 
     # Classes - State Management
     "ConversationHistoryState",
@@ -112,5 +94,6 @@ __all__ = [
 
     "RagConfigState",
     "RagConfigStateConfig",
+    "RagConfigStateFromParams",
 
 ]

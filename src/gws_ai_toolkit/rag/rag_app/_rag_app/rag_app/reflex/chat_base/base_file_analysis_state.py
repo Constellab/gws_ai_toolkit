@@ -4,13 +4,14 @@ from abc import abstractmethod
 from typing import Optional, Union, cast
 
 import reflex as rx
+from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageImage,
+                                                         ChatMessageText)
 from gws_core import BaseModelDTO, File, Logger, ResourceModel
 from openai import OpenAI
 from openai.types.responses import ResponseOutputTextAnnotationAddedEvent
 from PIL import Image
 
 from ..chat_base.open_ai_chat_state_base import OpenAiChatStateBase
-from .chat_message_class import ChatMessageImage, ChatMessageText
 
 
 class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
@@ -109,7 +110,7 @@ class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
             except (OSError, ValueError) as e:
                 Logger.log_exception_stack_trace(e)
                 # Create error message if image loading fails
-                error_message = self.create_text_message(
+                error_message = ChatMessageText(
                     content=f"[Error loading image: {str(e)}]",
                     role="assistant",
                     external_id=self._current_external_response_id
@@ -118,7 +119,7 @@ class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
             except Exception as e:
                 Logger.log_exception_stack_trace(e)
                 # Create error message for unexpected errors
-                error_message = self.create_text_message(
+                error_message = ChatMessageText(
                     content=f"[Unexpected error loading image: {str(e)}]",
                     role="assistant",
                     external_id=self._current_external_response_id
@@ -171,14 +172,13 @@ class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
             if file_extension in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']:
                 image_data = Image.open(io.BytesIO(file_data_binary.content))
 
-                async with self:
-                    return await self.create_image_message(
-                        image=image_data,
-                        role="assistant"
-                    )
+                return ChatMessageImage(
+                    image=image_data,
+                    role="assistant"
+                )
             else:
                 # Handle other file types as text messages
-                return self.create_text_message(
+                return ChatMessageText(
                     content=f"📄 File '{filename}' has been generated.",
                     role="assistant"
                 )
@@ -197,7 +197,7 @@ class BaseFileAnalysisState(OpenAiChatStateBase, rx.State, mixin=True):
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""
-        if not self._current_response_message:
+        if not self.current_response_message:
             return
         await super().close_current_message()
         # Save conversation after message is added to history

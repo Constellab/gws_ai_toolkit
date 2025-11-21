@@ -1,12 +1,10 @@
-import json
+import uuid
 from typing import List, Literal, Optional
 
 import plotly.graph_objects as go
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_core import BaseModelDTO
 from PIL import Image
-from pydantic import field_validator
-
-from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 
 class ChatMessageBase(BaseModelDTO):
@@ -41,8 +39,8 @@ class ChatMessageBase(BaseModelDTO):
             sources=[source1, source2]
         )
     """
+    id: Optional[str] = None
     role: Literal['user', 'assistant']
-    id: str
     external_id: Optional[str] = None
     sources: Optional[List[RagChatSource]] = []
 
@@ -78,35 +76,11 @@ class ChatMessageText(ChatMessageBase):
 
 
 class ChatMessageImage(ChatMessageBase):
-    """Chat message containing image content.
-
-    Specialized chat message for image content, using full image paths
-    for display in the chat interface. Used for AI-generated images or
-    image analysis responses.
-
-    Attributes:
-        type: Fixed as "image" to identify this as an image message
-        image_name: Full path to the image file (stored in history images folder)
-        content: Optional text description/caption for the image
-
-    Example:
-        image_msg = ChatMessageImage(
-            role="assistant",
-            content="Generated chart",
-            id="msg_img_123",
-            image_name="/path/to/history/images/image_123.png"
-        )
-    """
-    type: Literal["image"] = "image"
-    filename: str
-
-
-class ChatMessageImageFront(ChatMessageBase):
     """ Object
     """
     type: Literal["image"] = "image"
 
-    image: Image.Image
+    image: Image.Image | None
 
     class Config:
         arbitrary_types_allowed = True
@@ -126,7 +100,7 @@ class ChatMessageCode(ChatMessageBase):
     Example:
         code_msg = ChatMessageCode(
             role="assistant",
-            content="print('Hello, world!')",
+            code="print('Hello, world!')",
             id="msg_code_123"
         )
     """
@@ -135,28 +109,6 @@ class ChatMessageCode(ChatMessageBase):
 
 
 class ChatMessagePlotly(ChatMessageBase):
-    """Chat message containing Plotly figure content.
-
-    Specialized chat message for interactive Plotly visualizations created
-    through function calls. Used to display charts, graphs, and data
-    visualizations in the chat interface.
-
-    Attributes:
-        type: Fixed as "plotly" to identify this as a plotly message
-        filename: The filename where the Plotly figure is stored
-
-    Example:
-        plotly_msg = ChatMessagePlotly(
-            role="assistant",
-            id="msg_plotly_123",
-            figure=go.Figure(data=[go.Bar(x=['A', 'B'], y=[1, 2])])
-        )
-    """
-    type: Literal["plotly"] = "plotly"
-    filename: str
-
-
-class ChatMessagePlotlyFront(ChatMessageBase):
     """Chat message containing Plotly figure content.
 
     Specialized chat message for interactive Plotly visualizations created
@@ -175,7 +127,7 @@ class ChatMessagePlotlyFront(ChatMessageBase):
         )
     """
     type: Literal["plotly"] = "plotly"
-    figure: go.Figure
+    figure: go.Figure | None
 
     class Config:
         arbitrary_types_allowed = True
@@ -225,8 +177,5 @@ class ChatMessageHint(ChatMessageBase):
     content: str
 
 
-# Type used for the storage and internal processing
-ChatMessage = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly | ChatMessageError | ChatMessageHint
-
 # Type used  for front-end rendering
-ChatMessageFront = ChatMessageText | ChatMessageCode | ChatMessageImageFront | ChatMessagePlotlyFront | ChatMessageError | ChatMessageHint
+ChatMessageDTO = ChatMessageText | ChatMessageCode | ChatMessageImage | ChatMessagePlotly | ChatMessageError | ChatMessageHint

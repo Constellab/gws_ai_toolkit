@@ -1,11 +1,13 @@
 from typing import Optional
 
 import reflex as rx
-from gws_core import Table
-
 from gws_ai_toolkit._app.ai_rag import OpenAiChatStateBase
 from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table_agent_ai_events import TableAgentEvent
+from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageError,
+                                                         ChatMessageHint,
+                                                         ChatMessagePlotly)
+from gws_core import Table
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_agent_chat_config import AiTableAgentChatConfig
@@ -76,7 +78,7 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
             response_id = event.response_id
 
             async with self:
-                plot_message = await self.create_plotly_message(
+                plot_message = ChatMessagePlotly(
                     figure=figure,
                     role="assistant",
                     external_id=response_id
@@ -90,7 +92,7 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
 
             async with self:
                 await self.update_current_table(transformed_table, table_name)
-                text_message = self.create_hint_message(
+                text_message = ChatMessageHint(
                     content=f"New table '{table_name}' created and defined as current table",
                     role="assistant",
                 )
@@ -98,7 +100,7 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
 
         elif event.type == "error" or event.type == "function_error":
             # Handle errors
-            error_message = await self.create_error_message(event.message)
+            error_message = await ChatMessageError(error=event.message)
             await self.update_current_response_message(error_message)
         elif event.type == "sub_agent_success":
             # Handle successful sub-agent completion
@@ -117,7 +119,7 @@ class AiTableAgentChatState(OpenAiChatStateBase, rx.State):
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""
-        if not self._current_response_message:
+        if not self.current_response_message:
             return
         await super().close_current_message()
         # Save conversation after message is added to history

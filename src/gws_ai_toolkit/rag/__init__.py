@@ -33,6 +33,7 @@ from .dify.dify_send_file_to_knownledge_base import \
     DifySendFileToKnownledgeBase
 from .dify.dify_service import DifyService
 from .dify.rag_dify_service import RagDifyService
+from .rag_app.generate_rag_app import GenerateDatahubRagFlowApp
 from .ragflow.rag_ragflow_service import RagRagFlowService
 from .ragflow.ragflow_class import (RagflowAskStreamResponse,
                                     RagFlowCreateChatRequest,
@@ -119,4 +120,5 @@ __all__ = [
     'RagFlowCreateSessionRequest',
     # RagFlow - Response classes
     'RagflowAskStreamResponse',
+    'GenerateDatahubRagFlowApp',
 ]

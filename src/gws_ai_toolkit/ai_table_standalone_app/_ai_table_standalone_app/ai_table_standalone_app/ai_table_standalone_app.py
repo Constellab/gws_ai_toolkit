@@ -3,17 +3,16 @@ from typing import List
 
 import reflex as rx
 import reflex_enterprise as rxe
-from gws_reflex_main import register_gws_reflex_app
-
 from gws_ai_toolkit._app.ai_rag import (AppConfigState, HistoryState,
                                         NavBarItem, history_component,
                                         page_component)
+from gws_reflex_main import register_gws_reflex_app
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState
 from .ai_table.chat.table_agent.ai_table_agent_chat_config_component import \
     ai_table_agent_chat_config_component
-from .custom_states import CustomAppConfigState, CustomConversationHistoryState
+from .custom_states import CustomAppConfigState
 from .home_page import home_page
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
@@ -93,5 +92,5 @@ def history():
     """History page for viewing conversation history."""
     return page_component(
         nav_bar_items,
-        history_component(CustomConversationHistoryState)
+        history_component()
     )

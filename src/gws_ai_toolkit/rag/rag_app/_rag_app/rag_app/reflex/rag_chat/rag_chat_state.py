@@ -2,14 +2,12 @@ import uuid
 from typing import List
 
 import reflex as rx
-from gws_reflex_main import ReflexMainState
-from streamlit import user
-
+from gws_ai_toolkit.models.chat.chat_message_dto import ChatMessageText
 from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
                                                   RagChatSource,
                                                   RagChatStreamResponse)
+from gws_reflex_main import ReflexMainState
 
-from ..chat_base.chat_message_class import ChatMessageText
 from ..chat_base.chat_state_base import ChatStateBase
 from ..rag_chat.config.rag_config_state import RagConfigState
 
@@ -76,7 +74,6 @@ class RagChatState(ChatStateBase, rx.State):
                     current_assistant_message = ChatMessageText(
                         role="assistant",
                         content=full_response,
-                        id=str(uuid.uuid4()),
                         sources=[],
                         external_id=stream_response.id,
                     )
@@ -111,7 +108,7 @@ class RagChatState(ChatStateBase, rx.State):
 
     async def close_current_message(self):
         """Close the current streaming message and add it to the chat history, then save to conversation history."""
-        if not self._current_response_message:
+        if not self.current_response_message:
             return
         await super().close_current_message()
         # Save conversation after message is added to history

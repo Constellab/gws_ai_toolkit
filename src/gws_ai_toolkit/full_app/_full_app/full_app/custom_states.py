@@ -1,10 +1,7 @@
 
 import reflex as rx
+from gws_ai_toolkit._app.ai_rag import AppConfigState
 from gws_reflex_main import ReflexMainState
-
-from gws_ai_toolkit._app.ai_rag import (AppConfigState,
-                                        ConversationHistoryState,
-                                        RagConfigState, RagConfigStateConfig)
 
 
 class CustomAppConfigState(AppConfigState, rx.State):
@@ -13,28 +10,3 @@ class CustomAppConfigState(AppConfigState, rx.State):
         base_state = await self.get_state(ReflexMainState)
         config = await base_state.get_param('configuration_file_path')
         return config or ''
-
-
-class CustomConversationHistoryState(ConversationHistoryState, rx.State):
-
-    async def _get_history_folder_path_param(self) -> str:
-        base_state = await self.get_state(ReflexMainState)
-        config = await base_state.get_param('history_folder_path')
-        return config or ''
-
-
-class CustomRagConfigState(RagConfigState, rx.State):
-
-    async def _get_rag_config_data(self) -> RagConfigStateConfig:
-        base_state = await self.get_state(ReflexMainState)
-        params = await base_state.get_params()
-        return RagConfigStateConfig(
-            rag_provider=params.get("rag_provider", 'ragflow'),
-            resource_sync_mode=params.get("resource_sync_mode", "tag"),
-            dataset_id=params.get("dataset_id"),
-            dataset_credentials_name=params.get("dataset_credentials_name"),
-            chat_id=params.get("chat_id"),
-            chat_credentials_name=params.get("chat_credentials_name"),
-            resource_tag_key=params.get("resource_tag_key"),
-            resource_tag_value=params.get("resource_tag_value"),
-        )

@@ -3,13 +3,15 @@ from typing import Optional
 
 import plotly.graph_objects as go
 import reflex as rx
+from gws_ai_toolkit._app.ai_rag import BaseFileAnalysisState
+from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageDTO,
+                                                         ChatMessagePlotly,
+                                                         ChatMessageText)
 from gws_core import BaseModelDTO, File, Logger, ResourceModel
 from openai.types.responses import (ResponseFunctionCallArgumentsDeltaEvent,
                                     ResponseFunctionCallArgumentsDoneEvent,
                                     ResponseOutputItemDoneEvent)
 from pydantic import Field
-
-from gws_ai_toolkit._app.ai_rag import BaseFileAnalysisState, ChatMessage
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig
@@ -276,9 +278,9 @@ class AiTablePlotFileChatState(BaseFileAnalysisState, rx.State):
             fig = go.Figure(arguments)
 
             # Create a success message showing the chart has been created
-            success_message: ChatMessage
+            success_message: ChatMessageDTO
             async with self:
-                success_message = await self.create_plotly_message(
+                success_message = ChatMessagePlotly(
                     figure=fig,
                     role="assistant",
                     external_id=self._current_external_response_id
@@ -287,7 +289,7 @@ class AiTablePlotFileChatState(BaseFileAnalysisState, rx.State):
 
         except json.JSONDecodeError as e:
             Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
+            error_message = ChatMessageText(
                 content=f"❌ Error parsing function arguments: {str(e)}",
                 role="assistant",
                 external_id=self._current_external_response_id
@@ -295,7 +297,7 @@ class AiTablePlotFileChatState(BaseFileAnalysisState, rx.State):
             await self.update_current_response_message(error_message)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
-            error_message = self.create_text_message(
+            error_message = ChatMessageText(
                 content=f"❌ Error creating Plotly figure: {str(e)}",
                 role="assistant",
                 external_id=self._current_external_response_id

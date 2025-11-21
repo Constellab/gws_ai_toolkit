@@ -1,16 +1,19 @@
 
 import plotly.graph_objects as go
 import reflex as rx
+from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageCode,
+                                                         ChatMessageDTO,
+                                                         ChatMessageError,
+                                                         ChatMessageHint,
+                                                         ChatMessageImage,
+                                                         ChatMessagePlotly,
+                                                         ChatMessageText)
 
 from .chat_config import ChatConfig
-from .chat_message_class import (ChatMessageCode, ChatMessageError,
-                                 ChatMessageFront, ChatMessageHint,
-                                 ChatMessageImageFront, ChatMessagePlotlyFront,
-                                 ChatMessageText)
 from .chat_state_base import ChatStateBase
 
 
-def _message_bubble(message: ChatMessageFront, config: ChatConfig) -> rx.Component:
+def _message_bubble(message: ChatMessageDTO, config: ChatConfig) -> rx.Component:
     """Individual message bubble component with role-based styling.
 
     Creates styled message bubbles with different appearances for user and
@@ -145,7 +148,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
             ),
             rx.box(
                 rx.foreach(
-                    config.state.front_chat_messages,
+                    config.state.chat_messages,
                     lambda message: _message_bubble(message, config)
                 ),
                 # Display current response message separately
@@ -164,7 +167,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     )
 
 
-def _message_content(message: ChatMessageFront) -> rx.Component:
+def _message_content(message: ChatMessageDTO) -> rx.Component:
     """Content renderer that handles different message types.
 
     Routes message content to appropriate rendering functions based on
@@ -204,11 +207,11 @@ def _text_content(message: ChatMessageText) -> rx.Component:
     )
 
 
-def _image_content(message: ChatMessageImageFront) -> rx.Component:
+def _image_content(message: ChatMessageImage) -> rx.Component:
     """Renders image content with optional text description.
 
     Args:
-        message (ChatMessageImage): Image message to render
+        message (ChatMessageImageFront): Image message to render
 
     Returns:
         rx.Component: Image display with optional text content
@@ -237,11 +240,11 @@ def _code_content(message: ChatMessageCode) -> rx.Component:
     )
 
 
-def _plotly_content(message: ChatMessagePlotlyFront) -> rx.Component:
+def _plotly_content(message: ChatMessagePlotly) -> rx.Component:
     """Renders plotly figure content.
 
     Args:
-        message (ChatMessagePlotly): Plotly message to render
+        message (ChatMessagePlotlyFront): Plotly message to render
 
     Returns:
         rx.Component: Plotly figure display

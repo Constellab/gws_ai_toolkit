@@ -1,26 +1,26 @@
-from typing import List, Type
+from typing import List
 
 import reflex as rx
+from gws_ai_toolkit.models.chat.chat_conversation_dto import \
+    ChatConversationDTO
 
 from ..chat_base.chat_config import ChatConfig
 from ..chat_base.sources_list_component import (SourcesComponentBuilder,
                                                 sources_list_component)
 from ..read_only_chat.read_only_chat_interface import read_only_chat_component
 from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
-from .conversation_history_class import ConversationHistory
-from .conversation_history_state import ConversationHistoryState
 from .history_config_dialog import history_config_dialog
 from .history_state import HistoryState
 
 
-def _conversation_item(conversation: ConversationHistory) -> rx.Component:
+def _conversation_item(conversation: ChatConversationDTO) -> rx.Component:
     """Individual conversation item in the history sidebar.
 
     Renders a single conversation entry with truncated title, metadata,
     and click functionality for selection.
 
     Args:
-        conversation (ConversationHistory): Conversation data to display
+        conversation (ChatConversationDTO): Conversation data to display
 
     Returns:
         rx.Component: Clickable conversation item with title and metadata
@@ -50,7 +50,7 @@ def _conversation_item(conversation: ConversationHistory) -> rx.Component:
                 rx.spacer(),
                 rx.text(
                     rx.moment(
-                        conversation.timestamp,
+                        conversation.last_modified_at,
                         format="MMM D, YYYY h:mm"
                     ),
                     size="2",
@@ -68,23 +68,23 @@ def _conversation_item(conversation: ConversationHistory) -> rx.Component:
         border_radius="8px",
         cursor="pointer",
         border=rx.cond(
-            HistoryState.selected_conversation_id == conversation.conversation_id,
+            HistoryState.selected_conversation_id == conversation.id,
             f"2px solid {rx.color('accent', 8)}",
             f"1px solid {rx.color('gray', 6)}"
         ),
         background_color=rx.cond(
-            HistoryState.selected_conversation_id == conversation.conversation_id,
+            HistoryState.selected_conversation_id == conversation.id,
             rx.color("accent", 3),
             "white"
         ),
         _hover={
             "background_color": rx.cond(
-                HistoryState.selected_conversation_id == conversation.conversation_id,
+                HistoryState.selected_conversation_id == conversation.id,
                 rx.color("accent", 4),
                 rx.color("gray", 2)
             ),
         },
-        on_click=lambda: HistoryState.select_conversation(conversation.conversation_id),
+        on_click=lambda: HistoryState.select_conversation(conversation.id),
         margin_bottom="8px",
         width="100%",
     )
@@ -221,8 +221,7 @@ def _conversation_display(config: ChatConfig) -> rx.Component:
     )
 
 
-def history_component(conversation_history_state: Type[ConversationHistoryState],
-                      sources_component_builder: SourcesComponentBuilder | None = None) -> rx.Component:
+def history_component(sources_component_builder: SourcesComponentBuilder | None = None) -> rx.Component:
     """Complete conversation history interface with sidebar and display panel.
 
     This component provides a two-panel interface for browsing and viewing
@@ -243,13 +242,6 @@ def history_component(conversation_history_state: Type[ConversationHistoryState]
         history_ui = history_component()
         # Renders two-panel history interface
     """
-
-    if not issubclass(conversation_history_state, ConversationHistoryState):
-        raise ValueError("conversation_history_state must be a subclass of ConversationHistoryState")
-
-    if conversation_history_state is ConversationHistoryState:
-        raise ValueError(
-            "conversation_history_state must be a subclass of ConversationHistoryState, not the base class itself")
 
     config = ChatConfig(
         state=ReadOnlyChatState,

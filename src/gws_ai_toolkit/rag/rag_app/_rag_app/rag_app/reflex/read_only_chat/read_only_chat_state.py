@@ -2,9 +2,11 @@ import json
 from typing import Optional
 
 import reflex as rx
+from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
+from gws_ai_toolkit.models.chat.chat_conversation_service import \
+    ChatConversationService
 
 from ..chat_base.chat_state_base import ChatStateBase
-from ..history.conversation_history_class import ConversationHistory
 
 
 class ReadOnlyChatState(ChatStateBase, rx.State):
@@ -36,33 +38,43 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
     show_config_dialog: bool = False
     current_configuration: dict = {}
 
-    async def initialize_with_conversation(self, conversation: ConversationHistory) -> None:
-        """Initialize the state with a historical conversation.
+    async def initialize_with_conversation_id(self, conversation_id: str) -> None:
+        """Initialize the state by loading a conversation from the database.
 
         Args:
-            conversation: The conversation history to display
+            conversation_id: The ID of the conversation to load
         """
-        # Clear existing messages before loading new conversation
-        self._chat_messages = []
-        self.front_chat_messages = []
+        # Load the full conversation from database
+        conversation_service = ChatConversationService()
+        conversation = ChatConversation.get_by_id(conversation_id)
 
-        self._conversation_id = conversation.conversation_id
-        self.external_conversation_id = conversation.external_conversation_id
-        for message in conversation.messages:
-            await self.add_message(message)
-        self._current_response_message = None
-        self.is_streaming = False
-        self.current_configuration = conversation.configuration
+        if conversation:
+            # Load messages for this conversation
+            messages = conversation_service.get_messages_of_conversation(conversation_id)
 
-        # Update title with conversation info
-        mode_display = conversation.mode.replace('_', ' ').title()
-        self.title = f"{mode_display} - {conversation.label[:50]}{'...' if len(conversation.label) > 50 else ''}"
+            # Clear existing messages before loading new conversation
+            self.chat_messages = []
 
-        # Set subtitle with timestamp
-        try:
-            self.subtitle = f"Created on {conversation.timestamp.strftime('%B %d, %Y at %I:%M %p')}"
-        except:
-            self.subtitle = f"Created on {str(conversation.timestamp)}"
+            self._conversation_id = conversation.id
+            self.external_conversation_id = conversation.external_conversation_id
+
+            # Add all messages
+            for message in messages:
+                await self.add_message(message)
+
+            self.current_response_message = None
+            self.is_streaming = False
+            self.current_configuration = conversation.configuration
+
+            # Update title with conversation info
+            mode_display = conversation.mode.replace('_', ' ').title()
+            self.title = f"{mode_display} - {conversation.label[:50]}{'...' if len(conversation.label) > 50 else ''}"
+
+            # Set subtitle with timestamp
+            try:
+                self.subtitle = f"Created on {conversation.last_modified_at.strftime('%B %d, %Y at %I:%M %p')}"
+            except:
+                self.subtitle = f"Last modified: {str(conversation.last_modified_at)}"
 
     async def call_ai_chat(self, user_message: str) -> None:
         """Override to prevent any AI calls in read-only mode."""

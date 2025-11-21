@@ -3,11 +3,13 @@ from abc import abstractmethod
 from typing import Optional
 
 import reflex as rx
+from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageCode,
+                                                         ChatMessageDTO,
+                                                         ChatMessageText)
 from openai import OpenAI
 from openai.types.responses import (ResponseCodeInterpreterCallCodeDeltaEvent,
                                     ResponseCreatedEvent)
 
-from .chat_message_class import ChatMessage
 from .chat_state_base import ChatStateBase
 
 
@@ -53,17 +55,17 @@ class OpenAiChatStateBase(ChatStateBase, rx.State, mixin=True):
     async def handle_output_text_delta(self, text: str):
         """Handle response.output_text.delta event"""
 
-        current_message: Optional[ChatMessage] = None
+        current_message: Optional[ChatMessageDTO] = None
 
         async with self:
-            current_message = self._current_response_message
+            current_message = self.current_response_message
 
         if current_message and current_message.type == "text":
             async with self:
                 current_message.content += text
         else:
             # Create new text message if none exists or if current is different type
-            new_message = self.create_text_message(
+            new_message = ChatMessageText(
                 content=text,
                 role="assistant",
                 external_id=self._current_external_response_id
@@ -75,18 +77,18 @@ class OpenAiChatStateBase(ChatStateBase, rx.State, mixin=True):
         """Handle response.code_interpreter_call_code.delta event"""
         code = event.delta
 
-        current_message: Optional[ChatMessage] = None
+        current_message: Optional[ChatMessageDTO] = None
 
         async with self:
-            current_message = self._current_response_message
+            current_message = self.current_response_message
 
         if current_message and current_message.type == "code":
             async with self:
                 current_message.code += code
         else:
             # Create new code message if none exists or if current is different type
-            new_message = self.create_code_message(
-                content=code,
+            new_message = ChatMessageCode(
+                code=code,
                 role="assistant",
                 external_id=self._current_external_response_id
             )

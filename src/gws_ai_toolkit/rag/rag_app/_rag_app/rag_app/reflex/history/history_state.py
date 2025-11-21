@@ -1,10 +1,15 @@
 from typing import List, Optional
 
 import reflex as rx
+from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
+from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
+from gws_ai_toolkit.models.chat.chat_conversation_dto import \
+    ChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_service import \
+    ChatConversationService
 
+from ..rag_chat.config.rag_config_state import RagConfigState
 from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
-from .conversation_history_class import ConversationHistory
-from .conversation_history_state import ConversationHistoryState
 
 
 class HistoryState(rx.State):
@@ -22,13 +27,13 @@ class HistoryState(rx.State):
         - Error handling for history operations
 
     State Attributes:
-        conversations (List[ConversationHistory]): All available conversations
+        conversations (List[ChatConversationDTO]): All available conversations
         selected_conversation_id (Optional[str]): Currently selected conversation
         is_loading (bool): Loading state for conversation fetching
     """
 
     # List of conversations to display in the left panel
-    conversations: List[ConversationHistory] = []
+    conversations: List[ChatConversationDTO] = []
 
     # Currently selected conversation
     selected_conversation_id: Optional[str] = None
@@ -38,19 +43,22 @@ class HistoryState(rx.State):
 
     @rx.event
     async def load_conversations(self):
-        """Load all conversations from the history."""
+        """Load all conversations from the database."""
         self.is_loading = True
 
         try:
-            history_state: ConversationHistoryState = await ConversationHistoryState.get_instance(self)
+            # Get chat app name
+            app_config_state = await RagConfigState.get_instance(self)
+            chat_app_name = await app_config_state.get_chat_app_name()
 
-            full_history = await history_state.get_conversation_history()
-            conversations = full_history.get_all_conversations()
+            # Get conversations using the service
+            conversation_service = ChatConversationService()
+            conversations = conversation_service.get_conversations_by_chat_app(
+                chat_app_name=chat_app_name
+            )
 
-            # Sort conversations by timestamp (newest first)
-            conversations.sort(key=lambda x: x.timestamp, reverse=True)
-
-            self.conversations = conversations
+            # Convert ChatConversation models to ChatConversationDTOs
+            self.conversations = [conv.to_dto() for conv in conversations]
         finally:
             self.is_loading = False
 
@@ -59,18 +67,18 @@ class HistoryState(rx.State):
         """Select a conversation to display."""
         self.selected_conversation_id = conversation_id
 
-        # Initialize the read-only chat state with the selected conversation
-        selected_conv = next((c for c in self.conversations if c.conversation_id == conversation_id), None)
-        if selected_conv:
-            read_only_state: ReadOnlyChatState = await self.get_state(ReadOnlyChatState)
-            await read_only_state.initialize_with_conversation(selected_conv)
+        # Initialize read-only chat state
+        read_only_state: ReadOnlyChatState = await self.get_state(ReadOnlyChatState)
+        await read_only_state.initialize_with_conversation_id(
+            conversation_id
+        )
 
     @rx.var
-    def selected_conversation(self) -> Optional[ConversationHistory]:
+    def selected_conversation(self) -> Optional[ChatConversationDTO]:
         """Get the currently selected conversation."""
         if not self.selected_conversation_id:
             return None
-        return next((c for c in self.conversations if c.conversation_id == self.selected_conversation_id), None)
+        return next((c for c in self.conversations if c.id == self.selected_conversation_id), None)
 
     @rx.var
     def has_conversations(self) -> bool:
