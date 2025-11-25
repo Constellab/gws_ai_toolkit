@@ -1,14 +1,10 @@
-
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import reflex as rx
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-from gws_ai_toolkit.models.chat.chat_conversation_dto import \
-    SaveChatConversationDTO
-from gws_ai_toolkit.models.chat.chat_conversation_service import \
-    ChatConversationService
-from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageDTO,
-                                                         ChatMessageText)
+from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
+from gws_ai_toolkit.models.chat.message import ChatMessageBase, ChatMessageText
 from gws_core import Logger
 from gws_reflex_main import ReflexMainState
 
@@ -19,10 +15,10 @@ class ConversationHistoryState(rx.State):
     """State management for conversation history storage using ChatConversationService."""
 
     # Constants for folder structure
-    IMAGES_FOLDER_NAME: str = 'images'
-    PLOTS_FOLDER_NAME: str = 'plots'
+    IMAGES_FOLDER_NAME: str = "images"
+    PLOTS_FOLDER_NAME: str = "plots"
 
-    _conversation_service: Optional[ChatConversationService] = None
+    _conversation_service: ChatConversationService | None = None
 
     def _get_conversation_service(self) -> ChatConversationService:
         """Get the conversation service instance."""
@@ -35,12 +31,14 @@ class ConversationHistoryState(rx.State):
         app_config_state = await RagConfigState.get_instance(self)
         return await app_config_state.get_chat_app_name()
 
-    async def save_conversation(self,
-                                conversation_id: str | None,
-                                messages: List[ChatMessageDTO],
-                                mode: str,
-                                configuration: Dict[str, Any],
-                                external_conversation_id: Optional[str] = None) -> ChatConversation | None:
+    async def save_conversation(
+        self,
+        conversation_id: str | None,
+        messages: list[ChatMessageBase],
+        mode: str,
+        configuration: dict[str, Any],
+        external_conversation_id: str | None = None,
+    ) -> ChatConversation | None:
         """Add or update a conversation in the history using ChatConversationService.
 
         Args:
@@ -74,7 +72,7 @@ class ConversationHistoryState(rx.State):
                 mode=mode,
                 label=label,
                 external_conversation_id=external_conversation_id,
-                messages=messages
+                messages=messages,
             )
 
             main_state = await self.get_state(ReflexMainState)

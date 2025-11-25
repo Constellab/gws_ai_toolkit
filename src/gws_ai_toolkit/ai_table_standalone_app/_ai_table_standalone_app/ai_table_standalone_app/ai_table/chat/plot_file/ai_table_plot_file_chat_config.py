@@ -1,4 +1,4 @@
-from gws_ai_toolkit._app.ai_rag import BaseAnalysisConfig
+from gws_ai_toolkit._app.ai_chat import BaseAnalysisConfig
 
 
 class AiTablePlotFileChatConfig(BaseAnalysisConfig):

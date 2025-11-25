@@ -1,29 +1,14 @@
+from gws_core.user.current_user_service import CurrentUserService
 
-
-import os
-from typing import List
-
-import plotly.io as pio
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
-from gws_ai_toolkit.models.chat import chat_app
-from gws_ai_toolkit.models.chat.chat_app import ChatApp
 from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-from gws_ai_toolkit.models.chat.chat_conversation_dto import (
-    SaveChatConversationDTO, SaveChatMessageSourceDTO)
-from gws_ai_toolkit.models.chat.chat_message import \
-    ChatMessage as ChatMessageModel
-from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageCode,
-                                                         ChatMessageDTO,
-                                                         ChatMessageError,
-                                                         ChatMessageHint,
-                                                         ChatMessageImage,
-                                                         ChatMessagePlotly,
-                                                         ChatMessageText)
+from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 from gws_ai_toolkit.models.chat.chat_message_source import ChatMessageSource
-from gws_core import BrickService
-from PIL import Image
-from plotly.graph_objects import Figure
+from gws_ai_toolkit.models.chat.message import ChatMessageBase
+from gws_ai_toolkit.models.user.user import User
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 
 class ChatConversationService:
@@ -35,10 +20,7 @@ class ChatConversationService:
 
     HISTORY_EXTENSION_FOLDER_NAME = "chat_conversations"
 
-    def get_conversations_by_chat_app(
-        self,
-        chat_app_name: str
-    ) -> List[ChatConversation]:
+    def get_conversations_by_chat_app(self, chat_app_name: str) -> list[ChatConversation]:
         """Get all conversations for a chat app.
 
         :param chat_app_name: The name of the chat app
@@ -71,8 +53,9 @@ class ChatConversationService:
         conversation.chat_app = chat_app
         conversation.configuration = conversation_dto.configuration
         conversation.mode = conversation_dto.mode
-        conversation.label = conversation_dto.label or ""
+        conversation.label = conversation_dto.label or conversation_dto.get_default_label()
         conversation.external_conversation_id = conversation_dto.external_conversation_id
+        conversation.user = self._get_current_user()
         conversation.save()
 
         # Create messages if provided
@@ -82,60 +65,66 @@ class ChatConversationService:
 
         return conversation
 
-    def _save_message(self, conversation: ChatConversation, message_dto: ChatMessageDTO) -> ChatMessageDTO:
-        """Create a message in a conversation with optional sources.
+    def _save_message(self, conversation: ChatConversation, message: ChatMessageBase) -> ChatMessageBase:
+        """Internal method to save a message with its sources.
+
+        Used by save_conversation when creating conversations with messages.
+
+        :param conversation: The conversation to save the message to
+        :type conversation: ChatConversation
+        :param message: The message DTO to save
+        :type message: ChatMessageBase
+        :return: The saved message as DTO
+        :rtype: ChatMessageBase
+        """
+        # Skip if message already has an ID (already saved)
+        if message.id:
+            return message
+
+        # Convert DTO to model and save
+        message_model = message.to_chat_message_model(conversation)
+        message_model.user = self._get_current_user()
+        message_model.save()
+
+        # Create sources if provided (sources should be RagChatSource from the DTO)
+        if message.sources:
+            self._create_sources_for_message(message_model, message.sources)
+
+        return message_model.to_chat_message()
+
+    @AiToolkitDbManager.transaction()
+    def save_message(
+        self,
+        conversation_id: str,
+        message: ChatMessageBase,
+    ) -> ChatMessageBase:
+        """Save a message of any type to a conversation.
+
+        This method uses polymorphism - each message DTO knows how to convert itself
+        to a database model. This is the main entry point for saving messages.
 
         :param conversation_id: The ID of the conversation
         :type conversation_id: str
-        :param message_dto: The message data including optional sources
-        :type message_dto: ChatMessageDTO
-        :return: The created message as a ChatMessage union type
-        :rtype: ChatMessage
+        :param message_dto: The message DTO (any subclass of ChatMessageBase)
+        :type message_dto: ChatMessageBase
+        :return: The saved message as DTO
+        :rtype: ChatMessageBase
         """
+        conversation = ChatConversation.get_by_id_and_check(conversation_id)
 
-        if message_dto.id:
-            return message_dto
-
-        # Verify conversation exists
-        conversation_folder_path = self.get_conversation_folder_path(conversation.id)
-
-        # Create message for other types
-        message = ChatMessageModel()
-        message.conversation = conversation
-        message.role = message_dto.role
-        message.type = message_dto.type
-        message.external_id = message_dto.external_id
-
-        # Handle front-end types that need conversion
-        if isinstance(message_dto, ChatMessageImage) and message_dto.image:
-            message.filename = self._save_image_to_folder(message.id, message_dto.image, conversation_folder_path)
-        elif isinstance(message_dto, ChatMessagePlotly) and message_dto.figure:
-            message.filename = self._save_plotly_figure_to_folder(
-                message.id, message_dto.figure, conversation_folder_path)
-
-        # Handle content based on message type
-        if isinstance(message_dto, (ChatMessageText, ChatMessageHint)):
-            message.message = message_dto.content
-        elif isinstance(message_dto, ChatMessageError):
-            message.message = message_dto.error
-        else:
-            message.message = ''
-
-        # Handle data based on message type
-        if isinstance(message_dto, ChatMessageCode):
-            message.data = {'code': message_dto.code}
-        else:
-            message.data = {}
-
-        message.save()
+        # Convert DTO to database model (polymorphic - each subclass handles itself)
+        message_model = message.to_chat_message_model(conversation)
+        message_model.user = self._get_current_user()
+        message_model.save()
 
         # Create sources if provided
-        if message_dto.sources:
-            self._create_sources_for_message(message, message_dto.sources)
+        if message.sources:
+            self._create_sources_for_message(message_model, message.sources)
 
-        return message.to_chat_message(conversation_folder_path)
+        # Convert back to DTO
+        return message_model.to_chat_message()
 
-    def get_messages_of_conversation(self, conversation_id: str) -> List[ChatMessageDTO]:
+    def get_messages_of_conversation(self, conversation_id: str) -> list[ChatMessageBase]:
         """Get all messages of a conversation with their sources loaded.
 
         :param conversation_id: The ID of the conversation
@@ -149,22 +138,7 @@ class ChatConversationService:
         # Get messages ordered by creation date
         messages = ChatMessageModel.get_by_conversation(conversation_id)
 
-        conversation_folder_path = self.get_conversation_folder_path(conversation_id)
-
-        return [message.to_chat_message(conversation_folder_path) for message in messages]
-
-    def get_conversation_folder_path(self, conversation_id: str) -> str:
-        """Get the folder path for storing conversation files.
-
-        :param conversation_id: The ID of the conversation
-        :type conversation_id: str
-        :return: The folder path for the conversation
-        :rtype: str
-        """
-        return BrickService.get_brick_extension_dir(
-            'gws_ai_toolkit',
-            os.path.join(self.HISTORY_EXTENSION_FOLDER_NAME, conversation_id)
-        )
+        return [message.to_chat_message() for message in messages]
 
     @AiToolkitDbManager.transaction()
     def delete_conversation(self, conversation_id: str) -> None:
@@ -178,9 +152,8 @@ class ChatConversationService:
         conversation.delete_instance()
 
     def _create_sources_for_message(
-            self,
-            message: ChatMessageModel,
-            sources: List[SaveChatMessageSourceDTO] | None) -> List[ChatMessageSource]:
+        self, message: ChatMessageModel, sources: list[RagChatSource] | None
+    ) -> list[ChatMessageSource]:
         """Create source records for a message.
 
         :param message: The message to attach sources to
@@ -192,7 +165,7 @@ class ChatConversationService:
         if not sources:
             return []
 
-        db_sources: List[ChatMessageSource] = []
+        db_sources: list[ChatMessageSource] = []
 
         for source in sources:
             source_record = ChatMessageSource()
@@ -205,48 +178,6 @@ class ChatConversationService:
             db_sources.append(source_record.save())
         return db_sources
 
-    def _save_image_to_folder(self, id_: str, image: Image.Image, folder_path: str) -> str:
-        """Save PIL Image to conversation folder and return the filename.
-
-        :param image: The PIL Image to save
-        :type image: Image.Image
-        :param folder_path: The folder path to save the image in
-        :type folder_path: str
-        :return: The filename of the saved image
-        :rtype: str
-        """
-
-        # Ensure folder exists
-        os.makedirs(folder_path, exist_ok=True)
-
-        # Generate unique filename
-        filename = f"image_{id_}.png"
-        file_path = os.path.join(folder_path, filename)
-
-        # Save image
-        image.save(file_path, format="PNG")
-
-        return filename
-
-    def _save_plotly_figure_to_folder(self, id_: str, figure: Figure, folder_path: str) -> str:
-        """Save Plotly figure to conversation folder and return the filename.
-
-        :param figure: The Plotly Figure to save
-        :type figure: Figure
-        :param folder_path: The folder path to save the figure in
-        :type folder_path: str
-        :return: The filename of the saved figure
-        :rtype: str
-        """
-
-        # Ensure folder exists
-        os.makedirs(folder_path, exist_ok=True)
-
-        # Generate unique filename
-        filename = f"plot_{id_}.json"
-        file_path = os.path.join(folder_path, filename)
-
-        # Save figure as JSON
-        pio.write_json(figure, file_path)
-
-        return filename
+    def _get_current_user(self) -> User:
+        current_user = CurrentUserService.get_and_check_current_user()
+        return User(id=current_user.id)

@@ -1,24 +1,20 @@
-from typing import Optional
-
 import reflex as rx
-from gws_core import ResourceModel
-
-from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import AiExpertChatConversation, AiExpertConfig
+from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
-from ..chat_base.base_file_analysis_state import BaseFileAnalysisState
+from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from ..rag_chat.config.rag_config_state import RagConfigState
-from .ai_expert_config import AiExpertConfig
 from .ai_expert_config_state import AiExpertConfigState
 
 
-class AiExpertState(BaseFileAnalysisState, rx.State):
+class AiExpertState(ConversationChatStateBase, rx.State):
     """State management for AI Expert - specialized document-focused chat functionality.
 
-    This state class manages the complete AI Expert workflow, providing intelligent
-    conversation capabilities focused on a specific document. It integrates with
-    OpenAI's API to provide document analysis, question answering, and interactive
-    exploration of document content using multiple processing modes.
+    This state class manages the AI Expert workflow using the new
+    ConversationChatStateBase and AiExpertChatConversation architecture.
+    It provides intelligent conversation capabilities focused on a specific document
+    using multiple processing modes.
 
     Key Features:
         - Document-specific chat with full context awareness
@@ -26,224 +22,76 @@ class AiExpertState(BaseFileAnalysisState, rx.State):
         - OpenAI integration with streaming responses
         - File upload to OpenAI for advanced analysis
         - Document chunk retrieval and processing
-        - Conversation history persistence
-        - Error handling and user feedback
+        - Automatic conversation persistence
 
     Processing Modes:
         - full_file: Uploads entire document to OpenAI with code interpreter access
         - relevant_chunks: Retrieves only most relevant document chunks for the query
         - full_text_chunk: Includes all document chunks as text in the AI prompt
 
-    State Attributes:
-        current_doc_id (str): ID of the currently loaded document
-        openai_file_id (Optional[str]): OpenAI file ID when document is uploaded
-        _current_rag_resource (Optional[RagResource]): Loaded document resource
-        _document_chunks_text (dict[int, str]): Cached document chunks by max_chunks
-
-    Inherits from ChatStateBase providing:
-        - Message management and streaming
-        - Chat history and persistence
-        - UI state management (title, placeholder, etc.)
-        - Common chat functionality
+    The state connects to configured RAG services and processes user queries
+    about a specific document with proper context awareness.
     """
 
-    # Document-specific context (inherits current_file_id from BaseFileAnalysisState)
-    _current_rag_resource: Optional[RagResource] = None
-    _document_chunks_text: dict[int, str] = {}
-
     # UI configuration
-    title = "AI Expert"
-    placeholder_text = "Ask about this document..."
-    empty_state_message = "Start asking questions about this document"
+    title: str = "AI Expert"
+    placeholder_text: str = "Ask about this document..."
+    empty_state_message: str = "Start asking questions about this document"
 
-    # Form state for configuration
-    form_system_prompt: str = ""
+    _rag_resource: RagResource | None = None
 
-    # Implementation of abstract methods from BaseFileAnalysisState
-    def validate_resource(self, resource: ResourceModel) -> bool:
-        """Validate if file is compatible with AI Expert analysis"""
-        # For AI Expert, we use RagResource which handles compatibility
-        rag_resource = RagResource(resource)
-        return rag_resource.is_compatible_with_rag()
+    async def create_conversation(self) -> BaseChatConversation:
+        """Create a new AiExpertChatConversation instance.
 
-    async def get_config(self) -> AiExpertConfig:
-        """Get AI Expert configuration"""
+        Gets the RAG app service, configuration, and document resource
+        to create a properly configured conversation.
+
+        Returns:
+            BaseChatConversation: A new AiExpertChatConversation configured with
+                the RAG service and document.
+        """
+        # Get RAG app service
+        rag_config_state = await RagConfigState.get_instance(self)
+        rag_app_service = await rag_config_state.get_dataset_rag_app_service()
+        if not rag_app_service:
+            raise ValueError("RAG service not available")
+
+        # Get config
         app_config_state = await self.get_state(AiExpertConfigState)
-        return await app_config_state.get_config()
+        config: AiExpertConfig = await app_config_state.get_config()
 
-    def get_analysis_type(self) -> str:
-        """Return analysis type for history saving"""
-        return "ai_expert"
+        return AiExpertChatConversation(
+            chat_app_name="ai_expert", config=config, rag_app_service=rag_app_service, rag_resource=self._rag_resource
+        )
 
-    def _load_resource(self) -> Optional[ResourceModel]:
-        # try to load from rag document id
-        # Get the dynamic route parameter - different subclasses may use different parameter names
-        document_id = self.document_id if hasattr(self, 'document_id') else None
+    async def load_resource_from_url(self) -> None:
+        """Handle page load - get resource ID from router state"""
+
+        document_id = self.document_id if hasattr(self, "document_id") else None
 
         if not document_id:
             return None
 
         rag_resource = RagResource.from_document_or_resource_id_and_check(document_id)
 
-        return rag_resource.resource_model
+        if not rag_resource:
+            self.clear_chat()
+            return None
 
-    async def call_ai_chat(self, user_message: str):
-        """Get streaming response from OpenAI about the document with AI Expert specific modes"""
-        client = self._get_openai_client()
+        if self._rag_resource and self._rag_resource.get_id() != rag_resource.get_id():
+            # Reset chat if loading a different file
+            self.clear_chat()
 
-        async with self:
-            expert_config = await self.get_config()
-
-        instructions: str = None
-        tools: list = []
-
-        if expert_config.mode == 'full_file':
-            # Full file mode - use base class implementation
-            file_id = await self.upload_file_to_openai()
-            document_name = self._current_resource_model.name
-
-            # Replace the placeholder with document name and include chunks
-            instructions = expert_config.system_prompt.replace(
-                expert_config.prompt_file_placeholder,
-                f"{document_name}\n{file_id}"
-            )
-            tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [file_id]}}]
-
-        elif expert_config.mode == 'relevant_chunks':
-            # Relevant chunks mode - get only relevant chunks based on user question
-            document_chunks = await self.get_relevant_document_chunks_text(user_message, expert_config.max_chunks)
-            document_name = self._current_resource_model.name
-
-            # Replace the placeholder with document name and include chunks
-            system_prompt_with_chunks = expert_config.system_prompt.replace(
-                expert_config.prompt_file_placeholder,
-                f"{document_name}\n{document_chunks}"
-            )
-
-            instructions = system_prompt_with_chunks
-
-        else:
-            # Full text chunk mode - get all document chunks and include in prompt
-            document_chunks = await self.get_document_chunks_text(expert_config.max_chunks)
-            document_name = self._current_resource_model.name
-
-            # Replace the placeholder with document name and include chunks
-            system_prompt_with_chunks = expert_config.system_prompt.replace(
-                expert_config.prompt_file_placeholder,
-                f"{document_name}\n{document_chunks}"
-            )
-
-            instructions = system_prompt_with_chunks
-
-        # For non-full_file modes, create streaming response without code interpreter
-        with client.responses.stream(
-            model=expert_config.model,
-            instructions=instructions,
-            input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
-            temperature=expert_config.temperature,
-            previous_response_id=self._previous_external_response_id,
-            tools=tools,
-        ) as stream:
-
-            # Process streaming events (common for both modes)
-            for event in stream:
-                # Route events to specific handler methods
-                if event.type == "response.output_text.delta":
-                    await self.handle_output_text_delta(event.delta)
-                elif event.type == "response.code_interpreter_call_code.delta":
-                    await self.handle_code_interpreter_call_code_delta(event)
-                elif event.type == "response.output_text.annotation.added":
-                    await self.handle_output_text_annotation_added(event)
-                elif event.type == "response.output_item.added" or event.type == "response.output_item.done":
-                    await self.close_current_message()
-                elif event.type == "response.created":
-                    await self.handle_response_created(event)
-                elif event.type == "response.completed":
-                    await self.handle_response_completed()
-
-    # Event handlers are inherited from BaseFileAnalysisState - no need to duplicate
-
-    async def get_document_chunks_text(self, max_chunks: int = 100) -> str:
-        """Get the first max_chunks chunks of the document as text"""
-
-        if max_chunks in self._document_chunks_text:
-            return self._document_chunks_text[max_chunks]
-
-        rag_app_service: BaseRagAppService
-        async with self:
-            rag_app_service = await self._get_rag_app_service()
-
-        # Get the document ID from the resource
-        document_id = (await self.get_current_rag_resource()).get_document_id()
-
-        # Get the first max_chunks chunks
-        chunks = rag_app_service.rag_service.get_document_chunks(
-            dataset_id=rag_app_service.dataset_id,
-            document_id=document_id,
-            page=1,
-            limit=max_chunks
-        )
-
-        if len(chunks) == 0:
-            raise ValueError("No chunks found for this document")
-
-        # Combine chunk contents into text
-        chunk_texts = []
-        for chunk in chunks:
-            chunk_texts.append(chunk.content)
-
-        async with self:
-            self._document_chunks_text[max_chunks] = "\n".join(chunk_texts)
-        return self._document_chunks_text[max_chunks]
-
-    async def get_relevant_document_chunks_text(self, user_question: str, max_chunks: int = 5) -> str:
-        """Get the most relevant chunks based on the user's question"""
-
-        rag_app_service: BaseRagAppService
-        rag_resource: RagResource
-        async with self:
-            rag_app_service = await self._get_rag_app_service()
-            rag_resource = await self.get_current_rag_resource()
-
-        # Get the document ID from the resource
-        document_id = rag_resource.get_document_id()
-
-        # Retrieve relevant chunks using the user's question
-        chunks = rag_app_service.rag_service.retrieve_chunks(
-            dataset_id=rag_app_service.dataset_id,
-            query=user_question,
-            top_k=max_chunks,
-            document_ids=[document_id]
-        )
-
-        if len(chunks) == 0:
-            raise ValueError("No relevant chunks found for this question")
-
-        # Combine chunk contents into text
-        chunk_texts = []
-        for chunk in chunks:
-            chunk_texts.append(chunk.content)
-
-        return "\n".join(chunk_texts)
-
-    async def _get_rag_app_service(self) -> BaseRagAppService:
-        """Get the RAG app service instance."""
-        state: RagConfigState = await RagConfigState.get_instance(self)
-        rag_app_service = await state.get_dataset_rag_app_service()
-        if not rag_app_service:
-            raise ValueError("RAG service not available")
-        return rag_app_service
-
-    async def get_current_rag_resource(self) -> RagResource:
-        """Get the currently loaded RagResource"""
-        if not self._current_rag_resource:
-            resource_model = await self.get_current_resource_model()
-            if not resource_model:
-                raise ValueError("No resource loaded")
-            self._current_rag_resource = RagResource(resource_model)
-        return self._current_rag_resource
+        self.subtitle = rag_resource.resource_model.name
+        self._rag_resource = rag_resource
 
     def _after_chat_cleared(self):
-        super()._after_chat_cleared()
-        self._current_rag_resource = None
-        self._document_chunks_text = {}
+        """Reset any AI Expert-specific state after chat is cleared."""
+        pass
+
+    @rx.event
+    async def open_current_resource_file(self):
+        """Open the current resource file."""
+        if self._rag_resource:
+            return await self.open_document_from_resource(self._rag_resource.get_id())
+        return None

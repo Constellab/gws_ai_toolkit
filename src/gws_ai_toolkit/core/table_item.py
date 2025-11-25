@@ -1,4 +1,4 @@
-from typing import Dict, List, cast
+from typing import cast
 
 from gws_core import File, Table, TableImporter
 from pandas import DataFrame
@@ -7,14 +7,16 @@ from pandas import DataFrame
 class TableItem:
     """Class to represent a dataframe with its name and file path"""
 
+    id: str
     name: str
-    _tables: Dict[str, Table]  # Cache for sheet dataframes
+    _tables: dict[str, Table]  # Cache for sheet dataframes
 
-    def __init__(self, name: str):
+    def __init__(self, id_: str, name: str):
+        self.id = id_
         self.name = name
         self._tables = {}  # Cache for sheet dataframes
 
-    def get_sheet_names(self) -> List[str]:
+    def get_sheet_names(self) -> list[str]:
         """Get list of sheet names for Excel files, or empty list for CSV"""
         return list(self._tables.keys())
 
@@ -46,26 +48,26 @@ class TableItem:
         self._tables[sheet_name] = table
 
     @staticmethod
-    def from_file(name: str, file_path: str) -> "TableItem":
+    def from_file(id_: str, name: str, file_path: str) -> "TableItem":
         """Create DataFrameItem from file path"""
-        item = TableItem(name=name)
+        item = TableItem(id_=id_, name=name)
 
         file = File(file_path)
 
         extension = file.extension
 
         if not file.is_csv_or_excel():
-            raise ValueError(f"Unsupported file extension: {extension} !!")
+            raise ValueError(f"Unsupported file extension: {extension} !")
 
-        tables: Dict[str, Table] = {}
+        tables: dict[str, Table] = {}
         if extension == "csv":
             # set format_header_names to True to ensure consistent naming because aggrid
             # component has some problem with column names with special caracter (like dot or ")
-            table = cast(Table, TableImporter.call(file, {'format_header_names': True}))
+            table = cast(Table, TableImporter.call(file, {"format_header_names": True}))
             table.name = name
             tables[name] = table
         else:  # Excel file
-            tables = TableImporter.import_excel_multiple_sheets(file, {'format_header_names': True})
+            tables = TableImporter.import_excel_multiple_sheets(file, {"format_header_names": True})
 
         for sheet_name, table in tables.items():
             if sheet_name == name:
@@ -78,9 +80,9 @@ class TableItem:
         return item
 
     @staticmethod
-    def from_table(name: str, table: Table) -> "TableItem":
+    def from_table(id_: str, name: str, table: Table) -> "TableItem":
         """Create DataFrameItem from a Table object"""
-        item = TableItem(name=name)
+        item = TableItem(id_=id_, name=name)
         table.name = name
         item.add_table(sheet_name=name, table=table)
         return item

@@ -1,9 +1,10 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, List, Type
 
 import reflex as rx
+from gws_ai_toolkit.models.chat.message import ChatMessageBase
 
-from .chat_state_base import ChatStateBase
+from .conversation_chat_state_base import ConversationChatStateBase
 from .sources_list_component import SourcesComponentBuilder
 
 
@@ -23,10 +24,10 @@ class ChatConfig:
         - Flexible left/right section layout
 
     Attributes:
-        state (ChatStateBase): The state management class for the chat.
-            Must extend ChatStateBase and provide chat functionality.
+        state (ChatStatConversationChatStateBaseeBase): The state management class for the chat.
+            Must extend ConversationChatStateBase and provide chat functionality.
 
-        header_buttons (Callable[[ChatStateBase], List[rx.Component]] | None):
+        header_buttons (Callable[[ConversationChatStateBase], list[rx.Component]] | None):
             Optional function that returns custom header buttons. Takes the chat
             state as parameter and returns list of Reflex components.
 
@@ -48,14 +49,16 @@ class ChatConfig:
     """
 
     # State configuration - this is the only customizable part
-    state: Type[ChatStateBase]
+    state: type[ConversationChatStateBase]
 
     # Add custom button on top right of the header
-    header_buttons: Callable[[ChatStateBase], List[rx.Component]] | None = None
+    header_buttons: Callable[[ConversationChatStateBase], list[rx.Component]] | None = None
 
     sources_component: SourcesComponentBuilder | None = None
 
     # Optional left and right sections to display alongside the chat
-    left_section: Callable[[ChatStateBase], rx.Component] | None = None
+    left_section: Callable[[ConversationChatStateBase], rx.Component] | None = None
 
-    right_section: Callable[[ChatStateBase], rx.Component] | None = None
+    right_section: Callable[[ConversationChatStateBase], rx.Component] | None = None
+
+    custom_chat_messages: dict[str, Callable[[ChatMessageBase], rx.Component]] | None = None

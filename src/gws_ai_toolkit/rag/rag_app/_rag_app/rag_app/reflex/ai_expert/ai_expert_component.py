@@ -1,16 +1,13 @@
-from typing import List
-
 import reflex as rx
 
 from ..chat_base.chat_component import chat_component
 from ..chat_base.chat_config import ChatConfig
-from ..chat_base.chat_header_component import \
-    header_clear_chat_button_component
-from ..chat_base.chat_state_base import ChatStateBase
+from ..chat_base.chat_header_component import header_clear_chat_button_component
+from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from .ai_expert_state import AiExpertState
 
 
-def ai_expert_header_default_buttons_component(state: ChatStateBase) -> List[rx.Component]:
+def ai_expert_header_default_buttons_component(state: ConversationChatStateBase) -> list[rx.Component]:
     """Default header buttons for the AI Expert chat interface.
 
     Provides standard action buttons for the AI Expert page including document viewing
@@ -22,10 +19,10 @@ def ai_expert_header_default_buttons_component(state: ChatStateBase) -> List[rx.
         - Clear chat button: Clears the current conversation history
 
     Args:
-        state (ChatStateBase): The current chat state instance for accessing state methods
+        state (ConversationChatStateBase): The current chat state instance for accessing state methods
 
     Returns:
-        List[rx.Component]: List of Reflex button components ready for header display
+        list[rx.Component]: List of Reflex button components ready for header display
 
     Example:
         buttons = ai_expert_header_default_buttons_component(ai_expert_state)
@@ -33,13 +30,13 @@ def ai_expert_header_default_buttons_component(state: ChatStateBase) -> List[rx.
     """
     return [
         rx.button(
-            rx.icon('file', size=16),
+            rx.icon("file", size=16),
             "View document",
             on_click=lambda: AiExpertState.open_current_resource_file,
-            variant='outline',
+            variant="outline",
             size="2",
         ),
-        header_clear_chat_button_component(state)
+        header_clear_chat_button_component(state),
     ]
 
 
@@ -86,9 +83,6 @@ def ai_expert_component(chat_config: ChatConfig | None = None) -> rx.Component:
         component = ai_expert_component(custom_config)
     """
     if not chat_config:
-        chat_config = ChatConfig(
-            state=AiExpertState,
-            header_buttons=ai_expert_header_default_buttons_component
-        )
+        chat_config = ChatConfig(state=AiExpertState, header_buttons=ai_expert_header_default_buttons_component)
 
     return chat_component(chat_config)

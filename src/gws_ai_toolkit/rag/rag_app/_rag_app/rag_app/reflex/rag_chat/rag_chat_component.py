@@ -51,7 +51,7 @@ def rag_chat_component(chat_config: ChatConfig | None = None) -> rx.Component:
     if not chat_config:
         chat_config = ChatConfig(
             state=RagChatState,
-            sources_component=sources_list_component
+            sources_component=sources_list_component,
         )
 
     return chat_component(chat_config)

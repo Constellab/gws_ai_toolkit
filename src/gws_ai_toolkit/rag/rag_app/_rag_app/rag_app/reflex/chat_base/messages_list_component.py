@@ -1,19 +1,22 @@
-
 import plotly.graph_objects as go
 import reflex as rx
-from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageCode,
-                                                         ChatMessageDTO,
-                                                         ChatMessageError,
-                                                         ChatMessageHint,
-                                                         ChatMessageImage,
-                                                         ChatMessagePlotly,
-                                                         ChatMessageText)
+from gws_ai_toolkit.models.chat.message import (
+    AssistantStreamingResponse,
+    ChatMessageCode,
+    ChatMessageError,
+    ChatMessageHint,
+    ChatMessageImage,
+    ChatMessagePlotly,
+    ChatMessageText,
+    ChatUserMessageText,
+)
+from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 
 from .chat_config import ChatConfig
-from .chat_state_base import ChatStateBase
+from .conversation_chat_state_base import ConversationChatStateBase
 
 
-def _message_bubble(message: ChatMessageDTO, config: ChatConfig) -> rx.Component:
+def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
     """Individual message bubble component with role-based styling.
 
     Creates styled message bubbles with different appearances for user and
@@ -33,7 +36,7 @@ def _message_bubble(message: ChatMessageDTO, config: ChatConfig) -> rx.Component
         # User message - right aligned with darker background (exact same as chat page)
         rx.box(
             rx.box(
-                _message_content(message),
+                _message_content(message, config),
                 background_color="var(--accent-10)",
                 padding="0px 16px",
                 border_radius="18px",
@@ -46,15 +49,15 @@ def _message_bubble(message: ChatMessageDTO, config: ChatConfig) -> rx.Component
             margin="8px 0",
             width="100%",
         ),
-        # Assistant message - left aligned without background (exact same as chat page)
+        # Assistant message - left aligned without background
         rx.box(
             rx.box(
-                _message_content(message),
+                _message_content(message, config),
                 rx.cond(
                     message.sources,
                     rx.box(
                         config.sources_component(message.sources, config.state) if config.sources_component else None
-                    )
+                    ),
                 ),
                 padding="12px 0",
                 word_wrap="break-word",
@@ -64,18 +67,18 @@ def _message_bubble(message: ChatMessageDTO, config: ChatConfig) -> rx.Component
             justify_content="flex-start",
             margin="8px 0",
             width="100%",
-        )
+        ),
     )
 
 
-def _streaming_indicator(state_class: ChatStateBase) -> rx.Component:
+def _streaming_indicator(state_class: ConversationChatStateBase) -> rx.Component:
     """Loading indicator shown during AI response streaming.
 
     Displays a spinner and "thinking" message when the AI is generating
     a response, providing visual feedback to the user.
 
     Args:
-        state_class (ChatStateBase): Chat state to check streaming status
+        state_class (ConversationChatStateBase): Chat state to check streaming status
 
     Returns:
         rx.Component: Conditional loading indicator based on streaming state
@@ -90,9 +93,9 @@ def _streaming_indicator(state_class: ChatStateBase) -> rx.Component:
             ),
             margin="0.5em 0",
             width="100%",
-            align_items="center"
+            align_items="center",
         ),
-        rx.text("")
+        rx.text(""),
     )
 
 
@@ -128,14 +131,14 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     """
 
     return rx.box(
-
         # Show empty state message when no messages exist
         rx.cond(
-            config.state.has_no_message,
+            config.state.show_empty_chat,
             rx.box(
                 rx.text(
-                    config.state.empty_state_message if hasattr(
-                        config.state, 'empty_state_message') else "Start a conversation...",
+                    config.state.empty_state_message
+                    if hasattr(config.state, "empty_state_message")
+                    else "Start a conversation...",
                     color="var(--gray-9)",
                     font_size="16px",
                     text_align="center",
@@ -147,27 +150,24 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
                 width="100%",
             ),
             rx.box(
-                rx.foreach(
-                    config.state.chat_messages,
-                    lambda message: _message_bubble(message, config)
-                ),
+                rx.foreach(config.state.chat_messages, lambda message: _message_bubble(message, config)),
                 # Display current response message separately
                 rx.cond(
                     config.state.current_response_message,
                     _message_bubble(config.state.current_response_message, config),
-                    rx.text("")
+                    rx.text(""),
                 ),
                 _streaming_indicator(config.state),
                 width="100%",
-            )
+            ),
         ),
         width="100%",
-        padding='1em',
+        padding="1em",
         flex="1",
     )
 
 
-def _message_content(message: ChatMessageDTO) -> rx.Component:
+def _message_content(message: ChatMessage, config: ChatConfig) -> rx.Component:  # type: ignore
     """Content renderer that handles different message types.
 
     Routes message content to appropriate rendering functions based on
@@ -175,24 +175,42 @@ def _message_content(message: ChatMessageDTO) -> rx.Component:
 
     Args:
         message (ChatMessage): Message with type-specific content
-
+        config (ChatConfig): Chat configuration for custom message renderers
     Returns:
         rx.Component: Rendered content appropriate for the message type
     """
 
-    return rx.match(
-        message.type,
-        ("text", _text_content(message)),
-        ("image", _image_content(message)),
-        ("code", _code_content(message)),
-        ("plotly", _plotly_content(message)),
-        ("error", _error_content(message)),
-        ("hint", _hint_content(message)),
-        rx.text(f"Unsupported message type {message.type}.")
+    # Default renderers for each type
+    default_renderers = {
+        "text": _text_content,
+        "image": _image_content,
+        "code": _code_content,
+        "plotly": _plotly_content,
+        "error": _error_content,
+        "hint": _hint_content,
+    }
+
+    # Build match cases: custom renderers take priority, then defaults
+    renderers = {}
+    if config.custom_chat_messages:
+        renderers.update(config.custom_chat_messages)
+
+    # Add default renderers for types not in custom
+    for msg_type, default_renderer in default_renderers.items():
+        if msg_type not in renderers:
+            renderers[msg_type] = default_renderer
+
+    # Build the match cases
+    match_cases = [(msg_type, renderer(message)) for msg_type, renderer in renderers.items()]
+
+    return rx.match(  # type: ignore
+        message.type,  # type: ignore
+        *match_cases,  # type: ignore
+        rx.text(f"Unsupported message type {message.type}."),  # type: ignore
     )
 
 
-def _text_content(message: ChatMessageText) -> rx.Component:
+def _text_content(message: ChatMessageText | ChatUserMessageText | AssistantStreamingResponse) -> rx.Component:
     """Renders text content with markdown support.
 
     Args:
@@ -211,10 +229,7 @@ def _image_content(message: ChatMessageImage) -> rx.Component:
     """Renders image content with optional text description.
 
     Args:
-        message (ChatMessageImageFront): Image message to render
-
-    Returns:
-        rx.Component: Image display with optional text content
+        message (ChatMessageImage) -> rx.Component:
     """
     return rx.image(
         src=message.image,  # Use image_path instead of data
@@ -255,7 +270,7 @@ def _plotly_content(message: ChatMessagePlotly) -> rx.Component:
             # rx.cond used to avoid warning
             data=rx.cond(message.figure, message.figure, go.Figure()),
             width="100%",
-        )
+        ),
     )
 
 

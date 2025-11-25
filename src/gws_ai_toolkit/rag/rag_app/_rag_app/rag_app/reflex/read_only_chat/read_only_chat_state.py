@@ -1,18 +1,16 @@
 import json
-from typing import Optional
 
 import reflex as rx
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-from gws_ai_toolkit.models.chat.chat_conversation_service import \
-    ChatConversationService
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 
-from ..chat_base.chat_state_base import ChatStateBase
+from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 
 
-class ReadOnlyChatState(ChatStateBase, rx.State):
+class ReadOnlyChatState(ConversationChatStateBase, rx.State):
     """State management for read-only conversation display.
 
-    This state class extends ChatStateBase to provide read-only viewing of
+    This state class extends ConversationChatStateBase to provide read-only viewing of
     historical conversations. It prevents user input while maintaining full
     message display functionality with proper styling and source citations.
 
@@ -29,7 +27,7 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
 
     # Override UI configuration for read-only mode
     title: str = "Conversation History"
-    subtitle: Optional[str] = None
+    subtitle: str | None = None
     placeholder_text: str = "This is a read-only conversation"
     empty_state_message: str = "No messages in this conversation"
     clear_button_text: str = "Close"
@@ -50,24 +48,10 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
 
         if conversation:
             # Load messages for this conversation
-            messages = conversation_service.get_messages_of_conversation(conversation_id)
-
-            # Clear existing messages before loading new conversation
-            self.chat_messages = []
-
-            self._conversation_id = conversation.id
-            self.external_conversation_id = conversation.external_conversation_id
-
-            # Add all messages
-            for message in messages:
-                await self.add_message(message)
-
-            self.current_response_message = None
-            self.is_streaming = False
-            self.current_configuration = conversation.configuration
+            self._chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
 
             # Update title with conversation info
-            mode_display = conversation.mode.replace('_', ' ').title()
+            mode_display = conversation.mode.replace("_", " ").title()
             self.title = f"{mode_display} - {conversation.label[:50]}{'...' if len(conversation.label) > 50 else ''}"
 
             # Set subtitle with timestamp
@@ -76,7 +60,7 @@ class ReadOnlyChatState(ChatStateBase, rx.State):
             except:
                 self.subtitle = f"Last modified: {str(conversation.last_modified_at)}"
 
-    async def call_ai_chat(self, user_message: str) -> None:
+    async def create_conversation(self) -> None:
         """Override to prevent any AI calls in read-only mode."""
         # This should never be called in read-only mode
         pass

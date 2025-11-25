@@ -1,11 +1,10 @@
 import uuid
-from typing import Dict, List, Literal, Optional
+from typing import Literal
 
 import pandas as pd
 import reflex as rx
-from gws_core import File, Table
-
 from gws_ai_toolkit.core.table_item import TableItem
+from gws_core import File, Table
 
 RightPanelState = Literal["closed", "chat", "stats"]
 
@@ -25,21 +24,21 @@ class AiTableDataState(rx.State):
     right_panel_state: RightPanelState = "closed"
 
     # Table
-    _tables: Dict[str, TableItem] = {}
+    _tables: dict[str, TableItem] = {}
     current_table_id: str = ""  # Current active table ID
 
-    def get_current_dataframe_item(self) -> Optional[TableItem]:
+    def get_current_dataframe_item(self) -> TableItem | None:
         """Create DataFrameItem from current file info"""
         return self._tables.get(self.current_table_id)
 
-    def get_current_table(self) -> Optional[Table]:
+    def get_current_table(self) -> Table | None:
         """Get the current active table (original or subtable)"""
         table_item = self.get_current_dataframe_item()
         if table_item:
             return table_item.get_table(self.current_sheet_name)
         return None
 
-    def get_current_dataframe(self) -> Optional[pd.DataFrame]:
+    def get_current_dataframe(self) -> pd.DataFrame | None:
         """Get the current active dataframe (original or subtable)"""
         # Get dataframe item for current table
         table_item = self.get_current_dataframe_item()
@@ -68,7 +67,7 @@ class AiTableDataState(rx.State):
         return self.right_panel_state != "closed"
 
     @rx.var
-    def get_sheet_names(self) -> List[str]:
+    def get_sheet_names(self) -> list[str]:
         """Get sheet names for the current dataframe"""
         df_item = self.get_current_dataframe_item()
         if df_item:
@@ -93,7 +92,7 @@ class AiTableDataState(rx.State):
         return current_df.shape[1] if current_df is not None and not current_df.empty else 0
 
     @rx.var
-    def ag_grid_column_defs(self) -> List[dict]:
+    def ag_grid_column_defs(self) -> list[dict]:
         """Get column definitions for AG Grid"""
         current_df = self.get_current_dataframe()
         if current_df is None or current_df.empty:
@@ -101,18 +100,14 @@ class AiTableDataState(rx.State):
 
         column_defs = []
         for col in current_df.columns:
-            column_defs.append({
-                "field": str(col),
-                "headerName": str(col),
-                "sortable": True,
-                "filter": True,
-                "resizable": True
-            })
+            column_defs.append(
+                {"field": str(col), "headerName": str(col), "sortable": True, "filter": True, "resizable": True}
+            )
 
         return column_defs
 
     @rx.var
-    def ag_grid_row_data(self) -> List[dict]:
+    def ag_grid_row_data(self) -> list[dict]:
         """Get row data for AG Grid as list of dictionaries"""
         current_df = self.get_current_dataframe()
         if current_df is None or current_df.empty:
@@ -164,17 +159,14 @@ class AiTableDataState(rx.State):
         return table_item.name if table_item else "No Table Selected"
 
     @rx.var
-    def tables_list(self) -> List[Dict[str, str]]:
+    def tables_list(self) -> list[dict[str, str]]:
         """Get list of all tables for UI iteration"""
         tables = []
         for table_id, table_item in self._tables.items():
-            tables.append({
-                "id": table_id,
-                "name": table_item.name
-            })
+            tables.append({"id": table_id, "name": table_item.name})
         return tables
 
-    def add_file(self, file: File, name: Optional[str] = None):
+    def add_file(self, file: File, name: str | None = None):
         """Set the resource file to load data from
 
         Args:
@@ -182,21 +174,19 @@ class AiTableDataState(rx.State):
             name (Optional[str]): Optional name to use instead of extracting from file path
         """
 
-        table_item = TableItem.from_file(
-            name or file.name,
-            file.path
-        )
+        table_item = TableItem.from_file(id_=str(uuid.uuid4()), name=name or file.name, file_path=file.path)
 
         self.add_table_item(table_item)
 
-    def add_table(self, table: Table, name: str) -> None:
+    def add_table(self, table: Table, name: str, id_: str | None = None) -> None:
         """Set a transformed DataFrame as the current active DataFrame
 
         Args:
             transformed_df: The transformed DataFrame to set as current
         """
         # Create new table entry for the transformed data
-        self.add_table_item(TableItem.from_table(name, table))
+        id_ = id_ or str(uuid.uuid4())
+        self.add_table_item(TableItem.from_table(id_=id_, name=name, table=table))
 
     def add_table_item(self, table_item: TableItem) -> None:
         """Add a TableItem directly to the tables list
@@ -204,9 +194,8 @@ class AiTableDataState(rx.State):
         Args:
             table_item (TableItem): TableItem to add
         """
-        table_id = f"{uuid.uuid4()}"
-        self._tables[table_id] = table_item
-        self.current_table_id = table_id
+        self._tables[table_item.id] = table_item
+        self.current_table_id = table_item.id
 
     def count_tables(self) -> int:
         """Count the number of tables currently loaded"""

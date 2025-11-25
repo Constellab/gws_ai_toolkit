@@ -1,25 +1,20 @@
-
-from typing import List
-
 import reflex as rx
 import reflex_enterprise as rxe
-from gws_ai_toolkit._app.ai_rag import (AppConfigState, HistoryState,
-                                        NavBarItem, history_component,
-                                        page_component)
+from gws_ai_toolkit._app.ai_chat import AppConfigState, HistoryState, NavBarItem, history_component, page_component
 from gws_reflex_main import register_gws_reflex_app
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState
-from .ai_table.chat.table_agent.ai_table_agent_chat_config_component import \
-    ai_table_agent_chat_config_component
+from .ai_table.chat.table_agent.ai_table_agent_chat_config_component import ai_table_agent_chat_config_component
 from .custom_states import CustomAppConfigState
 from .home_page import home_page
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 
+
 app = register_gws_reflex_app(rxe.App())
 
-nav_bar_items: List[NavBarItem] = [
+nav_bar_items: list[NavBarItem] = [
     NavBarItem(text="Home", icon="home", url="/"),
     NavBarItem(text="AI Table", icon="message-circle", url="/ai-table"),
     NavBarItem(text="Config", icon="settings", url="/config"),
@@ -35,6 +30,7 @@ def index():
         nav_bar_items,
         home_page(),
     )
+
 
 # AI Table page
 
@@ -70,8 +66,9 @@ def ai_table():
                 width="100%",
             ),
         ),
-        disable_padding=True
+        disable_padding=True,
     )
+
 
 # Configuration page - for AI Expert and AI Table configurations
 
@@ -84,13 +81,11 @@ def config_page():
         ai_table_agent_chat_config_component(),
     )
 
+
 # History page - for conversation history
 
 
 @rx.page(route="/history", on_load=HistoryState.load_conversations)
 def history():
     """History page for viewing conversation history."""
-    return page_component(
-        nav_bar_items,
-        history_component()
-    )
+    return page_component(nav_bar_items, history_component())

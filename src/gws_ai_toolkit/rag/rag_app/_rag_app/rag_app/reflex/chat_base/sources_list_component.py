@@ -1,15 +1,14 @@
-from typing import Callable, List
+from collections.abc import Callable
 
 import reflex as rx
-
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
-from .chat_state_base import ChatStateBase
+from .conversation_chat_state_base import ConversationChatStateBase
 
-SourcesComponentBuilder = Callable[[List[RagChatSource], ChatStateBase], rx.Component]
+SourcesComponentBuilder = Callable[[list[RagChatSource], ConversationChatStateBase], rx.Component]
 
 
-def get_default_source_menu_items(source: RagChatSource, state: ChatStateBase) -> List[rx.Component]:
+def get_default_source_menu_items(source: RagChatSource, state: ConversationChatStateBase) -> list[rx.Component]:
     """Get the default menu items for source actions.
 
     Returns:
@@ -29,9 +28,11 @@ def get_default_source_menu_items(source: RagChatSource, state: ChatStateBase) -
     ]
 
 
-def _source_item(source: RagChatSource, state: ChatStateBase,
-                 custom_menu_items: Callable[[RagChatSource, ChatStateBase],
-                                             List[rx.Component]] | None = None) -> rx.Component:
+def _source_item(
+    source: RagChatSource,
+    state: ConversationChatStateBase,
+    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]] | None = None,
+) -> rx.Component:
     """Individual source item with document info and action menu.
 
     Renders a single source citation with document name, relevance score,
@@ -40,7 +41,7 @@ def _source_item(source: RagChatSource, state: ChatStateBase,
 
     Args:
         source (RagChatSource): Source citation with document metadata
-        state (ChatStateBase): Chat state for handling actions
+        state (ConversationChatStateBase): Chat state for handling actions
         custom_menu_items: Optional callable that returns custom menu items for the source
 
     Returns:
@@ -48,7 +49,7 @@ def _source_item(source: RagChatSource, state: ChatStateBase,
     """
 
     # Get menu items based on custom_menu_items parameter
-    menu_items: List[rx.Component] = []
+    menu_items: list[rx.Component] = []
     if custom_menu_items is None:
         # Use default menu items
         menu_items = get_default_source_menu_items(source, state)
@@ -59,25 +60,23 @@ def _source_item(source: RagChatSource, state: ChatStateBase,
     # Build the base hstack items
     hstack_items = [
         rx.icon("file-text", size=16),
-        rx.text(source.document_name, size="1",),
+        rx.text(
+            source.document_name,
+            size="1",
+        ),
         rx.spacer(),
-        rx.text(f"Score: {source.score:.2f}", size="1",),
+        rx.text(
+            f"Score: {source.score:.2f}",
+            size="1",
+        ),
     ]
 
     # Only add menu if there are menu items
     if menu_items and len(menu_items) > 0:
         menu_root = rx.menu.root(
-            rx.menu.trigger(
-                rx.button(
-                    rx.icon("ellipsis-vertical", size=16),
-                    variant="ghost",
-                    cursor='pointer'
-                )
-            ),
-            rx.menu.content(
-                *menu_items
-            ),
-            flex_shrink="0"
+            rx.menu.trigger(rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost", cursor="pointer")),
+            rx.menu.content(*menu_items),
+            flex_shrink="0",
         )
         hstack_items.append(menu_root)
 
@@ -90,10 +89,11 @@ def _source_item(source: RagChatSource, state: ChatStateBase,
     )
 
 
-def sources_list_component(sources: List[RagChatSource],
-                           state: ChatStateBase,
-                           custom_menu_items: Callable[[RagChatSource, ChatStateBase],
-                                                       List[rx.Component]] | None = None) -> rx.Component:
+def sources_list_component(
+    sources: list[RagChatSource],
+    state: ConversationChatStateBase,
+    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]] | None = None,
+) -> rx.Component:
     """Expandable sources panel for RAG chat responses.
 
     This component displays source documents and citations for RAG-enhanced
@@ -109,7 +109,7 @@ def sources_list_component(sources: List[RagChatSource],
 
     Args:
         sources (List[RagChatSource]): List of source citations from RAG response
-        state (ChatStateBase): Chat state for handling source interactions
+        state (ConversationChatStateBase): Chat state for handling source interactions
 
     Returns:
         rx.Component: Conditional accordion component displaying sources with
@@ -140,8 +140,9 @@ def sources_list_component(sources: List[RagChatSource],
     )
 
 
-def custom_sources_list_component(custom_menu_items: Callable[[RagChatSource, ChatStateBase],
-                                                              List[rx.Component]]) -> SourcesComponentBuilder:
+def custom_sources_list_component(
+    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]],
+) -> SourcesComponentBuilder:
     """Wrapper for sources_list_component with custom menu items.
 
     This function allows users to create a sources list component
@@ -151,7 +152,7 @@ def custom_sources_list_component(custom_menu_items: Callable[[RagChatSource, Ch
         custom_menu_items: Callable that returns custom menu items for each source
 
     Returns:
-        Callable[[List[RagChatSource], ChatStateBase], rx.Component]: A function that takes
+        Callable[[List[RagChatSource], ConversationChatStateBase], rx.Component]: A function that takes
         a list of sources and a chat state, and returns a sources list component.
     """
     return lambda sources, state: sources_list_component(sources, state, custom_menu_items)

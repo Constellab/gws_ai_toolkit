@@ -2,14 +2,10 @@ import unittest
 
 from gws_ai_toolkit.models.chat.chat_app import ChatApp
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-from gws_ai_toolkit.models.chat.chat_conversation_dto import \
-    SaveChatConversationDTO
-from gws_ai_toolkit.models.chat.chat_conversation_service import \
-    ChatConversationService
-from gws_ai_toolkit.models.chat.chat_message import \
-    ChatMessage as ChatMessageModel
-from gws_ai_toolkit.models.chat.chat_message_dto import (ChatMessageCode,
-                                                         ChatMessageText)
+from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
+from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
+from gws_ai_toolkit.models.chat.message import ChatMessageCode, ChatMessageText
 from gws_core import BaseTestCase
 
 
@@ -45,12 +41,8 @@ class TestChatConversationService(BaseTestCase):
     def tearDown(self):
         """Clean up after each test."""
         # Delete test data - CASCADE should handle message sources
-        ChatMessageModel.delete().where(
-            ChatMessageModel.conversation == self.test_conversation
-        ).execute()
-        ChatConversation.delete().where(
-            ChatConversation.id == self.test_conversation.id
-        ).execute()
+        ChatMessageModel.delete().where(ChatMessageModel.conversation == self.test_conversation).execute()
+        ChatConversation.delete().where(ChatConversation.id == self.test_conversation.id).execute()
         ChatApp.delete().where(ChatApp.id == self.test_chat_app.id).execute()
 
     def test_save_conversation_with_text_message(self):
@@ -61,13 +53,7 @@ class TestChatConversationService(BaseTestCase):
             configuration={"model": "gpt-3.5-turbo"},
             mode="chat",
             label="New Conversation",
-            messages=[
-                ChatMessageText(
-                    role="user",
-                    content="Hello, AI!",
-                    external_id="msg_123"
-                )
-            ]
+            messages=[ChatMessageText(role="user", content="Hello, AI!", external_id="msg_123")],
         )
 
         # Create conversation
@@ -88,9 +74,7 @@ class TestChatConversationService(BaseTestCase):
         self.assertEqual(messages[0].external_id, "msg_123")
 
         # Clean up
-        ChatMessageModel.delete().where(
-            ChatMessageModel.conversation == conversation
-        ).execute()
+        ChatMessageModel.delete().where(ChatMessageModel.conversation == conversation).execute()
         conversation.delete_instance()
 
     def test_save_conversation_with_multiple_messages(self):
@@ -102,22 +86,12 @@ class TestChatConversationService(BaseTestCase):
             mode="coding",
             label="Multi-message Conversation",
             messages=[
-                ChatMessageText(
-                    role="user",
-                    content="Can you write a Python function?",
-                    external_id="msg_001"
-                ),
+                ChatMessageText(role="user", content="Can you write a Python function?", external_id="msg_001"),
                 ChatMessageCode(
-                    role="assistant",
-                    code="def hello_world():\n    print('Hello, World!')",
-                    external_id="msg_002"
+                    role="assistant", code="def hello_world():\n    print('Hello, World!')", external_id="msg_002"
                 ),
-                ChatMessageText(
-                    role="user",
-                    content="Thank you!",
-                    external_id="msg_003"
-                )
-            ]
+                ChatMessageText(role="user", content="Thank you!", external_id="msg_003"),
+            ],
         )
 
         # Create conversation
@@ -152,9 +126,7 @@ class TestChatConversationService(BaseTestCase):
         self.assertEqual(len(assistant_messages), 1)
 
         # Clean up
-        ChatMessageModel.delete().where(
-            ChatMessageModel.conversation == conversation
-        ).execute()
+        ChatMessageModel.delete().where(ChatMessageModel.conversation == conversation).execute()
         conversation.delete_instance()
 
     def test_save_conversation_without_messages(self):
@@ -165,7 +137,7 @@ class TestChatConversationService(BaseTestCase):
             configuration={"model": "gpt-4"},
             mode="chat",
             label="Empty Conversation",
-            messages=[]
+            messages=[],
         )
 
         # Create conversation
@@ -185,7 +157,7 @@ class TestChatConversationService(BaseTestCase):
 
     def test_get_conversation_folder_path(self):
         """Test getting the conversation folder path."""
-        folder_path = self.service.get_conversation_folder_path(str(self.test_conversation.id))
+        folder_path = self.test_conversation.get_conversation_folder_path()
 
         # Verify path contains conversation ID
         self.assertIn(str(self.test_conversation.id), folder_path)
@@ -199,12 +171,7 @@ class TestChatConversationService(BaseTestCase):
             configuration={},
             mode="test",
             label="To Delete",
-            messages=[
-                ChatMessageText(
-                    role="user",
-                    content="Message to delete"
-                )
-            ]
+            messages=[ChatMessageText(role="user", content="Message to delete")],
         )
         conversation = self.service.save_conversation(conversation_dto)
         conversation_id = str(conversation.id)
@@ -222,11 +189,9 @@ class TestChatConversationService(BaseTestCase):
         self.assertIsNone(result)
 
         # Verify messages were also deleted (CASCADE)
-        messages = list(ChatMessageModel.select().where(
-            ChatMessageModel.conversation == conversation_id
-        ))
+        messages = list(ChatMessageModel.select().where(ChatMessageModel.conversation == conversation_id))
         self.assertEqual(len(messages), 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

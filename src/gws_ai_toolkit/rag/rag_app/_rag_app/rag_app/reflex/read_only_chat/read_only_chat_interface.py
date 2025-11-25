@@ -29,13 +29,7 @@ def _read_only_empty_chat(config: ChatConfig) -> rx.Component:
     return rx.vstack(
         chat_header_component(config),
         rx.box(flex="1"),  # Spacer to push content to center
-        rx.heading(
-            config.state.empty_state_message,
-            size="6",
-            margin_bottom="1em",
-            text_align="center",
-            width="100%"
-        ),
+        rx.heading(config.state.empty_state_message, size="6", margin_bottom="1em", text_align="center", width="100%"),
         rx.box(flex="2"),  # Spacer to center content
         width="100%",
         flex="1",
@@ -75,7 +69,7 @@ def read_only_chat_component(config: ChatConfig) -> rx.Component:
             # Layout with messages - disabled input at bottom
             _read_only_chat_with_messages(config),
             # When no messages, center the disabled input vertically
-            _read_only_empty_chat(config)
+            _read_only_empty_chat(config),
         ),
         width="100%",
         flex="1",

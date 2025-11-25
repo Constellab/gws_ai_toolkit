@@ -1,19 +1,15 @@
-
 from dataclasses import dataclass
-from typing import List
 
 import reflex as rx
-from gws_core import (BaseModelDTO, EntityTagList, Logger, ResourceModel,
-                      ResourceSearchBuilder, TagEntityType)
-from gws_reflex_main import ReflexMainState
-
 from gws_ai_toolkit._app.ai_rag import AiExpertState
 from gws_ai_toolkit.core.utils import Utils
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_core import BaseModelDTO, EntityTagList, Logger, ResourceModel, ResourceSearchBuilder, TagEntityType
+from gws_reflex_main import ReflexMainState
 
 
 @dataclass
-class FullResourceDTO():
+class FullResourceDTO:
     is_in_rag: bool
     is_excel: bool
     rag_resource: RagResource
@@ -32,14 +28,13 @@ class AssociatedResourcesState(rx.State):
     """
 
     is_loading: bool = False
-    _linked_resources: List[FullResourceDTO] = []
+    _linked_resources: list[FullResourceDTO] = []
 
     _current_resource_id: str | None = None
     is_dialog_open: bool = False
 
     @rx.event(background=True)  # type: ignore
     async def load_from_expert_state(self) -> None:
-
         async with self:
             expert_state = await self.get_state(AiExpertState)
             resource_model = await expert_state.get_current_resource_model()
@@ -91,17 +86,19 @@ class AssociatedResourcesState(rx.State):
             search_builder.add_tag_filter(study_tag)
             search_builder.add_ordering(ResourceModel.name)
 
-            resources: List[ResourceModel] = search_builder.search_all()
-            linked_resources: List[FullResourceDTO] = []
+            resources: list[ResourceModel] = search_builder.search_all()
+            linked_resources: list[FullResourceDTO] = []
             for res in resources:
                 if res.get_id() == resource_id:
                     continue
                 rag_resource = RagResource(res)
-                linked_resources.append(FullResourceDTO(
-                    is_in_rag=rag_resource.is_synced_with_rag(),
-                    is_excel=rag_resource.get_raw_file().is_csv_or_excel(),
-                    rag_resource=rag_resource
-                ))
+                linked_resources.append(
+                    FullResourceDTO(
+                        is_in_rag=rag_resource.is_synced_with_rag(),
+                        is_excel=rag_resource.get_raw_file().is_csv_or_excel(),
+                        rag_resource=rag_resource,
+                    )
+                )
 
             async with self:
                 self._linked_resources = linked_resources
@@ -110,14 +107,15 @@ class AssociatedResourcesState(rx.State):
                 self.is_loading = False
 
     @rx.var
-    async def linked_resources_data(self) -> List[ResourceDTO]:
+    async def linked_resources_data(self) -> list[ResourceDTO]:
         return [
             ResourceDTO(
                 id=res.rag_resource.get_id(),
                 name=res.rag_resource.resource_model.name,
                 is_in_rag=res.is_in_rag,
-                is_excel=res.is_excel
-            ) for res in self._linked_resources
+                is_excel=res.is_excel,
+            )
+            for res in self._linked_resources
         ]
 
     @rx.event

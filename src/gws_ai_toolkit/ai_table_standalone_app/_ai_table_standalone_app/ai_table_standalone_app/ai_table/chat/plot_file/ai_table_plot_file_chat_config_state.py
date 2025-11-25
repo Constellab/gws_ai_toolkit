@@ -1,9 +1,8 @@
-from typing import Type, cast
+from typing import cast
 
 import reflex as rx
+from gws_ai_toolkit._app.ai_chat import AppConfigState, BaseAnalysisConfig
 from gws_core import Logger
-
-from gws_ai_toolkit._app.ai_rag import AppConfigState, BaseAnalysisConfig
 
 from .ai_table_plot_file_chat_config import AiTablePlotFileChatConfig
 
@@ -26,9 +25,9 @@ class AiTablePlotFileChatConfigState(rx.State):
         Returns:
             str: 'ai_table_plot_file_page' configuration section name
         """
-        return 'ai_table_plot_file_page'
+        return "ai_table_plot_file_page"
 
-    def get_config_class(self) -> Type[BaseAnalysisConfig]:
+    def get_config_class(self) -> type[BaseAnalysisConfig]:
         """Get the configuration class for AI Table Plot File
 
         Returns:
@@ -39,10 +38,7 @@ class AiTablePlotFileChatConfigState(rx.State):
     async def get_config(self) -> BaseAnalysisConfig:
         """Get the current configuration for this analysis type"""
         app_config_state = await AppConfigState.get_instance(self)
-        config = await app_config_state.get_config_section(
-            self.get_config_section_name(),
-            self.get_config_class()
-        )
+        config = await app_config_state.get_config_section(self.get_config_section_name(), self.get_config_class())
         return cast(BaseAnalysisConfig, config)
 
     @rx.var
@@ -68,8 +64,8 @@ class AiTablePlotFileChatConfigState(rx.State):
                    error_message is empty string if validation passes
         """
         # Get the new values from form data
-        new_model = form_data.get('model', '').strip()
-        new_temperature_str = form_data.get('temperature', '').strip()
+        new_model = form_data.get("model", "").strip()
+        new_temperature_str = form_data.get("temperature", "").strip()
 
         if not new_model:
             return "", 0.0, "Model cannot be empty"
@@ -96,10 +92,7 @@ class AiTablePlotFileChatConfigState(rx.State):
         try:
             # Update the config in AppConfigState
             app_config_state = await AppConfigState.get_instance(self)
-            result = await app_config_state.update_config_section(
-                self.get_config_section_name(),
-                new_config
-            )
+            result = await app_config_state.update_config_section(self.get_config_section_name(), new_config)
 
             # Show success message
             if result:
@@ -130,7 +123,7 @@ class AiTablePlotFileChatConfigState(rx.State):
             prompt_file_placeholder=current_config.prompt_file_placeholder,
             system_prompt=current_config.system_prompt,  # Fixed, not configurable
             model=new_model,
-            temperature=new_temperature
+            temperature=new_temperature,
         )
 
         # Save using base class method

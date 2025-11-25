@@ -1,10 +1,13 @@
 
 
+import os
+
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app import ChatApp
 from gws_ai_toolkit.models.chat.chat_conversation_dto import \
     ChatConversationDTO
-from gws_core import JSONField, Model
+from gws_ai_toolkit.models.user.user import User
+from gws_core import BrickService, JSONField, Model
 from peewee import CharField, ForeignKeyField, ModelSelect
 
 
@@ -25,6 +28,9 @@ class ChatConversation(Model):
     mode: str = CharField()
     label: str = CharField(default="")
     external_conversation_id: str | None = CharField(null=True)
+    user: User = ForeignKeyField(User, backref='+')
+
+    HISTORY_EXTENSION_FOLDER_NAME = "chat_conversations"
 
     class Meta:
         table_name = 'gws_ai_toolkit_chat_conversation'
@@ -58,4 +64,16 @@ class ChatConversation(Model):
             external_conversation_id=self.external_conversation_id,
             created_at=self.created_at,
             last_modified_at=self.last_modified_at
+        )
+
+    def get_conversation_folder_path(self) -> str:
+        """Get the folder path for storing conversation-related files.
+
+        :return: The folder path as a string
+        :rtype: str
+        """
+
+        return BrickService.get_brick_extension_dir(
+            'gws_ai_toolkit',
+            os.path.join(self.HISTORY_EXTENSION_FOLDER_NAME, self.id)
         )

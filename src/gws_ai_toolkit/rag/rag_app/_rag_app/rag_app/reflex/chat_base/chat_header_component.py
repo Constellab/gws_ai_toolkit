@@ -1,12 +1,10 @@
-from typing import List
-
 import reflex as rx
 
 from .chat_config import ChatConfig
-from .chat_state_base import ChatStateBase
+from .conversation_chat_state_base import ConversationChatStateBase
 
 
-def header_clear_chat_button_component(state: ChatStateBase) -> rx.Component:
+def header_clear_chat_button_component(state: ConversationChatStateBase) -> rx.Component:
     """Standard clear chat button component for chat headers.
 
     Provides a consistent clear chat button that can be used in any chat header.
@@ -14,7 +12,7 @@ def header_clear_chat_button_component(state: ChatStateBase) -> rx.Component:
     chat clearing functionality from the provided state.
 
     Args:
-        state (ChatStateBase): Chat state instance providing clear_chat method
+        state (ConversationChatStateBase): Chat state instance providing clear_chat method
             and clear_button_text property.
 
     Returns:
@@ -62,7 +60,7 @@ def chat_header_component(config: ChatConfig) -> rx.Component:
         # Displays title, subtitle (if present), and configured buttons
     """
 
-    header_buttons: List[rx.Component] = []
+    header_buttons: list[rx.Component] = []
     if config.header_buttons is None:
         # default value
         header_buttons = [header_clear_chat_button_component(config.state)]
@@ -70,7 +68,6 @@ def chat_header_component(config: ChatConfig) -> rx.Component:
         header_buttons = config.header_buttons(config.state)
 
     return rx.vstack(
-
         rx.hstack(
             rx.vstack(
                 rx.heading(config.state.title, size="6"),
@@ -78,12 +75,12 @@ def chat_header_component(config: ChatConfig) -> rx.Component:
                     config.state.subtitle,
                     rx.text(config.state.subtitle, size="2"),
                 ),
-                spacing="0"
+                spacing="0",
             ),
             rx.spacer(),
             *header_buttons,
             width="100%",
             align="center",
         ),
-        width="100%"
+        width="100%",
     )

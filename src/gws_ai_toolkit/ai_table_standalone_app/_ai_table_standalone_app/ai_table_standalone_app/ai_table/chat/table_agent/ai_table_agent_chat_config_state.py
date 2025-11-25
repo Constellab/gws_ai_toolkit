@@ -1,8 +1,7 @@
 from typing import cast
 
 import reflex as rx
-
-from gws_ai_toolkit._app.ai_rag import AppConfigState
+from gws_ai_toolkit._app.ai_chat import AppConfigState
 
 from .ai_table_agent_chat_config import AiTableAgentChatConfig
 
@@ -32,15 +31,12 @@ class AiTableAgentChatConfigState(rx.State):
         Returns:
             str: 'ai_table_table_agent_page' configuration section name
         """
-        return 'ai_table_table_agent_page'
+        return "ai_table_table_agent_page"
 
     async def get_config(self) -> AiTableAgentChatConfig:
         """Get the current configuration for this analysis type"""
         app_config_state = await AppConfigState.get_instance(self)
-        config = await app_config_state.get_config_section(
-            self.get_config_section_name(),
-            AiTableAgentChatConfig
-        )
+        config = await app_config_state.get_config_section(self.get_config_section_name(), AiTableAgentChatConfig)
         return cast(AiTableAgentChatConfig, config)
 
     @rx.var
@@ -66,8 +62,8 @@ class AiTableAgentChatConfigState(rx.State):
                    error_message is empty string if validation passes
         """
         # Get the new values from form data
-        new_model = form_data.get('model', '').strip()
-        new_temperature_str = form_data.get('temperature', '').strip()
+        new_model = form_data.get("model", "").strip()
+        new_temperature_str = form_data.get("temperature", "").strip()
 
         if not new_model:
             return "", 0.0, "Model cannot be empty"
@@ -93,10 +89,7 @@ class AiTableAgentChatConfigState(rx.State):
         """
         # Update the config in AppConfigState
         app_config_state = await AppConfigState.get_instance(self)
-        return await app_config_state.update_config_section(
-            self.get_config_section_name(),
-            new_config
-        )
+        return await app_config_state.update_config_section(self.get_config_section_name(), new_config)
 
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):
@@ -108,10 +101,7 @@ class AiTableAgentChatConfigState(rx.State):
             return rx.toast.error(error)
 
         # Create new config with updated values
-        new_config = AiTableAgentChatConfig(
-            model=new_model,
-            temperature=new_temperature
-        )
+        new_config = AiTableAgentChatConfig(model=new_model, temperature=new_temperature)
 
         # Save using base class method
         return await self.handle_config_save(new_config)

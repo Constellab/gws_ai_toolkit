@@ -74,10 +74,13 @@ class RagConfigState(rx.State, mixin=True):
         config = await self.get_rag_config()
         return config.rag_dataset_id
 
-    async def get_chat_id(self) -> Optional[str]:
+    async def get_chat_id_and_check(self) -> str:
         """Get the chat ID."""
         config = await self.get_rag_config()
-        return config.rag_chat_id
+        chat_id = config.rag_chat_id
+        if not chat_id:
+            raise ValueError("Chat ID is not configured")
+        return chat_id
 
     async def get_resource_sync_mode(self) -> RagResourceSyncMode:
         """Get the resource sync mode."""
