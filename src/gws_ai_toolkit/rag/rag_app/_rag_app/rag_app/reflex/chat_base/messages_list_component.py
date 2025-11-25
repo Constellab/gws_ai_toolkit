@@ -11,6 +11,7 @@ from gws_ai_toolkit.models.chat.message import (
     ChatUserMessageText,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
+from gws_core.apps.reflex._gws_reflex.gws_reflex_main.components.reflex_user_components import user_profile_picture
 
 from .chat_config import ChatConfig
 from .conversation_chat_state_base import ConversationChatStateBase
@@ -33,8 +34,8 @@ def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
 
     return rx.cond(
         message.role == "user",
-        # User message - right aligned with darker background (exact same as chat page)
-        rx.box(
+        # User message - right aligned with darker background and profile picture
+        rx.hstack(
             rx.box(
                 _message_content(message, config),
                 background_color="var(--accent-10)",
@@ -44,8 +45,14 @@ def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
                 word_wrap="break-word",
                 color="white",
             ),
-            display="flex",
-            justify_content="flex-end",
+            rx.cond(
+                message.user,
+                user_profile_picture(message.user, size="normal"),
+                rx.box(),
+            ),
+            spacing="2",
+            align_items="flex-start",
+            justify="end",
             margin="8px 0",
             width="100%",
         ),
