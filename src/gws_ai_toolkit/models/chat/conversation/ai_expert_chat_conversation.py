@@ -13,7 +13,7 @@ from gws_ai_toolkit.models.chat.message import ChatMessageError, ChatMessageImag
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
-from .base_chat_conversation import BaseChatConversation
+from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 
 AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks", "full_file"]
 
@@ -78,10 +78,14 @@ class AiExpertChatConversation(BaseChatConversation):
     _current_external_response_id: str | None = None
 
     def __init__(
-        self, chat_app_name: str, config: AiExpertConfig, rag_app_service: BaseRagAppService, rag_resource: RagResource
+        self,
+        config: BaseChatConversationConfig,
+        chat_config: AiExpertConfig,
+        rag_app_service: BaseRagAppService,
+        rag_resource: RagResource,
     ) -> None:
-        super().__init__(chat_app_name, config.to_json_dict(), "ai_expert")
-        self.config = config
+        super().__init__(config, mode="ai_expert", chat_configuration=chat_config.to_json_dict())
+        self.config = chat_config
         self.rag_app_service = rag_app_service
         self.rag_resource = rag_resource
         self.openai_file_id = None
@@ -260,7 +264,7 @@ class AiExpertChatConversation(BaseChatConversation):
                     error=f"[Error loading file: {str(e)}]",
                     external_id=self._current_external_response_id,
                 )
-                return self._conversation_service.save_message(self._conversation.id, message=error_message)
+                return self.save_message(message=error_message)
 
         return None
 
@@ -280,13 +284,13 @@ class AiExpertChatConversation(BaseChatConversation):
                 image_data = Image.open(io.BytesIO(file_data_binary.content))
                 image_message = ChatMessageImage(image=image_data, external_id=self._current_external_response_id)
 
-                return self._conversation_service.save_message(self._conversation.id, message=image_message)
+                return self.save_message(message=image_message)
             else:
                 text_message = ChatMessageText(
                     content=f"File '{filename}' has been generated.",
                     external_id=self._current_external_response_id,
                 )
-                return self._conversation_service.save_message(self._conversation.id, message=text_message)
+                return self.save_message(message=text_message)
 
         except Exception as e:
             Logger.log_exception_stack_trace(e)

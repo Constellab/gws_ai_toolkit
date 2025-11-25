@@ -30,22 +30,11 @@ class ChatMessageCode(ChatMessageBase):
     role: Literal["assistant"] = "assistant"
     code: str
 
-    @classmethod
-    def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessageCode":
-        """Convert database ChatMessage model to ChatMessageCode DTO.
-
-        :param chat_message: The database ChatMessage instance to convert
-        :type chat_message: ChatMessage
-        :return: ChatMessageCode DTO instance
-        :rtype: ChatMessageCode
+    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+        """Fill additional fields from the ChatMessageModel.
+        This is called after the initial creation in from_chat_message_model.
         """
-        sources = [source.to_rag_dto() for source in chat_message.sources]
-        return cls(
-            id=chat_message.id,
-            external_id=chat_message.external_id,
-            sources=sources,
-            code=chat_message.data.get("code", ""),
-        )
+        self.code = chat_message.data.get("code", "")
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.

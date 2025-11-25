@@ -1,10 +1,14 @@
 import os
 from abc import abstractmethod
 from json import dump, load
-from typing import Type
 
 import reflex as rx
 from gws_core import BaseModelDTO, Logger
+
+
+class AppConfigStateConfig(BaseModelDTO):
+    configuration_file_path: str
+    chat_app_name: str
 
 
 class AppConfigState(rx.State, mixin=True):
@@ -28,18 +32,26 @@ class AppConfigState(rx.State, mixin=True):
     # Required properties
     _config: dict
 
-    _config_file_path: str = ''
+    _app_config: AppConfigStateConfig
 
-    __sub_class_type__: Type['AppConfigState'] | None = None
+    __sub_class_type__: type["AppConfigState"] | None = None
 
     @abstractmethod
-    async def _get_config_file_path(self) -> str:
+    async def _get_config(self) -> AppConfigStateConfig:
         pass
 
+    async def get_app_config(self) -> AppConfigStateConfig:
+        if not self._app_config:
+            self._app_config = await self._get_config()
+        return self._app_config
+
     async def get_config_file_path(self) -> str:
-        if not self._config_file_path:
-            self._config_file_path = await self._get_config_file_path()
-        return self._config_file_path
+        config = await self.get_app_config()
+        return config.configuration_file_path
+
+    async def get_chat_app_name(self) -> str:
+        config = await self.get_app_config()
+        return config.chat_app_name
 
     async def config(self) -> dict:
         """Get the current app configuration."""
@@ -52,7 +64,7 @@ class AppConfigState(rx.State, mixin=True):
 
         return self._config
 
-    async def get_config_section(self, key: str, type_: Type[BaseModelDTO]) -> BaseModelDTO:
+    async def get_config_section(self, key: str, type_: type[BaseModelDTO]) -> BaseModelDTO:
         """Get a specific section of the configuration as a DTO."""
         config = await self.config()
         if key not in config:
@@ -81,7 +93,7 @@ class AppConfigState(rx.State, mixin=True):
             return {}
 
         try:
-            with open(config_file_path, 'r', encoding='utf-8') as file:
+            with open(config_file_path, encoding="utf-8") as file:
                 return load(file)
         except Exception as e:
             Logger.error(f"Error reading config file: {e}")
@@ -95,13 +107,13 @@ class AppConfigState(rx.State, mixin=True):
             raise ValueError("Config file path is not set.")
 
         try:
-            with open(config_file_path, 'w', encoding='utf-8') as file:
+            with open(config_file_path, "w", encoding="utf-8") as file:
                 dump(config, file)
         except Exception as e:
             raise ValueError(f"Error writing config file: {e}")
 
     @staticmethod
-    async def get_instance(state: rx.State) -> 'AppConfigState':
+    async def get_instance(state: rx.State) -> "AppConfigState":
         """Get the AppConfigState instance from any state."""
 
         if AppConfigState.__sub_class_type__ is None:
@@ -114,7 +126,7 @@ class AppConfigState(rx.State, mixin=True):
         return await state.get_state(AppConfigState.__sub_class_type__)
 
     @staticmethod
-    def set_config_state_class_type(state_type: Type['AppConfigState']):
+    def set_config_state_class_type(state_type: type["AppConfigState"]):
         """Set the AppConfigState subclass type for the app.
 
         This method should be called during app initialization to register

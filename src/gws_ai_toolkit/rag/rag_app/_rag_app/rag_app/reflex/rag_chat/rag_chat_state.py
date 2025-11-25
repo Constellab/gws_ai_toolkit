@@ -1,6 +1,10 @@
 import reflex as rx
-from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
+from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
+    BaseChatConversation,
+    BaseChatConversationConfig,
+)
 from gws_ai_toolkit.models.chat.conversation.rag_chat_conversation import RagChatConversation
+from gws_reflex_main import ReflexMainState
 
 from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from .config.rag_config_state import RagConfigState
@@ -45,14 +49,15 @@ class RagChatState(ConversationChatStateBase, rx.State):
 
         chat_app_name = await rag_app_state.get_chat_app_name()
 
+        main_state = await self.get_state(ReflexMainState)
+        user = await main_state.get_current_user()
+
+        conv_config = BaseChatConversationConfig(
+            chat_app_name, store_conversation_in_db=True, user=user.to_dto() if user else None
+        )
+
         return RagChatConversation(
-            chat_app_name=chat_app_name,
-            # TODO check what to do with configuration
-            configuration={},
+            config=conv_config,
             rag_app_service=rag_app_service,
             rag_chat_id=await rag_app_state.get_chat_id_and_check(),
         )
-
-    def _after_chat_cleared(self):
-        """Reset any RAG-specific state after chat is cleared."""
-        pass

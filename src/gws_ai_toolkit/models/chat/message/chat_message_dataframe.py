@@ -32,40 +32,25 @@ class ChatMessageDataframe(ChatMessageBase):
 
     type: Literal["dataframe"] = "dataframe"
     role: Literal["assistant"] = "assistant"
-    dataframe: DataFrame | None
+    dataframe: DataFrame | None = None
     content: str | None = None  # additional member
     dataframe_name: str | None = None
 
     class Config:
         arbitrary_types_allowed = True
 
-    @classmethod
-    def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessageDataframe":
-        """Convert database ChatMessage model to ChatMessageDataframe DTO.
-
-        :param chat_message: The database ChatMessage instance to convert
-        :type chat_message: ChatMessage
-        :return: ChatMessageDataframe DTO instance
-        :rtype: ChatMessageDataframe
+    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+        """Fill additional fields from the ChatMessageModel.
+        This is called after the initial creation in from_chat_message_model.
         """
-        sources = [source.to_rag_dto() for source in chat_message.sources]
-        dataframe: DataFrame | None = None
-
-        file_path = chat_message._get_filepath_if_exists()
+        file_path = chat_message.get_filepath_if_exists()
         if file_path:
             try:
-                dataframe = pd.read_csv(file_path)
+                self.dataframe = pd.read_csv(file_path)
             except Exception:
-                dataframe = None
-
-        return cls(
-            id=chat_message.id,
-            external_id=chat_message.external_id,
-            sources=sources,
-            dataframe=dataframe,
-            content=chat_message.message,
-            dataframe_name=chat_message.data.get("dataframe_name", None),
-        )
+                self.dataframe = None
+        else:
+            self.dataframe = None
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.

@@ -4,7 +4,7 @@ from gws_ai_toolkit.models.chat.message import AllChatMessages
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_models import RagChatEndStreamResponse, RagChatSource, RagChatStreamResponse
 
-from .base_chat_conversation import BaseChatConversation
+from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 
 
 class RagChatConversation(BaseChatConversation):
@@ -19,9 +19,9 @@ class RagChatConversation(BaseChatConversation):
     rag_chat_id: str
 
     def __init__(
-        self, chat_app_name: str, configuration: dict, rag_app_service: BaseRagAppService, rag_chat_id: str
+        self, config: BaseChatConversationConfig, rag_app_service: BaseRagAppService, rag_chat_id: str
     ) -> None:
-        super().__init__(chat_app_name, configuration, "RAG")
+        super().__init__(config, "RAG")
         self.rag_app_service = rag_app_service
         self.rag_chat_id = rag_chat_id
 
@@ -39,13 +39,10 @@ class RagChatConversation(BaseChatConversation):
         Yields:
             ChatMessageText: The current message being streamed with updated content
         """
-        external_conversation_id = None
-        if self._conversation:
-            external_conversation_id = self._conversation.external_conversation_id
 
         stream = self.rag_app_service.send_message_stream(
             query=user_message,
-            conversation_id=external_conversation_id,
+            conversation_id=self._external_conversation_id,
             chat_id=self.rag_chat_id,
         )
 
@@ -63,16 +60,15 @@ class RagChatConversation(BaseChatConversation):
 
         # Process the final response
         sources: list[RagChatSource] = []
-        conversation_id: str | None = None
+        external_conversation_id: str | None = None
 
         if end_message_response:
-            conversation_id = end_message_response.session_id
+            external_conversation_id = end_message_response.session_id
             if end_message_response.sources:
                 sources = end_message_response.sources
 
-            if conversation_id and self._conversation:
-                self._conversation.external_conversation_id = conversation_id
-                self._conversation.save()
+            if external_conversation_id and self._conversation_id:
+                self.set_conversation_external_id(external_conversation_id)
 
         # Close the current message and save it
         message = self.close_current_message(external_id=external_id, sources=sources)

@@ -82,7 +82,3 @@ class ReadOnlyChatState(ConversationChatStateBase, rx.State):
             return json.dumps(self.current_configuration, indent=2, ensure_ascii=False)
         except Exception:
             return json.dumps({"error": "Failed to serialize configuration"}, indent=2)
-
-    def _after_chat_cleared(self):
-        """Reset any analysis-specific state after chat is cleared."""
-        # No additional state to reset for RAG chat currently

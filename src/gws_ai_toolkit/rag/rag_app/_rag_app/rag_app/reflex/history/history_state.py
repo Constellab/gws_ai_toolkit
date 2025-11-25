@@ -1,14 +1,9 @@
-from typing import List, Optional
-
 import reflex as rx
-from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
-from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-from gws_ai_toolkit.models.chat.chat_conversation_dto import \
-    ChatConversationDTO
-from gws_ai_toolkit.models.chat.chat_conversation_service import \
-    ChatConversationService
+from gws_ai_toolkit.models.chat.chat_conversation_dto import ChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
+from gws_reflex_main import ReflexMainState
 
-from ..rag_chat.config.rag_config_state import RagConfigState
+from ..core.app_config_state import AppConfigState
 from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
 
 
@@ -33,10 +28,10 @@ class HistoryState(rx.State):
     """
 
     # List of conversations to display in the left panel
-    conversations: List[ChatConversationDTO] = []
+    conversations: list[ChatConversationDTO] = []
 
     # Currently selected conversation
-    selected_conversation_id: Optional[str] = None
+    selected_conversation_id: str | None = None
 
     # Loading state
     is_loading: bool = False
@@ -48,17 +43,18 @@ class HistoryState(rx.State):
 
         try:
             # Get chat app name
-            app_config_state = await RagConfigState.get_instance(self)
+            app_config_state = await AppConfigState.get_instance(self)
+            main_state = await self.get_state(ReflexMainState)
             chat_app_name = await app_config_state.get_chat_app_name()
 
             # Get conversations using the service
             conversation_service = ChatConversationService()
-            conversations = conversation_service.get_conversations_by_chat_app(
-                chat_app_name=chat_app_name
-            )
 
-            # Convert ChatConversation models to ChatConversationDTOs
-            self.conversations = [conv.to_dto() for conv in conversations]
+            with await main_state.authenticate_user():
+                conversations = conversation_service.get_my_conversations_by_chat_app(chat_app_name=chat_app_name)
+
+                # Convert ChatConversation models to ChatConversationDTOs
+                self.conversations = [conv.to_dto() for conv in conversations]
         finally:
             self.is_loading = False
 
@@ -69,12 +65,10 @@ class HistoryState(rx.State):
 
         # Initialize read-only chat state
         read_only_state: ReadOnlyChatState = await self.get_state(ReadOnlyChatState)
-        await read_only_state.initialize_with_conversation_id(
-            conversation_id
-        )
+        await read_only_state.initialize_with_conversation_id(conversation_id)
 
     @rx.var
-    def selected_conversation(self) -> Optional[ChatConversationDTO]:
+    def selected_conversation(self) -> ChatConversationDTO | None:
         """Get the currently selected conversation."""
         if not self.selected_conversation_id:
             return None

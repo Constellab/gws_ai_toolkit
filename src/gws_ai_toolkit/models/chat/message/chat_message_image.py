@@ -31,37 +31,24 @@ class ChatMessageImage(ChatMessageBase):
     type: Literal["image"] = "image"
     role: Literal["assistant"] = "assistant"
 
-    image: Image.Image | None
+    image: Image.Image | None = None
 
     class Config:
         arbitrary_types_allowed = True
 
-    @classmethod
-    def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessageImage":
-        """Convert database ChatMessage model to ChatMessageImage DTO.
-
-        :param chat_message: The database ChatMessage instance to convert
-        :type chat_message: ChatMessage
-        :return: ChatMessageImage DTO instance
-        :rtype: ChatMessageImage
+    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+        """Fill additional fields from the ChatMessageModel.
+        This is called after the initial creation in from_chat_message_model.
         """
-        sources = [source.to_rag_dto() for source in chat_message.sources]
-        image: Image.Image | None = None
-
-        file_path = chat_message._get_filepath_if_exists()
+        file_path = chat_message.get_filepath_if_exists()
         if file_path:
             # Load image from file
             try:
-                image = Image.open(file_path)
+                self.image = Image.open(file_path)
             except Exception:
-                pass
-
-        return cls(
-            id=chat_message.id,
-            external_id=chat_message.external_id,
-            sources=sources,
-            image=image,
-        )
+                self.image = None
+        else:
+            self.image = None
 
     def _save_image_to_message(self, message: "ChatMessageModel") -> None:
         """Save the image to the conversation folder and update message filename.

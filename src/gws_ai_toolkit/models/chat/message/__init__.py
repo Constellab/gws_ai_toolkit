@@ -22,10 +22,12 @@ from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePl
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
 from gws_ai_toolkit.models.chat.message.chat_message_text import (
     ChatMessageText,
-    ChatUserMessageText,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_types import (
     AllChatMessages,
+)
+from gws_ai_toolkit.models.chat.message.chat_user_message import (
+    ChatUserMessageText,
 )
 
 __all__ = [

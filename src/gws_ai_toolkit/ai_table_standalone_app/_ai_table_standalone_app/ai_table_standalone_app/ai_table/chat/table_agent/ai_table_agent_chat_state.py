@@ -4,10 +4,14 @@ from gws_ai_toolkit.models.chat.conversation.ai_table_agent_chat_conversation im
     AiTableAgentChatConfig,
     AiTableAgentChatConversation,
 )
-from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
+from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
+    BaseChatConversation,
+    BaseChatConversationConfig,
+)
 from gws_ai_toolkit.models.chat.message import ChatMessageDataframe
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_core.impl.table.table import Table
+from gws_reflex_main import ReflexMainState
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_agent_chat_config_state import AiTableAgentChatConfigState
@@ -61,16 +65,22 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
         app_config_state = await self.get_state(AiTableAgentChatConfigState)
         config: AiTableAgentChatConfig = await app_config_state.get_config()
 
+        main_state = await self.get_state(ReflexMainState)
+        user = await main_state.get_current_user()
+
+        conv_config = BaseChatConversationConfig(
+            "ai_table_unified", store_conversation_in_db=False, user=user.to_dto() if user else None
+        )
+
         return AiTableAgentChatConversation(
-            chat_app_name="ai_table_unified",
-            config=config,
+            config=conv_config,
+            chat_configuration=config,
             table=table,
             table_name=table_name,
         )
 
-    def _after_chat_cleared(self):
-        """Reset any analysis-specific state after chat is cleared."""
-        pass
+    async def configure_conversation_before_message(self, conversation: BaseChatConversation) -> None:
+        return await super().configure_conversation_before_message(conversation)
 
     async def _after_message_added(self, message: ChatMessageBase):
         if isinstance(message, ChatMessageDataframe) and message.dataframe is not None:

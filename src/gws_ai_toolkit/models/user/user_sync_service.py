@@ -1,7 +1,3 @@
-
-
-from typing import Type
-
 from gws_core import User as GwsCoreUser
 from gws_core import UserSyncService, event_listener
 
@@ -22,7 +18,7 @@ class AiToolkitUserSyncService(UserSyncService[User]):
     The service is decorated with @event_listener to register it with the event system.
     """
 
-    def get_user_type(self) -> Type[User]:
+    def get_user_type(self) -> type[User]:
         """
         Return the custom user model class type.
 
@@ -31,7 +27,7 @@ class AiToolkitUserSyncService(UserSyncService[User]):
         """
         return User
 
-    def update_custom_user_attributes(self, custom_user: User, gws_core_user: GwsCoreUser) -> User:
+    def from_gws_core_user(self, gws_core_user: GwsCoreUser) -> User:
         """
         Update the attributes of an AI Toolkit user object with data from a gws_core user.
 
@@ -48,10 +44,4 @@ class AiToolkitUserSyncService(UserSyncService[User]):
         :return: The updated AI Toolkit user object (NOT saved to database)
         :rtype: User
         """
-        custom_user.email = gws_core_user.email
-        custom_user.first_name = gws_core_user.first_name
-        custom_user.last_name = gws_core_user.last_name
-        custom_user.group = gws_core_user.group
-        custom_user.is_active = gws_core_user.is_active
-        custom_user.photo = gws_core_user.photo
-        return custom_user
+        return User.from_gws_core_user(gws_core_user)

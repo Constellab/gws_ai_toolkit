@@ -17,8 +17,8 @@ class ChatMessageSource(Model):
     """
 
     message = ForeignKeyField(ChatMessageModel, backref="sources", on_delete="CASCADE")
-    document_id: str = CharField()
-    document_name: str = CharField()
+    document_id: str = CharField(max_length=100)
+    document_name: str = CharField(max_length=100)
     score: float = FloatField(default=0)
     chunks: list = JSONField()
 

@@ -183,6 +183,7 @@ def _message_content(message: ChatMessage, config: ChatConfig) -> rx.Component: 
     # Default renderers for each type
     default_renderers = {
         "text": _text_content,
+        "user-text": _text_content,
         "image": _image_content,
         "code": _code_content,
         "plotly": _plotly_content,

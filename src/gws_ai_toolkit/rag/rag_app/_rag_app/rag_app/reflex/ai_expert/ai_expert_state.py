@@ -1,7 +1,11 @@
 import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import AiExpertChatConversation, AiExpertConfig
-from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
+from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
+    BaseChatConversation,
+    BaseChatConversationConfig,
+)
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_reflex_main import ReflexMainState
 
 from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from ..rag_chat.config.rag_config_state import RagConfigState
@@ -51,17 +55,32 @@ class AiExpertState(ConversationChatStateBase, rx.State):
                 the RAG service and document.
         """
         # Get RAG app service
+        if not self._rag_resource:
+            raise ValueError("RAG resource not set for AI Expert conversation")
+
         rag_config_state = await RagConfigState.get_instance(self)
         rag_app_service = await rag_config_state.get_dataset_rag_app_service()
         if not rag_app_service:
             raise ValueError("RAG service not available")
 
+        chat_app_name = await rag_config_state.get_chat_app_name()
+
         # Get config
         app_config_state = await self.get_state(AiExpertConfigState)
         config: AiExpertConfig = await app_config_state.get_config()
 
+        main_state = await self.get_state(ReflexMainState)
+        user = await main_state.get_current_user()
+
+        conv_config = BaseChatConversationConfig(
+            chat_app_name, store_conversation_in_db=True, user=user.to_dto() if user else None
+        )
+
         return AiExpertChatConversation(
-            chat_app_name="ai_expert", config=config, rag_app_service=rag_app_service, rag_resource=self._rag_resource
+            config=conv_config,
+            chat_config=config,
+            rag_app_service=rag_app_service,
+            rag_resource=self._rag_resource,
         )
 
     async def load_resource_from_url(self) -> None:
@@ -84,10 +103,6 @@ class AiExpertState(ConversationChatStateBase, rx.State):
 
         self.subtitle = rag_resource.resource_model.name
         self._rag_resource = rag_resource
-
-    def _after_chat_cleared(self):
-        """Reset any AI Expert-specific state after chat is cleared."""
-        pass
 
     @rx.event
     async def open_current_resource_file(self):

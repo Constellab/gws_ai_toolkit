@@ -14,11 +14,14 @@ from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePl
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
 from gws_ai_toolkit.models.chat.message.chat_message_text import (
     ChatMessageText,
+)
+from gws_ai_toolkit.models.chat.message.chat_user_message import (
     ChatUserMessageText,
 )
 
 # Register all message types in the registry for polymorphic conversion
 ChatMessageBase.register_type("text", ChatMessageText)
+ChatMessageBase.register_type("user-text", ChatUserMessageText)
 ChatMessageBase.register_type("code", ChatMessageCode)
 ChatMessageBase.register_type("image", ChatMessageImage)
 ChatMessageBase.register_type("plotly", ChatMessagePlotly)

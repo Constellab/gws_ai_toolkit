@@ -3,7 +3,6 @@ from __future__ import annotations
 from gws_core import BaseModelDTO, ModelDTO
 
 from gws_ai_toolkit.models.chat.message import ChatMessageBase
-from gws_ai_toolkit.models.chat.message.chat_message_text import ChatUserMessageText
 
 
 class ChatConversationDTO(ModelDTO):
@@ -34,14 +33,3 @@ class SaveChatConversationDTO(BaseModelDTO):
     label: str | None = ""
     external_conversation_id: str | None = None
     messages: list[ChatMessageBase] | None = []
-
-    def get_default_label(self) -> str:
-        if self.messages and len(self.messages) > 0:
-            users_message = [msg for msg in self.messages if isinstance(msg, ChatUserMessageText)]
-            if users_message and len(users_message) > 0:
-                first_message = users_message[0]
-                label = first_message.content[:60]
-                if label:
-                    return label
-
-        return "New Conversation"

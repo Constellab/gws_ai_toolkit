@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from gws_core import BaseModelDTO
+from gws_core import BaseModelDTO, UserDTO
 
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
@@ -43,9 +43,10 @@ class ChatMessageBase(BaseModelDTO):
     """
 
     id: str | None = None
-    role: Literal["user", "assistant"]
+    role: Literal["user", "assistant"] = "assistant"
     external_id: str | None = None
     sources: list[RagChatSource] | None = []
+    user: UserDTO | None = None
 
     # Class registry for type-to-class mapping
     _type_registry: ClassVar[dict[str, type["ChatMessageBase"]]] = {}
@@ -81,18 +82,29 @@ class ChatMessageBase(BaseModelDTO):
         :rtype: ChatMessageBase
         """
         # Import here to avoid circular imports
-        from gws_ai_toolkit.models.chat.message.chat_message_text import ChatUserMessageText
 
         # Handle user messages
-        if chat_message.role == "user":
-            return ChatUserMessageText.from_chat_message_model(chat_message)
-
-        # Use registry to find the appropriate class
         message_class = cls._type_registry.get(chat_message.type)
-        if message_class:
-            return message_class.from_chat_message_model(chat_message)
 
-        raise ValueError(f"Unsupported chat message type: {chat_message.type}")
+        if not message_class:
+            raise ValueError(f"Unsupported chat message type: {chat_message.type}")
+
+        # create the object with basic fields
+        message = message_class(
+            id=chat_message.id,
+            external_id=chat_message.external_id,
+            sources=[source.to_rag_dto() for source in chat_message.sources],
+            user=chat_message.user.to_dto(),
+        )
+
+        message.fill_from_model(chat_message)
+
+        return message
+
+    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+        """Fill additional fields from the ChatMessageModel.
+        This is called after the initial creation in from_chat_message_model.
+        """
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.

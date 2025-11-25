@@ -32,37 +32,24 @@ class ChatMessagePlotly(ChatMessageBase):
 
     type: Literal["plotly"] = "plotly"
     role: Literal["assistant"] = "assistant"
-    figure: go.Figure | None
+    figure: go.Figure | None = None
 
     class Config:
         arbitrary_types_allowed = True
 
-    @classmethod
-    def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessagePlotly":
-        """Convert database ChatMessage model to ChatMessagePlotly DTO.
-
-        :param chat_message: The database ChatMessage instance to convert
-        :type chat_message: ChatMessage
-        :return: ChatMessagePlotly DTO instance
-        :rtype: ChatMessagePlotly
+    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+        """Fill additional fields from the ChatMessageModel.
+        This is called after the initial creation in from_chat_message_model.
         """
-        sources = [source.to_rag_dto() for source in chat_message.sources]
-        figure: go.Figure | None = None
-
-        file_path = chat_message._get_filepath_if_exists()
+        file_path = chat_message.get_filepath_if_exists()
         if file_path:
             # Load figure from file
             try:
-                figure = pio.read_json(file_path)
+                self.figure = pio.read_json(file_path)
             except Exception:
-                figure = None
-
-        return cls(
-            id=chat_message.id,
-            external_id=chat_message.external_id,
-            sources=sources,
-            figure=figure,
-        )
+                self.figure = None
+        else:
+            self.figure = None
 
     def _save_figure_to_message(self, message: "ChatMessageModel") -> None:
         """Save the Plotly figure to the conversation folder and update message filename.

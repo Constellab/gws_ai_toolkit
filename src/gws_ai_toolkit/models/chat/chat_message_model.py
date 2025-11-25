@@ -1,8 +1,8 @@
 import os
 from typing import TYPE_CHECKING, Literal
 
-from gws_core import Model
-from peewee import CharField, ForeignKeyField
+from gws_core import JSONField, Model
+from peewee import CharField, ForeignKeyField, TextField
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
@@ -26,12 +26,12 @@ class ChatMessageModel(Model):
     """
 
     conversation: ChatConversation = ForeignKeyField(ChatConversation, backref="+", on_delete="CASCADE")
-    role: Literal["user", "assistant"] = CharField()
-    type: str = CharField()
-    external_id: str | None = CharField(null=True)
-    message: str | None = CharField(null=True)
-    filename: str | None = CharField(null=True)
-    data: dict = CharField(null=True)
+    role: Literal["user", "assistant"] = CharField(max_length=20)
+    type: str = CharField(max_length=20)
+    external_id: str | None = CharField(null=True, max_length=100)
+    message: str | None = TextField(null=True)
+    filename: str | None = CharField(null=True, max_length=100)
+    data: dict = JSONField(null=True)
     user: User = ForeignKeyField(User, backref="+")
 
     sources: list["ChatMessageSource"]
@@ -84,7 +84,7 @@ class ChatMessageModel(Model):
 
         return ChatMessageBase.from_chat_message_model(self)
 
-    def _get_filepath_if_exists(self) -> str | None:
+    def get_filepath_if_exists(self) -> str | None:
         """Get the full file path for the message's filename if it exists.
 
         :param conversation_folder_path: The folder path of the conversation

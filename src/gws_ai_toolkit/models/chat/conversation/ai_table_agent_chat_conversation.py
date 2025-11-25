@@ -13,7 +13,7 @@ from gws_ai_toolkit.models.chat.message import (
     ChatMessagePlotly,
 )
 
-from .base_chat_conversation import BaseChatConversation
+from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 
 
 class AiTableAgentChatConfig(BaseModelDTO):
@@ -56,13 +56,13 @@ class AiTableAgentChatConversation(BaseChatConversation):
 
     def __init__(
         self,
-        chat_app_name: str,
-        config: AiTableAgentChatConfig,
+        config: BaseChatConversationConfig,
+        chat_configuration: AiTableAgentChatConfig,
         table: Table,
         table_name: str | None = None,
     ) -> None:
-        super().__init__(chat_app_name, config.to_json_dict(), "ai_table_unified")
-        self.config = config
+        super().__init__(config, mode="ai_table_unified", chat_configuration=chat_configuration.to_json_dict())
+        self.config = chat_configuration
         self.table = table
         self.table_name = table_name
         self._last_response_id = None
@@ -150,9 +150,7 @@ class AiTableAgentChatConversation(BaseChatConversation):
                 return None
 
             plotly_message = ChatMessagePlotly(figure=event.figure, external_id=event.response_id)
-            saved_message = self._conversation_service.save_message(
-                conversation_id=self._conversation.id, message=plotly_message
-            )
+            saved_message = self.save_message(message=plotly_message)
             return saved_message
 
         elif event.type == "dataframe_transform":
@@ -169,20 +167,16 @@ class AiTableAgentChatConversation(BaseChatConversation):
                 dataframe_name=new_table_name,
                 external_id=event.response_id,
             )
-            saved_message = self._conversation_service.save_message(
-                conversation_id=self._conversation.id, message=hint_message
-            )
+            saved_message = self.save_message(message=hint_message)
             return saved_message
 
-        elif event.type == "error" or event.type == "function_error":
+        elif event.type in {"error", "function_error"}:
             # Handle errors
             error_message = ChatMessageError(
                 error=event.message,
                 external_id=getattr(event, "response_id", None),
             )
-            saved_message = self._conversation_service.save_message(
-                conversation_id=self._conversation.id, message=error_message
-            )
+            saved_message = self.save_message(message=error_message)
             return saved_message
 
         elif event.type == "sub_agent_success":

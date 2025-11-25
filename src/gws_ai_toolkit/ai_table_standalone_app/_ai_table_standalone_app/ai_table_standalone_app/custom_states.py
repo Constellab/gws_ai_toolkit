@@ -1,10 +1,13 @@
 import reflex as rx
-from gws_ai_toolkit._app.ai_chat import AppConfigState
+from gws_ai_toolkit._app.ai_chat import AppConfigState, AppConfigStateConfig
 from gws_reflex_main import ReflexMainState
 
 
 class CustomAppConfigState(AppConfigState, rx.State):
-    async def _get_config_file_path(self) -> str:
+    async def _get_config(self) -> AppConfigStateConfig:
         base_state = await self.get_state(ReflexMainState)
-        config = await base_state.get_param("configuration_file_path")
-        return config or ""
+        params = await base_state.get_params()
+        return AppConfigStateConfig(
+            configuration_file_path=params.get("configuration_file_path", ""),
+            chat_app_name=params.get("chat_app_name", ""),
+        )

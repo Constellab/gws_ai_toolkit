@@ -68,8 +68,12 @@ class ConversationChatStateBase(rx.State, mixin=True):
         """
 
     @abstractmethod
-    def _after_chat_cleared(self):
-        """Hook called after chat is cleared to reset implementation-specific state"""
+    async def configure_conversation_before_message(self, conversation: BaseChatConversation) -> None:
+        """Hook to configure the conversation before processing a new message.
+
+        Args:
+            conversation (BaseChatConversation): The conversation instance
+        """
 
     async def _after_message_added(self, message: ChatMessageBase):
         """Hook called after a new message is added to the chat.
@@ -118,6 +122,8 @@ class ConversationChatStateBase(rx.State, mixin=True):
 
         await sleep(0.1)  # Allow UI to update before starting streaming
 
+        await self.configure_conversation_before_message(conversation)
+
         try:
             with await main_state.authenticate_user():
                 # Call conversation and process the AI chat stream
@@ -147,7 +153,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
         self._chat_messages = []
         self.current_response_message = None
         self.is_streaming = False
-        self._after_chat_cleared()
 
     @rx.event
     def open_ai_expert(self, rag_document_id: str):

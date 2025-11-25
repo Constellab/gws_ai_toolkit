@@ -7,34 +7,37 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
-class ChatMessageError(ChatMessageBase):
-    """Chat message representing an error.
+class ChatUserMessageDataframeText(ChatMessageBase):
+    """Chat message containing text content from user.
 
-    Specialized chat message for conveying error information within the
-    chat conversation. Used to inform users about issues or problems
-    encountered during interactions.
+    Specialized chat message for text-based content from users, ensuring proper typing
+    and validation for text messages. This is the most common message type
+    in chat conversations.
 
     Attributes:
-        type: Fixed as "error" to identify this as an error message
-        error (str): The error message content
+        type: Fixed as "text" to identify this as a text message
+        content (str): The text content of the message
 
     Example:
-        error_msg = ChatMessageError(
-            role="assistant",
-            error="An error occurred while processing your request.",
-            id="msg_error_123"
+        text_msg = ChatUserMessageText(
+            role="user",
+            content="What is the weather today?",
+            id="msg_text_123"
         )
     """
 
-    type: Literal["error"] = "error"
-    role: Literal["assistant"] = "assistant"
-    error: str = ""
+    type: Literal["user-dataframe-text"] = "user-dataframe-text"
+    role: Literal["user"] = "user"
+    content: str = ""
+
+    dataframe_ids: list[str] = []
+    tables_ids: list[str] = []
 
     def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
         """Fill additional fields from the ChatMessageModel.
         This is called after the initial creation in from_chat_message_model.
         """
-        self.error = chat_message.message or ""
+        self.content = chat_message.message or ""
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.
@@ -50,6 +53,6 @@ class ChatMessageError(ChatMessageBase):
             conversation=conversation,
             role=self.role,
             type_=self.type,
-            content=self.error,
+            content=self.content,
             external_id=self.external_id,
         )

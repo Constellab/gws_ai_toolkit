@@ -28,24 +28,13 @@ class ChatMessageHint(ChatMessageBase):
 
     type: Literal["hint"] = "hint"
     role: Literal["assistant"] = "assistant"
-    content: str
+    content: str = ""
 
-    @classmethod
-    def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessageHint":
-        """Convert database ChatMessage model to ChatMessageHint DTO.
-
-        :param chat_message: The database ChatMessage instance to convert
-        :type chat_message: ChatMessage
-        :return: ChatMessageHint DTO instance
-        :rtype: ChatMessageHint
+    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+        """Fill additional fields from the ChatMessageModel.
+        This is called after the initial creation in from_chat_message_model.
         """
-        sources = [source.to_rag_dto() for source in chat_message.sources]
-        return cls(
-            id=chat_message.id,
-            external_id=chat_message.external_id,
-            sources=sources,
-            content=chat_message.message,
-        )
+        self.content = chat_message.message or ""
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.

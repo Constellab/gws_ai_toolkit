@@ -20,7 +20,7 @@ class ChatConversationService:
 
     HISTORY_EXTENSION_FOLDER_NAME = "chat_conversations"
 
-    def get_conversations_by_chat_app(self, chat_app_name: str) -> list[ChatConversation]:
+    def get_my_conversations_by_chat_app(self, chat_app_name: str) -> list[ChatConversation]:
         """Get all conversations for a chat app.
 
         :param chat_app_name: The name of the chat app
@@ -31,7 +31,7 @@ class ChatConversationService:
         chat_app = ChatAppService().get_by_name(chat_app_name)
         if not chat_app:
             return []
-        return list(ChatConversation.get_by_chat_app(chat_app.id))
+        return list(ChatConversation.get_by_chat_app_and_user(chat_app.id, self._get_current_user().id))
 
     @AiToolkitDbManager.transaction()
     def save_conversation(self, conversation_dto: SaveChatConversationDTO) -> ChatConversation:
@@ -53,7 +53,7 @@ class ChatConversationService:
         conversation.chat_app = chat_app
         conversation.configuration = conversation_dto.configuration
         conversation.mode = conversation_dto.mode
-        conversation.label = conversation_dto.label or conversation_dto.get_default_label()
+        conversation.label = conversation_dto.label or "New Conversation"
         conversation.external_conversation_id = conversation_dto.external_conversation_id
         conversation.user = self._get_current_user()
         conversation.save()
@@ -178,6 +178,22 @@ class ChatConversationService:
             db_sources.append(source_record.save())
         return db_sources
 
+    def set_conversation_external_id(self, conversation_id: str, external_id: str) -> ChatConversation:
+        """Set the external ID of a conversation.
+
+        :param conversation_id: The ID of the conversation
+        :type conversation_id: str
+        :param external_id: The external ID to set
+        :type external_id: str
+        """
+        conversation = ChatConversation.get_by_id_and_check(conversation_id)
+
+        if external_id != conversation.external_conversation_id:
+            conversation.external_conversation_id = external_id
+            conversation.save()
+
+        return conversation
+
     def _get_current_user(self) -> User:
         current_user = CurrentUserService.get_and_check_current_user()
-        return User(id=current_user.id)
+        return User.from_gws_core_user(current_user)
