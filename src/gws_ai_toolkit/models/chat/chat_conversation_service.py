@@ -6,7 +6,7 @@ from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 from gws_ai_toolkit.models.chat.chat_message_source import ChatMessageSource
-from gws_ai_toolkit.models.chat.message import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.user.user import User
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 

@@ -6,12 +6,10 @@ from openai import OpenAI
 
 from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table_agent_ai_events import TableAgentEvent
-from gws_ai_toolkit.models.chat.message import (
-    AllChatMessages,
-    ChatMessageDataframe,
-    ChatMessageError,
-    ChatMessagePlotly,
-)
+from gws_ai_toolkit.models.chat.message.chat_message_dataframe import ChatMessageDataframe
+from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
+from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
+from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
 
 from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 

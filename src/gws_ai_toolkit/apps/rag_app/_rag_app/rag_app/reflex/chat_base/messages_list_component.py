@@ -1,16 +1,14 @@
 import plotly.graph_objects as go
 import reflex as rx
-from gws_ai_toolkit.models.chat.message import (
-    AssistantStreamingResponse,
-    ChatMessageCode,
-    ChatMessageError,
-    ChatMessageHint,
-    ChatMessageImage,
-    ChatMessagePlotly,
-    ChatMessageText,
-    ChatUserMessageText,
-)
+from gws_ai_toolkit.models.chat.message.chat_message_code import ChatMessageCode
+from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
+from gws_ai_toolkit.models.chat.message.chat_message_hint import ChatMessageHint
+from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
+from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
+from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
+from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
 from gws_core.apps.reflex._gws_reflex.gws_reflex_main.components.reflex_user_components import user_profile_picture
 
 from .chat_config import ChatConfig

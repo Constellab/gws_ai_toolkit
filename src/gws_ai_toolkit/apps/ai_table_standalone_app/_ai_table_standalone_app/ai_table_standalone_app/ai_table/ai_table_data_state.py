@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import dataclass
 from typing import Literal
 
 import pandas as pd
@@ -7,6 +8,13 @@ from gws_ai_toolkit.core.table_item import TableItem
 from gws_core import File, Table
 
 RightPanelState = Literal["closed", "chat", "stats"]
+
+
+@dataclass
+class TableItemDTO:
+    id: str
+    name: str
+    sheets: list[str] | None
 
 
 class AiTableDataState(rx.State):
@@ -166,6 +174,20 @@ class AiTableDataState(rx.State):
             tables.append({"id": table_id, "name": table_item.name})
         return tables
 
+    @rx.var
+    def all_table_items(self) -> list[TableItemDTO]:
+        """Get list of all TableItems as DTOs for UI iteration"""
+        table_dtos = []
+        for table_id, table_item in self._tables.items():
+            table_dtos.append(
+                TableItemDTO(
+                    id=table_id,
+                    name=table_item.name,
+                    sheets=table_item.get_sheet_names() if table_item.has_multiple_sheets() else None,
+                )
+            )
+        return table_dtos
+
     def add_file(self, file: File, name: str | None = None):
         """Set the resource file to load data from
 
@@ -200,3 +222,18 @@ class AiTableDataState(rx.State):
     def count_tables(self) -> int:
         """Count the number of tables currently loaded"""
         return len(self._tables)
+
+    def get_table(self, table_id: str, sheet_name: str = "") -> Table | None:
+        """Get a specific table by ID and optional sheet name
+
+        Args:
+            table_id (str): ID of the table to get
+            sheet_name (str): Optional sheet name for Excel files
+
+        Returns:
+            Table | None: The requested Table or None if not found
+        """
+        table_item = self._tables.get(table_id)
+        if table_item:
+            return table_item.get_table(sheet_name)
+        return None

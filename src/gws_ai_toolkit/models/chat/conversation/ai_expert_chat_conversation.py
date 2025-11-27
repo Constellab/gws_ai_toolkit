@@ -8,8 +8,10 @@ from openai import OpenAI
 from openai.types.responses import ResponseCreatedEvent, ResponseOutputTextAnnotationAddedEvent
 from PIL import Image
 
-from gws_ai_toolkit.models import AllChatMessages
-from gws_ai_toolkit.models.chat.message import ChatMessageError, ChatMessageImage, ChatMessageText
+from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
+from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
+from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
+from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 

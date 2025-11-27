@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import reflex as rx
-from gws_ai_toolkit.models.chat.message import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 from .conversation_chat_state_base import ConversationChatStateBase
 from .sources_list_component import SourcesComponentBuilder

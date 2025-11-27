@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from gws_core import BaseModelDTO, ModelDTO
 
-from gws_ai_toolkit.models.chat.message import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 
 class ChatConversationDTO(ModelDTO):

@@ -6,16 +6,13 @@ from uuid import uuid4
 from attr import dataclass
 from gws_core import UserDTO
 
-from gws_ai_toolkit.models import (
-    AllChatMessages,
-    AssistantStreamingResponse,
-    ChatMessageBase,
-    ChatMessageText,
-    ChatUserMessageText,
-)
 from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
-from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
+from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
+from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages, ChatMessage
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 

@@ -6,7 +6,7 @@ from peewee import CharField, ForeignKeyField, TextField
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-from gws_ai_toolkit.models.chat.message import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.user.user import User
 
 if TYPE_CHECKING:
@@ -80,7 +80,7 @@ class ChatMessageModel(Model):
         :return: ChatMessage union type instance
         :rtype: ChatMessageDTO
         """
-        from gws_ai_toolkit.models.chat.message import ChatMessageBase
+        from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
         return ChatMessageBase.from_chat_message_model(self)
 

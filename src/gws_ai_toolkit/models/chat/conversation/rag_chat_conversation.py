@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from gws_ai_toolkit.models.chat.message import AllChatMessages
+from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_models import RagChatEndStreamResponse, RagChatSource, RagChatStreamResponse
 

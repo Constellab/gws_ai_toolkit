@@ -4,9 +4,10 @@ from typing import cast
 import reflex as rx
 from anyio import sleep
 from gws_ai_toolkit.core.utils import Utils
-from gws_ai_toolkit.models import AllChatMessages, AssistantStreamingResponse
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
-from gws_ai_toolkit.models.chat.message import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
+from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_reflex_main import ReflexMainState
 

@@ -1,11 +1,14 @@
 import unittest
 
-from gws_ai_toolkit.models.chat.chat_app import ChatApp
-from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
-from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
-from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
-from gws_ai_toolkit.models.chat.message import ChatMessageCode, ChatMessageText
+from gws_ai_toolkit import (
+    ChatApp,
+    ChatConversation,
+    ChatConversationService,
+    ChatMessageCode,
+    ChatMessageModel,
+    ChatMessageText,
+    SaveChatConversationDTO,
+)
 from gws_core import BaseTestCase
 
 
