@@ -146,6 +146,28 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
             for table in self._selected_tables
         ]
 
+    @rx.var
+    async def current_table_ssuggestion(self) -> SelectedTableDTO | None:
+        """Return the currently selected table as a selectable item if not already selected.
+
+        This is used to show the current table in the selectable list if not already selected,
+        to make selection easier.
+        """
+        data_state = await self.get_state(AiTableDataState)
+        current_table = data_state.get_current_table()
+        if current_table is None:
+            return None
+
+        # if table not the selected tables, return it
+        if not self._table_is_selected(current_table.id, current_table.sheet_name):
+            return SelectedTableDTO(
+                id=current_table.id,
+                name=current_table.name,
+                sheet_name=current_table.sheet_name,
+                unique_name=current_table.name + (f" > {current_table.sheet_name}" if current_table.sheet_name else ""),
+            )
+
+    @rx.event
     def remove_table(self, table: SelectedTableDTO):
         """Remove a table from the current tables by id and sheet name."""
 
@@ -153,6 +175,7 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
             t for t in self._selected_tables if not (t.id == table.id and t.sheet_name == table.sheet_name)
         ]
 
+    @rx.event
     async def add_table(self, table_id: str, sheet_name: str):
         """Add a table to the current tables by ID and sheet name.
 
@@ -161,10 +184,20 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
             sheet_name (str): The sheet name of the table to add.
         """
         # check if already added
-        for t in self._selected_tables:
-            if t.id == table_id and t.sheet_name == sheet_name:
-                return
+        if self._table_is_selected(table_id, sheet_name):
+            return
         data_state = await self.get_state(AiTableDataState)
         table = data_state.get_table(table_id, sheet_name)
         if table:
             self._selected_tables.append(table)
+
+    def _table_is_selected(self, table_id: str, sheet_name: str | None) -> bool:
+        """Check if a table is already selected.
+
+        Args:
+            table_id (str): The ID of the table to check.
+            sheet_name (str): The sheet name of the table to check.
+        Returns:
+            bool: True if the table is selected, False otherwise.
+        """
+        return any(t.id == table_id and t.sheet_name == sheet_name for t in self._selected_tables)

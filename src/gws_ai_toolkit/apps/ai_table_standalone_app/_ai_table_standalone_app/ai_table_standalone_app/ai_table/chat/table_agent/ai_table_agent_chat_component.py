@@ -111,10 +111,20 @@ def ai_table_agent_chat_component():
         },
     )
 
-    def _table_item(table: SelectedTableDTO):
+    def _table_item(table: SelectedTableDTO, is_selectable: bool = False):
+        """Render a table item with either remove (X) or add (+) button.
+
+        Args:
+            table: The table to render
+            is_selectable: If True, shows with dashed border and + button. If False, shows as selected with X button.
+        """
         return rx.box(
             rx.hstack(
-                rx.icon("table-2", size=16, color="var(--gray-10)"),
+                rx.icon(
+                    "table-2",
+                    size=16,
+                    color=rx.cond(is_selectable, "var(--gray-9)", "var(--gray-10)"),
+                ),
                 rx.text(
                     table.unique_name,
                     font_size="12px",
@@ -122,13 +132,30 @@ def ai_table_agent_chat_component():
                     overflow="hidden",
                     text_overflow="ellipsis",
                     white_space="nowrap",
+                    color=rx.cond(is_selectable, "var(--gray-9)", "inherit"),
                 ),
-                rx.icon(
-                    "x",
-                    size=16,
-                    color="var(--gray-10)",
-                    cursor="pointer",
-                    on_click=lambda: AiTableAgentChatState.remove_table(table),
+                rx.cond(
+                    is_selectable,
+                    rx.tooltip(
+                        rx.icon(
+                            "plus",
+                            size=16,
+                            color="var(--gray-10)",
+                            cursor="pointer",
+                            on_click=AiTableAgentChatState.add_table(table.id, table.sheet_name),
+                        ),
+                        content="Include table in chat",
+                    ),
+                    rx.tooltip(
+                        rx.icon(
+                            "x",
+                            size=16,
+                            color="var(--gray-10)",
+                            cursor="pointer",
+                            on_click=AiTableAgentChatState.remove_table(table),
+                        ),
+                        content="Remove table",
+                    ),
                 ),
                 spacing="1",
                 align_items="center",
@@ -136,11 +163,13 @@ def ai_table_agent_chat_component():
             padding_x="6px",
             padding_y="2px",
             border_radius="6px",
-            background="var(--gray-3)",
+            background=rx.cond(is_selectable, "var(--gray-2)", "var(--gray-3)"),
+            border=rx.cond(is_selectable, "1px dashed var(--gray-7)", "none"),
             margin_right="6px",
             min_width="0",
             display="flex",
             align_items="center",
+            user_select="none",
         )
 
     def _table_list():
@@ -148,7 +177,12 @@ def ai_table_agent_chat_component():
         return rx.hstack(
             rx.foreach(
                 AiTableAgentChatState.selected_tables,
-                _table_item,
+                lambda table: _table_item(table, is_selectable=False),
+            ),
+            # Show current table selectable if it exists and is not already selected
+            rx.cond(
+                AiTableAgentChatState.current_table_ssuggestion,
+                _table_item(AiTableAgentChatState.current_table_ssuggestion, is_selectable=True),
             ),
             table_selection_menu(),
             spacing="1",
