@@ -1,26 +1,26 @@
 import json
-from typing import Generator, List, Optional
+from collections.abc import Generator
 
 import numpy as np
 import pandas as pd
 from gws_core import BaseModelDTO, Table
-from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
+from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionErrorEvent
+
 from .base_function_agent_ai import BaseFunctionAgentAi
-from .table_transform_agent_ai_events import (DataFrameTransformAgentEvent,
-                                              FunctionErrorEvent,
-                                              TableTransformEvent)
+from .table_transform_agent_ai_events import DataFrameTransformAgentEvent, TableTransformEvent
 
 
 class TableTransformConfig(BaseModelDTO):
     """Configuration for DataFrame transformation code generation"""
+
     code: str = Field(
         description="Python code to transform a DataFrame. The code should use a DataFrame variable named 'df' as input and assign the transformed result to a variable named 'transformed_df'.",
     )
 
-    transformed_table_name: Optional[str] = Field(
+    transformed_table_name: str | None = Field(
         default=None,
         description="Optional new name for the transformed table. Based on transformations and original table name (if provided). Keep it concise.",
     )
@@ -33,29 +33,38 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
     """Standalone DataFrame transform agent service for data manipulation using OpenAI"""
 
     _table: Table
-    _table_name: Optional[str]
+    _table_name: str | None
+    _output_table_name: str | None
 
-    def __init__(self, openai_client: OpenAI,
-                 table: Table,
-                 model: str,
-                 temperature: float,
-                 table_name: Optional[str] = None,
-                 skip_success_response: bool = False):
-        super().__init__(openai_client, model, temperature, skip_success_response=skip_success_response)
+    def __init__(
+        self,
+        openai_api_key: str,
+        table: Table,
+        model: str,
+        temperature: float,
+        table_name: str | None = None,
+        output_table_name: str | None = None,
+        skip_success_response: bool = False,
+    ):
+        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
         self._table = table
         self._table_name = table_name
+        self._output_table_name = output_table_name
 
-    def _get_tools(self) -> List[dict]:
+    def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
         return [
-            {"type": "function", "name": "transform_dataframe",
-             "description":
-             "Generate Python code that transforms a DataFrame. The code should use 'df' as the input DataFrame variable and assign the result to 'transformed_df'.",
-             "parameters": TableTransformConfig.model_json_schema()}
+            {
+                "type": "function",
+                "name": "transform_dataframe",
+                "description": "Generate Python code that transforms a DataFrame. The code should use 'df' as the input DataFrame variable and assign the result to 'transformed_df'.",
+                "parameters": TableTransformConfig.model_json_schema(),
+            }
         ]
 
-    def _handle_function_call(self, event_item: ResponseFunctionToolCall,
-                              current_response_id: str) -> Generator[DataFrameTransformAgentEvent, None, None]:
+    def _handle_function_call(
+        self, event_item: ResponseFunctionToolCall, current_response_id: str
+    ) -> Generator[DataFrameTransformAgentEvent, None, None]:
         """Handle output item done event"""
         # Handle function call completion
 
@@ -64,14 +73,35 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
 
         if not function_args:
             yield FunctionErrorEvent(
-                message=str("No function arguments provided for DataFrame transformation."),
+                message="No function arguments provided for DataFrame transformation.",
                 call_id=call_id,
-                response_id=current_response_id
+                response_id=current_response_id,
             )
             return
 
+        # Parse arguments
+        arguments = json.loads(function_args)
+        code = arguments.get("code", "")
+
+        if not code.strip():
+            yield FunctionErrorEvent(
+                message="No code provided in function arguments",
+                call_id=call_id,
+                response_id=current_response_id,
+            )
+            return
+
+        yield CodeEvent(
+            code=code,
+            call_id=call_id,
+            response_id=current_response_id,
+        )
+
         try:
-            transformed_df, code, transformed_table_name = self._execute_generated_code(function_args)
+            transformed_df = self._execute_generated_code(code)
+
+            # Use AI-provided name if available, otherwise use the output_table_name from constructor
+            transformed_table_name = arguments.get("transformed_table_name") or self._output_table_name
 
             yield TableTransformEvent(
                 table=Table(transformed_df),
@@ -87,39 +117,27 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
             return
 
         except Exception as exec_error:
-
-            yield FunctionErrorEvent(
-                message=str(exec_error),
-                call_id=call_id,
-                response_id=current_response_id
-            )
+            yield FunctionErrorEvent(message=str(exec_error), call_id=call_id, response_id=current_response_id)
 
             # Return after error - the main loop will handle retry logic
             return
 
-    def _execute_generated_code(self, arguments_str: str) -> tuple[pd.DataFrame, str, str]:
-        """Execute generated code and return transformed DataFrame and code
+    def _execute_generated_code(self, code: str) -> pd.DataFrame:
+        """Execute generated code and return transformed DataFrame
 
         Args:
-            arguments_str: JSON string with function arguments
+            code: Python code to execute
 
         Returns:
-            Tuple of (transformed_dataframe, code)
+            Transformed DataFrame
 
         Raises:
-            ValueError: If arguments are invalid
+            ValueError: If code is invalid or doesn't produce expected output
             RuntimeError: If code execution fails
         """
-        # Parse arguments
-        arguments = json.loads(arguments_str)
-        code = arguments.get('code', '')
-
-        if not code.strip():
-            raise ValueError("No code provided in function arguments")
-
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
-        execution_globals['df'] = self._table.get_data()
+        execution_globals["df"] = self._table.get_data()
 
         # Execute the code
         try:
@@ -128,13 +146,13 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
             raise RuntimeError(f"Error executing generated code: {exec_error}")
 
         # Validate transformed DataFrame was created
-        if 'transformed_df' not in execution_globals:
+        if "transformed_df" not in execution_globals:
             raise ValueError(
                 "The executed code did not define a variable named 'transformed_df'. "
                 "Make sure to assign the transformed DataFrame to a variable named 'transformed_df'."
             )
 
-        transformed_df = execution_globals['transformed_df']
+        transformed_df = execution_globals["transformed_df"]
 
         if not isinstance(transformed_df, pd.DataFrame):
             raise ValueError(
@@ -142,17 +160,15 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
                 "Make sure to assign a pandas DataFrame object to a variable named 'transformed_df'."
             )
 
-        transformed_table_name = arguments.get('transformed_table_name')
-
-        return transformed_df, code, transformed_table_name
+        return transformed_df
 
     def _get_code_execution_globals(self) -> dict:
         """Get globals for code execution environment"""
         return {
-            'pd': pd,
-            'numpy': np,  # Include numpy as it's commonly used with pandas
-            'np': np,
-            '__builtins__': __builtins__
+            "pd": pd,
+            "numpy": np,  # Include numpy as it's commonly used with pandas
+            "np": np,
+            "__builtins__": __builtins__,
         }
 
     def _get_ai_instruction(self) -> str:

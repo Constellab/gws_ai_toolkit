@@ -3,7 +3,6 @@ import unittest
 
 import pandas as pd
 from gws_core import Table
-from openai import OpenAI
 
 from gws_ai_toolkit.core.agents.multi_table_agent_ai import MultiTableAgentAi
 from gws_ai_toolkit.core.agents.multi_table_agent_ai_events import \
@@ -34,12 +33,12 @@ class TestMultiTableAgentAiIntegration(unittest.TestCase):
             'products': Table(product_data)
         }
 
-        # Create OpenAI client using environment variable
-        openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        # Get OpenAI API key from environment variable
+        api_key = os.getenv('OPENAI_API_KEY')
 
         # Create MultiTableAgentAi instance
         agent = MultiTableAgentAi(
-            openai_client=openai_client,
+            openai_api_key=api_key,
             tables=tables,
             model="gpt-4o",  # Use cheaper model for testing
             temperature=0.1

@@ -1,10 +1,11 @@
 import reflex as rx
+from gws_ai_toolkit.core.excel_file import ExcelFileDTO
 
-from ..ai_table_data_state import AiTableDataState, TableItemDTO
-from ..chat.table_agent.ai_table_agent_chat_state import AiTableAgentChatState
+from ...ai_table_data_state import AiTableDataState
+from .ai_table_agent_chat_state import AiTableAgentChatState
 
 
-def _item(table_item: TableItemDTO) -> rx.Component:
+def _item(table_item: ExcelFileDTO) -> rx.Component:
     return rx.cond(
         table_item.sheets,
         rx.menu.sub(
@@ -17,7 +18,6 @@ def _item(table_item: TableItemDTO) -> rx.Component:
                         on_click=lambda: AiTableAgentChatState.add_table(table_item.id, sheet),
                     ),
                 ),
-                rx.menu.separator(),
             ),
         ),
         rx.menu.item(

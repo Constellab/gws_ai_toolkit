@@ -1,20 +1,21 @@
 import json
-from typing import Generator, List
+from collections.abc import Generator
 
 import pandas as pd
 import plotly.graph_objects as go
 from gws_core import BaseModelDTO, Table
-from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
+from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionErrorEvent
+
 from .base_function_agent_ai import BaseFunctionAgentAi
-from .plotly_agent_ai_events import (FunctionErrorEvent, PlotGeneratedEvent,
-                                     PlotlyAgentEvent)
+from .plotly_agent_ai_events import PlotGeneratedEvent, PlotlyAgentEvent
 
 
 class PlotlyCodeConfig(BaseModelDTO):
     """Configuration for Plotly code generation"""
+
     code: str = Field(
         description="Python code to generate a Plotly figure. The code should use a DataFrame variable named 'df' as input and return a Plotly Figure object.",
     )
@@ -28,25 +29,26 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
 
     _table: Table
 
-    def __init__(self, openai_client: OpenAI,
-                 table: Table,
-                 model: str,
-                 temperature: float,
-                 skip_success_response: bool = False):
-        super().__init__(openai_client, model, temperature, skip_success_response=skip_success_response)
+    def __init__(
+        self, openai_api_key: str, table: Table, model: str, temperature: float, skip_success_response: bool = False
+    ):
+        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
         self._table = table
 
-    def _get_tools(self) -> List[dict]:
+    def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
         return [
-            {"type": "function", "name": "generate_plotly_figure",
-             "description":
-             "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object.",
-             "parameters": PlotlyCodeConfig.model_json_schema()}
+            {
+                "type": "function",
+                "name": "generate_plotly_figure",
+                "description": "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object.",
+                "parameters": PlotlyCodeConfig.model_json_schema(),
+            }
         ]
 
-    def _handle_function_call(self, event_item: ResponseFunctionToolCall,
-                              current_response_id: str) -> Generator[PlotlyAgentEvent, None, None]:
+    def _handle_function_call(
+        self, event_item: ResponseFunctionToolCall, current_response_id: str
+    ) -> Generator[PlotlyAgentEvent, None, None]:
         """Handle output item done event"""
         # Handle function call completion
 
@@ -55,14 +57,32 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
 
         if not function_args:
             yield FunctionErrorEvent(
-                message=str("No function arguments provided for plot generation."),
+                message="No function arguments provided for plot generation.",
                 call_id=call_id,
-                response_id=current_response_id
+                response_id=current_response_id,
             )
             return
 
+        # Parse arguments
+        arguments = json.loads(function_args)
+        code = arguments.get("code", "")
+
+        if not code.strip():
+            yield FunctionErrorEvent(
+                message="No code provided in function arguments",
+                call_id=call_id,
+                response_id=current_response_id,
+            )
+            return
+
+        yield CodeEvent(
+            code=code,
+            call_id=call_id,
+            response_id=current_response_id,
+        )
+
         try:
-            figure, code = self._execute_generated_code(function_args)
+            figure = self._execute_generated_code(code)
 
             yield PlotGeneratedEvent(
                 figure=figure,
@@ -77,21 +97,16 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             return
 
         except Exception as exec_error:
-
-            yield FunctionErrorEvent(
-                message=str(exec_error),
-                call_id=call_id,
-                response_id=current_response_id
-            )
+            yield FunctionErrorEvent(message=str(exec_error), call_id=call_id, response_id=current_response_id)
 
             # Return after error - the main loop will handle retry logic
             return
 
-    def _execute_generated_code(self, arguments_str: str) -> tuple[go.Figure, str]:
-        """Execute generated code and return figure and code
+    def _execute_generated_code(self, code: str) -> go.Figure:
+        """Execute generated code and return figure
 
         Args:
-            arguments_str: JSON string with function arguments
+            code: Python code to execute
 
         Returns:
             Tuple of (figure, code)
@@ -100,16 +115,9 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             ValueError: If arguments are invalid
             RuntimeError: If code execution fails
         """
-        # Parse arguments
-        arguments = json.loads(arguments_str)
-        code = arguments.get('code', '')
-
-        if not code.strip():
-            raise ValueError("No code provided in function arguments")
-
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
-        execution_globals['df'] = self._table.get_data()
+        execution_globals["df"] = self._table.get_data()
 
         # Execute the code
         try:
@@ -118,13 +126,13 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             raise RuntimeError(f"Error executing generated code: {exec_error}")
 
         # Validate figure was created
-        if 'fig' not in execution_globals:
+        if "fig" not in execution_globals:
             raise ValueError(
                 "The executed code did not define a variable named 'fig'. "
                 "Make sure to assign the plotly figure to a variable named 'fig'."
             )
 
-        fig = execution_globals['fig']
+        fig = execution_globals["fig"]
 
         if not isinstance(fig, go.Figure):
             raise ValueError(
@@ -132,15 +140,11 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
                 "Make sure to assign a plotly Figure object to a variable named 'fig'."
             )
 
-        return fig, code
+        return fig
 
     def _get_code_execution_globals(self) -> dict:
         """Get globals for code execution environment"""
-        return {
-            'pd': pd,
-            'go': go,
-            '__builtins__': __builtins__
-        }
+        return {"pd": pd, "go": go, "__builtins__": __builtins__}
 
     def _get_ai_instruction(self) -> str:
         """Create prompt for OpenAI with table metadata

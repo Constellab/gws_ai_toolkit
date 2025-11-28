@@ -44,7 +44,7 @@ class AiExpertState(ConversationChatStateBase, rx.State):
 
     _rag_resource: RagResource | None = None
 
-    async def create_conversation(self) -> BaseChatConversation:
+    async def _create_conversation(self) -> BaseChatConversation:
         """Create a new AiExpertChatConversation instance.
 
         Gets the RAG app service, configuration, and document resource

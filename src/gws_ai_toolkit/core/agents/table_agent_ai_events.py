@@ -1,12 +1,12 @@
-from typing import Literal, Union
+from typing import Literal
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
-    ErrorEvent, FunctionErrorEvent, FunctionSuccessEvent,
-    ResponseCompletedEvent, ResponseCreatedEvent, TextDeltaEvent)
-from gws_ai_toolkit.core.agents.plotly_agent_ai_events import \
-    PlotGeneratedEvent
-from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import \
-    TableTransformEvent
+    BaseFunctionAgentEvent,
+    FunctionSuccessEvent,
+)
+from gws_ai_toolkit.core.agents.multi_table_agent_ai_events import MultiTableTransformEvent
+from gws_ai_toolkit.core.agents.plotly_agent_ai_events import PlotGeneratedEvent
+from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import TableTransformEvent
 
 
 class SubAgentSuccess(FunctionSuccessEvent):
@@ -14,13 +14,6 @@ class SubAgentSuccess(FunctionSuccessEvent):
 
 
 # Union type for all TableAgent events - includes specific events from sub-agents
-TableAgentEvent = Union[
-    TextDeltaEvent,
-    PlotGeneratedEvent,
-    TableTransformEvent,
-    FunctionErrorEvent,
-    ErrorEvent,
-    ResponseCreatedEvent,
-    ResponseCompletedEvent,
-    SubAgentSuccess
-]
+TableAgentEvent = (
+    BaseFunctionAgentEvent | PlotGeneratedEvent | TableTransformEvent | MultiTableTransformEvent | SubAgentSuccess
+)

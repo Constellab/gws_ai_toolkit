@@ -1,10 +1,11 @@
-from typing import Literal, Union
+from typing import Literal
 
 import plotly.graph_objects as go
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
-    ErrorEvent, FunctionErrorEvent, FunctionSuccessEvent,
-    ResponseCompletedEvent, ResponseCreatedEvent, TextDeltaEvent)
+    BaseFunctionAgentEvent,
+    FunctionSuccessEvent,
+)
 
 # Typed event classes with literal types and direct attributes
 
@@ -19,11 +20,4 @@ class PlotGeneratedEvent(FunctionSuccessEvent):
 
 
 # Union type for all events
-PlotlyAgentEvent = Union[
-    TextDeltaEvent,
-    PlotGeneratedEvent,
-    FunctionErrorEvent,
-    ErrorEvent,
-    ResponseCreatedEvent,
-    ResponseCompletedEvent
-]
+PlotlyAgentEvent = PlotGeneratedEvent | BaseFunctionAgentEvent

@@ -1,20 +1,12 @@
 import uuid
-from dataclasses import dataclass
 from typing import Literal
 
 import pandas as pd
 import reflex as rx
-from gws_ai_toolkit.core.table_item import TableItem
-from gws_core import File, Table
+from gws_ai_toolkit.core.excel_file import ExcelFile, ExcelFileDTO, ExcelSheetDTO
+from gws_core import File, Table, Utils
 
 RightPanelState = Literal["closed", "chat", "stats"]
-
-
-@dataclass
-class TableItemDTO:
-    id: str
-    name: str
-    sheets: list[str] | None
 
 
 class AiTableDataState(rx.State):
@@ -32,18 +24,18 @@ class AiTableDataState(rx.State):
     right_panel_state: RightPanelState = "closed"
 
     # Table
-    _tables: dict[str, TableItem] = {}
+    _tables: dict[str, ExcelFile] = {}
     current_table_id: str = ""  # Current active table ID
 
-    def get_current_dataframe_item(self) -> TableItem | None:
+    def get_current_dataframe_item(self) -> ExcelFile | None:
         """Create DataFrameItem from current file info"""
         return self._tables.get(self.current_table_id)
 
-    def get_current_table(self) -> Table | None:
+    def get_current_table(self) -> ExcelSheetDTO | None:
         """Get the current active table (original or subtable)"""
         table_item = self.get_current_dataframe_item()
         if table_item:
-            return table_item.get_table(self.current_sheet_name)
+            return table_item.get_table_dto(self.current_sheet_name)
         return None
 
     def get_current_dataframe(self) -> pd.DataFrame | None:
@@ -147,6 +139,7 @@ class AiTableDataState(rx.State):
         """Switch to a specific table based on ID"""
         if table_id in self._tables:
             self.current_table_id = table_id
+            self.current_sheet_name = ""
 
     @rx.event
     def remove_current_table(self):
@@ -175,17 +168,11 @@ class AiTableDataState(rx.State):
         return tables
 
     @rx.var
-    def all_table_items(self) -> list[TableItemDTO]:
+    def all_table_items(self) -> list[ExcelFileDTO]:
         """Get list of all TableItems as DTOs for UI iteration"""
         table_dtos = []
-        for table_id, table_item in self._tables.items():
-            table_dtos.append(
-                TableItemDTO(
-                    id=table_id,
-                    name=table_item.name,
-                    sheets=table_item.get_sheet_names() if table_item.has_multiple_sheets() else None,
-                )
-            )
+        for table_item in self._tables.values():
+            table_dtos.append(table_item.to_dto())
         return table_dtos
 
     def add_file(self, file: File, name: str | None = None):
@@ -196,11 +183,17 @@ class AiTableDataState(rx.State):
             name (Optional[str]): Optional name to use instead of extracting from file path
         """
 
-        table_item = TableItem.from_file(id_=str(uuid.uuid4()), name=name or file.name, file_path=file.path)
+        existing_names = {table.name for table in self._tables.values()}
+        new_name = name or file.name or "table"
+
+        # Ensure unique name
+        new_unique_name = Utils.generate_unique_str_for_list(list(existing_names), new_name)
+
+        table_item = ExcelFile.from_file(id_=str(uuid.uuid4()), name=new_unique_name, file_path=file.path)
 
         self.add_table_item(table_item)
 
-    def add_table(self, table: Table, name: str, id_: str | None = None) -> None:
+    def add_table(self, table: Table, name: str, id_: str | None = None) -> ExcelSheetDTO:
         """Set a transformed DataFrame as the current active DataFrame
 
         Args:
@@ -208,9 +201,9 @@ class AiTableDataState(rx.State):
         """
         # Create new table entry for the transformed data
         id_ = id_ or str(uuid.uuid4())
-        self.add_table_item(TableItem.from_table(id_=id_, name=name, table=table))
+        return self.add_table_item(ExcelFile.from_table(id_=id_, name=name, table=table))
 
-    def add_table_item(self, table_item: TableItem) -> None:
+    def add_table_item(self, table_item: ExcelFile) -> ExcelSheetDTO:
         """Add a TableItem directly to the tables list
 
         Args:
@@ -218,12 +211,13 @@ class AiTableDataState(rx.State):
         """
         self._tables[table_item.id] = table_item
         self.current_table_id = table_item.id
+        return table_item.get_table_dto()
 
     def count_tables(self) -> int:
         """Count the number of tables currently loaded"""
         return len(self._tables)
 
-    def get_table(self, table_id: str, sheet_name: str = "") -> Table | None:
+    def get_table(self, table_id: str, sheet_name: str = "") -> ExcelSheetDTO | None:
         """Get a specific table by ID and optional sheet name
 
         Args:
@@ -235,5 +229,5 @@ class AiTableDataState(rx.State):
         """
         table_item = self._tables.get(table_id)
         if table_item:
-            return table_item.get_table(sheet_name)
+            return table_item.get_table_dto(sheet_name)
         return None

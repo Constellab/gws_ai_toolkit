@@ -1,26 +1,26 @@
 import json
-from typing import Dict, Generator, List, Optional
+from collections.abc import Generator
 
 import numpy as np
 import pandas as pd
 from gws_core import BaseModelDTO, Table
-from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
-from .base_function_agent_ai import BaseFunctionAgentAi
-from .multi_table_agent_ai_events import (FunctionErrorEvent,
-                                          MultiTableTransformAgentEvent,
-                                          MultiTableTransformEvent)
+from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent
+
+from .base_function_agent_ai import BaseFunctionAgentAi, FunctionErrorEvent
+from .multi_table_agent_ai_events import MultiTableTransformAgentEvent, MultiTableTransformEvent
 
 
 class MultiTableTransformConfig(BaseModelDTO):
     """Configuration for multi-table transformation code generation"""
+
     code: str = Field(
         description="Python code to transform multiple DataFrames. The code should use DataFrame variables that match the input table names and assign the transformed results to variables with meaningful names. Results should be stored in a dictionary named 'result_tables' where keys are table names and values are DataFrames.",
     )
 
-    result_table_names: Optional[List[str]] = Field(
+    result_table_names: list[str] | None = Field(
         default=None,
         description="Optional list of names for the resulting tables. Should match the keys in result_tables dictionary. Keep names concise and descriptive.",
     )
@@ -32,29 +32,35 @@ class MultiTableTransformConfig(BaseModelDTO):
 class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
     """Multi-table transform agent service for data manipulation using OpenAI"""
 
-    _tables: Dict[str, Table]
-    _table_names: List[str]
+    _tables: dict[str, Table]
+    _table_names: list[str]
 
-    def __init__(self, openai_client: OpenAI,
-                 tables: Dict[str, Table],
-                 model: str,
-                 temperature: float,
-                 skip_success_response: bool = False):
-        super().__init__(openai_client, model, temperature, skip_success_response=skip_success_response)
+    def __init__(
+        self,
+        openai_api_key: str,
+        tables: dict[str, Table],
+        model: str,
+        temperature: float,
+        skip_success_response: bool = False,
+    ):
+        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
         self._tables = tables
         self._table_names = list(tables.keys())
 
-    def _get_tools(self) -> List[dict]:
+    def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
         return [
-            {"type": "function", "name": "transform_multiple_tables",
-             "description":
-             "Generate Python code that transforms multiple DataFrames. The code should use DataFrame variables that match the input table names and store results in a dictionary named 'result_tables'.",
-             "parameters": MultiTableTransformConfig.model_json_schema()}
+            {
+                "type": "function",
+                "name": "transform_multiple_tables",
+                "description": "Generate Python code that transforms multiple DataFrames. The code should use DataFrame variables that match the input table names and store results in a dictionary named 'result_tables'.",
+                "parameters": MultiTableTransformConfig.model_json_schema(),
+            }
         ]
 
-    def _handle_function_call(self, event_item: ResponseFunctionToolCall,
-                              current_response_id: str) -> Generator[MultiTableTransformAgentEvent, None, None]:
+    def _handle_function_call(
+        self, event_item: ResponseFunctionToolCall, current_response_id: str
+    ) -> Generator[MultiTableTransformAgentEvent, None, None]:
         """Handle output item done event"""
         # Handle function call completion
 
@@ -63,14 +69,34 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
 
         if not function_args:
             yield FunctionErrorEvent(
-                message=str("No function arguments provided for multi-table transformation."),
+                message="No function arguments provided for multi-table transformation.",
                 call_id=call_id,
-                response_id=current_response_id
+                response_id=current_response_id,
             )
             return
 
+        # Parse arguments
+        arguments = json.loads(function_args)
+        code = arguments.get("code", "")
+
+        if not code.strip():
+            yield FunctionErrorEvent(
+                message="No code provided in function arguments",
+                call_id=call_id,
+                response_id=current_response_id,
+            )
+            return
+
+        yield CodeEvent(
+            code=code,
+            call_id=call_id,
+            response_id=current_response_id,
+        )
+
         try:
-            result_tables, code, result_table_names = self._execute_generated_code(function_args)
+            result_tables = self._execute_generated_code(code)
+
+            result_table_names = arguments.get("result_table_names", list(result_tables.keys()))
 
             yield MultiTableTransformEvent(
                 tables=result_tables,
@@ -86,36 +112,24 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
             return
 
         except Exception as exec_error:
-
-            yield FunctionErrorEvent(
-                message=str(exec_error),
-                call_id=call_id,
-                response_id=current_response_id
-            )
+            yield FunctionErrorEvent(message=str(exec_error), call_id=call_id, response_id=current_response_id)
 
             # Return after error - the main loop will handle retry logic
             return
 
-    def _execute_generated_code(self, arguments_str: str) -> tuple[Dict[str, Table], str, List[str]]:
-        """Execute generated code and return transformed tables and code
+    def _execute_generated_code(self, code: str) -> dict[str, Table]:
+        """Execute generated code and return transformed tables
 
         Args:
-            arguments_str: JSON string with function arguments
+            code: Python code to execute
 
         Returns:
-            Tuple of (result_tables_dict, code, result_table_names)
+            Dictionary of table names to Table objects
 
         Raises:
-            ValueError: If arguments are invalid
+            ValueError: If code is invalid or doesn't produce expected output
             RuntimeError: If code execution fails
         """
-        # Parse arguments
-        arguments = json.loads(arguments_str)
-        code = arguments.get('code', '')
-
-        if not code.strip():
-            raise ValueError("No code provided in function arguments")
-
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
 
@@ -130,14 +144,14 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
             raise RuntimeError(f"Error executing generated code: {exec_error}")
 
         # Validate result_tables dictionary was created
-        if 'result_tables' not in execution_globals:
+        if "result_tables" not in execution_globals:
             raise ValueError(
                 "The executed code did not define a variable named 'result_tables'. "
                 "Make sure to assign the transformed DataFrames to a dictionary named 'result_tables' "
                 "where keys are table names and values are pandas DataFrames."
             )
 
-        result_tables_dict = execution_globals['result_tables']
+        result_tables_dict = execution_globals["result_tables"]
 
         if not isinstance(result_tables_dict, dict):
             raise ValueError(
@@ -158,17 +172,15 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
         for key, df in result_tables_dict.items():
             result_tables[key] = Table(df)
 
-        result_table_names = arguments.get('result_table_names', list(result_tables.keys()))
-
-        return result_tables, code, result_table_names
+        return result_tables
 
     def _get_code_execution_globals(self) -> dict:
         """Get globals for code execution environment"""
         return {
-            'pd': pd,
-            'numpy': np,  # Include numpy as it's commonly used with pandas
-            'np': np,
-            '__builtins__': __builtins__
+            "pd": pd,
+            "numpy": np,  # Include numpy as it's commonly used with pandas
+            "np": np,
+            "__builtins__": __builtins__,
         }
 
     def _get_ai_instruction(self) -> str:
@@ -233,7 +245,7 @@ Example code structure:
 # Available DataFrames: {table_names_list}
 
 # Example: Join two tables
-merged_data = pd.merge({self._table_names[0] if self._table_names else 'table1'}, {self._table_names[1] if len(self._table_names) > 1 else 'table2'}, on='common_column', how='inner')
+merged_data = pd.merge({self._table_names[0] if self._table_names else "table1"}, {self._table_names[1] if len(self._table_names) > 1 else "table2"}, on='common_column', how='inner')
 
 # Example: Create multiple result tables
 result_tables = {{

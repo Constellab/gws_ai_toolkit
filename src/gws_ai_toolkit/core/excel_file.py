@@ -1,10 +1,32 @@
+from dataclasses import dataclass
 from typing import cast
 
 from gws_core import File, Table, TableImporter
 from pandas import DataFrame
 
 
-class TableItem:
+@dataclass
+class ExcelFileDTO:
+    id: str
+    name: str
+    sheets: list[str] | None  # null if there is no multiple sheets
+
+
+@dataclass
+class ExcelSheetDTO:
+    id: str
+    name: str
+    sheet_name: str | None  # null if there is no multiple sheets
+    table: Table
+
+    def get_unique_name(self) -> str:
+        """Get unique name for the sheet (name > sheet_name)"""
+        if self.sheet_name:
+            return f"{self.name}_{self.sheet_name}"
+        return self.name
+
+
+class ExcelFile:
     """Class to represent a dataframe with its name and file path"""
 
     id: str
@@ -38,6 +60,16 @@ class TableItem:
             return self.get_default_table()
         return self._tables[sheet_name]
 
+    def get_table_dto(self, sheet_name: str = "") -> ExcelSheetDTO:
+        """Convert specific table to TableDTO"""
+        table = self.get_table(sheet_name)
+        return ExcelSheetDTO(
+            id=self.id,
+            name=self.name,
+            sheet_name=sheet_name,
+            table=table,
+        )
+
     def get_dataframe(self, sheet_name: str = "") -> DataFrame:
         """Get dataframe for specific sheet (or CSV data if sheet_name is empty)"""
         table = self.get_table(sheet_name)
@@ -48,9 +80,9 @@ class TableItem:
         self._tables[sheet_name] = table
 
     @staticmethod
-    def from_file(id_: str, name: str, file_path: str) -> "TableItem":
+    def from_file(id_: str, name: str, file_path: str) -> "ExcelFile":
         """Create DataFrameItem from file path"""
-        item = TableItem(id_=id_, name=name)
+        item = ExcelFile(id_=id_, name=name)
 
         file = File(file_path)
 
@@ -79,10 +111,18 @@ class TableItem:
 
         return item
 
+    def to_dto(self) -> ExcelFileDTO:
+        """Convert TableItem to TableItemDTO"""
+        return ExcelFileDTO(
+            id=self.id,
+            name=self.name,
+            sheets=self.get_sheet_names() if self.has_multiple_sheets() else None,
+        )
+
     @staticmethod
-    def from_table(id_: str, name: str, table: Table) -> "TableItem":
+    def from_table(id_: str, name: str, table: Table) -> "ExcelFile":
         """Create DataFrameItem from a Table object"""
-        item = TableItem(id_=id_, name=name)
+        item = ExcelFile(id_=id_, name=name)
         table.name = name
         item.add_table(sheet_name=name, table=table)
         return item

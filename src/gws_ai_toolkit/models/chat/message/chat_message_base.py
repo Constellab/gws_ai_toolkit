@@ -1,12 +1,14 @@
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Literal
 
 from gws_core import BaseModelDTO, UserDTO
 
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 if TYPE_CHECKING:
-    from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-    from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
+    pass
+
+# Class registry for type-to-class mapping
+_type_registry: dict[str, type["ChatMessageBase"]] = {}
 
 
 class ChatMessageBase(BaseModelDTO):
@@ -49,7 +51,7 @@ class ChatMessageBase(BaseModelDTO):
     user: UserDTO | None = None
 
     # Class registry for type-to-class mapping
-    _type_registry: ClassVar[dict[str, type["ChatMessageBase"]]] = {}
+    # _type_registry: ClassVar[dict[str, type["ChatMessageBase"]]] = {}
 
     def is_user_message(self) -> bool:
         """Check if this message was sent by the user.
@@ -68,52 +70,52 @@ class ChatMessageBase(BaseModelDTO):
         :param message_class: The class to use for this message type
         :type message_class: type[ChatMessageBase]
         """
-        cls._type_registry[message_type] = message_class
+        _type_registry[message_type] = message_class
 
-    @classmethod
-    def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessageBase":
-        """Convert database ChatMessage model to ChatMessageBase union type.
+    # @classmethod
+    # def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessageBase":
+    #     """Convert database ChatMessage model to ChatMessageBase union type.
 
-        Uses the registered message classes to delegate conversion to the appropriate subclass.
+    #     Uses the registered message classes to delegate conversion to the appropriate subclass.
 
-        :param chat_message: The database ChatMessage instance to convert
-        :type chat_message: ChatMessage
-        :return: ChatMessageBase union type instance
-        :rtype: ChatMessageBase
-        """
-        # Import here to avoid circular imports
+    #     :param chat_message: The database ChatMessage instance to convert
+    #     :type chat_message: ChatMessage
+    #     :return: ChatMessageBase union type instance
+    #     :rtype: ChatMessageBase
+    #     """
+    #     # Import here to avoid circular imports
 
-        # Handle user messages
-        message_class = cls._type_registry.get(chat_message.type)
+    #     # Handle user messages
+    #     message_class = _type_registry.get(chat_message.type)
 
-        if not message_class:
-            raise ValueError(f"Unsupported chat message type: {chat_message.type}")
+    #     if not message_class:
+    #         raise ValueError(f"Unsupported chat message type: {chat_message.type}")
 
-        # create the object with basic fields
-        message = message_class(
-            id=chat_message.id,
-            external_id=chat_message.external_id,
-            sources=[source.to_rag_dto() for source in chat_message.sources],
-            user=chat_message.user.to_dto(),
-        )
+    #     # create the object with basic fields
+    #     message = message_class(
+    #         id=chat_message.id,
+    #         external_id=chat_message.external_id,
+    #         sources=[source.to_rag_dto() for source in chat_message.sources],
+    #         user=chat_message.user.to_dto(),
+    #     )
 
-        message.fill_from_model(chat_message)
+    #     message.fill_from_model(chat_message)
 
-        return message
+    #     return message
 
-    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
-        """Fill additional fields from the ChatMessageModel.
-        This is called after the initial creation in from_chat_message_model.
-        """
+    # def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+    #     """Fill additional fields from the ChatMessageModel.
+    #     This is called after the initial creation in from_chat_message_model.
+    #     """
 
-    def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
-        """Convert DTO to database ChatMessage model.
+    # def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
+    #     """Convert DTO to database ChatMessage model.
 
-        Must be implemented by subclasses.
+    #     Must be implemented by subclasses.
 
-        :param conversation: The conversation this message belongs to
-        :type conversation: ChatConversation
-        :return: ChatMessage database model instance
-        :rtype: ChatMessage
-        """
-        raise NotImplementedError("Subclasses must implement to_chat_message")
+    #     :param conversation: The conversation this message belongs to
+    #     :type conversation: ChatConversation
+    #     :return: ChatMessage database model instance
+    #     :rtype: ChatMessage
+    #     """
+    #     raise NotImplementedError("Subclasses must implement to_chat_message")

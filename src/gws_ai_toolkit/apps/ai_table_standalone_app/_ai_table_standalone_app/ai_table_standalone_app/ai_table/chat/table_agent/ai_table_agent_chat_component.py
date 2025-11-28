@@ -8,8 +8,8 @@ from gws_ai_toolkit._app.ai_chat import (
 from gws_ai_toolkit.models.chat.message.chat_message_dataframe import ChatMessageDataframe
 
 from ...ai_table_data_state import AiTableDataState
-from ...core.table_selection_menu import table_selection_menu
-from .ai_table_agent_chat_state import AiTableAgentChatState, CurrentTableDTO
+from .ai_table_agent_chat_state import AiTableAgentChatState, SelectedTableDTO
+from .table_selection_menu import table_selection_menu
 
 
 def _dataframe_message_content(message: ChatMessageDataframe) -> rx.Component:
@@ -111,14 +111,14 @@ def ai_table_agent_chat_component():
         },
     )
 
-    def _table_item(table: CurrentTableDTO):
+    def _table_item(table: SelectedTableDTO):
         return rx.box(
             rx.hstack(
                 rx.icon("table-2", size=16, color="var(--gray-10)"),
                 rx.text(
-                    table.name,
+                    table.unique_name,
                     font_size="12px",
-                    max_width="100px",
+                    max_width="250px",
                     overflow="hidden",
                     text_overflow="ellipsis",
                     white_space="nowrap",
@@ -128,7 +128,7 @@ def ai_table_agent_chat_component():
                     size=16,
                     color="var(--gray-10)",
                     cursor="pointer",
-                    on_click=lambda: AiTableAgentChatState.remove_table(table.id),
+                    on_click=lambda: AiTableAgentChatState.remove_table(table),
                 ),
                 spacing="1",
                 align_items="center",
@@ -147,7 +147,7 @@ def ai_table_agent_chat_component():
         # Use rx.foreach to render current tables
         return rx.hstack(
             rx.foreach(
-                AiTableAgentChatState.current_tables,
+                AiTableAgentChatState.selected_tables,
                 _table_item,
             ),
             table_selection_menu(),
@@ -160,7 +160,7 @@ def ai_table_agent_chat_component():
 
     return rx.auto_scroll(
         rx.hstack(
-            rx.heading(AiTableDataState.current_table_name, size="3"),
+            rx.heading("💬 Chat", size="3"),
             rx.spacer(),
             header_clear_chat_button_component(chat_config.state),  # type: ignore
             align_items="center",

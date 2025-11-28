@@ -1,7 +1,5 @@
 import os
-import shutil
 import tempfile
-from typing import List
 
 import reflex as rx
 from gws_core import File
@@ -15,7 +13,7 @@ class MainState(rx.State):
     is_uploading: bool = False
 
     @rx.event
-    async def handle_upload(self, files: List[rx.UploadFile]):
+    async def handle_upload(self, files: list[rx.UploadFile]):
         """Handle file upload event and load CSV or Excel data from uploaded files."""
 
         try:
@@ -34,8 +32,7 @@ class MainState(rx.State):
 
                 # Save uploaded file to temporary location
                 file_extension = os.path.splitext(file.name)[1] if file.name else ".csv"
-                with tempfile.NamedTemporaryFile(delete=False,
-                                                 suffix=file_extension) as temp_file:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                     temp_file.write(data)
                     temp_file_path = temp_file.name
 

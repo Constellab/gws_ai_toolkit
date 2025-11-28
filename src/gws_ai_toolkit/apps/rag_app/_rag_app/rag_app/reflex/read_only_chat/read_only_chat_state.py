@@ -60,7 +60,7 @@ class ReadOnlyChatState(ConversationChatStateBase, rx.State):
             except:
                 self.subtitle = f"Last modified: {str(conversation.last_modified_at)}"
 
-    async def create_conversation(self) -> None:
+    async def _create_conversation(self) -> None:
         """Override to prevent any AI calls in read-only mode."""
         # This should never be called in read-only mode
         pass

@@ -1,16 +1,17 @@
-from typing import Dict, List, Literal, Optional, Union
+from typing import Literal
 
 from gws_core import Table
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
-    ErrorEvent, FunctionErrorEvent, FunctionSuccessEvent,
-    ResponseCompletedEvent, ResponseCreatedEvent, TextDeltaEvent)
+    BaseFunctionAgentEvent,
+    FunctionSuccessEvent,
+)
 
 
 class MultiTableTransformEvent(FunctionSuccessEvent):
     type: Literal["multi_table_transform"] = "multi_table_transform"
-    tables: Dict[str, Table]  # Dictionary of table_name -> Table
-    table_names: Optional[List[str]] = None
+    tables: dict[str, Table]  # Dictionary of table_name -> Table
+    table_names: list[str] | None = None
     code: str  # The Python code that generated the tables
 
     class Config:
@@ -18,11 +19,4 @@ class MultiTableTransformEvent(FunctionSuccessEvent):
 
 
 # Union type for all events
-MultiTableTransformAgentEvent = Union[
-    TextDeltaEvent,
-    MultiTableTransformEvent,
-    FunctionErrorEvent,
-    ErrorEvent,
-    ResponseCreatedEvent,
-    ResponseCompletedEvent
-]
+MultiTableTransformAgentEvent = BaseFunctionAgentEvent | MultiTableTransformEvent

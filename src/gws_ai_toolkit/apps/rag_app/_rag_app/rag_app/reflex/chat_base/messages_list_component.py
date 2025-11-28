@@ -291,7 +291,7 @@ def _error_content(message: ChatMessageError) -> rx.Component:
     """
     return rx.box(
         rx.hstack(
-            rx.icon("triangle-alert", size=16, color="red"),
+            rx.icon("triangle-alert", size=16, color="red", flex_shrink="0"),
             rx.text(
                 message.error,
                 font_size="14px",

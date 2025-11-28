@@ -31,7 +31,7 @@ class RagChatState(ConversationChatStateBase, rx.State):
     with proper source attribution.
     """
 
-    async def create_conversation(self) -> BaseChatConversation:
+    async def _create_conversation(self) -> BaseChatConversation:
         """Create a new RagChatConversation instance.
 
         Gets the RAG app service from RagConfigState and creates a

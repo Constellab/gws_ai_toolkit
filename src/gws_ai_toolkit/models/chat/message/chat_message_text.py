@@ -3,8 +3,7 @@ from typing import TYPE_CHECKING, Literal
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 if TYPE_CHECKING:
-    from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
-    from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
+    pass
 
 
 class ChatMessageText(ChatMessageBase):
@@ -30,28 +29,28 @@ class ChatMessageText(ChatMessageBase):
     role: Literal["assistant"] = "assistant"
     content: str = ""
 
-    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
-        """Fill additional fields from the ChatMessageModel.
-        This is called after the initial creation in from_chat_message_model.
-        """
-        self.content = chat_message.message or ""
+    # def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+    #     """Fill additional fields from the ChatMessageModel.
+    #     This is called after the initial creation in from_chat_message_model.
+    #     """
+    #     self.content = chat_message.message or ""
 
-    def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
-        """Convert DTO to database ChatMessage model.
+    # def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
+    #     """Convert DTO to database ChatMessage model.
 
-        :param conversation: The conversation this message belongs to
-        :type conversation: ChatConversation
-        :return: ChatMessage database model instance
-        :rtype: ChatMessage
-        """
-        # Import at runtime to avoid circular imports
-        # This is necessary since ChatMessage also imports from this module
-        from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
+    #     :param conversation: The conversation this message belongs to
+    #     :type conversation: ChatConversation
+    #     :return: ChatMessage database model instance
+    #     :rtype: ChatMessage
+    #     """
+    #     # Import at runtime to avoid circular imports
+    #     # This is necessary since ChatMessage also imports from this module
+    #     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
-        return ChatMessageModel.build_message(
-            conversation=conversation,
-            role=self.role,
-            type_=self.type,
-            content=self.content,
-            external_id=self.external_id,
-        )
+    #     return ChatMessageModel.build_message(
+    #         conversation=conversation,
+    #         role=self.role,
+    #         type_=self.type,
+    #         content=self.content,
+    #         external_id=self.external_id,
+    #     )

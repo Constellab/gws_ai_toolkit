@@ -61,7 +61,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
     _conversation: BaseChatConversation | None = None
 
     @abstractmethod
-    async def create_conversation(self) -> BaseChatConversation:
+    async def _create_conversation(self) -> BaseChatConversation:
         """Create the conversation object that manages messages and state.
 
         Returns:
@@ -91,7 +91,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
             BaseChatConversation: The conversation instance
         """
         if not self._conversation:
-            conversation = await self.create_conversation()
+            conversation = await self._create_conversation()
             self._conversation = conversation
         return self._conversation
 
@@ -119,7 +119,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
 
             with await main_state.authenticate_user():
                 conversation.create_conversation(user_message)
-            self._chat_messages = conversation.chat_messages
+                self._chat_messages = conversation.chat_messages
 
         await sleep(0.1)  # Allow UI to update before starting streaming
 

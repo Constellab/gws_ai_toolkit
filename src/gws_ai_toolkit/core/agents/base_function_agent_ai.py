@@ -1,49 +1,54 @@
 import asyncio
 import json
 from abc import ABC, abstractmethod
-from typing import (AsyncGenerator, Generator, Generic, List, Optional,
-                    TypeVar, cast)
+from collections.abc import AsyncGenerator, Generator
+from typing import Generic, TypeVar, cast
 
 from gws_core import BaseModelDTO
 from openai import OpenAI
-from openai.types.responses import (ResponseFunctionToolCall,
-                                    ResponseOutputItemDoneEvent)
+from openai.types.responses import ResponseFunctionToolCall, ResponseOutputItemDoneEvent
 
-from .base_function_agent_events import (ErrorEvent, FunctionErrorEvent,
-                                         FunctionResultEventBase,
-                                         FunctionSuccessEvent,
-                                         ResponseCompletedEvent,
-                                         ResponseCreatedEvent, TextDeltaEvent)
+from .base_function_agent_events import (
+    ErrorEvent,
+    FunctionErrorEvent,
+    FunctionResultEventBase,
+    FunctionSuccessEvent,
+    ResponseCompletedEvent,
+    ResponseCreatedEvent,
+    TextDeltaEvent,
+)
 
-T = TypeVar('T', bound=BaseModelDTO)
+T = TypeVar("T", bound=BaseModelDTO)
 
 
 class BaseFunctionAgentAi(ABC, Generic[T]):
-    """Base class for AI agents that interact with OpenAI streaming API to call functions
-
-    """
+    """Base class for AI agents that interact with OpenAI streaming API to call functions"""
 
     MAX_CONSECUTIVE_ERRORS = 5
     MAX_CONSECUTIVE_CALLS = 10
 
-    _openai_client: OpenAI
+    _openai_api_key: str
     _model: str
     _temperature: float
-    _last_response_id: Optional[str]
-    _emitted_events: List[T]
+    _last_response_id: str | None
+    _emitted_events: list[T]
     _skip_success_response: bool
 
-    def __init__(self, openai_client: OpenAI,
-                 model: str,
-                 temperature: float,
-                 skip_success_response: bool = False):
-        self._openai_client = openai_client
+    def __init__(self, openai_api_key: str, model: str, temperature: float, skip_success_response: bool = False):
+        self._openai_api_key = openai_api_key
         self._model = model
         self._temperature = temperature
         self._last_response_id = None
         self._emitted_events = []
         self._success_inputs = None
         self._skip_success_response = skip_success_response
+
+    def _get_openai_client(self) -> OpenAI:
+        """Create and return OpenAI client on-demand.
+
+        This avoids storing the client which contains unpicklable objects like SSLContext.
+        """
+        return OpenAI(api_key=self._openai_api_key)
 
     async def call_agent_async(
         self,
@@ -79,8 +84,10 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         messages = [{"role": "user", "content": [{"type": "input_text", "text": user_query}]}]
 
         # Main generation loop - replace recursion with iteration
-        while (consecutive_error_count < self.MAX_CONSECUTIVE_ERRORS and
-               consecutive_call_count < self.MAX_CONSECUTIVE_CALLS):
+        while (
+            consecutive_error_count < self.MAX_CONSECUTIVE_ERRORS
+            and consecutive_call_count < self.MAX_CONSECUTIVE_CALLS
+        ):
             consecutive_call_count += 1
 
             success_event: FunctionSuccessEvent | None = None
@@ -95,7 +102,6 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                 # we only filter the events for the current response_id
                 # this is usefule to ignore events from sub agents in case of delegation
                 if isinstance(event, FunctionResultEventBase) and event.response_id == self._last_response_id:
-
                     if isinstance(event, FunctionErrorEvent):
                         error_event = event
 
@@ -105,11 +111,13 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
             # If function was successfully called, prepare success response
             if success_event:
-                messages = [{
-                    "type": "function_call_output",
-                    "call_id": success_event.call_id,
-                    "output": json.dumps({'Result': success_event.function_response})
-                }]
+                messages = [
+                    {
+                        "type": "function_call_output",
+                        "call_id": success_event.call_id,
+                        "output": json.dumps({"Result": success_event.function_response}),
+                    }
+                ]
                 continue
 
             # If there was an error during the function call, prepare error message for next iteration
@@ -122,9 +130,9 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                     {
                         "type": "function_call_output",
                         "call_id": error_event.call_id,
-                        "output": json.dumps({'Result': error_event.message})
+                        "output": json.dumps({"Result": error_event.message}),
                     },
-                    {"role": "user", "content": [{"type": "input_text", "text": "Can you fix the code?"}]}
+                    {"role": "user", "content": [{"type": "input_text", "text": "Can you fix the code?"}]},
                 ]
                 continue
 
@@ -133,20 +141,24 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                 break
 
         if consecutive_error_count >= self.MAX_CONSECUTIVE_ERRORS:
-            yield cast(T, ErrorEvent(
-                message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached",
-                error_type="max_errors_reached",
-            ))
+            yield cast(
+                T,
+                ErrorEvent(
+                    message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached. Please rephrase your request.",
+                ),
+            )
 
         if consecutive_call_count >= self.MAX_CONSECUTIVE_CALLS:
-            yield cast(T, ErrorEvent(
-                message=f"Maximum consecutive calls ({self.MAX_CONSECUTIVE_CALLS}) reached",
-                error_type="max_calls_reached",
-            ))
+            yield cast(
+                T,
+                ErrorEvent(
+                    message=f"Maximum consecutive calls ({self.MAX_CONSECUTIVE_CALLS}) reached. Please rephrase your request.",
+                ),
+            )
 
     def _generate_stream_internal(
         self,
-        input_messages: List[dict],
+        input_messages: list[dict],
     ) -> Generator[T, None, None]:
         """Internal method for generation with streaming"""
 
@@ -158,17 +170,19 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
         current_response_id: str = ""
 
+        # Get OpenAI client (creates new instance on-demand)
+        openai_client = self._get_openai_client()
+
         # Stream OpenAI response directly
-        with self._openai_client.responses.stream(
+        with openai_client.responses.stream(
             model=self._model,
             instructions=prompt,
             input=input_messages,
             temperature=self._temperature,
             previous_response_id=self._last_response_id,
             tools=tools,
-            parallel_tool_calls=False  # Disable parallel function calls for iterative processing
+            parallel_tool_calls=False,  # Disable parallel function calls for iterative processing
         ) as stream:
-
             # Process streaming events
             for event in stream:
                 # Yield streaming events to consumer
@@ -186,8 +200,9 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                     for item_event in self._handle_response_output_item_done_event(event, current_response_id):
                         yield item_event
 
-    def _handle_response_output_item_done_event(self, event: ResponseOutputItemDoneEvent,
-                                                current_response_id: str) -> Generator[T, None, None]:
+    def _handle_response_output_item_done_event(
+        self, event: ResponseOutputItemDoneEvent, current_response_id: str
+    ) -> Generator[T, None, None]:
         """Handle output item done event - can be overridden by subclasses
 
         Args:
@@ -197,15 +212,15 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         Returns:
             Optional[PlotAgentEvent]: Event generated from handling the output, or None
         """
-        if not isinstance(event, ResponseOutputItemDoneEvent) or \
-                not isinstance(event.item, ResponseFunctionToolCall):
+        if not isinstance(event, ResponseOutputItemDoneEvent) or not isinstance(event.item, ResponseFunctionToolCall):
             return
 
         yield from self._handle_function_call(event.item, current_response_id)
 
     @abstractmethod
-    def _handle_function_call(self, event_item: ResponseFunctionToolCall,
-                              current_response_id: str) -> Generator[T, None, None]:
+    def _handle_function_call(
+        self, event_item: ResponseFunctionToolCall, current_response_id: str
+    ) -> Generator[T, None, None]:
         """Handle output item done event - must be implemented by subclasses
 
         Args:
@@ -225,14 +240,14 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         """
 
     @abstractmethod
-    def _get_tools(self) -> List[dict]:
+    def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI - must be implemented by subclasses
 
         Returns:
             List of tool configurations
         """
 
-    def get_emitted_events(self) -> List[T]:
+    def get_emitted_events(self) -> list[T]:
         """Get all events emitted during the last generation"""
         return self._emitted_events
 
@@ -240,6 +255,14 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         """Set the public response ID for the next generation"""
         self._last_response_id = response_id
 
-    def get_last_response_id(self) -> Optional[str]:
+    def get_last_response_id(self) -> str | None:
         """Get the last response ID used in generation"""
         return self._last_response_id
+
+    def get_model(self) -> str:
+        """Get the model used by the agent"""
+        return self._model
+
+    def get_temperature(self) -> float:
+        """Get the temperature used by the agent"""
+        return self._temperature

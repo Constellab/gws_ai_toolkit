@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from gws_core import BaseModelDTO
 
@@ -20,12 +20,13 @@ class FunctionSuccessEvent(FunctionResultEventBase):
 
     Must be extended to specific the type attribute
     """
+
     function_response: str
 
 
 class FunctionErrorEvent(FunctionResultEventBase):
-    """Event triggered when the agent finished its job in error state
-    """
+    """Event triggered when the agent finished its job in error state"""
+
     type: Literal["function_error"] = "function_error"
     message: str
 
@@ -33,12 +34,16 @@ class FunctionErrorEvent(FunctionResultEventBase):
 class ErrorEvent(BaseModelDTO):
     type: Literal["error"] = "error"
     message: str
-    error_type: str
+
+
+class CodeEvent(FunctionResultEventBase):
+    type: Literal["code"] = "code"
+    code: str
 
 
 class ResponseCreatedEvent(BaseModelDTO):
     type: Literal["response_created"] = "response_created"
-    response_id: Optional[str]
+    response_id: str | None
 
 
 class ResponseCompletedEvent(BaseModelDTO):
@@ -46,11 +51,6 @@ class ResponseCompletedEvent(BaseModelDTO):
 
 
 # Union type for all events
-BaseFunctionAgentEvent = Union[
-    TextDeltaEvent,
-    FunctionResultEventBase,
-    FunctionErrorEvent,
-    ErrorEvent,
-    ResponseCreatedEvent,
-    ResponseCompletedEvent
-]
+BaseFunctionAgentEvent = (
+    TextDeltaEvent | FunctionErrorEvent | ErrorEvent | ResponseCreatedEvent | ResponseCompletedEvent | CodeEvent
+)

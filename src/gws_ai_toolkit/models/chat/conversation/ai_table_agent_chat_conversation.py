@@ -1,8 +1,4 @@
-import os
 from collections.abc import Generator
-
-from gws_core import BaseModelDTO, Table
-from openai import OpenAI
 
 from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table_agent_ai_events import TableAgentEvent
@@ -12,13 +8,6 @@ from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePl
 from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
 
 from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
-
-
-class AiTableAgentChatConfig(BaseModelDTO):
-    """Configuration for AI Table Agent Chat."""
-
-    model: str = "gpt-4o"
-    temperature: float = 0.3
 
 
 class AiTableAgentChatConversation(BaseChatConversation):
@@ -37,52 +26,25 @@ class AiTableAgentChatConversation(BaseChatConversation):
         - Conversation persistence
 
     Attributes:
-        config: Configuration for the AI chat (model, temperature)
-        table: The Table to analyze
-        table_name: Optional name for the table
-        on_table_transform: Optional callback when table is transformed
-        _last_response_id: For conversation continuity
+        table_agent: The TableAgentAi instance to use for operations
         _current_external_response_id: Current response ID being processed
     """
 
-    config: AiTableAgentChatConfig
-    table: Table
-    table_name: str | None
+    table_agent: TableAgentAi
 
-    _last_response_id: str | None = None
     _current_external_response_id: str | None = None
 
-    def __init__(
-        self,
-        config: BaseChatConversationConfig,
-        chat_configuration: AiTableAgentChatConfig,
-        table: Table,
-        table_name: str | None = None,
-    ) -> None:
-        super().__init__(config, mode="ai_table_unified", chat_configuration=chat_configuration.to_json_dict())
-        self.config = chat_configuration
-        self.table = table
-        self.table_name = table_name
-        self._last_response_id = None
+    def __init__(self, config: BaseChatConversationConfig, table_agent: TableAgentAi) -> None:
+        super().__init__(
+            config,
+            mode="ai_table_unified",
+            chat_configuration={
+                "model": table_agent.get_model(),
+                "temperature": table_agent.get_temperature(),
+            },
+        )
+        self.table_agent = table_agent
         self._current_external_response_id = None
-
-    def _get_openai_client(self) -> OpenAI:
-        """Get OpenAI client with API key."""
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OpenAI API key is not set")
-        return OpenAI(api_key=api_key)
-
-    def set_table(self, table: Table, table_name: str | None = None) -> None:
-        """Update the table to analyze.
-
-        Args:
-            table: The new Table to analyze
-            table_name: Optional name for the table
-        """
-        self.table = table
-        if table_name:
-            self.table_name = table_name
 
     def call_ai_chat(self, user_message: str) -> Generator[AllChatMessages, None, None]:
         """Handle user message and call AI chat service using TableAgentAi.
@@ -97,68 +59,40 @@ class AiTableAgentChatConversation(BaseChatConversation):
         Yields:
             ChatMessageDTO: The current message being streamed with updated content
         """
-        table_agent = self._get_table_agent()
 
         # Process table agent events synchronously
-        for event in table_agent.call_agent(user_message):
-            message = self._handle_table_agent_event(event)
-            if message:
-                yield message
+        for event in self.table_agent.call_agent(user_message):
+            messages = self._handle_table_agent_event(event)
+            yield from messages
 
-        # Save the response ID for conversation continuity
-        self._last_response_id = table_agent.get_last_response_id()
-
-    def _get_table_agent(self) -> TableAgentAi:
-        """Get or create TableAgentAi instance."""
-        openai_client = self._get_openai_client()
-
-        if self.table is None:
-            raise ValueError("No active table available for analysis")
-
-        table_agent = TableAgentAi(
-            openai_client=openai_client,
-            table=self.table,
-            model=self.config.model,
-            temperature=self.config.temperature,
-            table_name=self.table_name,
-        )
-
-        if self._last_response_id:
-            table_agent.set_last_response_id(self._last_response_id)
-
-        return table_agent
-
-    def _handle_table_agent_event(self, event: TableAgentEvent) -> AllChatMessages | None:
+    def _handle_table_agent_event(self, event: TableAgentEvent) -> list[AllChatMessages]:
         """Handle events from the unified table agent service.
 
-        Yields all new messages for UI updates.
+        Returns all new messages for UI updates.
 
         Args:
             event: The TableAgentEvent to handle
 
         Returns:
-            Optional[AllChatMessages]: A message to yield, or None
+            list[AllChatMessages]: A list of messages (empty list if no messages to return)
         """
         if event.type == "text_delta":
-            return self.build_current_message(event.delta, external_id=self._current_external_response_id)
+            message = self.build_current_message(event.delta, external_id=self._current_external_response_id)
+            return [message] if message else []
 
         elif event.type == "plot_generated":
             # Handle successful plot generation
             if not event.figure:
-                return None
+                return []
 
             plotly_message = ChatMessagePlotly(figure=event.figure, external_id=event.response_id)
             saved_message = self.save_message(message=plotly_message)
-            return saved_message
+            return [saved_message]
 
         elif event.type == "dataframe_transform":
             # Handle successful table transformation
             transformed_table = event.table
             new_table_name = event.table_name or "Transformed Data"
-
-            # Update internal table
-            self.table = transformed_table
-            self.table_name = new_table_name
 
             hint_message = ChatMessageDataframe(
                 dataframe=transformed_table.get_data(),
@@ -166,7 +100,30 @@ class AiTableAgentChatConversation(BaseChatConversation):
                 external_id=event.response_id,
             )
             saved_message = self.save_message(message=hint_message)
-            return saved_message
+            return [saved_message]
+
+        elif event.type == "multi_table_transform":
+            # Handle successful multi-table transformation - create separate message for each table
+            transformed_tables = event.tables
+            messages = []
+
+            for table_name, table in transformed_tables.items():
+                dataframe_message = ChatMessageDataframe(
+                    dataframe=table.get_data(),
+                    dataframe_name=table_name,
+                    external_id=event.response_id,
+                )
+                saved_message = self.save_message(message=dataframe_message)
+                messages.append(saved_message)
+            return messages
+        # For now we hide code messages
+        # elif event.type == "code":
+        #     code_message = ChatMessageCode(
+        #         code=event.code,
+        #         external_id=event.response_id,
+        #     )
+        #     saved_message = self.save_message(message=code_message)
+        #     return [saved_message]
 
         elif event.type in {"error", "function_error"}:
             # Handle errors
@@ -175,19 +132,21 @@ class AiTableAgentChatConversation(BaseChatConversation):
                 external_id=getattr(event, "response_id", None),
             )
             saved_message = self.save_message(message=error_message)
-            return saved_message
+            return [saved_message]
 
         elif event.type == "sub_agent_success":
             # Handle successful sub-agent completion
-            return self.close_current_message(external_id=self._current_external_response_id)
+            message = self.close_current_message(external_id=self._current_external_response_id)
+            return [message] if message else []
 
         elif event.type == "response_created":
             if event.response_id is not None:
                 self._current_external_response_id = event.response_id
-            return None
+            return []
 
         elif event.type == "response_completed":
             self._current_external_response_id = None
-            return self.close_current_message(external_id=self._current_external_response_id)
+            message = self.close_current_message(external_id=self._current_external_response_id)
+            return [message] if message else []
 
-        return None
+        return []
