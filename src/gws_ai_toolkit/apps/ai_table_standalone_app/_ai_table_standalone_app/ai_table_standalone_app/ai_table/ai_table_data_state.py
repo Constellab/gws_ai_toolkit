@@ -7,6 +7,7 @@ from gws_ai_toolkit.core.excel_file import ExcelFile, ExcelFileDTO, ExcelSheetDT
 from gws_core import File, Table, Utils
 
 RightPanelState = Literal["closed", "chat", "stats"]
+ColumnSizeMode = Literal["default", "dense"]
 
 
 class AiTableDataState(rx.State):
@@ -22,6 +23,10 @@ class AiTableDataState(rx.State):
 
     # UI state
     right_panel_state: RightPanelState = "closed"
+    zoom_level: float = 1.0  # 1.0 = 100%, 0.3 = 30%, etc.
+    column_size_mode: ColumnSizeMode = (
+        "default"  # default = autoSize on columns, dense = ag_grid_auto_size_strategy, fixed = fixed widths
+    )
 
     # Table
     _tables: dict[str, ExcelFile] = {}
@@ -61,6 +66,31 @@ class AiTableDataState(rx.State):
         else:
             self.right_panel_state = state
 
+    @rx.event
+    def set_zoom(self, zoom: float):
+        """Set zoom level to specific value"""
+        self.zoom_level = max(0.1, min(3.0, zoom))  # Clamp between 10% and 300%
+
+    @rx.event
+    def zoom_in(self):
+        """Increase zoom by 10%"""
+        self.zoom_level = min(3.0, self.zoom_level + 0.1)
+
+    @rx.event
+    def zoom_out(self):
+        """Decrease zoom by 10%"""
+        self.zoom_level = max(0.1, self.zoom_level - 0.1)
+
+    @rx.event
+    def set_column_size_default(self):
+        """Set column size to default mode (autoSize on columns)"""
+        self.column_size_mode = "default"
+
+    @rx.event
+    def set_column_size_dense(self):
+        """Set column size to dense mode (ag_grid_auto_size_strategy)"""
+        self.column_size_mode = "dense"
+
     @rx.var
     def right_panel_opened(self) -> bool:
         """Check if right panel is open"""
@@ -92,6 +122,17 @@ class AiTableDataState(rx.State):
         return current_df.shape[1] if current_df is not None and not current_df.empty else 0
 
     @rx.var
+    def ag_grid_auto_size_strategy(self) -> dict | None:
+        """Get auto size strategy for AG Grid based on mode"""
+        if self.column_size_mode == "dense":
+            return {
+                "type": "fitCellContents",
+                "skipHeader": True,
+                "columnLimits": [{"key": None, "minWidth": 50, "maxWidth": 300}],
+            }
+        return None
+
+    @rx.var
     def ag_grid_column_defs(self) -> list[dict]:
         """Get column definitions for AG Grid"""
         current_df = self.get_current_dataframe()
@@ -100,9 +141,27 @@ class AiTableDataState(rx.State):
 
         column_defs = []
         for col in current_df.columns:
-            column_defs.append(
-                {"field": str(col), "headerName": str(col), "sortable": True, "filter": True, "resizable": True}
-            )
+            is_numeric = pd.api.types.is_numeric_dtype(current_df[col])
+
+            col_def = {
+                "field": str(col),
+                "headerName": str(col),
+                "headerTooltip": str(col),  # Show full column name on hover
+                "resizable": True,
+                "sortable": True,
+                "filter": True,
+            }
+
+            # Add width or autoSize based on mode
+            if self.column_size_mode == "default":
+                # Default mode: use autoSize on each column
+                col_def["autoSize"] = True
+            elif self.column_size_mode == "dense":
+                # Dense mode: set initial width so ag_grid_auto_size_strategy applies to all columns
+                col_def["width"] = 80 if is_numeric else 120
+                col_def["headerClass"] = "dense-header"  # Custom CSS class for styling
+
+            column_defs.append(col_def)
 
         return column_defs
 

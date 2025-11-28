@@ -27,6 +27,8 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     MAX_CONSECUTIVE_ERRORS = 5
     MAX_CONSECUTIVE_CALLS = 10
 
+    # We only store the open ai api key, not the client itself
+    # because this is used in reflex and reflex can't pickle open_ai client
     _openai_api_key: str
     _model: str
     _temperature: float
