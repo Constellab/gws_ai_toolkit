@@ -33,10 +33,14 @@ class ExcelFile:
     name: str
     _tables: dict[str, Table]  # Cache for sheet dataframes
 
-    def __init__(self, id_: str, name: str):
+    # provided if the sheet/file is associated with a resource model
+    resource_model_id: str | None = None
+
+    def __init__(self, id_: str, name: str, resource_model_id: str | None = None):
         self.id = id_
         self.name = name
         self._tables = {}  # Cache for sheet dataframes
+        self.resource_model_id = resource_model_id
 
     def get_sheet_names(self) -> list[str]:
         """Get list of sheet names for Excel files, or empty list for CSV"""
@@ -80,9 +84,9 @@ class ExcelFile:
         self._tables[sheet_name] = table
 
     @staticmethod
-    def from_file(id_: str, name: str, file_path: str) -> "ExcelFile":
+    def from_file(id_: str, name: str, file_path: str, resource_model_id: str | None = None) -> "ExcelFile":
         """Create DataFrameItem from file path"""
-        item = ExcelFile(id_=id_, name=name)
+        item = ExcelFile(id_=id_, name=name, resource_model_id=resource_model_id)
 
         file = File(file_path)
 
@@ -120,9 +124,9 @@ class ExcelFile:
         )
 
     @staticmethod
-    def from_table(id_: str, name: str, table: Table) -> "ExcelFile":
+    def from_table(id_: str, name: str, table: Table, resource_model_id: str | None = None) -> "ExcelFile":
         """Create DataFrameItem from a Table object"""
-        item = ExcelFile(id_=id_, name=name)
+        item = ExcelFile(id_=id_, name=name, resource_model_id=resource_model_id)
         table.name = name
         item.add_table(sheet_name=name, table=table)
         return item

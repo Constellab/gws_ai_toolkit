@@ -2,23 +2,170 @@ import asyncio
 import json
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, Generator
-from typing import Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
+from uuid import uuid4
 
 from gws_core import BaseModelDTO
 from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall, ResponseOutputItemDoneEvent
+from pydantic import TypeAdapter
 
 from .base_function_agent_events import (
+    BaseFunctionWithSubAgentEvent,
+    CreateSubAgent,
     ErrorEvent,
+    FunctionCallEvent,
     FunctionErrorEvent,
-    FunctionResultEventBase,
+    FunctionEventBase,
     FunctionSuccessEvent,
     ResponseCompletedEvent,
     ResponseCreatedEvent,
+    ResponseEvent,
+    ResponseFullTextEvent,
+    SubAgentSuccess,
     TextDeltaEvent,
+    UserQueryEvent,
 )
 
 T = TypeVar("T", bound=BaseModelDTO)
+
+
+class AgentEventList(Generic[T]):
+    """Manages a list of agent events with utility methods for querying and serialization"""
+
+    _events: list[T]
+
+    def __init__(self, events: list[T] | None = None):
+        self._events: list[T] = events if events is not None else []
+
+    def append(self, event: T) -> None:
+        """Add an event to the list"""
+        self._events.append(event)
+
+    def get_all(self) -> list[T]:
+        """Get all events"""
+        return self._events
+
+    def get_events_json(self) -> str:
+        """Get all events as JSON string, excluding FunctionSuccessEvent instances"""
+        not_success_messages = [event for event in self._events if not isinstance(event, FunctionSuccessEvent)]
+        return json.dumps(BaseModelDTO.to_json_list(not_success_messages))
+
+    def get_events_by_response_id(self, response_id: str) -> list[T]:
+        """Get all events for a specific response ID"""
+        return [event for event in self._events if getattr(event, "response_id", None) == response_id]
+
+    def get_events_for_serialization(self) -> list[T]:
+        """Get the events that are needed to replay the agent's behavior"""
+        dict_events = []
+
+        required_event_types = [
+            FunctionErrorEvent,
+            ErrorEvent,
+            FunctionCallEvent,
+            ResponseCreatedEvent,
+            ResponseCompletedEvent,
+            ResponseFullTextEvent,
+            CreateSubAgent,
+            SubAgentSuccess,
+        ]
+
+        for event in self._events:
+            if any(isinstance(event, t) for t in required_event_types):
+                dict_events.append(event)
+
+        return dict_events
+
+    def get_agent_and_sub_agents_events(self, agent_id: str) -> list[T]:
+        """Get all events for a specific agent and its sub-agents.
+
+        This method loops through all emitted events and collects events that belong to the specified agent.
+        When it encounters a ResponseCreatedEvent with the matching agent_id, it captures all subsequent
+        events until it reaches the corresponding ResponseCompletedEvent for that response, even if those
+        events belong to sub-agents (different agent_ids).
+
+        This works because events are emmited in order, so all events related to a response are grouped together.
+        Example:
+            - ResponseCreatedEvent (agent_id=A, response_id=R1)
+            - FunctionCallEvent (agent_id=A, response_id=R1)
+            - ResponseCreatedEvent (agent_id=B, response_id=R2)  # sub-agent event
+            - FunctionCallEvent (agent_id=B, response_id=R1)  # sub-agent event
+            - ResponseCompletedEvent (agent_id=B, response_id=R2)  # sub-agent event
+            - ResponseCompletedEvent (agent_id=A, response_id=R1)
+
+
+        Args:
+            agent_id: The ID of the agent to get events for
+
+        Returns:
+            List of events for the specified agent and any sub-agents involved in its responses
+        """
+        agent_events = []
+        active_response_ids: set[str] = set()  # Track response IDs from the target agent
+
+        for event in self._events:
+            event_agent_id: str | None = None
+            event_response_id: str | None = None
+
+            if isinstance(event, ResponseEvent):
+                event_agent_id = event.agent_id
+                event_response_id = event.response_id
+
+            if isinstance(event, UserQueryEvent):
+                event_agent_id = event.agent_id
+
+            # Check if this is a ResponseCreatedEvent from our target agent
+            if isinstance(event, ResponseCreatedEvent) and event_agent_id == agent_id:
+                # Start tracking this response - we want all events until it completes
+                active_response_ids.add(event_response_id)
+                agent_events.append(event)
+                continue
+
+            # Check if this is a ResponseCompletedEvent for one of our tracked responses
+            if isinstance(event, ResponseCompletedEvent) and event_response_id in active_response_ids:
+                agent_events.append(event)
+                # Stop tracking this response
+                active_response_ids.discard(event_response_id)
+                continue
+
+            # If we're currently tracking a response, add all events regardless of agent_id
+            # This captures sub-agent events that occur during the main agent's response
+            if len(active_response_ids) > 0:
+                agent_events.append(event)
+                continue
+
+            # Always add events that belong directly to the target agent
+            if event_agent_id == agent_id:
+                agent_events.append(event)
+
+        return agent_events
+
+    def find_create_sub_agent_event(self, response_id: str) -> CreateSubAgent | None:
+        """Find the CreateSubAgent event for a given response ID.
+
+        Args:
+            response_id: The response ID to search for
+        Returns:
+            The CreateSubAgent event if found, else None
+        """
+        for event in self._events:
+            if isinstance(event, CreateSubAgent) and event.response_id == response_id:
+                return event
+        return None
+
+    @staticmethod
+    def from_json_list(json_list: list[dict]) -> "AgentEventList[T]":
+        """Create an AgentEventList from a list of JSON dicts.
+
+        Args:
+            json_list: List of event JSON dicts
+        Returns:
+            AgentEventList instance
+        """
+        adapter = TypeAdapter(BaseFunctionWithSubAgentEvent)
+
+        event_objects = [adapter.validate_python(m) for m in json_list]
+        return AgentEventList[T](event_objects)
 
 
 class BaseFunctionAgentAi(ABC, Generic[T]):
@@ -29,19 +176,21 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
     # We only store the open ai api key, not the client itself
     # because this is used in reflex and reflex can't pickle open_ai client
+    id: str
     _openai_api_key: str
     _model: str
     _temperature: float
-    _last_response_id: str | None
-    _emitted_events: list[T]
+    _event_list: AgentEventList[T]
     _skip_success_response: bool
+    _replay_mode: bool = False
+    _replayed_events: AgentEventList[T] | None = None
 
     def __init__(self, openai_api_key: str, model: str, temperature: float, skip_success_response: bool = False):
+        self.id = str(uuid4())
         self._openai_api_key = openai_api_key
         self._model = model
         self._temperature = temperature
-        self._last_response_id = None
-        self._emitted_events = []
+        self._event_list = AgentEventList[T]()
         self._success_inputs = None
         self._skip_success_response = skip_success_response
 
@@ -84,6 +233,15 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         consecutive_call_count = 0
 
         messages = [{"role": "user", "content": [{"type": "input_text", "text": user_query}]}]
+        user_event = cast(
+            T,
+            UserQueryEvent(
+                query=user_query,
+                agent_id=self.id,
+            ),
+        )
+        self._event_list.append(user_event)
+        yield user_event
 
         # Main generation loop - replace recursion with iteration
         while (
@@ -97,13 +255,13 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
             # Generate events for this attempt
             for event in self._generate_stream_internal(messages):
-                self._emitted_events.append(event)
+                self._event_list.append(event)
                 yield event
 
                 # we check the function result events to determine if we need to continue
                 # we only filter the events for the current response_id
-                # this is usefule to ignore events from sub agents in case of delegation
-                if isinstance(event, FunctionResultEventBase) and event.response_id == self._last_response_id:
+                # this is useful to ignore events from sub agents in case of delegation
+                if isinstance(event, FunctionEventBase) and event.agent_id == self.id:
                     if isinstance(event, FunctionErrorEvent):
                         error_event = event
 
@@ -143,20 +301,24 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                 break
 
         if consecutive_error_count >= self.MAX_CONSECUTIVE_ERRORS:
-            yield cast(
+            error = cast(
                 T,
                 ErrorEvent(
                     message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached. Please rephrase your request.",
                 ),
             )
+            self._event_list.append(error)
+            yield error
 
         if consecutive_call_count >= self.MAX_CONSECUTIVE_CALLS:
-            yield cast(
+            error = cast(
                 T,
                 ErrorEvent(
                     message=f"Maximum consecutive calls ({self.MAX_CONSECUTIVE_CALLS}) reached. Please rephrase your request.",
                 ),
             )
+            self._event_list.append(error)
+            yield error
 
     def _generate_stream_internal(
         self,
@@ -171,6 +333,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         tools = self._get_tools()
 
         current_response_id: str = ""
+        text_response: str = ""
 
         # Get OpenAI client (creates new instance on-demand)
         openai_client = self._get_openai_client()
@@ -181,7 +344,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             instructions=prompt,
             input=input_messages,
             temperature=self._temperature,
-            previous_response_id=self._last_response_id,
+            previous_response_id=self._get_and_check_last_response_id(),
             tools=tools,
             parallel_tool_calls=False,  # Disable parallel function calls for iterative processing
         ) as stream:
@@ -189,18 +352,43 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             for event in stream:
                 # Yield streaming events to consumer
                 if event.type == "response.output_text.delta":
-                    yield cast(T, TextDeltaEvent(delta=event.delta))
+                    text_response = (text_response or "") + event.delta
+                    yield cast(
+                        T,
+                        TextDeltaEvent(delta=event.delta, response_id=current_response_id, agent_id=self.id),
+                    )
 
                 elif event.type == "response.created":
+                    text_response = ""
                     current_response_id = event.response.id
-                    self.set_last_response_id(event.response.id)
-                    yield cast(T, ResponseCreatedEvent(response_id=current_response_id))
+                    yield cast(T, ResponseCreatedEvent(response_id=current_response_id, agent_id=self.id))
                 elif event.type == "response.completed":
-                    self.set_last_response_id(event.response.id)
-                    yield cast(T, ResponseCompletedEvent())
+                    # If the response was a text response containing only text deltas, we can yield the full text event here
+                    if text_response is not None:
+                        yield cast(
+                            T,
+                            ResponseFullTextEvent(response_id=event.response.id, text=text_response, agent_id=self.id),
+                        )
+                    yield cast(T, ResponseCompletedEvent(response_id=event.response.id, agent_id=self.id))
+                    text_response = ""
+                    current_response_id = ""
                 elif event.type == "response.output_item.done":
-                    for item_event in self._handle_response_output_item_done_event(event, current_response_id):
-                        yield item_event
+                    yield from self._handle_response_output_item_done_event(event, current_response_id)
+
+    def _get_and_check_last_response_id(self) -> str | None:
+        """Get and check that the current response ID is set
+
+        Returns:
+            Current response ID
+
+        Raises:
+            ValueError: If the current response ID is not set
+        """
+        for event in reversed(self._event_list.get_all()):
+            if isinstance(event, ResponseEvent):
+                return event.response_id
+
+        return None
 
     def _handle_response_output_item_done_event(
         self, event: ResponseOutputItemDoneEvent, current_response_id: str
@@ -217,20 +405,31 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         if not isinstance(event, ResponseOutputItemDoneEvent) or not isinstance(event.item, ResponseFunctionToolCall):
             return
 
-        yield from self._handle_function_call(event.item, current_response_id)
+        event_items = cast(ResponseFunctionToolCall, event.item)
+
+        arguments = json.loads(event_items.arguments)
+
+        function_call_event = FunctionCallEvent(
+            call_id=event_items.call_id,
+            response_id=current_response_id,
+            function_name=event_items.name,
+            arguments=arguments,
+            agent_id=self.id,
+        )
+
+        yield cast(T, function_call_event)
+
+        yield from self._handle_function_call(function_call_event)
 
     @abstractmethod
-    def _handle_function_call(
-        self, event_item: ResponseFunctionToolCall, current_response_id: str
-    ) -> Generator[T, None, None]:
-        """Handle output item done event - must be implemented by subclasses
+    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[T, None, None]:
+        """Handle function call event - must be implemented by subclasses
 
         Args:
-            event: The output item done event
-            current_response_id: Current response ID
+            function_call_event: The function call event containing call_id, response_id, function_name, and arguments
 
         Yields:
-            PlotAgentEvent: Events generated from handling the output
+            T: Events generated from handling the function call
         """
 
     @abstractmethod
@@ -251,15 +450,54 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
     def get_emitted_events(self) -> list[T]:
         """Get all events emitted during the last generation"""
-        return self._emitted_events
+        return self._event_list.get_all()
 
-    def set_last_response_id(self, response_id: str | None) -> None:
-        """Set the public response ID for the next generation"""
-        self._last_response_id = response_id
+    def replay_events(self, events: list[T]) -> Generator[T, None, None]:
+        """Replay a list of events by yielding them one by one
 
-    def get_last_response_id(self) -> str | None:
-        """Get the last response ID used in generation"""
-        return self._last_response_id
+        This is useful for replaying previously emitted events without
+        calling the agent again. The events are yielded in order.
+
+        Args:
+            events: List of events to replay
+
+        Yields:
+            T: Each event from the input list
+        """
+        self._replay_mode = True
+        self._replayed_events = AgentEventList[T](events)
+        for event in events:
+            if isinstance(event, FunctionCallEvent):
+                yield from self._handle_function_call(event)
+
+    def call_sub_agent(
+        self,
+        sub_agent: "BaseFunctionAgentAi",
+        user_request: str,
+        response_id: str,
+    ) -> Generator[Any, None, None]:
+        """Call a sub-agent and yield its events directly
+
+        Args:
+            sub_agent: The sub-agent to call
+            user_request: User's request to pass to the sub-agent
+
+        Yields:
+            T: Events emitted by the sub-agent
+        """
+        if self._replay_mode:
+            # find the CreateSubAgent event with the matching response_id
+            if not self._replayed_events:
+                raise ValueError("No replayed events available in replay mode")
+            create_sub_agent_event = self._replayed_events.find_create_sub_agent_event(response_id)
+            if not create_sub_agent_event:
+                raise ValueError("Could not find sub agent ID in replayed events")
+            sub_agent_events = self._replayed_events.get_agent_and_sub_agents_events(create_sub_agent_event.agent_id)
+            return sub_agent.replay_events(sub_agent_events)
+        else:
+            if user_request is None:
+                raise ValueError("user_request must be provided when not in replay mode")
+            return sub_agent.call_agent(user_request)
 
     def get_model(self) -> str:
         """Get the model used by the agent"""
@@ -268,3 +506,15 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     def get_temperature(self) -> float:
         """Get the temperature used by the agent"""
         return self._temperature
+
+    def get_events(self) -> list[T]:
+        """Get all events emitted during the last generation"""
+        return self._event_list.get_all()
+
+    def get_events_json(self) -> str:
+        """Get all events emitted during the last generation as JSON string"""
+        return self._event_list.get_events_json()
+
+    def get_events_for_serialization(self) -> list[T]:
+        """Get the events that are needed to replay the agent's behavior"""
+        return self._event_list.get_events_for_serialization()

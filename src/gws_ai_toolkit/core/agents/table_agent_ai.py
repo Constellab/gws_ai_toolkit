@@ -1,18 +1,22 @@
-import json
 from collections.abc import Generator
 
 from gws_core import BaseModelDTO, Table
-from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import FunctionErrorEvent, FunctionSuccessEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
+    CreateSubAgent,
+    FunctionCallEvent,
+    FunctionErrorEvent,
+    FunctionSuccessEvent,
+    SubAgentSuccess,
+)
 from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import TableTransformEvent
 
 from .base_function_agent_ai import BaseFunctionAgentAi
 from .multi_table_agent_ai import MultiTableAgentAi
 from .multi_table_agent_ai_events import MultiTableTransformEvent
 from .plotly_agent_ai import PlotlyAgentAi
-from .table_agent_ai_events import SubAgentSuccess, TableAgentEvent
+from .table_agent_ai_events import TableAgentEvent
 from .table_transform_agent_ai import TableTransformAgentAi
 
 
@@ -106,55 +110,46 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             },
         ]
 
-    def _handle_function_call(
-        self, event_item: ResponseFunctionToolCall, current_response_id: str
-    ) -> Generator[TableAgentEvent, None, None]:
+    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[TableAgentEvent, None, None]:
         """Handle function call by delegating to appropriate specialized agent"""
 
-        function_name = event_item.name
-        function_args = event_item.arguments
-        call_id = event_item.call_id
-
-        if not function_args:
-            yield FunctionErrorEvent(
-                message=f"No function arguments provided for {function_name}.",
-                call_id=call_id,
-                response_id=current_response_id,
-            )
-            return
+        function_name = function_call_event.function_name
+        call_id = function_call_event.call_id
+        response_id = function_call_event.response_id
+        arguments = function_call_event.arguments
 
         try:
-            # Parse function arguments
-            arguments = json.loads(function_args)
+            # Use arguments dict directly (already parsed)
             user_request = arguments.get("user_request", "")
 
             if not user_request.strip():
                 yield FunctionErrorEvent(
                     message="No user request provided in function arguments.",
                     call_id=call_id,
-                    response_id=current_response_id,
+                    response_id=response_id,
+                    agent_id=self.id,
                 )
                 return
 
             if function_name == "generate_plot":
-                yield from self._handle_plot_request(user_request, arguments, call_id, current_response_id)
+                yield from self._handle_plot_request(user_request, arguments, call_id, response_id)
             elif function_name == "transform_table":
-                yield from self._handle_transform_request(user_request, arguments, call_id, current_response_id)
+                yield from self._handle_transform_request(user_request, arguments, call_id, response_id)
             elif function_name == "transform_multiple_tables":
-                yield from self._handle_multi_table_transform_request(
-                    user_request, arguments, call_id, current_response_id
-                )
+                yield from self._handle_multi_table_transform_request(user_request, arguments, call_id, response_id)
             else:
                 yield FunctionErrorEvent(
-                    message=f"Unknown function: {function_name}", call_id=call_id, response_id=current_response_id
+                    message=f"Unknown function: {function_name}",
+                    call_id=call_id,
+                    response_id=response_id,
+                    agent_id=self.id,
                 )
-        except json.JSONDecodeError as e:
-            yield FunctionErrorEvent(
-                message=f"Invalid JSON in function arguments: {e}", call_id=call_id, response_id=current_response_id
-            )
         except Exception as e:
             yield FunctionErrorEvent(
-                message=f"Error handling {function_name}: {e}", call_id=call_id, response_id=current_response_id
+                message=f"Error handling {function_name}: {e}",
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
             )
 
     def _handle_plot_request(
@@ -167,7 +162,12 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
         try:
             table = self._get_and_check_table(table_name)
         except Exception as e:
-            yield FunctionErrorEvent(message=str(e), call_id=call_id, response_id=response_id)
+            yield FunctionErrorEvent(
+                message=str(e),
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
             return
 
         # Create the plotly agent
@@ -181,9 +181,15 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
+        yield CreateSubAgent(
+            response_id=response_id,
+            agent_id=plotly_agent.id,
+        )
+
         # Delegate to plot agent and yield events directly
         success_event: FunctionSuccessEvent | None = None
-        for event in plotly_agent.call_agent(user_request):
+
+        for event in self.call_sub_agent(plotly_agent, user_request, response_id):
             yield event
             # If we get a FunctionSuccessEvent, we can yield a SubAgentSuccess
             if isinstance(event, FunctionSuccessEvent):
@@ -194,6 +200,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 call_id=call_id,
                 response_id=response_id,
                 function_response=f"{success_event.function_response} Continue with next steps if needed.",
+                agent_id=self.id,
             )
 
     def _handle_transform_request(
@@ -210,7 +217,12 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
         try:
             table = self._get_and_check_table(table_name)
         except Exception as e:
-            yield FunctionErrorEvent(message=str(e), call_id=call_id, response_id=response_id)
+            yield FunctionErrorEvent(
+                message=str(e),
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
             return
 
         output_table_name = arguments.get("output_table_name", "")
@@ -219,6 +231,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 message="No output_table_name provided in function arguments.",
                 call_id=call_id,
                 response_id=response_id,
+                agent_id=self.id,
             )
             return
 
@@ -235,10 +248,15 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
+        yield CreateSubAgent(
+            response_id=response_id,
+            agent_id=transform_agent.id,
+        )
+
         # Delegate to transform agent and yield events directly
         success_event: FunctionSuccessEvent | None = None
         table_event: TableTransformEvent | None = None
-        for event in transform_agent.call_agent(user_request):
+        for event in self.call_sub_agent(transform_agent, user_request, response_id):
             yield event
             # If we get a FunctionSuccessEvent, we can yield a SubAgentSuccess
             if isinstance(event, FunctionSuccessEvent):
@@ -256,6 +274,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 call_id=call_id,
                 response_id=response_id,
                 function_response=f"{success_event.function_response} Continue with next steps if needed.",
+                agent_id=self.id,
             )
 
     def _handle_multi_table_transform_request(
@@ -269,6 +288,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
         if not table_names:
             yield FunctionErrorEvent(
                 message="No table_names provided in function arguments.",
+                agent_id=self.id,
                 call_id=call_id,
                 response_id=response_id,
             )
@@ -277,6 +297,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
         if not output_table_names:
             yield FunctionErrorEvent(
                 message="No output_table_names provided in function arguments.",
+                agent_id=self.id,
                 call_id=call_id,
                 response_id=response_id,
             )
@@ -289,6 +310,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 message=f"Tables not found: {', '.join(missing_tables)}. Available tables: {', '.join(self._tables.keys())}",
                 call_id=call_id,
                 response_id=response_id,
+                agent_id=self.id,
             )
             return
 
@@ -306,10 +328,15 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
+        yield CreateSubAgent(
+            response_id=response_id,
+            agent_id=multi_table_agent.id,
+        )
+
         # Delegate to multi-table agent and yield events directly
         success_event: FunctionSuccessEvent | None = None
         multi_table_event: MultiTableTransformEvent | None = None
-        for event in multi_table_agent.call_agent(user_request):
+        for event in self.call_sub_agent(multi_table_agent, user_request, response_id):
             yield event
             # If we get a FunctionSuccessEvent, we can yield a SubAgentSuccess
             if isinstance(event, FunctionSuccessEvent):
@@ -332,6 +359,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 call_id=call_id,
                 response_id=response_id,
                 function_response=f"{success_event.function_response} Continue with next steps if needed.",
+                agent_id=self.id,
             )
 
     def _get_and_check_table(self, table_unique_name: str) -> Table:

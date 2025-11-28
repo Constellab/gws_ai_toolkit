@@ -1,22 +1,23 @@
-from typing import Literal, Union
+from typing import Literal
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
-    ErrorEvent, FunctionErrorEvent, FunctionSuccessEvent,
-    ResponseCompletedEvent, ResponseCreatedEvent, TextDeltaEvent)
-from gws_core import BaseModelDTO
+    BaseFunctionAgentEvent,
+    FunctionEventBase,
+    FunctionSuccessEvent,
+)
 
 # Typed event classes with literal types and direct attributes
 
 
-class EnvFileGeneratedEvent(BaseModelDTO):
+class EnvFileGeneratedEvent(FunctionEventBase):
     type: Literal["env_file_generated"] = "env_file_generated"
     env_file_content: str  # The generated environment.yml or environment.yaml content
-    env_type: Literal["conda", "mamba"]  # The type of environment
+    env_type: Literal["conda", "mamba", "pipenv"]  # The type of environment
 
 
-class EnvInstallationStartedEvent(BaseModelDTO):
+class EnvInstallationStartedEvent(FunctionEventBase):
     type: Literal["env_installation_started"] = "env_installation_started"
-    env_type: Literal["conda", "mamba"]
+    env_type: Literal["conda", "mamba", "pipenv"]
     message: str
 
 
@@ -28,13 +29,6 @@ class EnvInstallationSuccessEvent(FunctionSuccessEvent):
 
 
 # Union type for all events
-EnvAgentAiEvent = Union[
-    TextDeltaEvent,
-    EnvFileGeneratedEvent,
-    EnvInstallationStartedEvent,
-    EnvInstallationSuccessEvent,
-    FunctionErrorEvent,
-    ErrorEvent,
-    ResponseCreatedEvent,
-    ResponseCompletedEvent
-]
+EnvAgentAiEvent = (
+    BaseFunctionAgentEvent | EnvFileGeneratedEvent | EnvInstallationStartedEvent | EnvInstallationSuccessEvent
+)

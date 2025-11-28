@@ -1,5 +1,3 @@
-from typing import Optional
-
 import reflex as rx
 from gws_core import File, Logger, ResourceModel
 
@@ -18,7 +16,7 @@ class AiTableState(rx.State):
     """
 
     # Resource management
-    _current_resource_model: Optional[ResourceModel] = None
+    _current_resource_model: ResourceModel | None = None
 
     async def set_resource(self, resource: ResourceModel):
         """Set the resource to analyze and load it in both data and chat states
@@ -40,7 +38,7 @@ class AiTableState(rx.State):
 
         # Set resource in both states
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
-        data_state.add_file(file)
+        data_state.add_file(file, resource_model_id=resource.id)
 
         # chat_state: AiTableChatState = await self.get_state(AiTableChatState)
         # chat_state: AiTableChatState2 = await self.get_state(AiTableChatState2)
@@ -66,7 +64,7 @@ class AiTableState(rx.State):
     async def load_resource_from_id(self) -> None:
         """Load resource from URL parameter"""
         # Get the dynamic route parameter
-        resource_id = self.resource_id if hasattr(self, 'resource_id') else None
+        resource_id = self.resource_id if hasattr(self, "resource_id") else None
 
         if not resource_id:
             return None

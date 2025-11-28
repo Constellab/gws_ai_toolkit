@@ -1,13 +1,11 @@
-import json
 from collections.abc import Generator
 
 import pandas as pd
 import plotly.graph_objects as go
 from gws_core import BaseModelDTO, Table
-from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent, FunctionErrorEvent
 
 from .base_function_agent_ai import BaseFunctionAgentAi
 from .plotly_agent_ai_events import PlotGeneratedEvent, PlotlyAgentEvent
@@ -46,39 +44,29 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             }
         ]
 
-    def _handle_function_call(
-        self, event_item: ResponseFunctionToolCall, current_response_id: str
-    ) -> Generator[PlotlyAgentEvent, None, None]:
-        """Handle output item done event"""
-        # Handle function call completion
+    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[PlotlyAgentEvent, None, None]:
+        """Handle function call event"""
+        call_id = function_call_event.call_id
+        response_id = function_call_event.response_id
+        arguments = function_call_event.arguments
 
-        function_args = event_item.arguments
-        call_id = event_item.call_id
-
-        if not function_args:
-            yield FunctionErrorEvent(
-                message="No function arguments provided for plot generation.",
-                call_id=call_id,
-                response_id=current_response_id,
-            )
-            return
-
-        # Parse arguments
-        arguments = json.loads(function_args)
+        # Use arguments dict directly (already parsed)
         code = arguments.get("code", "")
 
         if not code.strip():
             yield FunctionErrorEvent(
                 message="No code provided in function arguments",
                 call_id=call_id,
-                response_id=current_response_id,
+                response_id=response_id,
+                agent_id=self.id,
             )
             return
 
         yield CodeEvent(
             code=code,
             call_id=call_id,
-            response_id=current_response_id,
+            response_id=response_id,
+            agent_id=self.id,
         )
 
         try:
@@ -88,8 +76,9 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
                 figure=figure,
                 code=code,
                 call_id=call_id,
-                response_id=current_response_id,
+                response_id=response_id,
                 function_response="Successfully generated the plot.",
+                agent_id=self.id,
             )
 
             # Plot generation successful - no recursion needed
@@ -97,7 +86,12 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             return
 
         except Exception as exec_error:
-            yield FunctionErrorEvent(message=str(exec_error), call_id=call_id, response_id=current_response_id)
+            yield FunctionErrorEvent(
+                message=str(exec_error),
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
 
             # Return after error - the main loop will handle retry logic
             return

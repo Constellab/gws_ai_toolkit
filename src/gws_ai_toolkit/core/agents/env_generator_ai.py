@@ -6,23 +6,30 @@ This module contains tasks that use the EnvAgentAi agent to generate environment
 """
 
 import os
-from typing import Optional
+from typing import Literal
 
+from gws_core import (
+    ConfigParams,
+    ConfigSpecs,
+    File,
+    OutputSpec,
+    OutputSpecs,
+    StrParam,
+    Task,
+    TaskInputs,
+    TaskOutputs,
+    TextParam,
+    YamlCodeParam,
+    task_decorator,
+)
+
+from gws_ai_toolkit.core.agents.base_function_agent_events import ErrorEvent, FunctionErrorEvent
 from gws_ai_toolkit.core.agents.env_agent_ai import EnvAgentAi
-from gws_ai_toolkit.core.agents.env_agent_ai_events import (
-    EnvInstallationSuccessEvent, ErrorEvent, FunctionErrorEvent)
-from gws_core import (ConfigParams, ConfigSpecs, File, OutputSpec, OutputSpecs,
-                      StrParam, Task, TaskInputs, TaskOutputs, TextParam,
-                      YamlCodeParam, task_decorator)
-from openai import OpenAI
-from typing_extensions import Literal
+from gws_ai_toolkit.core.agents.env_agent_ai_events import EnvInstallationSuccessEvent
 
 
 def _generate_env_file(
-    task: Task,
-    env_type: Literal["conda", "mamba", "pipenv"],
-    user_prompt: str,
-    existing_env_content: Optional[str]
+    task: Task, env_type: Literal["conda", "mamba", "pipenv"], user_prompt: str, existing_env_content: str | None
 ) -> str:
     """
     Private shared function to generate environment files using EnvAgentAi.
@@ -49,16 +56,11 @@ def _generate_env_file(
     # Get OpenAI client
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError(
-            "OPENAI_API_KEY environment variable is not set. "
-            "Please set it before running this task."
-        )
-
-    openai_client = OpenAI(api_key=api_key)
+        raise ValueError("OPENAI_API_KEY environment variable is not set. Please set it before running this task.")
 
     # Create the EnvAgentAi (only generate, don't install)
     agent = EnvAgentAi(
-        openai_client=openai_client,
+        openai_api_key=api_key,
         model="gpt-4",
         temperature=0.7,
         env_type=env_type,
@@ -66,7 +68,7 @@ def _generate_env_file(
     )
 
     # Process the agent events
-    generated_content: Optional[str] = None
+    generated_content: str | None = None
 
     try:
         for event in agent.call_agent(user_prompt):
@@ -77,7 +79,7 @@ def _generate_env_file(
 
             # Handle error events
             elif isinstance(event, (ErrorEvent, FunctionErrorEvent)):
-                error_msg = getattr(event, 'message', str(event))
+                error_msg = getattr(event, "message", str(event))
                 task.log_error_message(f"Error during generation: {error_msg}")
 
     except Exception as e:
@@ -93,9 +95,11 @@ def _generate_env_file(
     return generated_content
 
 
-@task_decorator("CondaEnvGeneratorAi",
-                human_name="Generate Conda/Mamba Environment",
-                short_description="Generate conda/mamba environment YAML files using AI")
+@task_decorator(
+    "CondaEnvGeneratorAi",
+    human_name="Generate Conda/Mamba Environment",
+    short_description="Generate conda/mamba environment YAML files using AI",
+)
 class CondaEnvGeneratorAi(Task):
     """
     This task generates conda/mamba environment YAML files using the EnvAgentAi agent.
@@ -127,31 +131,33 @@ class CondaEnvGeneratorAi(Task):
 
     input_specs = {}
 
-    output_specs = OutputSpecs({
-        'env_file': OutputSpec(
-            File,
-            human_name="Environment YAML file",
-            short_description="Generated conda/mamba environment.yml file"
-        )
-    })
+    output_specs = OutputSpecs(
+        {
+            "env_file": OutputSpec(
+                File, human_name="Environment YAML file", short_description="Generated conda/mamba environment.yml file"
+            )
+        }
+    )
 
-    config_specs = ConfigSpecs({
-        'user_prompt': TextParam(
-            human_name="Package requirements",
-            short_description="Describe what packages you want and any version requirements"
-        ),
-        'env_type': StrParam(
-            allowed_values=["conda", "mamba"],
-            default_value="mamba",
-            human_name="Environment type",
-            short_description="Select conda or mamba environment manager"
-        ),
-        'existing_env_file': YamlCodeParam(
-            human_name="Existing environment file (optional)",
-            short_description="An existing YAML environment file that has installation problems",
-            optional=True
-        )
-    })
+    config_specs = ConfigSpecs(
+        {
+            "user_prompt": TextParam(
+                human_name="Package requirements",
+                short_description="Describe what packages you want and any version requirements",
+            ),
+            "env_type": StrParam(
+                allowed_values=["conda", "mamba"],
+                default_value="mamba",
+                human_name="Environment type",
+                short_description="Select conda or mamba environment manager",
+            ),
+            "existing_env_file": YamlCodeParam(
+                human_name="Existing environment file (optional)",
+                short_description="An existing YAML environment file that has installation problems",
+                optional=True,
+            ),
+        }
+    )
 
     def run(self, params: ConfigParams, inputs: TaskInputs) -> TaskOutputs:
         """
@@ -165,16 +171,13 @@ class CondaEnvGeneratorAi(Task):
             TaskOutputs containing the generated environment YAML file
         """
         # Get configuration parameters
-        env_type: Literal["conda", "mamba"] = params.get_value('env_type')
-        user_prompt: str = params.get_value('user_prompt')
-        existing_env_content: Optional[str] = params.get_value('existing_env_file')
+        env_type: Literal["conda", "mamba"] = params.get_value("env_type")
+        user_prompt: str = params.get_value("user_prompt")
+        existing_env_content: str | None = params.get_value("existing_env_file")
 
         # Use shared function to generate content
         generated_content = _generate_env_file(
-            task=self,
-            env_type=env_type,
-            user_prompt=user_prompt,
-            existing_env_content=existing_env_content
+            task=self, env_type=env_type, user_prompt=user_prompt, existing_env_content=existing_env_content
         )
 
         # Create the output File resource
@@ -182,12 +185,12 @@ class CondaEnvGeneratorAi(Task):
         output_file.write(generated_content)
         output_file.name = f"environment_{env_type}.yml"
 
-        return {'env_file': output_file}
+        return {"env_file": output_file}
 
 
-@task_decorator("PipEnvGeneratorAi",
-                human_name="Generate Pipenv Environment",
-                short_description="Generate pipenv Pipfile using AI")
+@task_decorator(
+    "PipEnvGeneratorAi", human_name="Generate Pipenv Environment", short_description="Generate pipenv Pipfile using AI"
+)
 class PipEnvGeneratorAi(Task):
     """
     This task generates pipenv Pipfile files using the EnvAgentAi agent.
@@ -217,25 +220,23 @@ class PipEnvGeneratorAi(Task):
 
     input_specs = {}
 
-    output_specs = OutputSpecs({
-        'env_file': OutputSpec(
-            File,
-            human_name="Pipfile",
-            short_description="Generated Pipfile for pipenv"
-        )
-    })
+    output_specs = OutputSpecs(
+        {"env_file": OutputSpec(File, human_name="Pipfile", short_description="Generated Pipfile for pipenv")}
+    )
 
-    config_specs = ConfigSpecs({
-        'user_prompt': TextParam(
-            human_name="Package requirements",
-            short_description="Describe what packages you want and any version requirements"
-        ),
-        'existing_pipfile': TextParam(
-            human_name="Existing Pipfile (optional)",
-            short_description="An existing Pipfile that has installation problems",
-            optional=True
-        )
-    })
+    config_specs = ConfigSpecs(
+        {
+            "user_prompt": TextParam(
+                human_name="Package requirements",
+                short_description="Describe what packages you want and any version requirements",
+            ),
+            "existing_pipfile": TextParam(
+                human_name="Existing Pipfile (optional)",
+                short_description="An existing Pipfile that has installation problems",
+                optional=True,
+            ),
+        }
+    )
 
     def run(self, params: ConfigParams, inputs: TaskInputs) -> TaskOutputs:
         """
@@ -249,15 +250,12 @@ class PipEnvGeneratorAi(Task):
             TaskOutputs containing the generated Pipfile
         """
         # Get configuration parameters
-        user_prompt: str = params.get_value('user_prompt')
-        existing_env_content: Optional[str] = params.get_value('existing_pipfile')
+        user_prompt: str = params.get_value("user_prompt")
+        existing_env_content: str | None = params.get_value("existing_pipfile")
 
         # Use shared function to generate content
         generated_content = _generate_env_file(
-            task=self,
-            env_type="pipenv",
-            user_prompt=user_prompt,
-            existing_env_content=existing_env_content
+            task=self, env_type="pipenv", user_prompt=user_prompt, existing_env_content=existing_env_content
         )
 
         # Create the output File resource
@@ -265,4 +263,4 @@ class PipEnvGeneratorAi(Task):
         output_file.write(generated_content)
         output_file.name = "Pipfile"
 
-        return {'env_file': output_file}
+        return {"env_file": output_file}

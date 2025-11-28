@@ -1,13 +1,11 @@
-import json
 from collections.abc import Generator
 
 import numpy as np
 import pandas as pd
 from gws_core import BaseModelDTO, Table
-from openai.types.responses import ResponseFunctionToolCall
 from pydantic import Field
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent
 
 from .base_function_agent_ai import BaseFunctionAgentAi, FunctionErrorEvent
 from .multi_table_agent_ai_events import MultiTableTransformAgentEvent, MultiTableTransformEvent
@@ -59,38 +57,30 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
         ]
 
     def _handle_function_call(
-        self, event_item: ResponseFunctionToolCall, current_response_id: str
+        self, function_call_event: FunctionCallEvent
     ) -> Generator[MultiTableTransformAgentEvent, None, None]:
-        """Handle output item done event"""
-        # Handle function call completion
+        """Handle function call event"""
+        call_id = function_call_event.call_id
+        response_id = function_call_event.response_id
+        arguments = function_call_event.arguments
 
-        function_args = event_item.arguments
-        call_id = event_item.call_id
-
-        if not function_args:
-            yield FunctionErrorEvent(
-                message="No function arguments provided for multi-table transformation.",
-                call_id=call_id,
-                response_id=current_response_id,
-            )
-            return
-
-        # Parse arguments
-        arguments = json.loads(function_args)
+        # Use arguments dict directly (already parsed)
         code = arguments.get("code", "")
 
         if not code.strip():
             yield FunctionErrorEvent(
                 message="No code provided in function arguments",
                 call_id=call_id,
-                response_id=current_response_id,
+                response_id=response_id,
+                agent_id=self.id,
             )
             return
 
         yield CodeEvent(
             code=code,
             call_id=call_id,
-            response_id=current_response_id,
+            response_id=response_id,
+            agent_id=self.id,
         )
 
         try:
@@ -102,9 +92,10 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
                 tables=result_tables,
                 code=code,
                 call_id=call_id,
-                response_id=current_response_id,
+                response_id=response_id,
                 table_names=result_table_names,
                 function_response="Successfully transformed the multiple tables.",
+                agent_id=self.id,
             )
 
             # Transform successful - no recursion needed
@@ -112,7 +103,12 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
             return
 
         except Exception as exec_error:
-            yield FunctionErrorEvent(message=str(exec_error), call_id=call_id, response_id=current_response_id)
+            yield FunctionErrorEvent(
+                message=str(exec_error),
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
 
             # Return after error - the main loop will handle retry logic
             return

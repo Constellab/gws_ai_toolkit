@@ -2,11 +2,9 @@ import os
 import unittest
 
 import pandas as pd
-from gws_core import Table
-
 from gws_ai_toolkit.core.agents.multi_table_agent_ai import MultiTableAgentAi
-from gws_ai_toolkit.core.agents.multi_table_agent_ai_events import \
-    MultiTableTransformEvent
+from gws_ai_toolkit.core.agents.multi_table_agent_ai_events import MultiTableTransformEvent
+from gws_core import Table
 
 
 # test_multi_table_agent_ai.py
@@ -16,32 +14,33 @@ class TestMultiTableAgentAiIntegration(unittest.TestCase):
     def test_real_multi_table_transformation_merge(self):
         """Test real multi-table transformation with OpenAI API for merging tables"""
         # Create test tables
-        sales_data = pd.DataFrame({
-            'product_id': [1, 2, 3, 4, 5],
-            'sales_amount': [100, 150, 200, 80, 120],
-            'date': ['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04', '2023-01-05']
-        })
+        sales_data = pd.DataFrame(
+            {
+                "product_id": [1, 2, 3, 4, 5],
+                "sales_amount": [100, 150, 200, 80, 120],
+                "date": ["2023-01-01", "2023-01-02", "2023-01-03", "2023-01-04", "2023-01-05"],
+            }
+        )
 
-        product_data = pd.DataFrame({
-            'product_id': [1, 2, 3, 4, 5],
-            'product_name': ['Widget A', 'Widget B', 'Widget C', 'Widget D', 'Widget E'],
-            'category': ['Electronics', 'Electronics', 'Clothing', 'Electronics', 'Clothing']
-        })
+        product_data = pd.DataFrame(
+            {
+                "product_id": [1, 2, 3, 4, 5],
+                "product_name": ["Widget A", "Widget B", "Widget C", "Widget D", "Widget E"],
+                "category": ["Electronics", "Electronics", "Clothing", "Electronics", "Clothing"],
+            }
+        )
 
-        tables = {
-            'sales': Table(sales_data),
-            'products': Table(product_data)
-        }
+        tables = {"sales": Table(sales_data), "products": Table(product_data)}
 
         # Get OpenAI API key from environment variable
-        api_key = os.getenv('OPENAI_API_KEY')
+        api_key = os.getenv("OPENAI_API_KEY")
 
         # Create MultiTableAgentAi instance
         agent = MultiTableAgentAi(
             openai_api_key=api_key,
             tables=tables,
             model="gpt-4o",  # Use cheaper model for testing
-            temperature=0.1
+            temperature=0.1,
         )
 
         # Request transformation to merge tables and create summary
@@ -74,22 +73,22 @@ class TestMultiTableAgentAiIntegration(unittest.TestCase):
         found_category_summary = False
         for table_name, table in result_tables.items():
             df = table.get_data()
-            if 'category' in df.columns and any('sales' in col.lower() for col in df.columns):
+            if "category" in df.columns and any("sales" in col.lower() for col in df.columns):
                 found_category_summary = True
                 # Verify we have Electronics and Clothing categories
-                categories = df['category'].tolist()
-                self.assertIn('Electronics', categories)
-                self.assertIn('Clothing', categories)
+                categories = df["category"].tolist()
+                self.assertIn("Electronics", categories)
+                self.assertIn("Clothing", categories)
                 break
 
         self.assertTrue(found_category_summary, "Should have a table with category and sales information")
 
         # Verify the generated code contains expected elements
-        self.assertIn('merge', transform_event.code.lower())
-        self.assertIn('product_id', transform_event.code)
-        self.assertIn('groupby', transform_event.code.lower())
-        self.assertIn('category', transform_event.code)
+        self.assertIn("merge", transform_event.code.lower())
+        self.assertIn("product_id", transform_event.code)
+        self.assertIn("groupby", transform_event.code.lower())
+        self.assertIn("category", transform_event.code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

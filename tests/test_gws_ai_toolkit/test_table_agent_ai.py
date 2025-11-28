@@ -18,12 +18,9 @@ class TestTableAgentAiIntegration(unittest.TestCase):
         # Create simple dataframe with two numeric columns
         test_dataframe = pd.DataFrame({"hello": [1, 2, 3, 4, 5], "y_values": [2, 4, 1, 8, 6]})
 
-        # Get OpenAI API key from environment variable
-        api_key = os.getenv("OPENAI_API_KEY")
-
         # Create TableAgentAi instance
         agent = TableAgentAi(
-            openai_api_key=api_key,
+            openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             table=Table(test_dataframe),
             model="gpt-4o",  # Use cheaper model for testing
             temperature=0.1,
@@ -45,16 +42,12 @@ class TestTableAgentAiIntegration(unittest.TestCase):
 
     def test_transform_delegation_add_column(self):
         """Test that TableAgentAi correctly delegates transform requests to TableTransformAgentAi"""
-        # Create simple dataframe
         # Create simple dataframe with two numeric columns
         test_dataframe = pd.DataFrame({"hello": [1, 2, 3, 4, 5], "y_values": [2, 4, 1, 8, 6]})
 
-        # Get OpenAI API key from environment variable
-        api_key = os.getenv("OPENAI_API_KEY")
-
         # Create TableAgentAi instance
         agent = TableAgentAi(
-            openai_api_key=api_key,
+            openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             table=Table(test_dataframe),
             model="gpt-4o",  # Use cheaper model for testing
             temperature=0.1,
@@ -66,10 +59,40 @@ class TestTableAgentAiIntegration(unittest.TestCase):
         transform_events = [e for e in events if isinstance(e, TableTransformEvent)]
         self.assertEqual(len(transform_events), 1)
 
+        # Check the dataframe output after first agent call
+        transformed_df = transform_events[0].table.to_dataframe()
+
+        expected_df = pd.DataFrame({"x_values": [1, 2, 3, 4, 5], "y_values": [2, 4, 1, 8, 6]})
+        pd.testing.assert_frame_equal(transformed_df.reset_index(drop=True), expected_df)
+
         # Generate a plot
         events = list(agent.call_agent("Now make a scatter plot with column x_values as x and column y_values as y"))
         plot_events = [e for e in events if isinstance(e, PlotGeneratedEvent)]
         self.assertEqual(len(plot_events), 1)
+
+        replay_agent = TableAgentAi(
+            openai_api_key=os.getenv("OPENAI_API_KEY", ""),
+            model="gpt-4o",
+            temperature=0.1,
+            table=Table(test_dataframe),  # Empty table, will be replaced by replayed events
+            table_unique_name="test_data",
+        )
+
+        # Replay the previous events
+        events_to_replay = agent.get_events_for_serialization()
+        replayed_events = list(replay_agent.replay_events(events_to_replay))
+
+        # Check that we have the same number of transform events
+        replay_transform_events = [e for e in replayed_events if isinstance(e, TableTransformEvent)]
+        self.assertEqual(len(replay_transform_events), 1)
+
+        # Check we have the same output dataframe
+        replayed_transformed_df = replay_transform_events[0].table.to_dataframe()
+        pd.testing.assert_frame_equal(replayed_transformed_df.reset_index(drop=True), expected_df)
+
+        # check the plot events
+        replay_plot_events = [e for e in replayed_events if isinstance(e, PlotGeneratedEvent)]
+        self.assertEqual(len(replay_plot_events), 1)
 
     def test_multiple_operations_in_single_call(self):
         """Test that when multiple operations are requested in one call, both transformations are executed"""
@@ -91,12 +114,9 @@ class TestTableAgentAiIntegration(unittest.TestCase):
             }
         )
 
-        # Create OpenAI client using environment variable
-        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
         # Create TableAgentAi instance with first table
         agent = TableAgentAi(
-            openai_client=openai_client,
+            openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             table=Table(sales_df),
             model="gpt-4o",
             temperature=0.1,
@@ -160,12 +180,9 @@ class TestTableAgentAiIntegration(unittest.TestCase):
             }
         )
 
-        # Create OpenAI client using environment variable
-        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
         # Create TableAgentAi instance with first table
         agent = TableAgentAi(
-            openai_client=openai_client,
+            openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             table=Table(sales_df),
             model="gpt-4o",
             temperature=0.1,

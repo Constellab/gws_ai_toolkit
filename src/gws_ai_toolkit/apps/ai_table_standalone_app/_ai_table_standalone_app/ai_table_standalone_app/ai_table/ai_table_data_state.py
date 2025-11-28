@@ -234,7 +234,7 @@ class AiTableDataState(rx.State):
             table_dtos.append(table_item.to_dto())
         return table_dtos
 
-    def add_file(self, file: File, name: str | None = None):
+    def add_file(self, file: File, name: str | None = None, resource_model_id: str | None = None):
         """Set the resource file to load data from
 
         Args:
@@ -248,11 +248,15 @@ class AiTableDataState(rx.State):
         # Ensure unique name
         new_unique_name = Utils.generate_unique_str_for_list(list(existing_names), new_name)
 
-        table_item = ExcelFile.from_file(id_=str(uuid.uuid4()), name=new_unique_name, file_path=file.path)
+        table_item = ExcelFile.from_file(
+            id_=str(uuid.uuid4()), name=new_unique_name, file_path=file.path, resource_model_id=resource_model_id
+        )
 
         self.add_table_item(table_item)
 
-    def add_table(self, table: Table, name: str, id_: str | None = None) -> ExcelSheetDTO:
+    def add_table(
+        self, table: Table, name: str, id_: str | None = None, resource_model_id: str | None = None
+    ) -> ExcelSheetDTO:
         """Set a transformed DataFrame as the current active DataFrame
 
         Args:
@@ -260,7 +264,9 @@ class AiTableDataState(rx.State):
         """
         # Create new table entry for the transformed data
         id_ = id_ or str(uuid.uuid4())
-        return self.add_table_item(ExcelFile.from_table(id_=id_, name=name, table=table))
+        return self.add_table_item(
+            ExcelFile.from_table(id_=id_, name=name, table=table, resource_model_id=resource_model_id)
+        )
 
     def add_table_item(self, table_item: ExcelFile) -> ExcelSheetDTO:
         """Add a TableItem directly to the tables list

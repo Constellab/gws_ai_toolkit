@@ -1,24 +1,25 @@
-import json
 import os
 import tempfile
-from typing import Generator, List, Optional
+from collections.abc import Generator
+from typing import Any, Literal
 
-from gws_core import (BaseModelDTO, CondaShellProxy, MambaShellProxy,
-                      MessageDispatcher, PipShellProxy)
-from openai import OpenAI
-from openai.types.responses import ResponseFunctionToolCall
+from gws_core import BaseModelDTO, CondaShellProxy, MambaShellProxy, MessageDispatcher, PipShellProxy
 from pydantic import Field
-from typing_extensions import Literal
+
+from gws_ai_toolkit.core.agents.base_function_agent_events import FunctionCallEvent, FunctionErrorEvent
 
 from .base_function_agent_ai import BaseFunctionAgentAi
-from .env_agent_ai_events import (EnvAgentAiEvent, EnvFileGeneratedEvent,
-                                  EnvInstallationStartedEvent,
-                                  EnvInstallationSuccessEvent,
-                                  FunctionErrorEvent)
+from .env_agent_ai_events import (
+    EnvAgentAiEvent,
+    EnvFileGeneratedEvent,
+    EnvInstallationStartedEvent,
+    EnvInstallationSuccessEvent,
+)
 
 
 class EnvConfig(BaseModelDTO):
     """Configuration for conda/mamba/pipenv environment file generation"""
+
     env_file_content: str = Field(
         description="Complete environment file content. For conda/mamba: environment.yml with proper YAML formatting including 'name', 'channels', and 'dependencies' sections. For pipenv: Pipfile with proper TOML formatting including '[[source]]', '[packages]', and '[requires]' sections.",
     )
@@ -34,16 +35,18 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
     automatically attempts to install them using CondaShellProxy, MambaShellProxy, or PipShellProxy.
     """
 
-    _existing_env_content: Optional[str]
+    _existing_env_content: str | None
     _env_type: Literal["conda", "mamba", "pipenv"]
 
-    def __init__(self,
-                 openai_client: OpenAI,
-                 model: str,
-                 temperature: float,
-                 env_type: Literal["conda", "mamba", "pipenv"] = "conda",
-                 existing_env_content: Optional[str] = None,
-                 skip_success_response: bool = False):
+    def __init__(
+        self,
+        openai_api_key: str,
+        model: str,
+        temperature: float,
+        env_type: Literal["conda", "mamba", "pipenv"] = "conda",
+        existing_env_content: str | None = None,
+        skip_success_response: bool = False,
+    ):
         """Initialize the EnvAgentAi
 
         Args:
@@ -55,11 +58,11 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
             message_dispatcher: Optional message dispatcher for logging
             skip_success_response: Whether to skip success response
         """
-        super().__init__(openai_client, model, temperature, skip_success_response=skip_success_response)
+        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
         self._existing_env_content = existing_env_content
         self._env_type = env_type
 
-    def _get_tools(self) -> List[dict]:
+    def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
         if self._env_type == "pipenv":
             description = f"Generate a valid Pipfile for {self._env_type}. The file must be properly formatted TOML with '[[source]]', '[packages]', and '[requires]' sections."
@@ -71,50 +74,37 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                 "type": "function",
                 "name": "generate_conda_env_file",
                 "description": description,
-                "parameters": EnvConfig.model_json_schema()
+                "parameters": EnvConfig.model_json_schema(),
             }
         ]
 
-    def _handle_function_call(self, event_item: ResponseFunctionToolCall,
-                              current_response_id: str) -> Generator[EnvAgentAiEvent, None, None]:
-        """Handle output item done event"""
-        function_args = event_item.arguments
-        call_id = event_item.call_id
-
-        if not function_args:
-            yield FunctionErrorEvent(
-                message="No function arguments provided for environment file generation.",
-                call_id=call_id,
-                response_id=current_response_id
-            )
-            return
+    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[EnvAgentAiEvent, None, None]:
+        """Handle function call event"""
+        call_id = function_call_event.call_id
+        response_id = function_call_event.response_id
+        arguments = function_call_event.arguments
 
         try:
-            env_file_content = self._parse_env_file_content(function_args)
+            env_file_content = self._parse_env_file_content(arguments)
 
             # Emit the generated environment file event
             yield EnvFileGeneratedEvent(
                 env_file_content=env_file_content,
                 env_type=self._env_type,
                 call_id=call_id,
-                response_id=current_response_id,
-                function_response="Successfully generated the environment file.",
+                response_id=response_id,
             )
 
             # attempt to install the environment
-            yield from self._install_environment(env_file_content, call_id, current_response_id)
+            yield from self._install_environment(env_file_content, call_id, response_id)
 
             return
 
         except Exception as exec_error:
-            yield FunctionErrorEvent(
-                message=str(exec_error),
-                call_id=call_id,
-                response_id=current_response_id
-            )
+            yield FunctionErrorEvent(message=str(exec_error), call_id=call_id, response_id=response_id)
             return
 
-    def _parse_env_file_content(self, arguments_str: str) -> str:
+    def _parse_env_file_content(self, arguments: dict[str, Any]) -> str:
         """Parse and validate the environment file content from arguments
 
         Args:
@@ -126,16 +116,16 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
         Raises:
             ValueError: If arguments are invalid
         """
-        arguments = json.loads(arguments_str)
-        env_file_content = arguments.get('env_file_content', '')
+        env_file_content = arguments.get("env_file_content", "")
 
         if not env_file_content.strip():
             raise ValueError("No environment file content provided in function arguments")
 
         return env_file_content
 
-    def _install_environment(self, env_file_content: str, call_id: str,
-                             current_response_id: str) -> Generator[EnvAgentAiEvent, None, None]:
+    def _install_environment(
+        self, env_file_content: str, call_id: str, current_response_id: str
+    ) -> Generator[EnvAgentAiEvent, None, None]:
         """Attempt to install the generated environment
 
         Args:
@@ -153,7 +143,6 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                 message=f"Starting {self._env_type} environment installation...",
                 call_id=call_id,
                 response_id=current_response_id,
-                function_response="Installation started"
             )
 
             # Create a temporary directory for the environment
@@ -168,7 +157,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
             env_file_path = os.path.join(temp_dir, config_file_name)
 
             # Write the environment file
-            with open(env_file_path, 'w') as f:
+            with open(env_file_path, "w") as f:
                 f.write(env_file_content)
 
             # Import the appropriate shell proxy
@@ -176,28 +165,21 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
 
             if self._env_type == "mamba":
                 shell_proxy = MambaShellProxy(
-                    env_file_path=env_file_path,
-                    working_dir=temp_dir,
-                    message_dispatcher=message_dispatcher
+                    env_file_path=env_file_path, working_dir=temp_dir, message_dispatcher=message_dispatcher
                 )
             elif self._env_type == "pipenv":
                 shell_proxy = PipShellProxy(
-                    env_file_path=env_file_path,
-                    working_dir=temp_dir,
-                    message_dispatcher=message_dispatcher
+                    env_file_path=env_file_path, working_dir=temp_dir, message_dispatcher=message_dispatcher
                 )
             else:
                 shell_proxy = CondaShellProxy(
-                    env_file_path=env_file_path,
-                    working_dir=temp_dir,
-                    message_dispatcher=message_dispatcher
+                    env_file_path=env_file_path, working_dir=temp_dir, message_dispatcher=message_dispatcher
                 )
 
             # Install the environment
             result = shell_proxy.install_env()
 
             if result:
-
                 # Get the path to the installed environment
                 env_path = shell_proxy.get_venv_dir_path()
 
@@ -207,7 +189,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                     message=f"Successfully installed {self._env_type}",
                     call_id=call_id,
                     response_id=current_response_id,
-                    function_response=f"Environment installed successfully"
+                    function_response="Environment installed successfully",
                 )
             else:
                 yield EnvInstallationSuccessEvent(
@@ -216,7 +198,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                     message=f"The environment was already installed: {self._env_type}",
                     call_id=call_id,
                     response_id=current_response_id,
-                    function_response=f"Environment installed successfully"
+                    function_response="Environment installed successfully",
                 )
 
         except Exception as install_error:
@@ -225,7 +207,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
             yield FunctionErrorEvent(
                 message=f"Failed to install environment: {error_message}",
                 call_id=call_id,
-                response_id=current_response_id
+                response_id=current_response_id,
             )
 
     def _get_ai_instruction(self) -> str:
