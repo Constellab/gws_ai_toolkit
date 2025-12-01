@@ -9,6 +9,7 @@ from gws_ai_toolkit._app.ai_chat import (
     custom_sources_list_component,
     get_default_source_menu_items,
     history_component,
+    message_source,
     page_component,
 )
 from gws_ai_toolkit._app.ai_rag import (
@@ -61,7 +62,12 @@ sources_component_builder = custom_sources_list_component(custom_source_menu_ite
 @rx.page(route="/")
 def index():
     """Main chat page."""
-    chat_config = ChatConfig(state=RagChatState, sources_component=sources_component_builder)
+    chat_config = ChatConfig(
+        state=RagChatState,
+        custom_chat_messages={
+            "source": lambda message: message_source(message, RagChatState, sources_component_builder),
+        },
+    )
     return page_component(nav_bar_items, rx.fragment(rag_chat_component(chat_config), associated_resources_dialog()))
 
 

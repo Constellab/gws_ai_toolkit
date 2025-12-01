@@ -1,18 +1,16 @@
-
 import reflex as rx
 from reflex_resizable_panels import resizable_panels as rzp
 
 from .ai_table_data_state import AiTableDataState
 from .ai_table_section import table_section
-from .chat.table_agent.ai_table_agent_chat_component import \
-    ai_table_agent_chat_component
+from .chat.table_agent.ai_table_agent_chat_component import ai_table_agent_chat_component
 from .stats.ai_table_stats_component import ai_table_stats_component
 
 
 def table_selector():
     """Select dropdown for switching between tables"""
     return rx.cond(
-        AiTableDataState.tables_list,  # Only show if there are tables
+        AiTableDataState.excel_file_list,  # Only show if there are tables
         rx.hstack(
             rx.text("Table:", font_weight="bold"),
             rx.select.root(
@@ -22,7 +20,7 @@ def table_selector():
                 rx.select.content(
                     # Table options - iterate over all tables
                     rx.foreach(
-                        AiTableDataState.tables_list,
+                        AiTableDataState.excel_file_list,
                         lambda table: rx.select.item(
                             rx.text("📋 ", table["name"]),
                             value=table["id"],
@@ -30,7 +28,7 @@ def table_selector():
                     ),
                 ),
                 value=AiTableDataState.current_table_id,
-                on_change=AiTableDataState.switch_table,
+                on_change=AiTableDataState.select_excel_file,
             ),
             # Remove button for current table
             rx.button(
@@ -43,7 +41,7 @@ def table_selector():
             spacing="2",
             align="center",
         ),
-        rx.box()  # Empty box when no tables
+        rx.box(),  # Empty box when no tables
     )
 
 
@@ -75,18 +73,18 @@ def _table_header():
                 spacing="2",
                 align="center",
             ),
-            rx.text("")
+            rx.text(""),
         ),
         # Table selector (only when subtables exist)
         table_selector(),
         rx.button(
             "💬 Chat",
-            on_click=lambda: AiTableDataState.toggle_right_panel_state('chat'),
+            on_click=lambda: AiTableDataState.toggle_right_panel_state("chat"),
             variant="solid",
         ),
         rx.button(
             "📈 Stats",
-            on_click=lambda: AiTableDataState.toggle_right_panel_state('stats'),
+            on_click=lambda: AiTableDataState.toggle_right_panel_state("stats"),
             variant="solid",
         ),
         align_items="center",
@@ -116,28 +114,19 @@ def ai_table_layout():
     return rx.vstack(
         # Header
         _table_header(),
-
         rzp.group(
             rzp.panel(
                 # Table section (flexible width)
                 table_section(),
                 default_size=70,
                 min_size=10,
-                order=1
+                order=1,
             ),
             rx.cond(
                 AiTableDataState.right_panel_opened,
                 rx.fragment(
-                    rzp.handle(
-                        background="initial",
-                        width="1px"
-                    ),
-                    rzp.panel(
-                        _right_panel(),
-                        default_size=30,
-                        min_size=10,
-                        order=2
-                    ),
+                    rzp.handle(background="initial", width="1px"),
+                    rzp.panel(_right_panel(), default_size=30, min_size=10, order=2),
                 ),
             ),
             direction="horizontal",
@@ -145,22 +134,19 @@ def ai_table_layout():
             flex="1",
             min_height="0",
         ),
-
         # Main content area
         # rx.hstack(
         #     # Table section (flexible width)
         #     table_section(),
-
         #     # Chat panel (collapsible)
         #     ai_table_chat_component(),
-
         #     spacing="0",
         #     width="100%",
         #     flex="1",
         #     min_height="0",
         # ),
         width="100%",
-        spacing="0"
+        spacing="0",
     )
 
 
@@ -200,5 +186,5 @@ def ai_table_component() -> rx.Component:
             ),
             height="100%",
             width="100%",
-        )
+        ),
     )

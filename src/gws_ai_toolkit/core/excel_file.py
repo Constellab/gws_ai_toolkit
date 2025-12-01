@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import cast
+from uuid import uuid4
 
 from gws_core import File, Table, TableImporter
 from pandas import DataFrame
@@ -83,6 +84,13 @@ class ExcelFile:
         """Add a Table object for a specific sheet"""
         self._tables[sheet_name] = table
 
+    def get_sheet_name_from_id(self, table_id: str) -> str | None:
+        """Get sheet name from table ID if it exists"""
+        for key, table in self._tables.items():
+            if table.uid == table_id:
+                return key
+        return None
+
     @staticmethod
     def from_file(id_: str, name: str, file_path: str, resource_model_id: str | None = None) -> "ExcelFile":
         """Create DataFrameItem from file path"""
@@ -95,23 +103,19 @@ class ExcelFile:
         if not file.is_csv_or_excel():
             raise ValueError(f"Unsupported file extension: {extension} !")
 
-        tables: dict[str, Table] = {}
         if extension == "csv":
             # set format_header_names to True to ensure consistent naming because aggrid
             # component has some problem with column names with special caracter (like dot or ")
             table = cast(Table, TableImporter.call(file, {"format_header_names": True}))
             table.name = name
-            tables[name] = table
+            # Only 1 sheet for CSV
+            item.add_table(sheet_name="", table=table)
         else:  # Excel file
             tables = TableImporter.import_excel_multiple_sheets(file, {"format_header_names": True})
 
-        for sheet_name, table in tables.items():
-            if sheet_name == name:
-                # Avoid duplicate names
-                table.name = f"{name}"
-            else:
+            for sheet_name, table in tables.items():
                 table.name = f"{name}_{sheet_name}"
-            item.add_table(sheet_name=sheet_name, table=table)
+                item.add_table(sheet_name=sheet_name, table=table)
 
         return item
 
@@ -124,9 +128,10 @@ class ExcelFile:
         )
 
     @staticmethod
-    def from_table(id_: str, name: str, table: Table, resource_model_id: str | None = None) -> "ExcelFile":
+    def from_table(table: Table) -> "ExcelFile":
         """Create DataFrameItem from a Table object"""
-        item = ExcelFile(id_=id_, name=name, resource_model_id=resource_model_id)
-        table.name = name
-        item.add_table(sheet_name=name, table=table)
+        if not table.name:
+            raise ValueError("Table must have a name to create ExcelFile")
+        item = ExcelFile(id_=str(uuid4()), name=table.name, resource_model_id=table.get_model_id())
+        item.add_table(sheet_name="", table=table)
         return item

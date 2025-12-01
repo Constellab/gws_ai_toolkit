@@ -392,3 +392,7 @@ If you don't have enough information to determine the user's intent, ask clarify
     def add_table(self, table_unique_name: str, table: Table):
         """Add a new table to the agent's table dictionary"""
         self._tables[table_unique_name.strip()] = table
+
+    def get_tables(self) -> dict[str, Table]:
+        """Get all tables managed by the agent"""
+        return self._tables

@@ -4,15 +4,17 @@ from gws_ai_toolkit._app.ai_chat import (
     chat_input_component,
     chat_messages_list_component,
     header_clear_chat_button_component,
+    user_message_base,
 )
-from gws_ai_toolkit.models.chat.message.chat_message_dataframe import ChatMessageDataframe
+from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageDataTableFront
+from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable, ChatUserTable
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_agent_chat_state import AiTableAgentChatState, SelectedTableDTO
 from .table_selection_menu import table_selection_menu
 
 
-def _dataframe_message_content(message: ChatMessageDataframe) -> rx.Component:
+def _dataframe_message_content(message: ChatMessageDataTableFront) -> rx.Component:
     """Render content for dataframe chat messages.
 
     Displays an optional text message followed by an interactive button/card
@@ -40,11 +42,7 @@ def _dataframe_message_content(message: ChatMessageDataframe) -> rx.Component:
                 rx.icon("table-2", size=20),
                 rx.vstack(
                     rx.text(
-                        rx.cond(
-                            message.dataframe_name,
-                            message.dataframe_name,
-                            "Generated Dataframe",
-                        ),
+                        message.table_name,
                         font_weight="600",
                         font_size="14px",
                     ),
@@ -59,7 +57,7 @@ def _dataframe_message_content(message: ChatMessageDataframe) -> rx.Component:
                 spacing="3",
                 align_items="center",
             ),
-            on_click=AiTableDataState.switch_table(rx.cond(message.id, message.id, "")),
+            on_click=AiTableDataState.select_table(message.table_id),
             variant="soft",
             size="3",
             width="100%",
@@ -68,6 +66,76 @@ def _dataframe_message_content(message: ChatMessageDataframe) -> rx.Component:
             height="60px",
         ),
         spacing="2",
+        width="100%",
+        align_items="flex-start",
+    )
+
+
+def _table_chip(table: ChatUserTable) -> rx.Component:
+    """Render a small table chip similar to _table_item."""
+    return rx.box(
+        rx.hstack(
+            rx.icon(
+                "table-2",
+                size=14,
+                color="var(--gray-10)",
+            ),
+            rx.text(
+                table.name,
+                font_size="11px",
+                max_width="200px",
+                overflow="hidden",
+                text_overflow="ellipsis",
+                white_space="nowrap",
+            ),
+            spacing="1",
+            align_items="center",
+        ),
+        padding_x="6px",
+        padding_y="2px",
+        border_radius="4px",
+        background="var(--gray-3)",
+        margin_right="4px",
+        margin_top="4px",
+        min_width="0",
+        display="inline-flex",
+        align_items="center",
+        user_select="none",
+        cursor="pointer",
+        on_click=lambda: AiTableDataState.select_table(table.table_id),
+        _hover={"background": "var(--gray-4)"},
+    )
+
+
+def _user_dataframe_text_message_content(message: ChatUserMessageTable) -> rx.Component:
+    """Render content for user dataframe text messages.
+
+    Displays the message content followed by a list of tables as small chips
+    similar to the _table_item component.
+
+    Args:
+        message (ChatUserMessageDataframeText): User message containing text and table references
+    Returns:
+        rx.Component: Rendered message content with table chips
+    """
+
+    return rx.vstack(
+        # Message content
+        user_message_base(message),
+        # Tables list
+        rx.cond(
+            message.tables,
+            rx.hstack(
+                rx.foreach(
+                    message.tables,
+                    _table_chip,
+                ),
+                width="100%",
+                wrap="wrap",
+                justify="end",
+            ),
+        ),
+        spacing="0",
         width="100%",
         align_items="flex-start",
     )
@@ -107,7 +175,8 @@ def ai_table_agent_chat_component():
     chat_config = ChatConfig(
         state=AiTableAgentChatState,
         custom_chat_messages={  # type: ignore
-            "dataframe": _dataframe_message_content,
+            "table": _dataframe_message_content,
+            "user-table": _user_dataframe_text_message_content,
         },
     )
 
@@ -181,8 +250,8 @@ def ai_table_agent_chat_component():
             ),
             # Show current table selectable if it exists and is not already selected
             rx.cond(
-                AiTableAgentChatState.current_table_ssuggestion,
-                _table_item(AiTableAgentChatState.current_table_ssuggestion, is_selectable=True),
+                AiTableAgentChatState.current_table_suggestion,
+                _table_item(AiTableAgentChatState.current_table_suggestion, is_selectable=True),
             ),
             table_selection_menu(),
             spacing="1",

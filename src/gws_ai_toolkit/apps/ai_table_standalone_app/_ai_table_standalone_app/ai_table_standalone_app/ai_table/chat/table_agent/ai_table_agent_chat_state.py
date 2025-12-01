@@ -13,8 +13,7 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
     BaseChatConversationConfig,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
-from gws_ai_toolkit.models.chat.message.chat_message_dataframe import ChatMessageDataframe
-from gws_core.impl.table.table import Table
+from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageTable
 from gws_reflex_main import ReflexMainState
 
 from ...ai_table_data_state import AiTableDataState
@@ -120,13 +119,11 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
                 conversation.table_agent.add_table(table_dto.get_unique_name(), table_dto.table)
 
     async def _after_message_added(self, message: ChatMessageBase):
-        if isinstance(message, ChatMessageDataframe) and message.dataframe is not None:
+        if isinstance(message, ChatMessageTable) and message.table is not None:
             # Update the current table in AiTableDataState when a dataframe message is added
             async with self:
                 data_state = await self.get_state(AiTableDataState)
-                table_dto = data_state.add_table(
-                    Table(message.dataframe), message.dataframe_name or "transformed_table", id_=message.id
-                )
+                table_dto = data_state.add_table(message.table)
                 self._selected_tables = [table_dto]  # Set the new table as the only selected table
 
     @rx.var
@@ -147,7 +144,7 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
         ]
 
     @rx.var
-    async def current_table_ssuggestion(self) -> SelectedTableDTO | None:
+    async def current_table_suggestion(self) -> SelectedTableDTO | None:
         """Return the currently selected table as a selectable item if not already selected.
 
         This is used to show the current table in the selectable list if not already selected,

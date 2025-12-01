@@ -18,9 +18,6 @@ class AiTableDataState(rx.State):
     and provides data for the table visualization.
     """
 
-    # Current dataframe management (serializable)
-    current_sheet_name: str = ""
-
     # UI state
     right_panel_state: RightPanelState = "closed"
     zoom_level: float = 1.0  # 1.0 = 100%, 0.3 = 30%, etc.
@@ -29,12 +26,15 @@ class AiTableDataState(rx.State):
     )
 
     # Table
-    _tables: dict[str, ExcelFile] = {}
+    _excel_files: dict[str, ExcelFile] = {}
     current_table_id: str = ""  # Current active table ID
+
+    # Current dataframe management (serializable)
+    current_sheet_name: str = ""
 
     def get_current_dataframe_item(self) -> ExcelFile | None:
         """Create DataFrameItem from current file info"""
-        return self._tables.get(self.current_table_id)
+        return self._excel_files.get(self.current_table_id)
 
     def get_current_table(self) -> ExcelSheetDTO | None:
         """Get the current active table (original or subtable)"""
@@ -194,35 +194,45 @@ class AiTableDataState(rx.State):
         return df_item.has_multiple_sheets() if df_item else False
 
     @rx.event
-    def switch_table(self, table_id: str):
+    def select_excel_file(self, excel_file_id: str):
         """Switch to a specific table based on ID"""
-        if table_id in self._tables:
-            self.current_table_id = table_id
+        if excel_file_id in self._excel_files:
+            self.current_table_id = excel_file_id
             self.current_sheet_name = ""
+
+    @rx.event
+    def select_table(self, table_id: str):
+        """Switch to a specific table and sheet based on IDs"""
+        for key, table in self._excel_files.items():
+            sheet_name = table.get_sheet_name_from_id(table_id)
+            if sheet_name is not None:
+                self.current_table_id = key
+                self.current_sheet_name = sheet_name
+                return
 
     @rx.event
     def remove_current_table(self):
         """Remove the current table"""
-        if self.current_table_id and self.current_table_id in self._tables:
+        if self.current_table_id and self.current_table_id in self._excel_files:
             # Remove from dictionary
-            del self._tables[self.current_table_id]
+            del self._excel_files[self.current_table_id]
             # Switch to the first available table or empty if no tables
-            if self._tables:
-                self.current_table_id = next(iter(self._tables.keys()))
+            if self._excel_files:
+                self.current_table_id = next(iter(self._excel_files.keys()))
             else:
                 self.current_table_id = ""
 
     @rx.var
     def current_table_name(self) -> str:
         """Get the name of the currently active table"""
-        table_item = self._tables.get(self.current_table_id)
+        table_item = self._excel_files.get(self.current_table_id)
         return table_item.name if table_item else "No Table Selected"
 
     @rx.var
-    def tables_list(self) -> list[dict[str, str]]:
+    def excel_file_list(self) -> list[dict[str, str]]:
         """Get list of all tables for UI iteration"""
         tables = []
-        for table_id, table_item in self._tables.items():
+        for table_id, table_item in self._excel_files.items():
             tables.append({"id": table_id, "name": table_item.name})
         return tables
 
@@ -230,7 +240,7 @@ class AiTableDataState(rx.State):
     def all_table_items(self) -> list[ExcelFileDTO]:
         """Get list of all TableItems as DTOs for UI iteration"""
         table_dtos = []
-        for table_item in self._tables.values():
+        for table_item in self._excel_files.values():
             table_dtos.append(table_item.to_dto())
         return table_dtos
 
@@ -242,7 +252,7 @@ class AiTableDataState(rx.State):
             name (Optional[str]): Optional name to use instead of extracting from file path
         """
 
-        existing_names = {table.name for table in self._tables.values()}
+        existing_names = {table.name for table in self._excel_files.values()}
         new_name = name or file.name or "table"
 
         # Ensure unique name
@@ -252,35 +262,30 @@ class AiTableDataState(rx.State):
             id_=str(uuid.uuid4()), name=new_unique_name, file_path=file.path, resource_model_id=resource_model_id
         )
 
-        self.add_table_item(table_item)
+        self.add_excel_file(table_item)
 
-    def add_table(
-        self, table: Table, name: str, id_: str | None = None, resource_model_id: str | None = None
-    ) -> ExcelSheetDTO:
+    def add_table(self, table: Table) -> ExcelSheetDTO:
         """Set a transformed DataFrame as the current active DataFrame
 
         Args:
             transformed_df: The transformed DataFrame to set as current
         """
         # Create new table entry for the transformed data
-        id_ = id_ or str(uuid.uuid4())
-        return self.add_table_item(
-            ExcelFile.from_table(id_=id_, name=name, table=table, resource_model_id=resource_model_id)
-        )
+        return self.add_excel_file(ExcelFile.from_table(table=table))
 
-    def add_table_item(self, table_item: ExcelFile) -> ExcelSheetDTO:
+    def add_excel_file(self, excel_file: ExcelFile) -> ExcelSheetDTO:
         """Add a TableItem directly to the tables list
 
         Args:
             table_item (TableItem): TableItem to add
         """
-        self._tables[table_item.id] = table_item
-        self.current_table_id = table_item.id
-        return table_item.get_table_dto()
+        self._excel_files[excel_file.id] = excel_file
+        self.current_table_id = excel_file.id
+        return excel_file.get_table_dto()
 
     def count_tables(self) -> int:
         """Count the number of tables currently loaded"""
-        return len(self._tables)
+        return len(self._excel_files)
 
     def get_table(self, table_id: str, sheet_name: str = "") -> ExcelSheetDTO | None:
         """Get a specific table by ID and optional sheet name
@@ -292,7 +297,7 @@ class AiTableDataState(rx.State):
         Returns:
             Table | None: The requested Table or None if not found
         """
-        table_item = self._tables.get(table_id)
+        table_item = self._excel_files.get(table_id)
         if table_item:
             return table_item.get_table_dto(sheet_name)
         return None

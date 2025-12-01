@@ -166,7 +166,9 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
         # Convert DataFrames to Tables
         result_tables = {}
         for key, df in result_tables_dict.items():
-            result_tables[key] = Table(df)
+            table = Table(df)
+            table.name = key
+            result_tables[key] = table
 
         return result_tables
 

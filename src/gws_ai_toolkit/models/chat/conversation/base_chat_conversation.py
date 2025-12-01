@@ -9,10 +9,10 @@ from gws_core import UserDTO
 from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
-from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
+from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
+from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
-from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages, ChatMessage
-from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
+from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 
@@ -31,7 +31,7 @@ class BaseChatConversation:
     chat_configuration: dict
 
     chat_messages: list[ChatMessageBase]
-    current_response_message: AssistantStreamingResponse | None
+    current_response_message: ChatMessageStreaming | None
 
     _conversation_id: str | None = None
     _external_conversation_id: str | None = None
@@ -52,7 +52,7 @@ class BaseChatConversation:
         self._conversation_id = None
         self._conversation_service = ChatConversationService()
 
-    def call_conversation(self) -> Generator[AllChatMessages, None, None]:
+    def call_conversation(self, user_message: str) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Args:
@@ -62,19 +62,15 @@ class BaseChatConversation:
         if not self._conversation_id:
             raise ValueError("Conversation has not been created yet.")
 
-        last_message = self.chat_messages[-1]
-        if not last_message or not isinstance(last_message, ChatUserMessageText):
-            raise ValueError("Last message is not a user message.")
-
-        for message in self.call_ai_chat(last_message.content):
-            if isinstance(message, AssistantStreamingResponse):
+        for message in self.call_ai_chat(user_message):
+            if isinstance(message, ChatMessageStreaming):
                 self.current_response_message = message
             else:
                 self.current_response_message = None
             yield message
 
     @abstractmethod
-    def call_ai_chat(self, user_message: str) -> Generator[AllChatMessages, None, None]:
+    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Args:
@@ -95,9 +91,6 @@ class BaseChatConversation:
 
             self._save_conversation(conversation_dto)
 
-        user_text_message = ChatUserMessageText(content=user_message)
-        self.save_message(message=user_text_message)
-
     def add_message(self, message: ChatMessageBase) -> None:
         """Add a message to the conversation."""
         self.chat_messages.append(message)
@@ -111,13 +104,20 @@ class BaseChatConversation:
         if not self.current_response_message:
             return None
 
-        # Save the message using the conversation service
-        text_message = ChatMessageText(
-            content=self.current_response_message.content,
-            external_id=external_id or self.current_response_message.external_id,
-            sources=sources,
-        )
-        saved_message = self.save_message(text_message)
+        chat_message: ChatMessageBase
+        if sources:
+            chat_message = ChatMessageSource(
+                content=self.current_response_message.content,
+                external_id=external_id or self.current_response_message.external_id,
+                sources=sources,
+            )
+        else:
+            chat_message = ChatMessageText(
+                content=self.current_response_message.content,
+                external_id=external_id or self.current_response_message.external_id,
+            )
+
+        saved_message = self.save_message(chat_message)
 
         self.current_response_message = None
 
@@ -125,19 +125,19 @@ class BaseChatConversation:
 
     def build_current_message(
         self, content: str, append: bool = True, external_id: str | None = None
-    ) -> AssistantStreamingResponse:
+    ) -> ChatMessageStreaming:
         """Update the current streaming response message."""
         if self.current_response_message is None:
             # Create new message for streaming
-            return AssistantStreamingResponse(content=content, external_id=external_id)
+            return ChatMessageStreaming(content=content, external_id=external_id)
 
         if append:
-            return AssistantStreamingResponse(
+            return ChatMessageStreaming(
                 content=self.current_response_message.content + content,
                 external_id=external_id or self.current_response_message.external_id,
             )
         else:
-            return AssistantStreamingResponse(
+            return ChatMessageStreaming(
                 content=content, external_id=external_id or self.current_response_message.external_id
             )
 

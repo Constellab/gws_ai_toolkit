@@ -1,5 +1,3 @@
-from typing import List
-
 import pandas as pd
 import reflex as rx
 from gws_core import Logger, Table
@@ -15,7 +13,7 @@ class AiTableSelectionState(rx.State):
     """
 
     # Selection and table management
-    current_selection: List[dict] = []
+    current_selection: list[dict] = []
     extract_dialog_open: bool = False
     use_first_row_as_header: bool = False
 
@@ -54,7 +52,7 @@ class AiTableSelectionState(rx.State):
 
         # Get the source dataframe from current table
         source_df = data_state.get_current_dataframe()
-        table_item = data_state._tables.get(data_state.current_table_id)
+        table_item = data_state._excel_files.get(data_state.current_table_id)
         source_name = table_item.name if table_item else "table"
 
         if source_df is None or source_df.empty:
@@ -62,9 +60,9 @@ class AiTableSelectionState(rx.State):
             return
 
         # Extract row and column ranges
-        start_row = selection.get('startRow', 0)
-        end_row = selection.get('endRow', 0)
-        columns = selection.get('columns', [])
+        start_row = selection.get("startRow", 0)
+        end_row = selection.get("endRow", 0)
+        columns = selection.get("columns", [])
 
         # Handle inverted selection (when user selects from bottom to top)
         if start_row > end_row:
@@ -74,10 +72,10 @@ class AiTableSelectionState(rx.State):
         selected_data: pd.DataFrame
         if columns:
             # Select specific columns and rows using iloc for row indexing and column names
-            selected_data = source_df.iloc[start_row:end_row + 1][columns]
+            selected_data = source_df.iloc[start_row : end_row + 1][columns]
         else:
             # Select all columns for the row range
-            selected_data = source_df.iloc[start_row:end_row + 1]
+            selected_data = source_df.iloc[start_row : end_row + 1]
 
         # Handle header option
         if self.use_first_row_as_header and not selected_data.empty:
@@ -91,7 +89,8 @@ class AiTableSelectionState(rx.State):
 
         # Add new subtable via data state
         new_table = Table(selected_data)
-        data_state.add_table(new_table, subtable_name)
+        new_table.name = subtable_name
+        data_state.add_table(new_table)
 
         # Close the dialog
         self.close_extract_dialog()
@@ -108,9 +107,9 @@ class AiTableSelectionState(rx.State):
             return "No valid selection"
 
         selection = self.current_selection[0]
-        start_row = selection.get('startRow', 0)
-        end_row = selection.get('endRow', 0)
-        columns = selection.get('columns', [])
+        start_row = selection.get("startRow", 0)
+        end_row = selection.get("endRow", 0)
+        columns = selection.get("columns", [])
 
         # Handle inverted selection (when user selects from bottom to top)
         if start_row > end_row:

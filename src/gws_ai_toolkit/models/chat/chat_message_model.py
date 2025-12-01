@@ -10,7 +10,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.user.user import User
 
 if TYPE_CHECKING:
-    from gws_ai_toolkit.models.chat.chat_message_source import ChatMessageSource
+    from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
 
 
 class ChatMessageModel(Model):
@@ -34,7 +34,7 @@ class ChatMessageModel(Model):
     data: dict = JSONField(null=True)
     user: User = ForeignKeyField(User, backref="+")
 
-    sources: list["ChatMessageSource"]
+    sources: list["ChatMessageSourceModel"]
 
     class Meta:
         table_name = "gws_ai_toolkit_chat_message"

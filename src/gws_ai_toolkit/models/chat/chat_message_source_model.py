@@ -6,7 +6,7 @@ from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource, RagChatSourceChunk
 
 
-class ChatMessageSource(Model):
+class ChatMessageSourceModel(Model):
     """Model representing a source for a chat message.
 
     Based on RagChatSource class attributes:

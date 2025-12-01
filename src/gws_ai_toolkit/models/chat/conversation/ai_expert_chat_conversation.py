@@ -11,7 +11,7 @@ from PIL import Image
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
-from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
+from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
@@ -102,7 +102,7 @@ class AiExpertChatConversation(BaseChatConversation):
             raise ValueError("OpenAI API key is not set")
         return OpenAI(api_key=api_key)
 
-    def call_ai_chat(self, user_message: str) -> Generator[AllChatMessages, None, None]:
+    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Supports multiple processing modes:
@@ -251,7 +251,7 @@ class AiExpertChatConversation(BaseChatConversation):
 
     def _handle_output_text_annotation_added(
         self, event: ResponseOutputTextAnnotationAddedEvent, client: OpenAI
-    ) -> AllChatMessages | None:
+    ) -> ChatMessage | None:
         """Handle response.output_text.annotation.added event."""
         annotation = event.annotation
 
@@ -272,7 +272,7 @@ class AiExpertChatConversation(BaseChatConversation):
 
     def _extract_file_from_response(
         self, file_id: str, filename: str, client: OpenAI, container_id: str | None = None
-    ) -> AllChatMessages:
+    ) -> ChatMessage:
         """Extract file from OpenAI response - handles images and other files."""
         try:
             if file_id.startswith("cfile_") and container_id:

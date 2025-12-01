@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING, Literal
 
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
-class ChatMessageText(ChatMessageBase):
+class ChatMessageSource(ChatMessageBase):
     """Chat message containing text content from assistant.
 
     Specialized chat message for text-based content, ensuring proper typing
@@ -26,15 +27,17 @@ class ChatMessageText(ChatMessageBase):
         )
     """
 
-    type: Literal["text"] = "text"
+    type: Literal["source"] = "source"
     role: Literal["assistant"] = "assistant"
     content: str = ""
+    sources: list[RagChatSource] | None = None
 
     def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
         """Fill additional fields from the ChatMessageModel.
         This is called after the initial creation in from_chat_message_model.
         """
         self.content = chat_message.message or ""
+        self.sources = [source.to_rag_dto() for source in chat_message.sources] if chat_message.sources else []
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.

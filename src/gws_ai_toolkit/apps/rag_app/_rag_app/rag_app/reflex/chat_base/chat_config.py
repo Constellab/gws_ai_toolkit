@@ -5,7 +5,6 @@ import reflex as rx
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 from .conversation_chat_state_base import ConversationChatStateBase
-from .sources_list_component import SourcesComponentBuilder
 
 
 @dataclass
@@ -53,8 +52,6 @@ class ChatConfig:
 
     # Add custom button on top right of the header
     header_buttons: Callable[[ConversationChatStateBase], list[rx.Component]] | None = None
-
-    sources_component: SourcesComponentBuilder | None = None
 
     # Optional left and right sections to display alongside the chat
     left_section: Callable[[ConversationChatStateBase], rx.Component] | None = None

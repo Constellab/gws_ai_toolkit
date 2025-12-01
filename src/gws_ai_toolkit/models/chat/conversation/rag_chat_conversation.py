@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
+from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_models import RagChatEndStreamResponse, RagChatSource, RagChatStreamResponse
 
@@ -25,7 +25,7 @@ class RagChatConversation(BaseChatConversation):
         self.rag_app_service = rag_app_service
         self.rag_chat_id = rag_chat_id
 
-    def call_ai_chat(self, user_message: str) -> Generator[AllChatMessages, None, None]:
+    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Calls the RAG app service to get a streaming response and processes it.

@@ -1,14 +1,19 @@
 import plotly.graph_objects as go
 import reflex as rx
+from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex.chat_base.sources_list_component import (
+    SourcesComponentBuilder,
+    sources_list_component,
+)
 from gws_ai_toolkit.models.chat.message.chat_message_code import ChatMessageCode
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_hint import ChatMessageHint
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
 from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
-from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
+from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
+from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
-from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase, ChatUserMessageText
 from gws_core.apps.reflex._gws_reflex.gws_reflex_main.components.reflex_user_components import user_profile_picture
 
 from .chat_config import ChatConfig
@@ -30,49 +35,11 @@ def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
         rx.Component: Styled message bubble with appropriate alignment and content
     """
 
-    return rx.cond(
-        message.role == "user",
-        # User message - right aligned with darker background and profile picture
-        rx.hstack(
-            rx.box(
-                _message_content(message, config),
-                background_color="var(--accent-10)",
-                padding="0px 16px",
-                border_radius="18px",
-                max_width="70%",
-                word_wrap="break-word",
-                color="white",
-            ),
-            rx.cond(
-                message.user,
-                user_profile_picture(message.user, size="normal"),
-                rx.box(),
-            ),
-            spacing="2",
-            align_items="flex-start",
-            justify="end",
-            margin="8px 0",
-            width="100%",
-        ),
-        # Assistant message - left aligned without background
-        rx.box(
-            rx.box(
-                _message_content(message, config),
-                rx.cond(
-                    message.sources,
-                    rx.box(
-                        config.sources_component(message.sources, config.state) if config.sources_component else None
-                    ),
-                ),
-                padding="12px 0",
-                word_wrap="break-word",
-                width="100%",
-            ),
-            display="flex",
-            justify_content="flex-start",
-            margin="8px 0",
-            width="100%",
-        ),
+    return rx.box(
+        _message_component(message, config),
+        padding="12px 0",
+        word_wrap="break-word",
+        width="100%",
     )
 
 
@@ -172,7 +139,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     )
 
 
-def _message_content(message: ChatMessage, config: ChatConfig) -> rx.Component:  # type: ignore
+def _message_component(message: ChatMessage, config: ChatConfig) -> rx.Component:  # type: ignore
     """Content renderer that handles different message types.
 
     Routes message content to appropriate rendering functions based on
@@ -188,7 +155,8 @@ def _message_content(message: ChatMessage, config: ChatConfig) -> rx.Component: 
     # Default renderers for each type
     default_renderers = {
         "text": _text_content,
-        "user-text": _text_content,
+        "streaming-text": _text_content,
+        "user-text": user_message_base,
         "image": _image_content,
         "code": _code_content,
         "plotly": _plotly_content,
@@ -216,7 +184,19 @@ def _message_content(message: ChatMessage, config: ChatConfig) -> rx.Component: 
     )
 
 
-def _text_content(message: ChatMessageText | ChatUserMessageText | AssistantStreamingResponse) -> rx.Component:
+def _text_content(message: ChatMessageText | ChatUserMessageText | ChatMessageStreaming) -> rx.Component:
+    """Renders text content with markdown support.
+
+    Args:
+        message (ChatMessageText): Text message to render
+
+    Returns:
+        rx.Component: Markdown-rendered text content
+    """
+    return _message_content(message.content)
+
+
+def _message_content(content: str) -> rx.Component:
     """Renders text content with markdown support.
 
     Args:
@@ -226,8 +206,57 @@ def _text_content(message: ChatMessageText | ChatUserMessageText | AssistantStre
         rx.Component: Markdown-rendered text content
     """
     return rx.markdown(
-        message.content,
+        content,
         font_size="14px",
+    )
+
+
+def user_message_base(message: ChatUserMessageBase) -> rx.Component:
+    """Renders text content with markdown support.
+
+    Args:
+        message (ChatMessageText): Text message to render
+
+    Returns:
+        rx.Component: Markdown-rendered text content
+    """
+    return rx.hstack(
+        rx.box(
+            _message_content(message.content),
+            background_color="var(--accent-10)",
+            padding="0px 16px",
+            border_radius="18px",
+            max_width="70%",
+            word_wrap="break-word",
+            color="white",
+        ),
+        rx.cond(
+            message.user,
+            user_profile_picture(message.user, size="normal"),
+            rx.box(),
+        ),
+        spacing="2",
+        align_items="flex-start",
+        justify="end",
+        width="100%",
+    )
+
+
+def message_source(
+    message: ChatMessageSource,
+    state: ConversationChatStateBase,
+    sources_component: SourcesComponentBuilder | None = None,
+) -> rx.Component:
+    return rx.box(
+        _message_content(message.content),
+        rx.cond(
+            message.sources,
+            rx.box(
+                sources_component(message.sources, state)
+                if sources_component
+                else sources_list_component(message.sources, state)
+            ),
+        ),
     )
 
 

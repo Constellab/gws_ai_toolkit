@@ -5,7 +5,7 @@ from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 from .conversation_chat_state_base import ConversationChatStateBase
 
-SourcesComponentBuilder = Callable[[list[RagChatSource], ConversationChatStateBase], rx.Component]
+SourcesComponentBuilder = Callable[[list[RagChatSource] | None, ConversationChatStateBase], rx.Component]
 
 
 def get_default_source_menu_items(source: RagChatSource, state: ConversationChatStateBase) -> list[rx.Component]:
@@ -90,7 +90,7 @@ def _source_item(
 
 
 def sources_list_component(
-    sources: list[RagChatSource],
+    sources: list[RagChatSource] | None,
     state: ConversationChatStateBase,
     custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]] | None = None,
 ) -> rx.Component:

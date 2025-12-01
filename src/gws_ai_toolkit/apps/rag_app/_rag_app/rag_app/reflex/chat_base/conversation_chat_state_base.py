@@ -6,8 +6,8 @@ from anyio import sleep
 from gws_ai_toolkit.core.utils import Utils
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
-from gws_ai_toolkit.models.chat.message.chat_message_streaming import AssistantStreamingResponse
-from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
+from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
+from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_reflex_main import ReflexMainState
 
@@ -47,7 +47,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
     """
 
     is_streaming: bool = False
-    current_response_message: AllChatMessages | None = None
+    current_response_message: ChatMessageFront | None = None
     _chat_messages: list[ChatMessageBase] = []
 
     # UI Configuration
@@ -119,7 +119,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
 
             with await main_state.authenticate_user():
                 conversation.create_conversation(user_message)
-                self._chat_messages = conversation.chat_messages
+                self._chat_messages = [msg.to_front_dto() for msg in conversation.chat_messages]
 
         await sleep(0.1)  # Allow UI to update before starting streaming
 
@@ -128,8 +128,8 @@ class ConversationChatStateBase(rx.State, mixin=True):
         try:
             with await main_state.authenticate_user():
                 # Call conversation and process the AI chat stream
-                for message in conversation.call_conversation():
-                    if isinstance(message, AssistantStreamingResponse):
+                for message in conversation.call_conversation(user_message):
+                    if isinstance(message, ChatMessageStreaming):
                         # Update current response message on each yield
                         async with self:
                             self.current_response_message = message
@@ -137,14 +137,13 @@ class ConversationChatStateBase(rx.State, mixin=True):
                         # Add completed message to chat history
                         async with self:
                             self.current_response_message = None
-                            self._chat_messages = conversation.chat_messages
+                            self._chat_messages.append(message.to_front_dto())
                         await self._after_message_added(message)
 
         finally:
             # Clear current response message when finished
             async with self:
                 self.current_response_message = None
-                self._chat_messages = conversation.chat_messages
                 self.is_streaming = False
 
     @rx.event
@@ -188,6 +187,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
         return len(self._chat_messages) == 0 and not self.current_response_message and not self.is_streaming
 
     @rx.var
-    def chat_messages(self) -> list[AllChatMessages]:
+    def chat_messages(self) -> list[ChatMessageFront]:
         """Get all chat messages as DTOs for rendering."""
-        return cast(list[AllChatMessages], self._chat_messages)
+        return cast(list[ChatMessageFront], self._chat_messages)

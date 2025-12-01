@@ -5,7 +5,7 @@ from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
-from gws_ai_toolkit.models.chat.chat_message_source import ChatMessageSource
+from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.user.user import User
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
@@ -87,7 +87,7 @@ class ChatConversationService:
         message_model.save()
 
         # Create sources if provided (sources should be RagChatSource from the DTO)
-        if message.sources:
+        if isinstance(message, ChatMessageSourceModel) and message.sources:
             self._create_sources_for_message(message_model, message.sources)
 
         return message_model.to_chat_message()
@@ -118,7 +118,7 @@ class ChatConversationService:
         message_model.save()
 
         # Create sources if provided
-        if message.sources:
+        if isinstance(message, ChatMessageSourceModel) and message.sources:
             self._create_sources_for_message(message_model, message.sources)
 
         # Convert back to DTO
@@ -153,7 +153,7 @@ class ChatConversationService:
 
     def _create_sources_for_message(
         self, message: ChatMessageModel, sources: list[RagChatSource] | None
-    ) -> list[ChatMessageSource]:
+    ) -> list[ChatMessageSourceModel]:
         """Create source records for a message.
 
         :param message: The message to attach sources to
@@ -165,10 +165,10 @@ class ChatConversationService:
         if not sources:
             return []
 
-        db_sources: list[ChatMessageSource] = []
+        db_sources: list[ChatMessageSourceModel] = []
 
         for source in sources:
-            source_record = ChatMessageSource()
+            source_record = ChatMessageSourceModel()
             source_record.message = message  # type: ignore
             source_record.document_id = source.document_id
             source_record.document_name = source.document_name

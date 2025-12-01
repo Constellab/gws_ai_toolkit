@@ -13,7 +13,7 @@ def uploaded_files_list():
             rx.vstack(
                 # All tables
                 rx.foreach(
-                    AiTableDataState.tables_list,
+                    AiTableDataState.excel_file_list,
                     lambda table: rx.hstack(
                         rx.text(table["name"], font_weight="medium"),
                         rx.button(
@@ -21,7 +21,7 @@ def uploaded_files_list():
                             size="1",
                             variant="outline",
                             on_click=[
-                                AiTableDataState.switch_table(table["id"]),
+                                AiTableDataState.select_excel_file(table["id"]),
                                 rx.redirect("/ai-table"),
                             ],
                         ),
@@ -116,9 +116,7 @@ def upload_section():
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
                 },
                 max_files=10,
-                on_drop=MainState.handle_upload(rx.upload_files(
-                    on_upload_progress=MainState.handle_upload_progress
-                )),
+                on_drop=MainState.handle_upload(rx.upload_files(on_upload_progress=MainState.handle_upload_progress)),
                 style={
                     "width": "100%",
                     "height": "12rem",

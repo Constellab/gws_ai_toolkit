@@ -2,10 +2,11 @@ from collections.abc import Generator
 
 from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table_agent_ai_events import TableAgentEvent
-from gws_ai_toolkit.models.chat.message.chat_message_dataframe import ChatMessageDataframe
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
-from gws_ai_toolkit.models.chat.message.chat_message_types import AllChatMessages
+from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageTable
+from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
+from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable, ChatUserTable
 
 from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 
@@ -46,7 +47,7 @@ class AiTableAgentChatConversation(BaseChatConversation):
         self.table_agent = table_agent
         self._current_external_response_id = None
 
-    def call_ai_chat(self, user_message: str) -> Generator[AllChatMessages, None, None]:
+    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service using TableAgentAi.
 
         Routes requests through the TableAgentAi which intelligently delegates
@@ -60,12 +61,26 @@ class AiTableAgentChatConversation(BaseChatConversation):
             ChatMessageDTO: The current message being streamed with updated content
         """
 
+        tables: list[ChatUserTable] = []
+
+        for key, table in self.table_agent.get_tables().items():
+            tables.append(
+                ChatUserTable(
+                    table_id=table.uid,
+                    name=key,
+                    resource_model_id=table.get_model_id(),
+                )
+            )
+        message = ChatUserMessageTable(content=user_message, tables=tables)
+        self.save_message(message=message)
+        yield message
+
         # Process table agent events synchronously
         for event in self.table_agent.call_agent(user_message):
             messages = self._handle_table_agent_event(event)
             yield from messages
 
-    def _handle_table_agent_event(self, event: TableAgentEvent) -> list[AllChatMessages]:
+    def _handle_table_agent_event(self, event: TableAgentEvent) -> list[ChatMessage]:
         """Handle events from the unified table agent service.
 
         Returns all new messages for UI updates.
@@ -92,14 +107,14 @@ class AiTableAgentChatConversation(BaseChatConversation):
         elif event.type == "dataframe_transform":
             # Handle successful table transformation
             transformed_table = event.table
-            new_table_name = event.table_name or "Transformed Data"
+            if not event.table.name:
+                event.table.name = "Transformed Data"
 
-            hint_message = ChatMessageDataframe(
-                dataframe=transformed_table.get_data(),
-                dataframe_name=new_table_name,
+            message = ChatMessageTable(
+                table=transformed_table,
                 external_id=event.response_id,
             )
-            saved_message = self.save_message(message=hint_message)
+            saved_message = self.save_message(message=message)
             return [saved_message]
 
         elif event.type == "multi_table_transform":
@@ -108,9 +123,10 @@ class AiTableAgentChatConversation(BaseChatConversation):
             messages = []
 
             for table_name, table in transformed_tables.items():
-                dataframe_message = ChatMessageDataframe(
-                    dataframe=table.get_data(),
-                    dataframe_name=table_name,
+                if not table.name:
+                    table.name = table_name
+                dataframe_message = ChatMessageTable(
+                    table=table,
                     external_id=event.response_id,
                 )
                 saved_message = self.save_message(message=dataframe_message)

@@ -34,7 +34,6 @@ from .core.utils import Utils
 from .models.chat.chat_message_model import ChatMessageModel
 from .models.chat.message.chat_message_base import ChatMessageBase
 from .models.chat.message.chat_message_code import ChatMessageCode
-from .models.chat.message.chat_message_dataframe import ChatMessageDataframe
 from .models.chat.message.chat_message_error import (
     ChatMessageError,
 )
@@ -43,12 +42,13 @@ from .models.chat.message.chat_message_hint import (
 )
 from .models.chat.message.chat_message_image import ChatMessageImage
 from .models.chat.message.chat_message_plotly import ChatMessagePlotly
-from .models.chat.message.chat_message_streaming import AssistantStreamingResponse
+from .models.chat.message.chat_message_streaming import ChatMessageStreaming
+from .models.chat.message.chat_message_table import ChatMessageTable
 from .models.chat.message.chat_message_text import (
     ChatMessageText,
 )
 from .models.chat.message.chat_message_types import (
-    AllChatMessages,
+    ChatMessageFront,
 )
 from .models.chat.message.chat_user_message import (
     ChatUserMessageText,
@@ -258,9 +258,9 @@ __all__ = [
     "ChatMessageCode",
     "ChatMessageImage",
     "ChatMessagePlotly",
-    "ChatMessageDataframe",
-    "AssistantStreamingResponse",
-    "AllChatMessages",
+    "ChatMessageTable",
+    "ChatMessageStreaming",
+    "ChatMessageFront",
     # Stats
     "AiTableStatsBase",
     "AiTableStats",

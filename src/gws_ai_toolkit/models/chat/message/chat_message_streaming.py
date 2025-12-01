@@ -1,9 +1,9 @@
-from typing import Literal, Optional
+from typing import Literal
 
-from gws_core import BaseModelDTO
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 
-class AssistantStreamingResponse(BaseModelDTO):
+class ChatMessageStreaming(ChatMessageBase):
     """Streaming chat message response from assistant.
 
     This message type is used during streaming responses from the assistant,
@@ -24,7 +24,6 @@ class AssistantStreamingResponse(BaseModelDTO):
         )
     """
 
-    type: Literal["text"] = "text"
+    type: Literal["streaming-text"] = "streaming-text"
     role: Literal["assistant"] = "assistant"
     content: str
-    external_id: Optional[str] = None

@@ -2,7 +2,7 @@ import os
 from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
-from pandas import DataFrame
+from gws_core import Table
 
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
-class ChatMessageDataframe(ChatMessageBase):
+class ChatMessageTable(ChatMessageBase):
     """Chat message containing DataFrame content.
 
     Specialized chat message for pandas DataFrame objects, supporting
@@ -23,18 +23,17 @@ class ChatMessageDataframe(ChatMessageBase):
         dataframe: The pandas DataFrame object (may be None if not loaded)
 
     Example:
-        df_msg = ChatMessageDataframe(
+        df_msg = ChatMessageTable(
             role="assistant",
             id="msg_df_123",
             dataframe=pd.DataFrame({'A': [1, 2], 'B': [3, 4]})
         )
     """
 
-    type: Literal["dataframe"] = "dataframe"
+    type: Literal["table"] = "table"
     role: Literal["assistant"] = "assistant"
-    dataframe: DataFrame | None = None
-    content: str | None = None  # additional member
-    dataframe_name: str | None = None
+    content: str | None = None
+    table: Table | None = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -68,22 +67,22 @@ class ChatMessageDataframe(ChatMessageBase):
             type_=self.type,
             content=self.content,
             external_id=self.external_id,
-            data={"dataframe_name": self.dataframe_name} if self.dataframe_name else {},
+            data={"table_name": self.table.name} if self.table else {},
         )
 
         # Save dataframe to folder if present
         if self.dataframe is not None:
-            self._save_dataframe_to_message(message)
+            self._save_table_to_message(message)
 
         return message
 
-    def _save_dataframe_to_message(self, message: "ChatMessageModel") -> None:
+    def _save_table_to_message(self, message: "ChatMessageModel") -> None:
         """Save the DataFrame to the conversation folder and update message filename.
 
         :param message: The ChatMessage instance to save the dataframe for
         :type message: ChatMessage
         """
-        if self.dataframe is None:
+        if self.table is None:
             return
 
         folder_path = message.conversation.get_conversation_folder_path()
@@ -92,10 +91,26 @@ class ChatMessageDataframe(ChatMessageBase):
         os.makedirs(folder_path, exist_ok=True)
 
         # Generate unique filename
-        filename = f"dataframe_{message.id}.csv"
+        filename = f"table_{message.id}.csv"
         file_path = os.path.join(folder_path, filename)
 
         # Save DataFrame as CSV
-        self.dataframe.to_csv(file_path, index=False)
+        self.table.get_data().to_csv(file_path, index=False)
 
         message.filename = filename
+
+    def to_front_dto(self) -> ChatMessageBase:
+        return ChatMessageDataTableFront(
+            id=self.id,
+            content=self.content if self.content else "",
+            table_id=self.table.uid if self.table else "",
+            table_name=self.table.name if self.table else "Table",
+        )
+
+
+class ChatMessageDataTableFront(ChatMessageBase):
+    type: Literal["table"] = "table"
+    role: Literal["assistant"] = "assistant"
+    content: str
+    table_id: str
+    table_name: str
