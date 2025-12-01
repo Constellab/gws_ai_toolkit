@@ -4,11 +4,8 @@ from gws_core import BaseModelDTO, Table
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
-    CreateSubAgent,
     FunctionCallEvent,
     FunctionErrorEvent,
-    FunctionSuccessEvent,
-    SubAgentSuccess,
 )
 from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import TableTransformEvent
 
@@ -181,27 +178,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
-        yield CreateSubAgent(
-            response_id=response_id,
-            agent_id=plotly_agent.id,
-        )
-
-        # Delegate to plot agent and yield events directly
-        success_event: FunctionSuccessEvent | None = None
-
-        for event in self.call_sub_agent(plotly_agent, user_request, response_id):
-            yield event
-            # If we get a FunctionSuccessEvent, we can yield a SubAgentSuccess
-            if isinstance(event, FunctionSuccessEvent):
-                success_event = event
-
-        if success_event:
-            yield SubAgentSuccess(
-                call_id=call_id,
-                response_id=response_id,
-                function_response=f"{success_event.function_response} Continue with next steps if needed.",
-                agent_id=self.id,
-            )
+        yield from self.call_sub_agent(plotly_agent, user_request, response_id, call_id, self.id)
 
     def _handle_transform_request(
         self,
@@ -248,34 +225,12 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
-        yield CreateSubAgent(
-            response_id=response_id,
-            agent_id=transform_agent.id,
-        )
-
         # Delegate to transform agent and yield events directly
-        success_event: FunctionSuccessEvent | None = None
-        table_event: TableTransformEvent | None = None
-        for event in self.call_sub_agent(transform_agent, user_request, response_id):
+        for event in self.call_sub_agent(transform_agent, user_request, response_id, call_id, self.id):
             yield event
-            # If we get a FunctionSuccessEvent, we can yield a SubAgentSuccess
-            if isinstance(event, FunctionSuccessEvent):
-                success_event = event
 
             if isinstance(event, TableTransformEvent):
-                table_event = event
-
-        if table_event:
-            # Add the transformed table to the tables dictionary
-            self.add_table(output_table_name, table_event.table)
-
-        if success_event:
-            yield SubAgentSuccess(
-                call_id=call_id,
-                response_id=response_id,
-                function_response=f"{success_event.function_response} Continue with next steps if needed.",
-                agent_id=self.id,
-            )
+                self.add_table(output_table_name, event.table)
 
     def _handle_multi_table_transform_request(
         self, user_request: str, arguments: dict, call_id: str, response_id: str
@@ -328,39 +283,17 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
-        yield CreateSubAgent(
-            response_id=response_id,
-            agent_id=multi_table_agent.id,
-        )
-
         # Delegate to multi-table agent and yield events directly
-        success_event: FunctionSuccessEvent | None = None
-        multi_table_event: MultiTableTransformEvent | None = None
-        for event in self.call_sub_agent(multi_table_agent, user_request, response_id):
+        for event in self.call_sub_agent(multi_table_agent, user_request, response_id, call_id, self.id):
             yield event
-            # If we get a FunctionSuccessEvent, we can yield a SubAgentSuccess
-            if isinstance(event, FunctionSuccessEvent):
-                success_event = event
 
             if isinstance(event, MultiTableTransformEvent):
-                multi_table_event = event
-
-        if multi_table_event:
-            # Add all transformed tables to the tables dictionary
-            for i, (result_table_name, result_table) in enumerate(multi_table_event.tables.items()):
-                # Use provided output names if available, otherwise use the result table names from the event
-                if i < len(output_table_names):
-                    self.add_table(output_table_names[i], result_table)
-                else:
-                    self.add_table(result_table_name, result_table)
-
-        if success_event:
-            yield SubAgentSuccess(
-                call_id=call_id,
-                response_id=response_id,
-                function_response=f"{success_event.function_response} Continue with next steps if needed.",
-                agent_id=self.id,
-            )
+                for i, (result_table_name, result_table) in enumerate(event.tables.items()):
+                    # Use provided output names if available, otherwise use the result table names from the event
+                    if i < len(output_table_names):
+                        self.add_table(output_table_names[i], result_table)
+                    else:
+                        self.add_table(result_table_name, result_table)
 
     def _get_and_check_table(self, table_unique_name: str) -> Table:
         # Retrieve the specified table

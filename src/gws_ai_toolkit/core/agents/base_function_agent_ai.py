@@ -8,10 +8,10 @@ from uuid import uuid4
 from gws_core import BaseModelDTO
 from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall, ResponseOutputItemDoneEvent
-from pydantic import TypeAdapter
+
+from gws_ai_toolkit.core.agents.agent_event_list import AgentEventList
 
 from .base_function_agent_events import (
-    BaseFunctionWithSubAgentEvent,
     CreateSubAgent,
     ErrorEvent,
     FunctionCallEvent,
@@ -28,144 +28,6 @@ from .base_function_agent_events import (
 )
 
 T = TypeVar("T", bound=BaseModelDTO)
-
-
-class AgentEventList(Generic[T]):
-    """Manages a list of agent events with utility methods for querying and serialization"""
-
-    _events: list[T]
-
-    def __init__(self, events: list[T] | None = None):
-        self._events: list[T] = events if events is not None else []
-
-    def append(self, event: T) -> None:
-        """Add an event to the list"""
-        self._events.append(event)
-
-    def get_all(self) -> list[T]:
-        """Get all events"""
-        return self._events
-
-    def get_events_json(self) -> str:
-        """Get all events as JSON string, excluding FunctionSuccessEvent instances"""
-        not_success_messages = [event for event in self._events if not isinstance(event, FunctionSuccessEvent)]
-        return json.dumps(BaseModelDTO.to_json_list(not_success_messages))
-
-    def get_events_by_response_id(self, response_id: str) -> list[T]:
-        """Get all events for a specific response ID"""
-        return [event for event in self._events if getattr(event, "response_id", None) == response_id]
-
-    def get_events_for_serialization(self) -> list[T]:
-        """Get the events that are needed to replay the agent's behavior"""
-        dict_events = []
-
-        required_event_types = [
-            FunctionErrorEvent,
-            ErrorEvent,
-            FunctionCallEvent,
-            ResponseCreatedEvent,
-            ResponseCompletedEvent,
-            ResponseFullTextEvent,
-            CreateSubAgent,
-            SubAgentSuccess,
-        ]
-
-        for event in self._events:
-            if any(isinstance(event, t) for t in required_event_types):
-                dict_events.append(event)
-
-        return dict_events
-
-    def get_agent_and_sub_agents_events(self, agent_id: str) -> list[T]:
-        """Get all events for a specific agent and its sub-agents.
-
-        This method loops through all emitted events and collects events that belong to the specified agent.
-        When it encounters a ResponseCreatedEvent with the matching agent_id, it captures all subsequent
-        events until it reaches the corresponding ResponseCompletedEvent for that response, even if those
-        events belong to sub-agents (different agent_ids).
-
-        This works because events are emmited in order, so all events related to a response are grouped together.
-        Example:
-            - ResponseCreatedEvent (agent_id=A, response_id=R1)
-            - FunctionCallEvent (agent_id=A, response_id=R1)
-            - ResponseCreatedEvent (agent_id=B, response_id=R2)  # sub-agent event
-            - FunctionCallEvent (agent_id=B, response_id=R1)  # sub-agent event
-            - ResponseCompletedEvent (agent_id=B, response_id=R2)  # sub-agent event
-            - ResponseCompletedEvent (agent_id=A, response_id=R1)
-
-
-        Args:
-            agent_id: The ID of the agent to get events for
-
-        Returns:
-            List of events for the specified agent and any sub-agents involved in its responses
-        """
-        agent_events = []
-        active_response_ids: set[str] = set()  # Track response IDs from the target agent
-
-        for event in self._events:
-            event_agent_id: str | None = None
-            event_response_id: str | None = None
-
-            if isinstance(event, ResponseEvent):
-                event_agent_id = event.agent_id
-                event_response_id = event.response_id
-
-            if isinstance(event, UserQueryEvent):
-                event_agent_id = event.agent_id
-
-            # Check if this is a ResponseCreatedEvent from our target agent
-            if isinstance(event, ResponseCreatedEvent) and event_agent_id == agent_id:
-                # Start tracking this response - we want all events until it completes
-                active_response_ids.add(event_response_id)
-                agent_events.append(event)
-                continue
-
-            # Check if this is a ResponseCompletedEvent for one of our tracked responses
-            if isinstance(event, ResponseCompletedEvent) and event_response_id in active_response_ids:
-                agent_events.append(event)
-                # Stop tracking this response
-                active_response_ids.discard(event_response_id)
-                continue
-
-            # If we're currently tracking a response, add all events regardless of agent_id
-            # This captures sub-agent events that occur during the main agent's response
-            if len(active_response_ids) > 0:
-                agent_events.append(event)
-                continue
-
-            # Always add events that belong directly to the target agent
-            if event_agent_id == agent_id:
-                agent_events.append(event)
-
-        return agent_events
-
-    def find_create_sub_agent_event(self, response_id: str) -> CreateSubAgent | None:
-        """Find the CreateSubAgent event for a given response ID.
-
-        Args:
-            response_id: The response ID to search for
-        Returns:
-            The CreateSubAgent event if found, else None
-        """
-        for event in self._events:
-            if isinstance(event, CreateSubAgent) and event.response_id == response_id:
-                return event
-        return None
-
-    @staticmethod
-    def from_json_list(json_list: list[dict]) -> "AgentEventList[T]":
-        """Create an AgentEventList from a list of JSON dicts.
-
-        Args:
-            json_list: List of event JSON dicts
-        Returns:
-            AgentEventList instance
-        """
-        adapter = TypeAdapter(BaseFunctionWithSubAgentEvent)
-
-        event_objects = [adapter.validate_python(m) for m in json_list]
-        return AgentEventList[T](event_objects)
 
 
 class BaseFunctionAgentAi(ABC, Generic[T]):
@@ -474,7 +336,9 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         self,
         sub_agent: "BaseFunctionAgentAi",
         user_request: str,
-        response_id: str,
+        parent_response_id: str,
+        parent_call_id: str,
+        parent_agent_id: str,
     ) -> Generator[Any, None, None]:
         """Call a sub-agent and yield its events directly
 
@@ -485,19 +349,45 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         Yields:
             T: Events emitted by the sub-agent
         """
+        # emit the CreateSubAgent event
+        # This event is used to track sub-agent calls in the main agent's event list
+        # This is useful for replaying events later
+        yield CreateSubAgent(
+            response_id=parent_response_id,
+            agent_id=sub_agent.id,
+        )
+
+        events: Generator[Any, None, None]
+
         if self._replay_mode:
             # find the CreateSubAgent event with the matching response_id
             if not self._replayed_events:
                 raise ValueError("No replayed events available in replay mode")
-            create_sub_agent_event = self._replayed_events.find_create_sub_agent_event(response_id)
+            create_sub_agent_event = self._replayed_events.find_create_sub_agent_event(parent_response_id)
             if not create_sub_agent_event:
                 raise ValueError("Could not find sub agent ID in replayed events")
             sub_agent_events = self._replayed_events.get_agent_and_sub_agents_events(create_sub_agent_event.agent_id)
-            return sub_agent.replay_events(sub_agent_events)
+            events = sub_agent.replay_events(sub_agent_events)
         else:
             if user_request is None:
                 raise ValueError("user_request must be provided when not in replay mode")
-            return sub_agent.call_agent(user_request)
+            events = sub_agent.call_agent(user_request)
+
+        success_event: FunctionSuccessEvent | None = None
+        for event in events:
+            yield event
+
+            if isinstance(event, FunctionSuccessEvent):
+                success_event = event
+
+        if success_event:
+            # emit event at parent level to indicate sub-agent success
+            yield SubAgentSuccess(
+                call_id=parent_call_id,
+                response_id=parent_response_id,
+                function_response=f"{success_event.function_response} Continue with next steps if needed.",
+                agent_id=parent_agent_id,
+            )
 
     def get_model(self) -> str:
         """Get the model used by the agent"""
