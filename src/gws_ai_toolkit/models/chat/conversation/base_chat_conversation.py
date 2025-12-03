@@ -1,6 +1,6 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import cast
+from typing import Generic, TypeVar, cast
 from uuid import uuid4
 
 from attr import dataclass
@@ -13,6 +13,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSo
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 
@@ -25,7 +26,10 @@ class BaseChatConversationConfig:
     store_conversation_in_db: bool = True
 
 
-class BaseChatConversation:
+U = TypeVar("U", bound=ChatUserMessageBase)
+
+
+class BaseChatConversation(ABC, Generic[U]):
     mode: str
     conv_config: BaseChatConversationConfig
     chat_configuration: dict
@@ -52,11 +56,11 @@ class BaseChatConversation:
         self._conversation_id = None
         self._conversation_service = ChatConversationService()
 
-    def call_conversation(self, user_message: str) -> Generator[ChatMessage, None, None]:
+    def call_conversation(self, user_message: U) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Args:
-            user_message (str): The message from the user
+            user_message (U): The message from the user
         """
 
         if not self._conversation_id:
@@ -70,7 +74,7 @@ class BaseChatConversation:
             yield message
 
     @abstractmethod
-    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
+    def call_ai_chat(self, user_message: U) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Args:

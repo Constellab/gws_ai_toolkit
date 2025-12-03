@@ -1,13 +1,14 @@
 from collections.abc import Generator
 
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_models import RagChatEndStreamResponse, RagChatSource, RagChatStreamResponse
 
 from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 
 
-class RagChatConversation(BaseChatConversation):
+class RagChatConversation(BaseChatConversation[ChatUserMessageText]):
     """Chat conversation implementation for RAG (Retrieval Augmented Generation).
 
     This class handles RAG-based chat conversations with streaming support,
@@ -25,7 +26,7 @@ class RagChatConversation(BaseChatConversation):
         self.rag_app_service = rag_app_service
         self.rag_chat_id = rag_chat_id
 
-    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
+    def call_ai_chat(self, user_message: ChatUserMessageText) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Calls the RAG app service to get a streaming response and processes it.
@@ -40,8 +41,10 @@ class RagChatConversation(BaseChatConversation):
             ChatMessageText: The current message being streamed with updated content
         """
 
+        yield user_message
+
         stream = self.rag_app_service.send_message_stream(
-            query=user_message,
+            query=user_message.content,
             conversation_id=self._external_conversation_id,
             chat_id=self.rag_chat_id,
         )

@@ -9,7 +9,7 @@ from gws_core import BaseModelDTO
 from openai import OpenAI
 from openai.types.responses import ResponseFunctionToolCall, ResponseOutputItemDoneEvent
 
-from gws_ai_toolkit.core.agents.agent_event_list import AgentEventList
+from gws_ai_toolkit.core.agents.table.agent_event_list import AgentEventList
 
 from .base_function_agent_events import (
     CreateSubAgent,
@@ -24,13 +24,14 @@ from .base_function_agent_events import (
     ResponseFullTextEvent,
     SubAgentSuccess,
     TextDeltaEvent,
-    UserQueryEvent,
+    UserQueryEventBase,
 )
 
 T = TypeVar("T", bound=BaseModelDTO)
+U = TypeVar("U", bound=UserQueryEventBase)
 
 
-class BaseFunctionAgentAi(ABC, Generic[T]):
+class BaseFunctionAgentAi(ABC, Generic[T, U]):
     """Base class for AI agents that interact with OpenAI streaming API to call functions"""
 
     MAX_CONSECUTIVE_ERRORS = 5
@@ -65,7 +66,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
     async def call_agent_async(
         self,
-        user_query: str,
+        user_query: U,
     ) -> AsyncGenerator[T, None]:
         """Asynchronous wrapper for call_agent to collect all events into a list
 
@@ -80,7 +81,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
     def call_agent(
         self,
-        user_query: str,
+        user_query: U,
     ) -> Generator[T, None, None]:
         """Generate response with streaming events
 
@@ -94,14 +95,8 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         consecutive_error_count = 0
         consecutive_call_count = 0
 
-        messages = [{"role": "user", "content": [{"type": "input_text", "text": user_query}]}]
-        user_event = cast(
-            T,
-            UserQueryEvent(
-                query=user_query,
-                agent_id=self.id,
-            ),
-        )
+        messages = [{"role": "user", "content": [{"type": "input_text", "text": user_query.query}]}]
+        user_event = cast(T, user_query)
         self._event_list.append(user_event)
         yield user_event
 
@@ -116,7 +111,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             error_event: FunctionErrorEvent | None = None
 
             # Generate events for this attempt
-            for event in self._generate_stream_internal(messages):
+            for event in self._generate_stream_internal(messages, user_query):
                 self._event_list.append(event)
                 yield event
 
@@ -167,6 +162,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                 T,
                 ErrorEvent(
                     message=f"Maximum consecutive errors ({self.MAX_CONSECUTIVE_ERRORS}) reached. Please rephrase your request.",
+                    agent_id=self.id,
                 ),
             )
             self._event_list.append(error)
@@ -177,6 +173,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                 T,
                 ErrorEvent(
                     message=f"Maximum consecutive calls ({self.MAX_CONSECUTIVE_CALLS}) reached. Please rephrase your request.",
+                    agent_id=self.id,
                 ),
             )
             self._event_list.append(error)
@@ -185,11 +182,12 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
     def _generate_stream_internal(
         self,
         input_messages: list[dict],
+        user_query: U,
     ) -> Generator[T, None, None]:
         """Internal method for generation with streaming"""
 
         # Create prompt with table metadata
-        prompt = self._get_ai_instruction()
+        prompt = self._get_ai_instruction(user_query)
 
         # Define tools for OpenAI
         tools = self._get_tools()
@@ -235,7 +233,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                     text_response = ""
                     current_response_id = ""
                 elif event.type == "response.output_item.done":
-                    yield from self._handle_response_output_item_done_event(event, current_response_id)
+                    yield from self._handle_response_output_item_done_event(event, current_response_id, user_query)
 
     def _get_and_check_last_response_id(self) -> str | None:
         """Get and check that the current response ID is set
@@ -253,7 +251,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         return None
 
     def _handle_response_output_item_done_event(
-        self, event: ResponseOutputItemDoneEvent, current_response_id: str
+        self, event: ResponseOutputItemDoneEvent, current_response_id: str, user_query: U
     ) -> Generator[T, None, None]:
         """Handle output item done event - can be overridden by subclasses
 
@@ -281,21 +279,22 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
 
         yield cast(T, function_call_event)
 
-        yield from self._handle_function_call(function_call_event)
+        yield from self._handle_function_call(function_call_event, user_query)
 
     @abstractmethod
-    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[T, None, None]:
+    def _handle_function_call(self, function_call_event: FunctionCallEvent, user_query: U) -> Generator[T, None, None]:
         """Handle function call event - must be implemented by subclasses
 
         Args:
             function_call_event: The function call event containing call_id, response_id, function_name, and arguments
+            user_query: The user query event associated with the function call
 
         Yields:
             T: Events generated from handling the function call
         """
 
     @abstractmethod
-    def _get_ai_instruction(self) -> str:
+    def _get_ai_instruction(self, user_query: U) -> str:
         """Create prompt for OpenAI - must be implemented by subclasses
 
         Returns:
@@ -314,7 +313,7 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         """Get all events emitted during the last generation"""
         return self._event_list.get_all()
 
-    def replay_events(self, events: list[T]) -> Generator[T, None, None]:
+    def replay_events(self, events: list[T], user_query: U | None = None) -> Generator[T, None, None]:
         """Replay a list of events by yielding them one by one
 
         This is useful for replaying previously emitted events without
@@ -327,15 +326,31 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             T: Each event from the input list
         """
         self._replay_mode = True
-        self._replayed_events = AgentEventList[T](events)
-        for event in events:
+
+        events_list: list[T]
+        events_list = cast(list[T], [user_query]) + events if user_query is not None else events
+
+        self._replayed_events = AgentEventList(events_list)
+        last_user_query: U | None = None
+        for event in events_list:
+            if isinstance(event, UserQueryEventBase):
+                self._event_list.append(event)
+                yield event
+                last_user_query = cast(U, event)
+
             if isinstance(event, FunctionCallEvent):
-                yield from self._handle_function_call(event)
+                self._event_list.append(event)
+                yield event
+                if not last_user_query:
+                    raise ValueError("No user query found before function call event")
+                for sub_event in self._handle_function_call(event, last_user_query):
+                    self._event_list.append(sub_event)
+                    yield sub_event
 
     def call_sub_agent(
         self,
         sub_agent: "BaseFunctionAgentAi",
-        user_request: str,
+        user_query: UserQueryEventBase,
         parent_response_id: str,
         parent_call_id: str,
         parent_agent_id: str,
@@ -367,11 +382,13 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
             if not create_sub_agent_event:
                 raise ValueError("Could not find sub agent ID in replayed events")
             sub_agent_events = self._replayed_events.get_agent_and_sub_agents_events(create_sub_agent_event.agent_id)
-            events = sub_agent.replay_events(sub_agent_events)
+            # insert the user query event at the beginning of the sub-agent events
+            # it is required by the replay_events
+            events = sub_agent.replay_events(sub_agent_events, user_query)
         else:
-            if user_request is None:
-                raise ValueError("user_request must be provided when not in replay mode")
-            events = sub_agent.call_agent(user_request)
+            if user_query is None:
+                raise ValueError("user_query must be provided when not in replay mode")
+            events = sub_agent.call_agent(user_query)
 
         success_event: FunctionSuccessEvent | None = None
         for event in events:
@@ -389,6 +406,10 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
                 agent_id=parent_agent_id,
             )
 
+    def get_last_user_query(self) -> U | None:
+        """Get the last user query event"""
+        return cast(U, self._event_list.last_event(cast(type[T], UserQueryEventBase)))
+
     def get_model(self) -> str:
         """Get the model used by the agent"""
         return self._model
@@ -397,14 +418,6 @@ class BaseFunctionAgentAi(ABC, Generic[T]):
         """Get the temperature used by the agent"""
         return self._temperature
 
-    def get_events(self) -> list[T]:
+    def get_events(self) -> AgentEventList[T]:
         """Get all events emitted during the last generation"""
-        return self._event_list.get_all()
-
-    def get_events_json(self) -> str:
-        """Get all events emitted during the last generation as JSON string"""
-        return self._event_list.get_events_json()
-
-    def get_events_for_serialization(self) -> list[T]:
-        """Get the events that are needed to replay the agent's behavior"""
-        return self._event_list.get_events_for_serialization()
+        return self._event_list

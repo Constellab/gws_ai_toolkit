@@ -13,7 +13,7 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
 class TableTransformEvent(FunctionSuccessEvent):
     type: Literal["dataframe_transform"] = "dataframe_transform"
     table: Table
-    table_name: str | None = None
+    table_name: str
     code: str  # The Python code that generated the table
 
     class Config:

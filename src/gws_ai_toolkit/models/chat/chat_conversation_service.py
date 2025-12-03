@@ -1,4 +1,4 @@
-from gws_core.user.current_user_service import CurrentUserService
+from gws_core import CurrentUserService
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService

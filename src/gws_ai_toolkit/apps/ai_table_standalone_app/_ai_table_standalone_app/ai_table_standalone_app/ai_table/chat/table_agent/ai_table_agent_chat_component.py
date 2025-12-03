@@ -7,7 +7,7 @@ from gws_ai_toolkit._app.ai_chat import (
     user_message_base,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageDataTableFront
-from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable, ChatUserTable
+from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTableFront, ChatUserTable
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_agent_chat_state import AiTableAgentChatState, SelectedTableDTO
@@ -107,7 +107,7 @@ def _table_chip(table: ChatUserTable) -> rx.Component:
     )
 
 
-def _user_dataframe_text_message_content(message: ChatUserMessageTable) -> rx.Component:
+def _user_dataframe_text_message_content(message: ChatUserMessageTableFront) -> rx.Component:
     """Render content for user dataframe text messages.
 
     Displays the message content followed by a list of tables as small chips
@@ -176,9 +176,29 @@ def ai_table_agent_chat_component():
         state=AiTableAgentChatState,
         custom_chat_messages={  # type: ignore
             "table": _dataframe_message_content,
-            "user-table": _user_dataframe_text_message_content,
+            "user-table-front": _user_dataframe_text_message_content,
         },
     )
+
+    def _save_button():
+        """Render the save button when save functionality is enabled."""
+        return rx.cond(
+            AiTableAgentChatState.enable_chat_save,
+            rx.tooltip(
+                rx.button(
+                    rx.cond(
+                        AiTableAgentChatState.is_saving,
+                        rx.icon("loader-circle", class_name="animate-spin", size=16),
+                        rx.icon("save", size=16),
+                    ),
+                    on_click=AiTableAgentChatState.save_chat,
+                    disabled=AiTableAgentChatState.is_saving,
+                    variant="soft",
+                    size="2",
+                ),
+                content="Save chat conversation",
+            ),
+        )
 
     def _table_item(table: SelectedTableDTO, is_selectable: bool = False):
         """Render a table item with either remove (X) or add (+) button.
@@ -265,6 +285,7 @@ def ai_table_agent_chat_component():
         rx.hstack(
             rx.heading("💬 Chat", size="3"),
             rx.spacer(),
+            _save_button(),
             header_clear_chat_button_component(chat_config.state),  # type: ignore
             align_items="center",
         ),

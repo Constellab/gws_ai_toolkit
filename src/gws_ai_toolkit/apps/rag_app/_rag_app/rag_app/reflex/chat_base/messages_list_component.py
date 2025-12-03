@@ -14,7 +14,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessag
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase, ChatUserMessageText
-from gws_core.apps.reflex._gws_reflex.gws_reflex_main.components.reflex_user_components import user_profile_picture
+from gws_reflex_main import user_profile_picture
 
 from .chat_config import ChatConfig
 from .conversation_chat_state_base import ConversationChatStateBase

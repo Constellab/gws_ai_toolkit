@@ -29,3 +29,7 @@ class AiTableAgentChatConfig(BaseModelDTO):
     # Lower values (0.1-0.3) for more deterministic function calling
     # Higher values (0.7-1.0) for more creative responses
     temperature: float = 0.3
+
+    # Enable save functionality for the chat conversation
+    # When True, displays a save button allowing users to save the chat and replay it
+    enable_chat_save: bool = False

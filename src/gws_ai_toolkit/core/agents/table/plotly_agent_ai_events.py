@@ -6,6 +6,7 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
     BaseFunctionAgentEvent,
     FunctionSuccessEvent,
 )
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent
 
 # Typed event classes with literal types and direct attributes
 
@@ -20,4 +21,4 @@ class PlotGeneratedEvent(FunctionSuccessEvent):
 
 
 # Union type for all events
-PlotlyAgentEvent = PlotGeneratedEvent | BaseFunctionAgentEvent
+PlotlyAgentEvent = PlotGeneratedEvent | UserQueryTableEvent | BaseFunctionAgentEvent

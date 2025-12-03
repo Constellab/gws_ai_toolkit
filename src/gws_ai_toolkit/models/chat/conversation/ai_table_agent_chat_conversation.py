@@ -1,17 +1,18 @@
 from collections.abc import Generator
 
-from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
-from gws_ai_toolkit.core.agents.table_agent_ai_events import TableAgentEvent
+from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
+from gws_ai_toolkit.core.agents.table.table_agent_ai_events import TableAgentEvent
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
 from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageTable
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
-from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable, ChatUserTable
+from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable
 
 from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 
 
-class AiTableAgentChatConversation(BaseChatConversation):
+class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
     """Chat conversation implementation for AI Table Agent operations.
 
     This class handles AI-powered table operations (visualization and transformation)
@@ -47,7 +48,7 @@ class AiTableAgentChatConversation(BaseChatConversation):
         self.table_agent = table_agent
         self._current_external_response_id = None
 
-    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
+    def call_ai_chat(self, user_message: ChatUserMessageTable) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service using TableAgentAi.
 
         Routes requests through the TableAgentAi which intelligently delegates
@@ -61,22 +62,15 @@ class AiTableAgentChatConversation(BaseChatConversation):
             ChatMessageDTO: The current message being streamed with updated content
         """
 
-        tables: list[ChatUserTable] = []
+        self.save_message(message=user_message)
+        yield user_message
 
-        for key, table in self.table_agent.get_tables().items():
-            tables.append(
-                ChatUserTable(
-                    table_id=table.uid,
-                    name=key,
-                    resource_model_id=table.get_model_id(),
-                )
-            )
-        message = ChatUserMessageTable(content=user_message, tables=tables)
-        self.save_message(message=message)
-        yield message
+        user_query = UserQueryMultiTablesEvent(
+            query=user_message.content, tables=user_message.tables, agent_id=self.table_agent.id
+        )
 
         # Process table agent events synchronously
-        for event in self.table_agent.call_agent(user_message):
+        for event in self.table_agent.call_agent(user_query):
             messages = self._handle_table_agent_event(event)
             yield from messages
 

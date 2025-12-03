@@ -6,8 +6,9 @@ from gws_core import BaseModelDTO, Table
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent
+from gws_ai_toolkit.core.agents.table.table_agent_ai_events import UserQueryMultiTablesEvent
 
-from .base_function_agent_ai import BaseFunctionAgentAi, FunctionErrorEvent
+from ..base_function_agent_ai import BaseFunctionAgentAi, FunctionErrorEvent
 from .multi_table_agent_ai_events import MultiTableTransformAgentEvent, MultiTableTransformEvent
 
 
@@ -15,35 +16,24 @@ class MultiTableTransformConfig(BaseModelDTO):
     """Configuration for multi-table transformation code generation"""
 
     code: str = Field(
-        description="Python code to transform multiple DataFrames. The code should use DataFrame variables that match the input table names and assign the transformed results to variables with meaningful names. Results should be stored in a dictionary named 'result_tables' where keys are table names and values are DataFrames.",
-    )
-
-    result_table_names: list[str] | None = Field(
-        default=None,
-        description="Optional list of names for the resulting tables. Should match the keys in result_tables dictionary. Keep names concise and descriptive.",
+        description="Python code to transform multiple DataFrames. The code should use DataFrame variables that match the input table names and assign the transformed results to a dictionary named 'result_tables' where keys are descriptive table names and values are DataFrames.",
     )
 
     class Config:
         extra = "forbid"  # Prevent additional properties
 
 
-class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
+class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent, UserQueryMultiTablesEvent]):
     """Multi-table transform agent service for data manipulation using OpenAI"""
-
-    _tables: dict[str, Table]
-    _table_names: list[str]
 
     def __init__(
         self,
         openai_api_key: str,
-        tables: dict[str, Table],
         model: str,
         temperature: float,
         skip_success_response: bool = False,
     ):
         super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
-        self._tables = tables
-        self._table_names = list(tables.keys())
 
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
@@ -57,7 +47,7 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
         ]
 
     def _handle_function_call(
-        self, function_call_event: FunctionCallEvent
+        self, function_call_event: FunctionCallEvent, user_query: UserQueryMultiTablesEvent
     ) -> Generator[MultiTableTransformAgentEvent, None, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
@@ -84,16 +74,13 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
         )
 
         try:
-            result_tables = self._execute_generated_code(code)
-
-            result_table_names = arguments.get("result_table_names", list(result_tables.keys()))
+            result_tables = self._execute_generated_code(code, user_query.tables)
 
             yield MultiTableTransformEvent(
                 tables=result_tables,
                 code=code,
                 call_id=call_id,
                 response_id=response_id,
-                table_names=result_table_names,
                 function_response="Successfully transformed the multiple tables.",
                 agent_id=self.id,
             )
@@ -113,7 +100,7 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
             # Return after error - the main loop will handle retry logic
             return
 
-    def _execute_generated_code(self, code: str) -> dict[str, Table]:
+    def _execute_generated_code(self, code: str, tables: dict[str, Table]) -> dict[str, Table]:
         """Execute generated code and return transformed tables
 
         Args:
@@ -130,7 +117,7 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
         execution_globals = self._get_code_execution_globals()
 
         # Add all input tables to the execution environment
-        for table_name, table in self._tables.items():
+        for table_name, table in tables.items():
             execution_globals[table_name] = table.get_data()
 
         # Execute the code
@@ -181,36 +168,36 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent]):
             "__builtins__": __builtins__,
         }
 
-    def _get_ai_instruction(self) -> str:
+    def _get_ai_instruction(self, user_query: UserQueryMultiTablesEvent) -> str:
         """Create prompt for OpenAI with table metadata
 
         Returns:
             Formatted prompt for OpenAI
         """
 
-        tables_metadata = []
-        for table_name, table in self._tables.items():
-            table_metadata = table.get_ai_description()
-            tables_metadata.append(f"Table '{table_name}':\n{table_metadata}")
+        tables_info = user_query.get_tables_info()
 
-        tables_info = "\n\n".join(tables_metadata)
-        table_names_list = ", ".join(self._table_names)
+        output_tables_instruction = ""
+        if user_query.output_table_names:
+            output_tables_instruction = f"""
+# Expected Output Tables
+The user expects the following output table names (use these as keys in the 'result_tables' dictionary):
+{', '.join(f"'{name}'" for name in user_query.output_table_names)}
+"""
 
         return f"""You are an AI assistant specialized in multi-table data operations, including joining, merging, transforming, and analyzing multiple datasets. You have access to information about multiple tables/datasets but not the actual data.
 
-Available tables: {table_names_list}
-
+# Available Tables
 {tables_info}
-
+{output_tables_instruction}
 Your role is to help users perform operations on multiple tables. When users request transformations, you should:
 
 1. Generate Python code that works with multiple DataFrames
-2. Use the exact table names as variable names for the input DataFrames: {table_names_list}
-3. Ensure the code assigns the final result(s) to a dictionary named 'result_tables'
-4. The 'result_tables' dictionary should have descriptive keys and pandas DataFrame values
-5. Use pandas operations for data manipulation and merging
-6. Make reasonable assumptions about data based on column names and types
-7. Handle potential data issues gracefully (missing values, data types, etc.)
+2. Ensure the code assigns the final result(s) to a dictionary named 'result_tables'
+3. The 'result_tables' dictionary should have descriptive keys and pandas DataFrame values{' - use the expected output table names if provided above' if user_query.output_table_names else ''}
+4. Use pandas operations for data manipulation and merging
+5. Make reasonable assumptions about data based on column names and types
+6. Handle potential data issues gracefully (missing values, data types, etc.)
 
 You can assume the following imports are available:
 - pandas as pd
@@ -226,7 +213,6 @@ Common multi-table operations you can perform:
 - Data validation across tables
 
 When generating code, make sure it:
-- Uses the exact table names as DataFrame variables: {table_names_list}
 - Creates meaningful transformations based on the data types and user request
 - Handles potential data issues gracefully
 - Assigns the final result(s) to a dictionary named 'result_tables'
@@ -237,17 +223,34 @@ When generating code, make sure it:
 
 Call the function only once per user request for a transformation.
 
-Example code structure:
+Example code structure for the available tables:
 ```python
-# Work with multiple input DataFrames
-# Available DataFrames: {table_names_list}
+# Work with multiple input DataFrames (use the actual table names from above)
+# The table names are already loaded as DataFrames in the environment
 
-# Example: Join two tables
-merged_data = pd.merge({self._table_names[0] if self._table_names else "table1"}, {self._table_names[1] if len(self._table_names) > 1 else "table2"}, on='common_column', how='inner')
+# Example: Join two tables (replace with actual table names from 'Available Tables' section)
+# If you have tables named 'sales' and 'products', use those names directly:
+# merged_data = pd.merge(sales, products, on='product_id', how='inner')
 
-# Example: Create multiple result tables
+# Generic example showing the pattern:
+table_names = list(user_query.tables.keys())
+if len(table_names) >= 2:
+    # Access tables by their names from the environment
+    merged_data = pd.merge(
+        eval(table_names[0]),  # First table
+        eval(table_names[1]),  # Second table
+        on='common_column',
+        how='inner'
+    )
+else:
+    # For single table operations
+    merged_data = eval(table_names[0])
+
+# Create multiple result tables
 result_tables = {{
     'merged_table': merged_data,
     'summary_table': merged_data.groupby('category').sum()
 }}
-```"""
+```
+
+Remember: Use the actual table names shown in the 'Available Tables' section above, not generic placeholders."""

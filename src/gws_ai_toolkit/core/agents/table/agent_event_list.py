@@ -1,22 +1,15 @@
-import json
 from typing import Generic, TypeVar
 
 from gws_core import BaseModelDTO
 from pydantic import TypeAdapter
 
-from .base_function_agent_events import (
+from ..base_function_agent_events import (
     BaseFunctionWithSubAgentEvent,
     CreateSubAgent,
-    ErrorEvent,
-    FunctionCallEvent,
-    FunctionErrorEvent,
-    FunctionSuccessEvent,
     ResponseCompletedEvent,
     ResponseCreatedEvent,
     ResponseEvent,
-    ResponseFullTextEvent,
-    SubAgentSuccess,
-    UserQueryEvent,
+    UserQueryEventBase,
 )
 
 T = TypeVar("T", bound=BaseModelDTO)
@@ -38,35 +31,16 @@ class AgentEventList(Generic[T]):
         """Get all events"""
         return self._events
 
-    def get_events_json(self) -> str:
-        """Get all events as JSON string, excluding FunctionSuccessEvent instances"""
-        not_success_messages = [event for event in self._events if not isinstance(event, FunctionSuccessEvent)]
-        return json.dumps(BaseModelDTO.to_json_list(not_success_messages))
+    def last_event(self, event_type: type[T]) -> T | None:
+        """Get the last event of a specific type"""
+        for event in reversed(self._events):
+            if isinstance(event, event_type):
+                return event
+        return None
 
     def get_events_by_response_id(self, response_id: str) -> list[T]:
         """Get all events for a specific response ID"""
         return [event for event in self._events if getattr(event, "response_id", None) == response_id]
-
-    def get_events_for_serialization(self) -> list[T]:
-        """Get the events that are needed to replay the agent's behavior"""
-        dict_events = []
-
-        required_event_types = [
-            FunctionErrorEvent,
-            ErrorEvent,
-            FunctionCallEvent,
-            ResponseCreatedEvent,
-            ResponseCompletedEvent,
-            ResponseFullTextEvent,
-            CreateSubAgent,
-            SubAgentSuccess,
-        ]
-
-        for event in self._events:
-            if any(isinstance(event, t) for t in required_event_types):
-                dict_events.append(event)
-
-        return dict_events
 
     def get_agent_and_sub_agents_events(self, agent_id: str) -> list[T]:
         """Get all events for a specific agent and its sub-agents.
@@ -103,7 +77,7 @@ class AgentEventList(Generic[T]):
                 event_agent_id = event.agent_id
                 event_response_id = event.response_id
 
-            if isinstance(event, UserQueryEvent):
+            if isinstance(event, UserQueryEventBase):
                 event_agent_id = event.agent_id
 
             # Check if this is a ResponseCreatedEvent from our target agent

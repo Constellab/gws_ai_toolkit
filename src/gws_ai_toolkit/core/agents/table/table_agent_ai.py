@@ -1,5 +1,6 @@
 from collections.abc import Generator
 
+import plotly.graph_objects as go
 from gws_core import BaseModelDTO, Table
 from pydantic import Field
 
@@ -7,13 +8,15 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
     FunctionCallEvent,
     FunctionErrorEvent,
 )
-from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import TableTransformEvent
+from gws_ai_toolkit.core.agents.table.plotly_agent_ai_events import PlotGeneratedEvent
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent, UserQueryTableTransformEvent
+from gws_ai_toolkit.core.agents.table.table_transform_agent_ai_events import TableTransformEvent
 
-from .base_function_agent_ai import BaseFunctionAgentAi
+from ..base_function_agent_ai import BaseFunctionAgentAi
 from .multi_table_agent_ai import MultiTableAgentAi
 from .multi_table_agent_ai_events import MultiTableTransformEvent
 from .plotly_agent_ai import PlotlyAgentAi
-from .table_agent_ai_events import TableAgentEvent
+from .table_agent_ai_events import TableAgentEvent, UserQueryMultiTablesEvent
 from .table_transform_agent_ai import TableTransformAgentAi
 
 
@@ -65,24 +68,16 @@ class MultiTableTransformRequestConfig(BaseModelDTO):
         extra = "forbid"
 
 
-class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
+class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEvent]):
     """Main table agent that orchestrates plot and transformation operations using function calling"""
-
-    _tables: dict[str, Table]
 
     def __init__(
         self,
         openai_api_key: str,
         model: str,
         temperature: float,
-        table: Table | None = None,
-        table_unique_name: str | None = None,
     ):
         super().__init__(openai_api_key, model, temperature, skip_success_response=False)
-        self._tables = {}
-        if table:
-            table_unique_name = table_unique_name or table.name or "table"
-            self.add_table(table_unique_name, table)
 
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
@@ -107,7 +102,9 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             },
         ]
 
-    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[TableAgentEvent, None, None]:
+    def _handle_function_call(
+        self, function_call_event: FunctionCallEvent, user_query: UserQueryMultiTablesEvent
+    ) -> Generator[TableAgentEvent, None, None]:
         """Handle function call by delegating to appropriate specialized agent"""
 
         function_name = function_call_event.function_name
@@ -129,11 +126,13 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
                 return
 
             if function_name == "generate_plot":
-                yield from self._handle_plot_request(user_request, arguments, call_id, response_id)
+                yield from self._handle_plot_request(user_request, arguments, call_id, response_id, user_query)
             elif function_name == "transform_table":
-                yield from self._handle_transform_request(user_request, arguments, call_id, response_id)
+                yield from self._handle_transform_request(user_request, arguments, call_id, response_id, user_query)
             elif function_name == "transform_multiple_tables":
-                yield from self._handle_multi_table_transform_request(user_request, arguments, call_id, response_id)
+                yield from self._handle_multi_table_transform_request(
+                    user_request, arguments, call_id, response_id, user_query
+                )
             else:
                 yield FunctionErrorEvent(
                     message=f"Unknown function: {function_name}",
@@ -150,14 +149,19 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             )
 
     def _handle_plot_request(
-        self, user_request: str, arguments: dict, call_id: str, response_id: str
+        self,
+        sub_user_request: str,
+        arguments: dict,
+        call_id: str,
+        response_id: str,
+        user_query: UserQueryMultiTablesEvent,
     ) -> Generator[TableAgentEvent, None, None]:
         """Handle plot generation request by creating and delegating to PlotlyAgentAi"""
 
         table_name = arguments.get("table_name", "")
         table: Table
         try:
-            table = self._get_and_check_table(table_name)
+            table = user_query.get_and_check_table(table_name)
         except Exception as e:
             yield FunctionErrorEvent(
                 message=str(e),
@@ -170,7 +174,6 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
         # Create the plotly agent
         plotly_agent = PlotlyAgentAi(
             openai_api_key=self._openai_api_key,
-            table=table,
             model=self._model,
             temperature=self._temperature,
             # skip success to avoid double success events because
@@ -178,21 +181,24 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
-        yield from self.call_sub_agent(plotly_agent, user_request, response_id, call_id, self.id)
+        sub_query = UserQueryTableEvent(query=sub_user_request, table=table, agent_id=plotly_agent.id)
+
+        yield from self.call_sub_agent(plotly_agent, sub_query, response_id, call_id, self.id)
 
     def _handle_transform_request(
         self,
-        user_request: str,
+        sub_user_request: str,
         arguments: dict,
         call_id: str,
         response_id: str,
+        user_query: UserQueryMultiTablesEvent,
     ) -> Generator[TableAgentEvent, None, None]:
         """Handle table transformation request by creating and delegating to TableTransformAgentAi"""
 
         table_name = arguments.get("table_name", "")
         table: Table
         try:
-            table = self._get_and_check_table(table_name)
+            table = user_query.get_and_check_table(table_name)
         except Exception as e:
             yield FunctionErrorEvent(
                 message=str(e),
@@ -215,25 +221,30 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
         # Create the transform agent
         transform_agent = TableTransformAgentAi(
             openai_api_key=self._openai_api_key,
-            table=table,
             model=self._model,
             temperature=self._temperature,
-            table_name=table_name,
-            output_table_name=output_table_name,
             # skip success to avoid double success events because
             # the main agent will handle it
             skip_success_response=True,
         )
 
+        sub_query = UserQueryTableTransformEvent(
+            query=sub_user_request,
+            table=table,
+            table_name=table_name,
+            output_table_name=output_table_name,
+            agent_id=transform_agent.id,
+        )
         # Delegate to transform agent and yield events directly
-        for event in self.call_sub_agent(transform_agent, user_request, response_id, call_id, self.id):
-            yield event
-
-            if isinstance(event, TableTransformEvent):
-                self.add_table(output_table_name, event.table)
+        yield from self.call_sub_agent(transform_agent, sub_query, response_id, call_id, self.id)
 
     def _handle_multi_table_transform_request(
-        self, user_request: str, arguments: dict, call_id: str, response_id: str
+        self,
+        sub_user_request: str,
+        arguments: dict,
+        call_id: str,
+        response_id: str,
+        user_query: UserQueryMultiTablesEvent,
     ) -> Generator[TableAgentEvent, None, None]:
         """Handle multi-table transformation request by creating and delegating to MultiTableAgentAi"""
 
@@ -259,10 +270,10 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             return
 
         # Validate all input tables exist
-        missing_tables = [name for name in table_names if name not in self._tables]
+        missing_tables = [name for name in table_names if name not in user_query.tables]
         if missing_tables:
             yield FunctionErrorEvent(
-                message=f"Tables not found: {', '.join(missing_tables)}. Available tables: {', '.join(self._tables.keys())}",
+                message=f"Tables not found: {', '.join(missing_tables)}. Available tables: {', '.join(user_query.tables.keys())}",
                 call_id=call_id,
                 response_id=response_id,
                 agent_id=self.id,
@@ -270,12 +281,11 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             return
 
         # Get the requested tables
-        input_tables = {name: self._tables[name] for name in table_names}
+        input_tables = {name: user_query.get_and_check_table(name) for name in table_names}
 
         # Create the multi-table transform agent
         multi_table_agent = MultiTableAgentAi(
             openai_api_key=self._openai_api_key,
-            tables=input_tables,
             model=self._model,
             temperature=self._temperature,
             # skip success to avoid double success events because
@@ -283,37 +293,21 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent]):
             skip_success_response=True,
         )
 
+        user_query = UserQueryMultiTablesEvent(
+            query=sub_user_request,
+            tables=input_tables,
+            agent_id=multi_table_agent.id,
+            output_table_names=output_table_names,
+        )
+
         # Delegate to multi-table agent and yield events directly
-        for event in self.call_sub_agent(multi_table_agent, user_request, response_id, call_id, self.id):
-            yield event
+        yield from self.call_sub_agent(multi_table_agent, user_query, response_id, call_id, self.id)
 
-            if isinstance(event, MultiTableTransformEvent):
-                for i, (result_table_name, result_table) in enumerate(event.tables.items()):
-                    # Use provided output names if available, otherwise use the result table names from the event
-                    if i < len(output_table_names):
-                        self.add_table(output_table_names[i], result_table)
-                    else:
-                        self.add_table(result_table_name, result_table)
-
-    def _get_and_check_table(self, table_unique_name: str) -> Table:
-        # Retrieve the specified table
-        if not table_unique_name or not table_unique_name.strip():
-            raise Exception("No table name provided in function arguments.")
-
-        table_unique_name = table_unique_name.strip()
-        if table_unique_name not in self._tables:
-            raise Exception(
-                f"Table '{table_unique_name}' not found. Available tables: {', '.join(self._tables.keys())}"
-            )
-        return self._tables[table_unique_name]
-
-    def _get_ai_instruction(self) -> str:
+    def _get_ai_instruction(self, user_query: UserQueryMultiTablesEvent) -> str:
         """Create prompt for OpenAI with table metadata"""
 
         # Generate table information for all tables
-        tables_info = "\n".join(
-            [self._get_table_ai_info(table_name, table) for table_name, table in self._tables.items()]
-        )
+        tables_info = user_query.get_tables_info()
 
         return f"""You are an AI assistant specialized in table operations including data analysis, visualization, and manipulation. You have access to information about multiple tables/datasets but not the actual data.
 
@@ -377,22 +371,42 @@ You can help users with three main types of operations:
 You should call the appropriate function based on the user's request and let the specialized agent handle the detailed implementation.
 If you don't have enough information to determine the user's intent, ask clarifying questions instead of making assumptions."""
 
-    def _get_table_ai_info(self, table_unique_name: str, table: Table) -> str:
-        """Get AI info string for a specific table"""
-        table_name = f"## '{table_unique_name}'"
-        table_description = table.get_ai_description()
-        return f"""{table_name}
-{table_description}
-"""
+    def get_output_tables(self) -> dict[str, Table]:
+        tables: dict[str, Table] = {}
 
-    def clear_tables(self):
-        """Clear all tables from the agent's table dictionary"""
-        self._tables.clear()
+        for event in self._event_list.get_all():
+            if isinstance(event, TableTransformEvent):
+                # The table name would be in the event's context or we can get it from the agent
+                tables[event.table_name] = event.table
 
-    def add_table(self, table_unique_name: str, table: Table):
-        """Add a new table to the agent's table dictionary"""
-        self._tables[table_unique_name.strip()] = table
+            if isinstance(event, MultiTableTransformEvent):
+                for table_name, table in event.tables.items():
+                    tables[table_name] = table
 
-    def get_tables(self) -> dict[str, Table]:
-        """Get all tables managed by the agent"""
-        return self._tables
+        return tables
+
+    def get_output_plots(self) -> dict[str, go.Figure]:
+        plots: dict[str, go.Figure] = {}
+        plot_counter = 0
+
+        for event in self._event_list.get_all():
+            if isinstance(event, PlotGeneratedEvent):
+                plot_name = f"plot_{plot_counter}"
+                plots[plot_name] = event.figure
+                plot_counter += 1
+
+        return plots
+
+    def get_input_tables(self) -> dict[str, Table]:
+        output_tables = self.get_output_tables()
+
+        input_tables: dict[str, Table] = {}
+
+        for event in self._event_list.get_all():
+            if isinstance(event, UserQueryMultiTablesEvent) and event.agent_id == self.id:
+                for key, table in event.tables.items():
+                    # if this is not an output table
+                    if key not in output_tables:
+                        input_tables[key] = table
+
+        return input_tables

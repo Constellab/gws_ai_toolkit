@@ -23,7 +23,7 @@ from gws_core import (
     task_decorator,
 )
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import ErrorEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import ErrorEvent, FunctionErrorEvent, UserQueryTextEvent
 from gws_ai_toolkit.core.agents.env_agent_ai import EnvAgentAi
 from gws_ai_toolkit.core.agents.env_agent_ai_events import EnvInstallationSuccessEvent
 
@@ -71,7 +71,8 @@ def _generate_env_file(
     generated_content: str | None = None
 
     try:
-        for event in agent.call_agent(user_prompt):
+        user_query = UserQueryTextEvent(query=user_prompt, agent_id=agent.id)
+        for event in agent.call_agent(user_query):
             # Handle generated environment file event
             if isinstance(event, EnvInstallationSuccessEvent):
                 generated_content = event.env_file_content

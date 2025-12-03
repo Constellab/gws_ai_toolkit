@@ -3,9 +3,9 @@ import unittest
 
 import pandas as pd
 from gws_ai_toolkit.core.agents.base_function_agent_events import BaseFunctionWithSubAgentEvent
-from gws_ai_toolkit.core.agents.plotly_agent_ai_events import PlotGeneratedEvent
-from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
-from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import TableTransformEvent
+from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent
+from gws_ai_toolkit.core.agents.table.table_transform_agent_ai_events import TableTransformEvent
 from gws_core import Table
 from pydantic import TypeAdapter
 
@@ -13,170 +13,156 @@ from pydantic import TypeAdapter
 # test_agent_replay
 class TestTableAgentAiIntegration(unittest.TestCase):
     def test_agent_replay(self):
-        # Theses event were generated using test_table_agent_ai.TestTableAgentAiIntegration.test_transform_delegation_add_column
+        # Theses event were generated using test_table_agent_ai.TestTableAgentAiIntegration.test_multiple_operations_in_single_call
         events = [
             {
-                "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed37b900819abe73637fca270732",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_created",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                "call_id": "call_tvF42DN3FKG6d5kfFMgBdKrY",
+                "response_id": "resp_0f70229ae8361f7c00692eed37b900819abe73637fca270732",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
+                "call_id": "call_6xonMtp0Hxx2aOD3w6mHJQWw",
                 "type": "function_call",
                 "function_name": "transform_table",
                 "arguments": {
-                    "table_name": "test_data",
-                    "output_table_name": "test_data_renamed",
-                    "user_request": "Rename the column 'hello' to 'x_values'",
+                    "table_name": "sales_data",
+                    "output_table_name": "high_sales_data",
+                    "user_request": "Filter to only include products with sales greater than 150.",
                 },
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
+                "response_id": "resp_0f70229ae8361f7c00692eed37b900819abe73637fca270732",
+                "agent_id": "62fa8f41-99d8-4610-afc5-8eaf6c6c694b",
                 "type": "create_sub_agent",
             },
             {
-                "response_id": "resp_052c1ac9bd89d995006929d01c4e248198ba82174e8b2d0cd8",
-                "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
+                "response_id": "resp_0312f8cec9b3a12b00692eed3a2198819aaee9517c0fadc9e9",
+                "agent_id": "62fa8f41-99d8-4610-afc5-8eaf6c6c694b",
                 "type": "response_created",
             },
             {
-                "response_id": "resp_052c1ac9bd89d995006929d01c4e248198ba82174e8b2d0cd8",
-                "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
-                "call_id": "call_2LCAO5LksnkgAqog7hQr9IBZ",
+                "response_id": "resp_0312f8cec9b3a12b00692eed3a2198819aaee9517c0fadc9e9",
+                "agent_id": "62fa8f41-99d8-4610-afc5-8eaf6c6c694b",
+                "call_id": "call_gqADzH2lEuu6JN9dThd1Oyur",
                 "type": "function_call",
                 "function_name": "transform_dataframe",
                 "arguments": {
-                    "code": "# Rename the column 'hello' to 'x_values'\ntransformed_df = df.rename(columns={'hello': 'x_values'})",
-                    "transformed_table_name": "test_data_renamed",
+                    "code": "# Filter rows where sales are greater than 150\ntransformed_df = df[df['sales'] > 150]",
+                    "transformed_table_name": "high_sales_data",
                 },
             },
             {
-                "response_id": "resp_052c1ac9bd89d995006929d01c4e248198ba82174e8b2d0cd8",
-                "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
+                "response_id": "resp_0312f8cec9b3a12b00692eed3a2198819aaee9517c0fadc9e9",
+                "agent_id": "62fa8f41-99d8-4610-afc5-8eaf6c6c694b",
                 "type": "response_full_text",
                 "text": "",
             },
             {
-                "response_id": "resp_052c1ac9bd89d995006929d01c4e248198ba82174e8b2d0cd8",
-                "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
+                "response_id": "resp_0312f8cec9b3a12b00692eed3a2198819aaee9517c0fadc9e9",
+                "agent_id": "62fa8f41-99d8-4610-afc5-8eaf6c6c694b",
                 "type": "response_completed",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                "call_id": "call_tvF42DN3FKG6d5kfFMgBdKrY",
+                "response_id": "resp_0f70229ae8361f7c00692eed37b900819abe73637fca270732",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
+                "call_id": "call_6xonMtp0Hxx2aOD3w6mHJQWw",
                 "function_response": "Successfully transformed the DataFrame. Continue with next steps if needed.",
                 "type": "sub_agent_success",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed37b900819abe73637fca270732",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_full_text",
                 "text": "",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed37b900819abe73637fca270732",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_completed",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d01f4d1c8199947c55e50555c54a",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed3cb410819a9854da4f5e0aa81d",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_created",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d01f4d1c8199947c55e50555c54a",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                "type": "response_full_text",
-                "text": "The column 'hello' has been successfully renamed to 'x_values' in the table. If you need any further operations, feel free to let me know!",
-            },
-            {
-                "response_id": "resp_0995956101a8e8bc006929d01f4d1c8199947c55e50555c54a",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                "type": "response_completed",
-            },
-            {
-                "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                "type": "response_created",
-            },
-            {
-                "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                "call_id": "call_uQgIOtLrHVGVela3HnQ3ppwV",
+                "response_id": "resp_0f70229ae8361f7c00692eed3cb410819a9854da4f5e0aa81d",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
+                "call_id": "call_PlW6qh8ZKE528Lb6e9zwRoG5",
                 "type": "function_call",
-                "function_name": "generate_plot",
+                "function_name": "transform_table",
                 "arguments": {
-                    "table_name": "test_data_renamed",
-                    "user_request": "Create a scatter plot with 'x_values' as x-axis and 'y_values' as y-axis.",
+                    "table_name": "inventory_data",
+                    "output_table_name": "low_stock_data",
+                    "user_request": "Filter to only include products with stock less than 50.",
                 },
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
+                "response_id": "resp_0f70229ae8361f7c00692eed3cb410819a9854da4f5e0aa81d",
+                "agent_id": "4c1e2bef-19d4-4373-b62c-f81a1b3b2111",
                 "type": "create_sub_agent",
             },
             {
-                "response_id": "resp_0ed3efc4702870bc006929d024cdf8819a806072069d7f1547",
-                "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
+                "response_id": "resp_00c9bf13992df69200692eed3f42848190b51ffdd816d34995",
+                "agent_id": "4c1e2bef-19d4-4373-b62c-f81a1b3b2111",
                 "type": "response_created",
             },
             {
-                "response_id": "resp_0ed3efc4702870bc006929d024cdf8819a806072069d7f1547",
-                "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
-                "call_id": "call_taSZGVmktju6CNvDJlePv9AA",
+                "response_id": "resp_00c9bf13992df69200692eed3f42848190b51ffdd816d34995",
+                "agent_id": "4c1e2bef-19d4-4373-b62c-f81a1b3b2111",
+                "call_id": "call_OX8O5RqZL5aCskZbLZtZEzqk",
                 "type": "function_call",
-                "function_name": "generate_plotly_figure",
+                "function_name": "transform_dataframe",
                 "arguments": {
-                    "code": "fig = go.Figure()\nfig.add_trace(go.Scatter(x=df['x_values'], y=df['y_values'], mode='markers', marker=dict(color='blue')))\nfig.update_layout(title='Scatter Plot of x_values vs y_values', xaxis_title='x_values', yaxis_title='y_values')"
+                    "code": "# Filter products with stock less than 50\ntransformed_df = df[df['stock'] < 50]",
+                    "transformed_table_name": "low_stock_data",
                 },
             },
             {
-                "response_id": "resp_0ed3efc4702870bc006929d024cdf8819a806072069d7f1547",
-                "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
+                "response_id": "resp_00c9bf13992df69200692eed3f42848190b51ffdd816d34995",
+                "agent_id": "4c1e2bef-19d4-4373-b62c-f81a1b3b2111",
                 "type": "response_full_text",
                 "text": "",
             },
             {
-                "response_id": "resp_0ed3efc4702870bc006929d024cdf8819a806072069d7f1547",
-                "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
+                "response_id": "resp_00c9bf13992df69200692eed3f42848190b51ffdd816d34995",
+                "agent_id": "4c1e2bef-19d4-4373-b62c-f81a1b3b2111",
                 "type": "response_completed",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                "call_id": "call_uQgIOtLrHVGVela3HnQ3ppwV",
-                "function_response": "Successfully generated the plot. Continue with next steps if needed.",
+                "response_id": "resp_0f70229ae8361f7c00692eed3cb410819a9854da4f5e0aa81d",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
+                "call_id": "call_PlW6qh8ZKE528Lb6e9zwRoG5",
+                "function_response": "Successfully transformed the DataFrame. Continue with next steps if needed.",
                 "type": "sub_agent_success",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed3cb410819a9854da4f5e0aa81d",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_full_text",
                 "text": "",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed3cb410819a9854da4f5e0aa81d",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_completed",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d02752c88199957eb2e3e3ecc148",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed41dfe0819a84382c22bd83d114",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_created",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d02752c88199957eb2e3e3ecc148",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed41dfe0819a84382c22bd83d114",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_full_text",
-                "text": "The scatter plot with 'x_values' as the x-axis and 'y_values' as the y-axis has been successfully created. If there's anything else you need, just let me know!",
+                "text": "Both transformations are complete:\\n\\n- **high_sales_data**: Filtered to include products with sales greater than 150.\\n- **low_stock_data**: Filtered to include products with stock less than 50.\\n\\nIf you need further operations or visualizations, feel free to ask!",
             },
             {
-                "response_id": "resp_0995956101a8e8bc006929d02752c88199957eb2e3e3ecc148",
-                "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
+                "response_id": "resp_0f70229ae8361f7c00692eed41dfe0819a84382c22bd83d114",
+                "agent_id": "6d3a8f24-f252-48a3-bb2e-d9c15971dc31",
                 "type": "response_completed",
             },
         ]
@@ -185,29 +171,62 @@ class TestTableAgentAiIntegration(unittest.TestCase):
 
         event_objects = [adapter.validate_python(m) for m in events]
 
-        # Create simple dataframe with two numeric columns
-        input_df = pd.DataFrame({"hello": [1, 2, 3, 4, 5], "y_values": [2, 4, 1, 8, 6]})
-        expected_df = pd.DataFrame({"x_values": [1, 2, 3, 4, 5], "y_values": [2, 4, 1, 8, 6]})
+        sales_df = pd.DataFrame(
+            {
+                "product": ["A", "B", "C", "D", "E"],
+                "sales": [100, 200, 150, 300, 250],
+                "region": ["North", "South", "North", "West", "East"],
+            }
+        )
 
+        # Create second dataframe - inventory data
+        inventory_df = pd.DataFrame(
+            {
+                "product": ["A", "B", "C", "D", "E"],
+                "stock": [50, 30, 80, 20, 60],
+                "warehouse": ["W1", "W2", "W1", "W3", "W2"],
+            }
+        )
+        # add user_message to event
         replay_agent = TableAgentAi(
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
             model="gpt-4o",
             temperature=0.1,
-            table=Table(input_df),
-            table_unique_name="test_data",
         )
 
+        # Create user query with both tables
+        tables = {"sales_data": Table(sales_df), "inventory_data": Table(inventory_df)}
+        user_query = UserQueryMultiTablesEvent(
+            query=(
+                "Filter the sales_data table to only include products with sales greater than 150 "
+                "and name it 'high_sales_data'. Also filter the inventory_data table to only include "
+                "products with stock less than 50 and name it 'low_stock_data'."
+            ),
+            tables=tables,
+            agent_id=replay_agent.id,
+        )
         # Replay the previous events
-        replayed_events = list(replay_agent.replay_events(event_objects))
+        replayed_events = list(replay_agent.replay_events(event_objects, user_query))
 
-        # Check that we have the same number of transform events
-        replay_transform_events = [e for e in replayed_events if isinstance(e, TableTransformEvent)]
-        self.assertEqual(len(replay_transform_events), 1)
+        # The agent should perform BOTH operations
+        transform_events = [e for e in replayed_events if isinstance(e, TableTransformEvent)]
+        self.assertEqual(len(transform_events), 2, "Should have TWO transform events (both operations)")
 
-        # Check we have the same output dataframe
-        replayed_transformed_df = replay_transform_events[0].table.to_dataframe()
-        pd.testing.assert_frame_equal(replayed_transformed_df.reset_index(drop=True), expected_df)
+        # Get output tables from agent
+        output_tables = replay_agent.get_output_tables()
 
-        # check the plot events
-        replay_plot_events = [e for e in replayed_events if isinstance(e, PlotGeneratedEvent)]
-        self.assertEqual(len(replay_plot_events), 1)
+        # Verify both tables were created
+        self.assertIn("high_sales_data", output_tables, "high_sales_data should be created")
+        self.assertIn("low_stock_data", output_tables, "low_stock_data should be created")
+
+        # Verify the first transformation was correct
+        high_sales_table = output_tables["high_sales_data"]
+        high_sales_df = high_sales_table.get_data()
+        self.assertTrue(all(high_sales_df["sales"] > 150), "All sales should be > 150")
+        self.assertEqual(len(high_sales_df), 3, "Should have 3 products with sales > 150")
+
+        # Verify the second transformation was correct
+        low_stock_table = output_tables["low_stock_data"]
+        low_stock_df = low_stock_table.get_data()
+        self.assertTrue(all(low_stock_df["stock"] < 50), "All stock should be < 50")
+        self.assertEqual(len(low_stock_df), 2, "Should have 2 products with stock < 50")

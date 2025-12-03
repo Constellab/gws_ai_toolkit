@@ -1,14 +1,23 @@
 from typing import Annotated, Any, Literal
 
+from gws_core import BaseModelDTO
 from pydantic import Field
 
-from gws_core import BaseModelDTO
 
-
-class UserQueryEvent(BaseModelDTO):
-    type: Literal["user_query"] = "user_query"
+class UserQueryEventBase(BaseModelDTO):
     query: str
     agent_id: str
+
+    def serialize(self) -> dict:
+        return self.to_json_dict()
+
+    @classmethod
+    def deserialize(cls, data: dict, additional_info: Any) -> "UserQueryEventBase":
+        return cls.from_json(data)
+
+
+class UserQueryTextEvent(UserQueryEventBase):
+    type: Literal["user_query"] = "user_query"
 
 
 class ResponseEvent(BaseModelDTO):
@@ -46,6 +55,7 @@ class FunctionErrorEvent(FunctionEventBase):
 class ErrorEvent(BaseModelDTO):
     type: Literal["error"] = "error"
     message: str
+    agent_id: str
 
 
 class CodeEvent(FunctionEventBase):
@@ -91,8 +101,7 @@ class SubAgentSuccess(FunctionSuccessEvent):
 
 # Union type for all events
 BaseFunctionAgentEvent = (
-    UserQueryEvent
-    | TextDeltaEvent
+    TextDeltaEvent
     | FunctionErrorEvent
     | ErrorEvent
     | ResponseCreatedEvent
@@ -104,8 +113,7 @@ BaseFunctionAgentEvent = (
 
 # Type for events that can involve sub-agents
 BaseFunctionWithSubAgentEvent = Annotated[
-    UserQueryEvent
-    | TextDeltaEvent
+    TextDeltaEvent
     | FunctionErrorEvent
     | ErrorEvent
     | ResponseCreatedEvent
@@ -115,5 +123,10 @@ BaseFunctionWithSubAgentEvent = Annotated[
     | ResponseFullTextEvent
     | CreateSubAgent
     | SubAgentSuccess,
-    Field(discriminator='type')
+    Field(discriminator="type"),
+]
+
+BaseFunctionWithSubAgentSerializableEvent = Annotated[
+    FunctionCallEvent | ResponseFullTextEvent | CreateSubAgent | SubAgentSuccess,
+    Field(discriminator="type"),
 ]

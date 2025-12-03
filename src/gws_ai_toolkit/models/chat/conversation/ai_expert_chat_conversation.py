@@ -12,6 +12,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageErr
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
@@ -43,7 +44,7 @@ The user is asking questions specifically about this document, so focus your res
     temperature: float = 0.7
 
 
-class AiExpertChatConversation(BaseChatConversation):
+class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
     """Chat conversation implementation for AI Expert document analysis.
 
     This class handles AI-powered document analysis conversations with streaming support,
@@ -102,7 +103,7 @@ class AiExpertChatConversation(BaseChatConversation):
             raise ValueError("OpenAI API key is not set")
         return OpenAI(api_key=api_key)
 
-    def call_ai_chat(self, user_message: str) -> Generator[ChatMessage, None, None]:
+    def call_ai_chat(self, user_message: ChatUserMessageText) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Supports multiple processing modes:
@@ -116,6 +117,7 @@ class AiExpertChatConversation(BaseChatConversation):
         Yields:
             AllChatMessages: Messages as they are generated
         """
+
         client = self._get_openai_client()
 
         instructions: str = ""
@@ -133,7 +135,7 @@ class AiExpertChatConversation(BaseChatConversation):
 
         elif self.config.mode == "relevant_chunks":
             # Relevant chunks mode - get only relevant chunks based on user question
-            document_chunks = self._get_relevant_document_chunks_text(user_message, self.config.max_chunks)
+            document_chunks = self._get_relevant_document_chunks_text(user_message.content, self.config.max_chunks)
             document_name = self.rag_resource.resource_model.name
 
             instructions = self.config.system_prompt.replace(
@@ -149,11 +151,13 @@ class AiExpertChatConversation(BaseChatConversation):
                 self.config.prompt_file_placeholder, f"{document_name}\n{document_chunks}"
             )
 
+        yield user_message
+
         # Create streaming response
         with client.responses.stream(
             model=self.config.model,
             instructions=instructions,
-            input=[{"role": "user", "content": [{"type": "input_text", "text": user_message}]}],
+            input=[{"role": "user", "content": [{"type": "input_text", "text": user_message.content}]}],
             temperature=self.config.temperature,
             previous_response_id=self._previous_external_response_id,
             tools=tools,

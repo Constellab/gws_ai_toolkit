@@ -4,6 +4,7 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
     BaseFunctionAgentEvent,
     FunctionEventBase,
     FunctionSuccessEvent,
+    UserQueryTextEvent,
 )
 
 # Typed event classes with literal types and direct attributes
@@ -30,5 +31,9 @@ class EnvInstallationSuccessEvent(FunctionSuccessEvent):
 
 # Union type for all events
 EnvAgentAiEvent = (
-    BaseFunctionAgentEvent | EnvFileGeneratedEvent | EnvInstallationStartedEvent | EnvInstallationSuccessEvent
+    BaseFunctionAgentEvent
+    | EnvFileGeneratedEvent
+    | EnvInstallationStartedEvent
+    | EnvInstallationSuccessEvent
+    | UserQueryTextEvent
 )

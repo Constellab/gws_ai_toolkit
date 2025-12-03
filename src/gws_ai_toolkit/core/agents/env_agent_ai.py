@@ -6,7 +6,11 @@ from typing import Any, Literal
 from gws_core import BaseModelDTO, CondaShellProxy, MambaShellProxy, MessageDispatcher, PipShellProxy
 from pydantic import Field
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import FunctionCallEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
+    FunctionCallEvent,
+    FunctionErrorEvent,
+    UserQueryTextEvent,
+)
 
 from .base_function_agent_ai import BaseFunctionAgentAi
 from .env_agent_ai_events import (
@@ -28,7 +32,7 @@ class EnvConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
+class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
     """AI agent for generating and installing conda/mamba/pipenv environment files
 
     This agent helps users create working conda/mamba environment files or Pipfiles and
@@ -78,7 +82,9 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
             }
         ]
 
-    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[EnvAgentAiEvent, None, None]:
+    def _handle_function_call(
+        self, function_call_event: FunctionCallEvent, user_query: UserQueryTextEvent
+    ) -> Generator[EnvAgentAiEvent, None, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
         response_id = function_call_event.response_id
@@ -93,6 +99,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                 env_type=self._env_type,
                 call_id=call_id,
                 response_id=response_id,
+                agent_id=self.id,
             )
 
             # attempt to install the environment
@@ -101,7 +108,9 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
             return
 
         except Exception as exec_error:
-            yield FunctionErrorEvent(message=str(exec_error), call_id=call_id, response_id=response_id)
+            yield FunctionErrorEvent(
+                message=str(exec_error), call_id=call_id, response_id=response_id, agent_id=self.id
+            )
             return
 
     def _parse_env_file_content(self, arguments: dict[str, Any]) -> str:
@@ -143,16 +152,14 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                 message=f"Starting {self._env_type} environment installation...",
                 call_id=call_id,
                 response_id=current_response_id,
+                agent_id=self.id,
             )
 
             # Create a temporary directory for the environment
             temp_dir = tempfile.mkdtemp(prefix=f"{self._env_type}_env_")
 
             # Determine the config file name based on env type
-            if self._env_type == "pipenv":
-                config_file_name = "Pipfile"
-            else:
-                config_file_name = "environment.yml"
+            config_file_name = "Pipfile" if self._env_type == "pipenv" else "environment.yml"
 
             env_file_path = os.path.join(temp_dir, config_file_name)
 
@@ -190,6 +197,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                     call_id=call_id,
                     response_id=current_response_id,
                     function_response="Environment installed successfully",
+                    agent_id=self.id,
                 )
             else:
                 yield EnvInstallationSuccessEvent(
@@ -199,6 +207,7 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                     call_id=call_id,
                     response_id=current_response_id,
                     function_response="Environment installed successfully",
+                    agent_id=self.id,
                 )
 
         except Exception as install_error:
@@ -208,9 +217,10 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent]):
                 message=f"Failed to install environment: {error_message}",
                 call_id=call_id,
                 response_id=current_response_id,
+                agent_id=self.id,
             )
 
-    def _get_ai_instruction(self) -> str:
+    def _get_ai_instruction(self, user_query: UserQueryTextEvent) -> str:
         """Create prompt for OpenAI with environment specifications
 
         Returns:

@@ -3,7 +3,8 @@ from dataclasses import dataclass
 
 import reflex as rx
 from gws_ai_toolkit._app.ai_chat import ConversationChatStateBase
-from gws_ai_toolkit.core.agents.table_agent_ai import TableAgentAi
+from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
+from gws_ai_toolkit.core.agents.table.table_agent_ai_service import TableAgentAiService
 from gws_ai_toolkit.core.excel_file import ExcelSheetDTO
 from gws_ai_toolkit.models.chat.conversation.ai_table_agent_chat_conversation import (
     AiTableAgentChatConversation,
@@ -14,6 +15,9 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
 )
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageTable
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase
+from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable
+from gws_core import Table
 from gws_reflex_main import ReflexMainState
 
 from ...ai_table_data_state import AiTableDataState
@@ -55,6 +59,8 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
     empty_state_message: str = "Start with data visualization or transformation requests"
 
     _selected_tables: list[ExcelSheetDTO]
+    _enable_chat_save: bool = False
+    _is_saving: bool = False
 
     async def on_load(self):
         if not self._conversation:
@@ -63,6 +69,11 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
             table = data_state.get_current_table()
             if table is not None:
                 self._selected_tables.append(table)
+
+        # Load enable_chat_save config
+        app_config_state = await self.get_state(AiTableAgentChatConfigState)
+        config: AiTableAgentChatConfig = await app_config_state.get_config()
+        self._enable_chat_save = config.enable_chat_save
 
     async def _create_conversation(self) -> BaseChatConversation:
         """Create a new AiTableAgentChatConversation instance.
@@ -111,12 +122,13 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
             raise ValueError("OpenAI API key is not set")
         return api_key
 
-    async def configure_conversation_before_message(self, conversation: BaseChatConversation) -> None:
-        if isinstance(conversation, AiTableAgentChatConversation):
-            # Update tables in the conversation before processing a new message
-            conversation.table_agent.clear_tables()
-            for table_dto in self._selected_tables:
-                conversation.table_agent.add_table(table_dto.get_unique_name(), table_dto.table)
+    async def build_user_message(self, user_query: str) -> ChatUserMessageBase:
+        tables: dict[str, Table] = {}
+
+        for table_dto in self._selected_tables:
+            tables[table_dto.get_unique_name()] = table_dto.table
+
+        return ChatUserMessageTable(tables=tables, content=user_query)
 
     async def _after_message_added(self, message: ChatMessageBase):
         if isinstance(message, ChatMessageTable) and message.table is not None:
@@ -198,3 +210,56 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
             bool: True if the table is selected, False otherwise.
         """
         return any(t.id == table_id and t.sheet_name == sheet_name for t in self._selected_tables)
+
+    @rx.var
+    def enable_chat_save(self) -> bool:
+        """Returns True if chat save functionality is enabled."""
+        return self._enable_chat_save
+
+    @rx.var
+    def is_saving(self) -> bool:
+        """Returns True if a save operation is in progress."""
+        return self._is_saving
+
+    @rx.event(background=True)
+    async def save_chat(self):
+        """Save the current chat conversation and create a replay scenario.
+
+        This method saves the TableAgentAi's state (including all tables and
+        conversation history) and creates a scenario that can replay the
+        agent's transformations on new data.
+        """
+        if self._is_saving:
+            return
+
+        main_state: ReflexMainState
+        async with self:
+            self._is_saving = True
+            main_state = await self.get_state(ReflexMainState)
+
+        try:
+            conversation = self._conversation
+            if not conversation or not isinstance(conversation, AiTableAgentChatConversation):
+                async with self:
+                    self._is_saving = False
+                return rx.toast.error("No active conversation to save")
+
+            # Get the table agent from the conversation
+            table_agent = conversation.table_agent
+
+            with await main_state.authenticate_user():
+                # Save the agent using the service
+                resource_model = TableAgentAiService.save_table_agent_ai(
+                    table_agent_ai=table_agent,
+                    scenario_title="Table Agent Chat",
+                )
+
+            async with self:
+                self._is_saving = False
+
+            return rx.toast.success(f"Chat saved successfully! Resource ID: {resource_model.id}")
+
+        except Exception as e:
+            async with self:
+                self._is_saving = False
+            return rx.toast.error(f"Failed to save chat: {str(e)}")

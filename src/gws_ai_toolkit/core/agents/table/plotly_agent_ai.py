@@ -6,8 +6,9 @@ from gws_core import BaseModelDTO, Table
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent
 
-from .base_function_agent_ai import BaseFunctionAgentAi
+from ..base_function_agent_ai import BaseFunctionAgentAi
 from .plotly_agent_ai_events import PlotGeneratedEvent, PlotlyAgentEvent
 
 
@@ -22,16 +23,17 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
+class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
     """Standalone plot agent service for data visualization using OpenAI"""
 
-    _table: Table
-
     def __init__(
-        self, openai_api_key: str, table: Table, model: str, temperature: float, skip_success_response: bool = False
+        self,
+        openai_api_key: str,
+        model: str,
+        temperature: float,
+        skip_success_response: bool = False,
     ):
         super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
-        self._table = table
 
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
@@ -44,7 +46,9 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             }
         ]
 
-    def _handle_function_call(self, function_call_event: FunctionCallEvent) -> Generator[PlotlyAgentEvent, None, None]:
+    def _handle_function_call(
+        self, function_call_event: FunctionCallEvent, user_query: UserQueryTableEvent
+    ) -> Generator[PlotlyAgentEvent, None, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
         response_id = function_call_event.response_id
@@ -70,7 +74,7 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
         )
 
         try:
-            figure = self._execute_generated_code(code)
+            figure = self._execute_generated_code(code, user_query.table)
 
             yield PlotGeneratedEvent(
                 figure=figure,
@@ -96,14 +100,15 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
             # Return after error - the main loop will handle retry logic
             return
 
-    def _execute_generated_code(self, code: str) -> go.Figure:
+    def _execute_generated_code(self, code: str, table: Table) -> go.Figure:
         """Execute generated code and return figure
 
         Args:
             code: Python code to execute
+            table: Table to use for visualization
 
         Returns:
-            Tuple of (figure, code)
+            Plotly Figure object
 
         Raises:
             ValueError: If arguments are invalid
@@ -111,7 +116,7 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
         """
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
-        execution_globals["df"] = self._table.get_data()
+        execution_globals["df"] = table.get_data()
 
         # Execute the code
         try:
@@ -140,14 +145,17 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent]):
         """Get globals for code execution environment"""
         return {"pd": pd, "go": go, "__builtins__": __builtins__}
 
-    def _get_ai_instruction(self) -> str:
+    def _get_ai_instruction(self, user_query: UserQueryTableEvent) -> str:
         """Create prompt for OpenAI with table metadata
+
+        Args:
+            user_query: User query event containing the table
 
         Returns:
             Formatted prompt for OpenAI
         """
 
-        table_metadata = self._table.get_ai_description()
+        table_metadata = user_query.table.get_ai_description()
         return f"""You are an AI assistant specialized in data analysis and visualization. You have access to information about a table/dataset but not the actual data.
 
 {table_metadata}

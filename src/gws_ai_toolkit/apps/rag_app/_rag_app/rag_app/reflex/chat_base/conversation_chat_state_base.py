@@ -8,6 +8,7 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseC
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase, ChatUserMessageText
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_reflex_main import ReflexMainState
 
@@ -68,13 +69,13 @@ class ConversationChatStateBase(rx.State, mixin=True):
             BaseChatConversation: The conversation instance
         """
 
-    @abstractmethod
-    async def configure_conversation_before_message(self, conversation: BaseChatConversation) -> None:
+    async def build_user_message(self, user_query: str) -> ChatUserMessageBase:
         """Hook to configure the conversation before processing a new message.
 
         Args:
             conversation (BaseChatConversation): The conversation instance
         """
+        return ChatUserMessageText(content=user_query)
 
     async def _after_message_added(self, message: ChatMessageBase):
         """Hook called after a new message is added to the chat.
@@ -123,12 +124,12 @@ class ConversationChatStateBase(rx.State, mixin=True):
 
         await sleep(0.1)  # Allow UI to update before starting streaming
 
-        await self.configure_conversation_before_message(conversation)
+        user_query = await self.build_user_message(user_message)
 
         try:
             with await main_state.authenticate_user():
                 # Call conversation and process the AI chat stream
-                for message in conversation.call_conversation(user_message):
+                for message in conversation.call_conversation(user_query):
                     if isinstance(message, ChatMessageStreaming):
                         # Update current response message on each yield
                         async with self:

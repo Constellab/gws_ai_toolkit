@@ -19,7 +19,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_text import (
 from gws_ai_toolkit.models.chat.message.chat_user_message import (
     ChatUserMessageText,
 )
-from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable
+from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable, ChatUserMessageTableFront
 
 # Register all message types in the registry for polymorphic conversion
 ChatMessageBase.register_type("text", ChatMessageText)
@@ -54,7 +54,7 @@ ChatMessage = (
 # Union of all message types including streaming responses
 ChatMessageFront = (
     ChatUserMessageText
-    | ChatUserMessageTable
+    | ChatUserMessageTableFront
     | ChatMessageText
     | ChatMessageCode
     | ChatMessageImage

@@ -4,8 +4,9 @@ from unittest.mock import patch
 
 import pandas as pd
 from gws_ai_toolkit.core.agents.base_function_agent_events import FunctionErrorEvent
-from gws_ai_toolkit.core.agents.table_transform_agent_ai import TableTransformAgentAi
-from gws_ai_toolkit.core.agents.table_transform_agent_ai_events import TableTransformEvent
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableTransformEvent
+from gws_ai_toolkit.core.agents.table.table_transform_agent_ai import TableTransformAgentAi
+from gws_ai_toolkit.core.agents.table.table_transform_agent_ai_events import TableTransformEvent
 from gws_core import Table
 
 
@@ -24,16 +25,21 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
             }
         )
 
-        # Create DataFrameTransformAgentAi instance
+        # Create TableTransformAgentAi instance without table
         agent = TableTransformAgentAi(
             openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-            table=Table(test_dataframe),
             model="gpt-4o",  # Use cheaper model for testing
             temperature=0.1,
         )
 
-        # Request transformation to add a new column
-        user_query = "Add a new column called 'salary_per_year_exp' that calculates salary divided by experience"
+        # Create user query with table
+        user_query = UserQueryTableTransformEvent(
+            query="Add a new column called 'salary_per_year_exp' that calculates salary divided by experience",
+            table=Table(test_dataframe),
+            table_name="employee_data",
+            output_table_name="employee_data_with_ratio",
+            agent_id=agent.id,
+        )
 
         # Collect all events from the stream
         events = list(agent.call_agent(user_query))
@@ -65,7 +71,14 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
         self.assertIn("experience", transform_event.code)
 
         # Check that discussion continuation is working by making another transformation
-        user_query2 = "Filter the dataframe to keep only rows where age is greater than 30"
+        # Use the transformed table for the next query
+        user_query2 = UserQueryTableTransformEvent(
+            query="Filter the dataframe to keep only rows where age is greater than 30",
+            table=transform_event.table,
+            table_name="employee_data_with_ratio",
+            output_table_name="filtered_employees",
+            agent_id=agent.id,
+        )
 
         events2 = list(agent.call_agent(user_query2))
         transform_events2 = [e for e in events2 if isinstance(e, TableTransformEvent)]
@@ -78,26 +91,6 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
         transformed_df2 = transform_event2.table.to_dataframe()
         self.assertTrue(all(transformed_df2["age"] > 30))
         self.assertEqual(len(transformed_df2), 3)  # Should have 3 rows with age > 30
-
-        # Create DataFrameTransformAgentAi instance
-        agent2 = TableTransformAgentAi(
-            openai_api_key=os.getenv("OPENAI_API_KEY", ""),
-            table=Table(test_dataframe),
-            model="gpt-4o",  # Use cheaper model for testing
-            temperature=0.1,
-        )
-
-        events = list(agent2.replay_events(agent.get_events_for_serialization()))
-        # extract all TableTransformEvent
-        transform_events_replay = [e for e in events if isinstance(e, TableTransformEvent)]
-        self.assertEqual(len(transform_events_replay), 2)
-        # compare the dataframes from the replay with the original ones
-        pd.testing.assert_frame_equal(
-            transform_events_replay[0].table.to_dataframe(), transform_event.table.to_dataframe()
-        )
-        pd.testing.assert_frame_equal(
-            transform_events_replay[1].table.to_dataframe(), transform_event2.table.to_dataframe()
-        )
 
     @patch.object(TableTransformAgentAi, "_get_code_execution_globals")
     def test_real_transformation_with_error_recovery(self, mock_get_globals):
@@ -116,13 +109,17 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
 
         test_dataframe = pd.DataFrame({"name": ["Alice", "Bob", "Charlie"], "score": [85, 90, 75]})
 
-        # Create DataFrameTransformAgentAi instance
-        agent = TableTransformAgentAi(
-            openai_api_key=os.getenv("OPENAI_API_KEY", ""), table=Table(test_dataframe), model="gpt-4o", temperature=0.1
-        )
+        # Create TableTransformAgentAi instance without table
+        agent = TableTransformAgentAi(openai_api_key=os.getenv("OPENAI_API_KEY", ""), model="gpt-4o", temperature=0.1)
 
-        # Request transformation that requires pd.cut() function
-        user_query = "Add a new column called 'grade_category' using pd.cut to categorize scores into 'Low' (0-80), 'Medium' (80-90), and 'High' (90-100)"
+        # Create user query with table
+        user_query = UserQueryTableTransformEvent(
+            query="Add a new column called 'grade_category' using pd.cut to categorize scores into 'Low' (0-80), 'Medium' (80-90), and 'High' (90-100)",
+            table=Table(test_dataframe),
+            table_name="student_scores",
+            output_table_name="student_grades",
+            agent_id=agent.id,
+        )
 
         # Collect all events from the stream
         events = list(agent.call_agent(user_query))

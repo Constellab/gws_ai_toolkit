@@ -6,8 +6,9 @@ from gws_core import BaseModelDTO, Table
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableTransformEvent
 
-from .base_function_agent_ai import BaseFunctionAgentAi
+from ..base_function_agent_ai import BaseFunctionAgentAi
 from .table_transform_agent_ai_events import DataFrameTransformAgentEvent, TableTransformEvent
 
 
@@ -18,8 +19,7 @@ class TableTransformConfig(BaseModelDTO):
         description="Python code to transform a DataFrame. The code should use a DataFrame variable named 'df' as input and assign the transformed result to a variable named 'transformed_df'.",
     )
 
-    transformed_table_name: str | None = Field(
-        default=None,
+    transformed_table_name: str = Field(
         description="Optional new name for the transformed table. Based on transformations and original table name (if provided). Keep it concise.",
     )
 
@@ -27,27 +27,17 @@ class TableTransformConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
+class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent, UserQueryTableTransformEvent]):
     """Standalone DataFrame transform agent service for data manipulation using OpenAI"""
-
-    _table: Table
-    _table_name: str | None
-    _output_table_name: str | None
 
     def __init__(
         self,
         openai_api_key: str,
-        table: Table,
         model: str,
         temperature: float,
-        table_name: str | None = None,
-        output_table_name: str | None = None,
         skip_success_response: bool = False,
     ):
         super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
-        self._table = table
-        self._table_name = table_name
-        self._output_table_name = output_table_name
 
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
@@ -61,7 +51,7 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
         ]
 
     def _handle_function_call(
-        self, function_call_event: FunctionCallEvent
+        self, function_call_event: FunctionCallEvent, user_query: UserQueryTableTransformEvent
     ) -> Generator[DataFrameTransformAgentEvent, None, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
@@ -87,14 +77,24 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
             agent_id=self.id,
         )
 
-        try:
-            transformed_df = self._execute_generated_code(code)
+        transformed_table_name = user_query.output_table_name or arguments.get("transformed_table_name")
+        if not transformed_table_name:
+            yield FunctionErrorEvent(
+                message="No transformed_table_name provided in function arguments",
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
+            return
 
-            # Use AI-provided name if available, otherwise use the output_table_name from constructor
-            transformed_table_name = arguments.get("transformed_table_name") or self._output_table_name
+        try:
+            transformed_df = self._execute_generated_code(code, user_query.table)
+
+            table = Table(transformed_df)
+            table.name = transformed_table_name
 
             yield TableTransformEvent(
-                table=Table(transformed_df),
+                table=table,
                 code=code,
                 call_id=call_id,
                 response_id=response_id,
@@ -115,11 +115,12 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
             # Return after error - the main loop will handle retry logic
             return
 
-    def _execute_generated_code(self, code: str) -> pd.DataFrame:
+    def _execute_generated_code(self, code: str, table: Table) -> pd.DataFrame:
         """Execute generated code and return transformed DataFrame
 
         Args:
             code: Python code to execute
+            table: Table to transform
 
         Returns:
             Transformed DataFrame
@@ -130,7 +131,7 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
         """
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
-        execution_globals["df"] = self._table.get_data()
+        execution_globals["df"] = table.get_data()
 
         # Execute the code
         try:
@@ -164,18 +165,23 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent]):
             "__builtins__": __builtins__,
         }
 
-    def _get_ai_instruction(self) -> str:
+    def _get_ai_instruction(self, user_query: UserQueryTableTransformEvent) -> str:
         """Create prompt for OpenAI with table metadata
+
+        Args:
+            user_query: User query event containing the table and metadata
 
         Returns:
             Formatted prompt for OpenAI
         """
 
-        table_metadata = self._table.get_ai_description()
-        table_name = f"Original table name : {self._table_name}" if self._table_name else ""
+        table_metadata = user_query.table.get_ai_description()
+        table_name = f"Input table name : {user_query.table_name}" if user_query.table_name else ""
+        output_table_name = f"Output table name: {user_query.output_table_name}" if user_query.output_table_name else ""
         return f"""You are an AI assistant specialized in data cleaning, transformation, and manipulation. You have access to information about a table/dataset but not the actual data.
 
 {table_name}
+{output_table_name}
 {table_metadata}
 
 Your role is to help users transform, clean, and manipulate this data. When users request data transformations, you should:

@@ -14,7 +14,8 @@ from .core.agents.base_function_agent_events import (
     ResponseFullTextEvent,
     SubAgentSuccess,
     TextDeltaEvent,
-    UserQueryEvent,
+    UserQueryEventBase,
+    UserQueryTextEvent,
 )
 from .core.agents.env_agent_ai import EnvAgentAi, EnvConfig
 from .core.agents.env_agent_ai_events import (
@@ -23,12 +24,13 @@ from .core.agents.env_agent_ai_events import (
     EnvInstallationSuccessEvent,
 )
 from .core.agents.env_generator_ai import CondaEnvGeneratorAi, PipEnvGeneratorAi
-from .core.agents.multi_table_agent_ai import MultiTableAgentAi, MultiTableTransformConfig
-from .core.agents.multi_table_agent_ai_events import MultiTableTransformEvent
-from .core.agents.plotly_agent_ai import PlotlyAgentAi
-from .core.agents.table_agent_ai import PlotRequestConfig, TableAgentAi, TransformRequestConfig
-from .core.agents.table_transform_agent_ai import TableTransformAgentAi, TableTransformConfig
-from .core.agents.table_transform_agent_ai_events import TableTransformEvent
+from .core.agents.table.multi_table_agent_ai import MultiTableAgentAi, MultiTableTransformConfig
+from .core.agents.table.multi_table_agent_ai_events import MultiTableTransformEvent
+from .core.agents.table.plotly_agent_ai import PlotlyAgentAi
+from .core.agents.table.table_agent_ai import PlotRequestConfig, TableAgentAi, TransformRequestConfig
+from .core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent, UserQueryTableEvent
+from .core.agents.table.table_transform_agent_ai import TableTransformAgentAi, TableTransformConfig
+from .core.agents.table.table_transform_agent_ai_events import TableTransformEvent
 from .core.excel_file import ExcelFile
 from .core.utils import Utils
 from .models.chat.chat_message_model import ChatMessageModel
@@ -228,7 +230,8 @@ __all__ = [
     "ResponseEvent",
     "ResponseFullTextEvent",
     "TextDeltaEvent",
-    "UserQueryEvent",
+    "UserQueryEventBase",
+    "UserQueryTextEvent",
     "EnvAgentAi",
     "EnvConfig",
     "EnvFileGeneratedEvent",
@@ -244,6 +247,8 @@ __all__ = [
     "PlotRequestConfig",
     "TransformRequestConfig",
     "SubAgentSuccess",
+    "UserQueryMultiTablesEvent",
+    "UserQueryTableEvent",
     "TableTransformAgentAi",
     "TableTransformConfig",
     "TableTransformEvent",
