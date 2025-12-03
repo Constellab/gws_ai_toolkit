@@ -1,6 +1,6 @@
 from typing import Literal
 
-import plotly.graph_objects as go
+from gws_core import PlotlyResource
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
     BaseFunctionAgentEvent,
@@ -13,7 +13,7 @@ from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTab
 
 class PlotGeneratedEvent(FunctionSuccessEvent):
     type: Literal["plot_generated"] = "plot_generated"
-    figure: go.Figure
+    plot: PlotlyResource
     code: str  # The Python code that generated the figure
 
     class Config:

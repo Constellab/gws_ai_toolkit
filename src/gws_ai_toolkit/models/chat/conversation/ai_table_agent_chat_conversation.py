@@ -91,10 +91,10 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
 
         elif event.type == "plot_generated":
             # Handle successful plot generation
-            if not event.figure:
+            if not event.plot:
                 return []
 
-            plotly_message = ChatMessagePlotly(figure=event.figure, external_id=event.response_id)
+            plotly_message = ChatMessagePlotly(plot=event.plot, external_id=event.response_id)
             saved_message = self.save_message(message=plotly_message)
             return [saved_message]
 

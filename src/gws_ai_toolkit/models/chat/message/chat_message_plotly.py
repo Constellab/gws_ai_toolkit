@@ -2,7 +2,7 @@ import os
 from typing import TYPE_CHECKING, Literal
 
 import plotly.graph_objects as go
-import plotly.io as pio
+from gws_core import PlotlyResource
 
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
@@ -32,7 +32,7 @@ class ChatMessagePlotly(ChatMessageBase):
 
     type: Literal["plotly"] = "plotly"
     role: Literal["assistant"] = "assistant"
-    figure: go.Figure | None = None
+    plot: PlotlyResource | None = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -45,19 +45,19 @@ class ChatMessagePlotly(ChatMessageBase):
         if file_path:
             # Load figure from file
             try:
-                self.figure = pio.read_json(file_path)
+                self.plot = PlotlyResource.from_json_file(file_path)
             except Exception:
-                self.figure = None
+                self.plot = None
         else:
-            self.figure = None
+            self.plot = None
 
-    def _save_figure_to_message(self, message: "ChatMessageModel") -> None:
+    def _save_plot_to_message(self, message: "ChatMessageModel") -> None:
         """Save the Plotly figure to the conversation folder and update message filename.
 
         :param message: The ChatMessage instance to save the figure for
         :type message: ChatMessage
         """
-        if not self.figure:
+        if not self.plot:
             return
 
         folder_path = message.conversation.get_conversation_folder_path()
@@ -70,7 +70,7 @@ class ChatMessagePlotly(ChatMessageBase):
         file_path = os.path.join(folder_path, filename)
 
         # Save figure as JSON
-        pio.write_json(self.figure, file_path)
+        self.plot.export_to_path(file_path)
 
         message.filename = filename
 
@@ -93,7 +93,26 @@ class ChatMessagePlotly(ChatMessageBase):
         )
 
         # Save figure to folder if present
-        if self.figure:
-            self._save_figure_to_message(message)
+        if self.plot:
+            self._save_plot_to_message(message)
 
         return message
+
+    def to_front_dto(self) -> ChatMessageBase:
+        return ChatMessagePlotlyFront(
+            id=self.id,
+            role=self.role,
+            type=self.type,
+            figure=self.plot.figure if self.plot else None,
+            plot_name=self.plot.name if self.plot else None,
+        )
+
+
+class ChatMessagePlotlyFront(ChatMessageBase):
+    type: Literal["plotly"] = "plotly"
+    role: Literal["assistant"] = "assistant"
+    figure: go.Figure | None = None
+    plot_name: str | None = None
+
+    class Config:
+        arbitrary_types_allowed = True

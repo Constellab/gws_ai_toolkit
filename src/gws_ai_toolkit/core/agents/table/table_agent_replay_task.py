@@ -18,10 +18,8 @@ from gws_core import (
     FloatParam,
     InputSpec,
     InputSpecs,
-    ListParam,
     OutputSpec,
     OutputSpecs,
-    PlotlyResource,
     Resource,
     ResourceList,
     ResourceSet,
@@ -32,6 +30,7 @@ from gws_core import (
     TaskOutputs,
     task_decorator,
 )
+from gws_core.config.param.code_param.json_code_param import JsonCodeParam
 from pydantic import TypeAdapter
 
 from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
@@ -117,7 +116,7 @@ class TableAgentReplayTask(Task):
 
     config_specs = ConfigSpecs(
         {
-            "serialized_events": ListParam(
+            "serialized_events": JsonCodeParam(
                 human_name="Serialized Events",
                 short_description="JSON list of SerializableTableAgentEvent objects to replay",
                 visibility="public",
@@ -282,9 +281,7 @@ class TableAgentReplayTask(Task):
 
         # Collect all output resources
         output_resources: dict[str, Resource] = cast(dict[str, Resource], agent.get_output_tables())
-
-        for key, figure in agent.get_output_plots().items():
-            output_resources[key] = PlotlyResource(figure=figure)
+        output_resources.update(agent.get_output_plots())
 
         return output_resources
 

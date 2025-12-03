@@ -9,7 +9,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_code import ChatMessageCode
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_hint import ChatMessageHint
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
-from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
+from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly, ChatMessagePlotlyFront
 from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageDataTableFront, ChatMessageTable
@@ -58,7 +58,7 @@ ChatMessageFront = (
     | ChatMessageText
     | ChatMessageCode
     | ChatMessageImage
-    | ChatMessagePlotly
+    | ChatMessagePlotlyFront
     | ChatMessageDataTableFront
     | ChatMessageError
     | ChatMessageHint

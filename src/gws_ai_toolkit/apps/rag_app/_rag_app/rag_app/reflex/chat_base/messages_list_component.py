@@ -8,7 +8,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_code import ChatMessageCode
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_hint import ChatMessageHint
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
-from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
+from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotlyFront
 from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
@@ -290,20 +290,36 @@ def _code_content(message: ChatMessageCode) -> rx.Component:
     )
 
 
-def _plotly_content(message: ChatMessagePlotly) -> rx.Component:
+def _plotly_content(message: ChatMessagePlotlyFront) -> rx.Component:
     """Renders plotly figure content.
 
     Args:
         message (ChatMessagePlotlyFront): Plotly message to render
 
     Returns:
-        rx.Component: Plotly figure display
+        rx.Component: Plotly figure display with optional plot name
     """
     return rx.cond(
         message.figure,
-        rx.plotly(
-            # rx.cond used to avoid warning
-            data=rx.cond(message.figure, message.figure, go.Figure()),
+        rx.vstack(
+            rx.plotly(
+                # rx.cond used to avoid warning
+                data=rx.cond(message.figure, message.figure, go.Figure()),
+                width="100%",
+            ),
+            # rx.cond(
+            #     message.plot_name,
+            #     rx.text(
+            #         message.plot_name,
+            #         font_weight="500",
+            #         font_size="14px",
+            #         color="var(--gray-11)",
+            #         margin_top="8px",
+            #         text_align="center",
+            #     ),
+            # ),
+            spacing="2",
+            align_items="center",
             width="100%",
         ),
     )

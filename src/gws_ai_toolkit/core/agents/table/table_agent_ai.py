@@ -1,7 +1,6 @@
 from collections.abc import Generator
 
-import plotly.graph_objects as go
-from gws_core import BaseModelDTO, Table
+from gws_core import BaseModelDTO, PlotlyResource, Table
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
@@ -385,14 +384,13 @@ If you don't have enough information to determine the user's intent, ask clarify
 
         return tables
 
-    def get_output_plots(self) -> dict[str, go.Figure]:
-        plots: dict[str, go.Figure] = {}
+    def get_output_plots(self) -> dict[str, PlotlyResource]:
+        plots: dict[str, PlotlyResource] = {}
         plot_counter = 0
 
         for event in self._event_list.get_all():
             if isinstance(event, PlotGeneratedEvent):
-                plot_name = f"plot_{plot_counter}"
-                plots[plot_name] = event.figure
+                plots[f"plot_{plot_counter}"] = event.plot
                 plot_counter += 1
 
         return plots

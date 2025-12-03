@@ -2,7 +2,7 @@ from collections.abc import Generator
 
 import pandas as pd
 import plotly.graph_objects as go
-from gws_core import BaseModelDTO, Table
+from gws_core import BaseModelDTO, PlotlyResource, Table
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent, FunctionErrorEvent
@@ -17,6 +17,9 @@ class PlotlyCodeConfig(BaseModelDTO):
 
     code: str = Field(
         description="Python code to generate a Plotly figure. The code should use a DataFrame variable named 'df' as input and return a Plotly Figure object.",
+    )
+    plot_name: str = Field(
+        description="A descriptive title for the plot as a short sentence (e.g., 'Sales Trend Over Time', 'Temperature Distribution'). Use proper capitalization and spaces, no underscores or special characters.",
     )
 
     class Config:
@@ -41,7 +44,7 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
             {
                 "type": "function",
                 "name": "generate_plotly_figure",
-                "description": "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object.",
+                "description": "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object. Also provide a descriptive title for the plot as a short sentence.",
                 "parameters": PlotlyCodeConfig.model_json_schema(),
             }
         ]
@@ -56,10 +59,20 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
 
         # Use arguments dict directly (already parsed)
         code = arguments.get("code", "")
+        plot_name = arguments.get("plot_name", "")
 
         if not code.strip():
             yield FunctionErrorEvent(
                 message="No code provided in function arguments",
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
+            return
+
+        if not plot_name.strip():
+            yield FunctionErrorEvent(
+                message="No plot_name provided in function arguments",
                 call_id=call_id,
                 response_id=response_id,
                 agent_id=self.id,
@@ -76,8 +89,11 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
         try:
             figure = self._execute_generated_code(code, user_query.table)
 
+            plotly_resource = PlotlyResource(figure=figure)
+            plotly_resource.name = plot_name
+
             yield PlotGeneratedEvent(
-                figure=figure,
+                plot=plotly_resource,
                 code=code,
                 call_id=call_id,
                 response_id=response_id,
@@ -167,6 +183,7 @@ Your role is to help users analyze and visualize this data. When users request v
 3. Ensure the code assigns the final figure to a variable named 'fig'
 4. Use appropriate Plotly graph objects (plotly.graph_objects) for visualizations
 5. Make reasonable assumptions about data based on column names and types
+6. Provide a descriptive plot_name parameter as a short sentence with proper capitalization (e.g., 'Sales Trend Over Time', 'Temperature Distribution by Region'). Use spaces, not underscores.
 
 You can assume the following imports are available:
 - pandas as pd
