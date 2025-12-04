@@ -7,7 +7,9 @@ from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from .ai_expert_state import AiExpertState
 
 
-def ai_expert_header_default_buttons_component(state: ConversationChatStateBase) -> list[rx.Component]:
+def ai_expert_header_default_buttons_component(
+    state: ConversationChatStateBase,
+) -> list[rx.Component]:
     """Default header buttons for the AI Expert chat interface.
 
     Provides standard action buttons for the AI Expert page including document viewing
@@ -83,6 +85,8 @@ def ai_expert_component(chat_config: ChatConfig | None = None) -> rx.Component:
         component = ai_expert_component(custom_config)
     """
     if not chat_config:
-        chat_config = ChatConfig(state=AiExpertState, header_buttons=ai_expert_header_default_buttons_component)
+        chat_config = ChatConfig(
+            state=AiExpertState, header_buttons=ai_expert_header_default_buttons_component
+        )
 
     return chat_component(chat_config)

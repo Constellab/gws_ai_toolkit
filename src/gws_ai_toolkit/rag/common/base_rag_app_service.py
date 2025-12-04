@@ -9,7 +9,7 @@ from .base_rag_service import BaseRagService
 from .rag_resource import RagResource
 
 
-class BaseRagAppService():
+class BaseRagAppService:
     """
     Abstract base class for the RagApp to interact with the Rag platform.
     """
@@ -18,7 +18,7 @@ class BaseRagAppService():
     dataset_id: str
 
     # Common constants
-    CONSTELLAB_RESOURCE_ID_METADATA_KEY = 'constellab_resource_id'
+    CONSTELLAB_RESOURCE_ID_METADATA_KEY = "constellab_resource_id"
 
     def __init__(self, rag_service: BaseRagService, dataset_id: str) -> None:
         self.rag_service = rag_service
@@ -31,8 +31,7 @@ class BaseRagAppService():
         """
 
     def get_compatible_resource_explanation(self) -> str:
-        """Get a text explaining how the filtration is done.
-        """
+        """Get a text explaining how the filtration is done."""
         return f"""To be compatible with the Rag, the resource must:
 - Be a File
 - Be in one of the format : {RagResource.SUPPORTED_FILE_EXTENSIONS}
@@ -41,8 +40,7 @@ class BaseRagAppService():
 
     @abstractmethod
     def get_chat_default_filters(self) -> Dict[str, Any]:
-        """Get the default inputs for the chat. This can be used to filter chat response.
-        """
+        """Get the default inputs for the chat. This can be used to filter chat response."""
 
     def send_resource_to_rag(self, rag_resource: RagResource, upload_options: Any) -> None:
         """Send a resource to the RAG platform for processing.
@@ -68,33 +66,39 @@ class BaseRagAppService():
         rag_uploaded_doc: RagDocument
         if rag_resource.is_synced_with_rag():
             # if the resource is already synced with rag, we need to update the document
-            rag_uploaded_doc = self.rag_service.update_document_and_parse(file.path, self.dataset_id,
-                                                                          rag_resource.get_and_check_document_id(),
-                                                                          upload_options,
-                                                                          filename=file.get_name())
+            rag_uploaded_doc = self.rag_service.update_document_and_parse(
+                file.path,
+                self.dataset_id,
+                rag_resource.get_and_check_document_id(),
+                upload_options,
+                filename=file.get_name(),
+            )
         else:
             rag_uploaded_doc = self.rag_service.upload_document_and_parse(
-                file.path, self.dataset_id, upload_options, filename=file.get_name())
+                file.path, self.dataset_id, upload_options, filename=file.get_name()
+            )
 
         try:
-
             metadata = self.get_document_metadata_before_sync(rag_resource)
-            self.rag_service.update_document_metadata(self.dataset_id, rag_uploaded_doc.id, metadata)
+            self.rag_service.update_document_metadata(
+                self.dataset_id, rag_uploaded_doc.id, metadata
+            )
         except Exception as e:
             Logger.error(
-                f"Error while updating metadata for rag object {rag_resource.resource_model.id} after rag upload: {e}")
+                f"Error while updating metadata for rag object {rag_resource.resource_model.id} after rag upload: {e}"
+            )
             Logger.log_exception_stack_trace(e)
             # delete the document from Rag
             self.rag_service.delete_document(self.dataset_id, rag_uploaded_doc.id)
             raise e
 
         try:
-
             # Add the Rag document tag to the resource
             rag_resource.mark_resource_as_sent_to_rag(rag_uploaded_doc.id, self.dataset_id)
         except Exception as e:
             Logger.error(
-                f"Error while adding tags to resource {rag_resource.resource_model.id} after rag upload: {e}")
+                f"Error while adding tags to resource {rag_resource.resource_model.id} after rag upload: {e}"
+            )
             Logger.log_exception_stack_trace(e)
 
             # delete the document from Rag
@@ -105,9 +109,7 @@ class BaseRagAppService():
         """Method than can be overrided that is called before syncing a document.
         The returned metadata are set in the rag document
         """
-        return {
-            self.CONSTELLAB_RESOURCE_ID_METADATA_KEY: rag_resource.resource_model.id
-        }
+        return {self.CONSTELLAB_RESOURCE_ID_METADATA_KEY: rag_resource.resource_model.id}
 
     def delete_resource_from_rag(self, rag_resource: RagResource) -> None:
         """Delete a resource from the RAG platform."""
@@ -116,8 +118,7 @@ class BaseRagAppService():
 
         # Delete the resource from RagFlow
         self.rag_service.delete_document(
-            rag_resource.get_dataset_base_id(),
-            rag_resource.get_and_check_document_id()
+            rag_resource.get_dataset_base_id(), rag_resource.get_and_check_document_id()
         )
 
         # Remove the tags from the resource
@@ -166,12 +167,14 @@ class BaseRagAppService():
 
         return datahub_resources
 
-    def send_message_stream(self,
-                            query: str,
-                            conversation_id: Optional[str] = None,
-                            chat_id: Optional[str] = None,
-                            user_id: str | None = None,
-                            filters: Optional[Dict[str, Any]] = None):
+    def send_message_stream(
+        self,
+        query: str,
+        conversation_id: Optional[str] = None,
+        chat_id: Optional[str] = None,
+        user_id: str | None = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ):
         """Send a message stream.
         Override get_chat_default_filters to enable default filtering
 
@@ -200,7 +203,7 @@ class BaseRagAppService():
             user_id=user_id,
             conversation_id=conversation_id,
             chat_id=chat_id,
-            inputs=filtered_inputs
+            inputs=filtered_inputs,
         )
 
     def get_rag_service(self) -> BaseRagService:

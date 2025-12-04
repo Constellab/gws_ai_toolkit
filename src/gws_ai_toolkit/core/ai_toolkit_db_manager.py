@@ -1,5 +1,3 @@
-
-
 from typing import Optional
 
 from gws_core import LazyAbstractDbManager
@@ -15,16 +13,16 @@ class AiToolkitDbManager(LazyAbstractDbManager):
 
     db = DatabaseProxy()
 
-    _instance: Optional['AiToolkitDbManager'] = None
+    _instance: Optional["AiToolkitDbManager"] = None
 
     @classmethod
-    def get_instance(cls) -> 'AiToolkitDbManager':
+    def get_instance(cls) -> "AiToolkitDbManager":
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def get_name(self) -> str:
-        return 'db'
+        return "db"
 
     def get_brick_name(self) -> str:
-        return 'gws_ai_toolkit'
+        return "gws_ai_toolkit"

@@ -1,5 +1,7 @@
 import reflex as rx
-from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex.chat_base.messages_list_component import message_source
+from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex.chat_base.messages_list_component import (
+    message_source,
+)
 from gws_ai_toolkit.models.chat.chat_conversation_dto import ChatConversationDTO
 
 from ..chat_base.chat_config import ChatConfig
@@ -30,7 +32,11 @@ def _conversation_item(conversation: ChatConversationDTO) -> rx.Component:
         rx.vstack(
             rx.hstack(
                 rx.heading(
-                    rx.cond(conversation.label.length() > 60, conversation.label[:60] + "...", conversation.label),
+                    rx.cond(
+                        conversation.label.length() > 60,
+                        conversation.label[:60] + "...",
+                        conversation.label,
+                    ),
                     size="3",
                     margin_bottom="4px",
                     font_weight="600",
@@ -67,7 +73,9 @@ def _conversation_item(conversation: ChatConversationDTO) -> rx.Component:
         ),
         _hover={
             "background_color": rx.cond(
-                HistoryState.selected_conversation_id == conversation.id, rx.color("accent", 4), rx.color("gray", 2)
+                HistoryState.selected_conversation_id == conversation.id,
+                rx.color("accent", 4),
+                rx.color("gray", 2),
             ),
         },
         on_click=lambda: HistoryState.select_conversation(conversation.id),
@@ -200,7 +208,9 @@ def _conversation_display(config: ChatConfig) -> rx.Component:
     )
 
 
-def history_component(sources_component_builder: SourcesComponentBuilder | None = None) -> rx.Component:
+def history_component(
+    sources_component_builder: SourcesComponentBuilder | None = None,
+) -> rx.Component:
     """Complete conversation history interface with sidebar and display panel.
 
     This component provides a two-panel interface for browsing and viewing
@@ -229,7 +239,9 @@ def history_component(sources_component_builder: SourcesComponentBuilder | None 
 
     if sources_component_builder:
         config.custom_chat_messages = {
-            "source": lambda message: message_source(message, ReadOnlyChatState, sources_component_builder),
+            "source": lambda message: message_source(
+                message, ReadOnlyChatState, sources_component_builder
+            ),
         }
 
     return rx.hstack(

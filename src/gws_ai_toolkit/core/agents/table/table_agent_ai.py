@@ -8,7 +8,10 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
     FunctionErrorEvent,
 )
 from gws_ai_toolkit.core.agents.table.plotly_agent_ai_events import PlotGeneratedEvent
-from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent, UserQueryTableTransformEvent
+from gws_ai_toolkit.core.agents.table.table_agent_event_base import (
+    UserQueryTableEvent,
+    UserQueryTableTransformEvent,
+)
 from gws_ai_toolkit.core.agents.table.table_transform_agent_ai_events import TableTransformEvent
 
 from ..base_function_agent_ai import BaseFunctionAgentAi
@@ -125,9 +128,13 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
                 return
 
             if function_name == "generate_plot":
-                yield from self._handle_plot_request(user_request, arguments, call_id, response_id, user_query)
+                yield from self._handle_plot_request(
+                    user_request, arguments, call_id, response_id, user_query
+                )
             elif function_name == "transform_table":
-                yield from self._handle_transform_request(user_request, arguments, call_id, response_id, user_query)
+                yield from self._handle_transform_request(
+                    user_request, arguments, call_id, response_id, user_query
+                )
             elif function_name == "transform_multiple_tables":
                 yield from self._handle_multi_table_transform_request(
                     user_request, arguments, call_id, response_id, user_query
@@ -180,7 +187,9 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
             skip_success_response=True,
         )
 
-        sub_query = UserQueryTableEvent(query=sub_user_request, table=table, agent_id=plotly_agent.id)
+        sub_query = UserQueryTableEvent(
+            query=sub_user_request, table=table, agent_id=plotly_agent.id
+        )
 
         yield from self.call_sub_agent(plotly_agent, sub_query, response_id, call_id, self.id)
 

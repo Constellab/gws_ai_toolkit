@@ -53,7 +53,9 @@ def rag_chat_component(chat_config: ChatConfig | None = None) -> rx.Component:
         chat_config = ChatConfig(
             state=RagChatState,
             custom_chat_messages={
-                "source": lambda message: message_source(message, RagChatState, sources_list_component),
+                "source": lambda message: message_source(
+                    message, RagChatState, sources_list_component
+                ),
             },
         )
 

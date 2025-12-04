@@ -26,7 +26,10 @@ from gws_ai_toolkit._app.ai_table import AiTableState, ai_table_component
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_reflex_main import register_gws_reflex_app
 
-from .associated_resources_component import associated_resources_dialog, associated_resources_section
+from .associated_resources_component import (
+    associated_resources_dialog,
+    associated_resources_section,
+)
 from .associated_resources_state import AssociatedResourcesState
 from .config_page import combined_config_page
 from .custom_states import CustomAppConfigState
@@ -50,7 +53,9 @@ def custom_source_menu_items(source: RagChatSource, state: ConversationChatState
         rx.menu.item(
             rx.icon("link", size=16),
             "Associated resources",
-            on_click=lambda: AssociatedResourcesState.open_associated_resources_dialog(source.document_id),
+            on_click=lambda: AssociatedResourcesState.open_associated_resources_dialog(
+                source.document_id
+            ),
         )
     )
     return items
@@ -65,10 +70,14 @@ def index():
     chat_config = ChatConfig(
         state=RagChatState,
         custom_chat_messages={
-            "source": lambda message: message_source(message, RagChatState, sources_component_builder),
+            "source": lambda message: message_source(
+                message, RagChatState, sources_component_builder
+            ),
         },
     )
-    return page_component(nav_bar_items, rx.fragment(rag_chat_component(chat_config), associated_resources_dialog()))
+    return page_component(
+        nav_bar_items, rx.fragment(rag_chat_component(chat_config), associated_resources_dialog())
+    )
 
 
 # Resource page - for resource and sync management
@@ -92,7 +101,8 @@ def history():
     return page_component(
         nav_bar_items,
         rx.fragment(
-            history_component(sources_component_builder=sources_component_builder), associated_resources_dialog()
+            history_component(sources_component_builder=sources_component_builder),
+            associated_resources_dialog(),
         ),
     )
 

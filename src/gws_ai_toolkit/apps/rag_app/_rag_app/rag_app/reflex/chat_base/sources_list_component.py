@@ -5,10 +5,14 @@ from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 from .conversation_chat_state_base import ConversationChatStateBase
 
-SourcesComponentBuilder = Callable[[list[RagChatSource] | None, ConversationChatStateBase], rx.Component]
+SourcesComponentBuilder = Callable[
+    [list[RagChatSource] | None, ConversationChatStateBase], rx.Component
+]
 
 
-def get_default_source_menu_items(source: RagChatSource, state: ConversationChatStateBase) -> list[rx.Component]:
+def get_default_source_menu_items(
+    source: RagChatSource, state: ConversationChatStateBase
+) -> list[rx.Component]:
     """Get the default menu items for source actions.
 
     Returns:
@@ -31,7 +35,8 @@ def get_default_source_menu_items(source: RagChatSource, state: ConversationChat
 def _source_item(
     source: RagChatSource,
     state: ConversationChatStateBase,
-    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]] | None = None,
+    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]]
+    | None = None,
 ) -> rx.Component:
     """Individual source item with document info and action menu.
 
@@ -74,7 +79,9 @@ def _source_item(
     # Only add menu if there are menu items
     if menu_items and len(menu_items) > 0:
         menu_root = rx.menu.root(
-            rx.menu.trigger(rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost", cursor="pointer")),
+            rx.menu.trigger(
+                rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost", cursor="pointer")
+            ),
             rx.menu.content(*menu_items),
             flex_shrink="0",
         )
@@ -92,7 +99,8 @@ def _source_item(
 def sources_list_component(
     sources: list[RagChatSource] | None,
     state: ConversationChatStateBase,
-    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]] | None = None,
+    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]]
+    | None = None,
 ) -> rx.Component:
     """Expandable sources panel for RAG chat responses.
 
@@ -126,7 +134,9 @@ def sources_list_component(
                 header="Sources",
                 content=rx.accordion.content(
                     rx.vstack(
-                        rx.foreach(sources, lambda source: _source_item(source, state, custom_menu_items)),
+                        rx.foreach(
+                            sources, lambda source: _source_item(source, state, custom_menu_items)
+                        ),
                         spacing="2",
                         align="stretch",
                     ),

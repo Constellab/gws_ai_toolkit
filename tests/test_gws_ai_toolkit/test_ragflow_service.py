@@ -4,14 +4,16 @@ from unittest import TestCase, skipIf
 from ragflow_sdk import Chat, Session
 
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
-    RagFlowCreateChatRequest, RagFlowCreateSessionRequest)
+    RagFlowCreateChatRequest,
+    RagFlowCreateSessionRequest,
+)
 from gws_ai_toolkit.rag.ragflow.ragflow_service import RagFlowService
 
 
 # test_ragflow_service.py
 @skipIf(
-    not os.getenv('RAGFLOW_API_KEY') or not os.getenv('RAGFLOW_BASE_URL'),
-    "[RAGFLOW_API_KEY, RAGFLOW_BASE_URL] environment variables must be set to run these tests. Define them or create a .env.test file in the brick root."
+    not os.getenv("RAGFLOW_API_KEY") or not os.getenv("RAGFLOW_BASE_URL"),
+    "[RAGFLOW_API_KEY, RAGFLOW_BASE_URL] environment variables must be set to run these tests. Define them or create a .env.test file in the brick root.",
 )
 class TestRagFlowService(TestCase):
     """Integration tests for RagFlow service session management methods.
@@ -31,17 +33,15 @@ class TestRagFlowService(TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test fixtures that are shared across all test methods."""
-        cls.api_key = os.getenv('RAGFLOW_API_KEY', '')
-        cls.base_url = os.getenv('RAGFLOW_BASE_URL', '')
+        cls.api_key = os.getenv("RAGFLOW_API_KEY", "")
+        cls.base_url = os.getenv("RAGFLOW_BASE_URL", "")
 
         # Initialize the service
         cls.service = RagFlowService(base_url=cls.base_url, api_key=cls.api_key)
 
         # Create a test chat for session management tests
         chat_request = RagFlowCreateChatRequest(
-            name="Test Chat for Session Management",
-            avatar="",
-            knowledgebases=[]
+            name="Test Chat for Session Management", avatar="", knowledgebases=[]
         )
         cls.test_chat: Chat = cls.service.create_chat(chat_request)
         cls.test_chat_id = cls.test_chat.id
@@ -61,10 +61,7 @@ class TestRagFlowService(TestCase):
         session_request = RagFlowCreateSessionRequest(name="Test Session 1")
 
         # Create the session
-        session = self.service.create_session(
-            chat_id=self.test_chat_id,
-            session=session_request
-        )
+        session = self.service.create_session(chat_id=self.test_chat_id, session=session_request)
 
         # Verify the session was created
         self.assertIsInstance(session, Session)
@@ -83,17 +80,12 @@ class TestRagFlowService(TestCase):
         for name in session_names:
             session_request = RagFlowCreateSessionRequest(name=name)
             session = self.service.create_session(
-                chat_id=self.test_chat_id,
-                session=session_request
+                chat_id=self.test_chat_id, session=session_request
             )
             created_session_ids.append(session.id)
 
         # List sessions with pagination
-        sessions = self.service.list_sessions(
-            chat_id=self.test_chat_id,
-            page=1,
-            page_size=10
-        )
+        sessions = self.service.list_sessions(chat_id=self.test_chat_id, page=1, page_size=10)
 
         # Verify sessions were listed
         self.assertIsInstance(sessions, list)
@@ -117,8 +109,7 @@ class TestRagFlowService(TestCase):
         for name in session_names:
             session_request = RagFlowCreateSessionRequest(name=name)
             session = self.service.create_session(
-                chat_id=self.test_chat_id,
-                session=session_request
+                chat_id=self.test_chat_id, session=session_request
             )
             created_session_ids.append(session.id)
 
@@ -127,9 +118,7 @@ class TestRagFlowService(TestCase):
 
         # Verify sessions were deleted by listing remaining sessions
         remaining_sessions = self.service.list_sessions(
-            chat_id=self.test_chat_id,
-            page=1,
-            page_size=100
+            chat_id=self.test_chat_id, page=1, page_size=100
         )
 
         remaining_session_ids = [s.id for s in remaining_sessions]
@@ -143,14 +132,12 @@ class TestRagFlowService(TestCase):
         # Create a test session
         session_request = RagFlowCreateSessionRequest(name="Get Test Session")
         created_session = self.service.create_session(
-            chat_id=self.test_chat_id,
-            session=session_request
+            chat_id=self.test_chat_id, session=session_request
         )
 
         # Get the session by ID
         retrieved_session = self.service.get_session(
-            chat_id=self.test_chat_id,
-            session_id=created_session.id
+            chat_id=self.test_chat_id, session_id=created_session.id
         )
 
         # Verify the retrieved session matches the created session
@@ -170,27 +157,18 @@ class TestRagFlowService(TestCase):
         for i in range(session_count):
             session_request = RagFlowCreateSessionRequest(name=f"Pagination Test Session {i}")
             session = self.service.create_session(
-                chat_id=self.test_chat_id,
-                session=session_request
+                chat_id=self.test_chat_id, session=session_request
             )
             created_session_ids.append(session.id)
 
         # Test first page with page_size=2
-        page1_sessions = self.service.list_sessions(
-            chat_id=self.test_chat_id,
-            page=1,
-            page_size=2
-        )
+        page1_sessions = self.service.list_sessions(chat_id=self.test_chat_id, page=1, page_size=2)
 
         # Verify we got at most 2 sessions
         self.assertLessEqual(len(page1_sessions), 2)
 
         # Test second page
-        page2_sessions = self.service.list_sessions(
-            chat_id=self.test_chat_id,
-            page=2,
-            page_size=2
-        )
+        page2_sessions = self.service.list_sessions(chat_id=self.test_chat_id, page=2, page_size=2)
 
         # Verify pagination worked (pages should be different unless total is <= 2)
         if len(page1_sessions) == 2:
@@ -210,28 +188,19 @@ class TestRagFlowService(TestCase):
 
         # Try to create a session with an invalid chat ID
         with self.assertRaises(Exception):
-            self.service.create_session(
-                chat_id="invalid_chat_id",
-                session=session_request
-            )
+            self.service.create_session(chat_id="invalid_chat_id", session=session_request)
 
     def test_list_sessions_empty_chat(self):
         """Test listing sessions in a chat with no sessions."""
         # Create a new empty chat
         chat_request = RagFlowCreateChatRequest(
-            name="Empty Chat for Session Test",
-            avatar="",
-            knowledgebases=[]
+            name="Empty Chat for Session Test", avatar="", knowledgebases=[]
         )
         empty_chat = self.service.create_chat(chat_request)
 
         try:
             # List sessions in the empty chat
-            sessions = self.service.list_sessions(
-                chat_id=empty_chat.id,
-                page=1,
-                page_size=10
-            )
+            sessions = self.service.list_sessions(chat_id=empty_chat.id, page=1, page_size=10)
 
             # Verify the list is empty or contains only default sessions
             self.assertIsInstance(sessions, list)
@@ -245,8 +214,7 @@ class TestRagFlowService(TestCase):
         # Create a test session for the question
         session_request = RagFlowCreateSessionRequest(name="Ask Stream Test Session")
         test_session = self.service.create_session(
-            chat_id=self.test_chat_id,
-            session=session_request
+            chat_id=self.test_chat_id, session=session_request
         )
 
         try:
@@ -256,28 +224,30 @@ class TestRagFlowService(TestCase):
 
             # Collect streaming responses
             for chunk in self.service.ask_stream(
-                chat_id=self.test_chat_id,
-                query=query,
-                session_id=test_session.id
+                chat_id=self.test_chat_id, query=query, session_id=test_session.id
             ):
                 response_chunks.append(chunk)
 
                 # Verify chunk structure
                 self.assertIsNotNone(chunk.content)
-                self.assertIn(chunk.role, ['user', 'assistant'])
+                self.assertIn(chunk.role, ["user", "assistant"])
                 self.assertEqual(chunk.session_id, test_session.id)
                 # id can be None according to the implementation
                 # reference can be None or a list
 
             # Verify we got at least one response chunk
-            self.assertGreater(len(response_chunks), 0, "Should receive at least one response chunk")
+            self.assertGreater(
+                len(response_chunks), 0, "Should receive at least one response chunk"
+            )
 
             # Verify we got assistant responses
-            assistant_chunks = [c for c in response_chunks if c.role == 'assistant']
-            self.assertGreater(len(assistant_chunks), 0, "Should receive at least one assistant response")
+            assistant_chunks = [c for c in response_chunks if c.role == "assistant"]
+            self.assertGreater(
+                len(assistant_chunks), 0, "Should receive at least one assistant response"
+            )
 
             # Verify content was streamed (assistant responses should have content)
-            assistant_content = ''.join([c.content for c in assistant_chunks])
+            assistant_content = "".join([c.content for c in assistant_chunks])
             self.assertGreater(len(assistant_content), 0, "Assistant response should have content")
 
         finally:
@@ -296,7 +266,7 @@ class TestRagFlowService(TestCase):
             for chunk in self.service.ask_stream(
                 chat_id=self.test_chat_id,
                 query=query,
-                session_id=None  # Don't provide session ID
+                session_id=None,  # Don't provide session ID
             ):
                 response_chunks.append(chunk)
                 # Capture the session ID that was created
@@ -304,7 +274,9 @@ class TestRagFlowService(TestCase):
                     created_session_id = chunk.session_id
 
             # Verify we got responses
-            self.assertGreater(len(response_chunks), 0, "Should receive at least one response chunk")
+            self.assertGreater(
+                len(response_chunks), 0, "Should receive at least one response chunk"
+            )
 
             # Verify a session was created (all chunks should have the same session_id)
             self.assertIsNotNone(created_session_id, "A session should have been created")

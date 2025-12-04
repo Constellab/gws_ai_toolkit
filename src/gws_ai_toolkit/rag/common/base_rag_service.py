@@ -3,8 +3,7 @@ from typing import Any, Generator, List, Optional, Union
 
 from gws_core import CredentialsDataOther
 
-from .rag_models import (RagChatEndStreamResponse, RagChatStreamResponse,
-                         RagChunk, RagDocument)
+from .rag_models import RagChatEndStreamResponse, RagChatStreamResponse, RagChunk, RagDocument
 
 
 class BaseRagService(ABC):
@@ -20,19 +19,20 @@ class BaseRagService(ABC):
     # Document Management
     @abstractmethod
     def upload_document_and_parse(
-            self, doc_path: str, dataset_id: str, options: Any, filename: str = None) -> RagDocument:
+        self, doc_path: str, dataset_id: str, options: Any, filename: str = None
+    ) -> RagDocument:
         """Upload a document to the knowledge base."""
         raise NotImplementedError
 
     @abstractmethod
-    def update_document_and_parse(self, doc_path: str, dataset_id: str, document_id: str,
-                                  options: Any, filename: str = None) -> RagDocument:
+    def update_document_and_parse(
+        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str = None
+    ) -> RagDocument:
         """Update an existing document in the knowledge base."""
         raise NotImplementedError
 
     @abstractmethod
-    def update_document_metadata(self, dataset_id: str, document_id: str,
-                                 metadata: dict) -> None:
+    def update_document_metadata(self, dataset_id: str, document_id: str, metadata: dict) -> None:
         """Update metadata fields of an existing document in the knowledge base."""
         raise NotImplementedError
 
@@ -58,42 +58,51 @@ class BaseRagService(ABC):
 
     # Chunk Retrieval
     @abstractmethod
-    def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5,
-                        document_ids: List[str] | None = None,
-                        **kwargs) -> List[RagChunk]:
+    def retrieve_chunks(
+        self,
+        dataset_id: str,
+        query: str,
+        top_k: int = 5,
+        document_ids: List[str] | None = None,
+        **kwargs,
+    ) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
         raise NotImplementedError
 
     # Document Chunk Retrieval
     @abstractmethod
-    def get_document_chunks(self, dataset_id: str, document_id: str,
-                            keyword: Optional[str] = None,
-                            page: int = 1,
-                            limit: int = 20) -> List[RagChunk]:
+    def get_document_chunks(
+        self,
+        dataset_id: str,
+        document_id: str,
+        keyword: Optional[str] = None,
+        page: int = 1,
+        limit: int = 20,
+    ) -> List[RagChunk]:
         """Get chunks for a specific document using SDK."""
         raise NotImplementedError
 
     # Chat/Q&A
     @abstractmethod
-    def chat_stream(self,
-                    query: str,
-                    conversation_id: Optional[str] = None,
-                    user_id: Optional[str] = None,
-                    chat_id: Optional[str] = None,
-                    **kwargs) -> Generator[
-        Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
-    ]:
+    def chat_stream(
+        self,
+        query: str,
+        conversation_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        chat_id: Optional[str] = None,
+        **kwargs,
+    ) -> Generator[Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None]:
         """Send a query and get streaming chat response."""
         raise NotImplementedError
 
     # Factory method
     @staticmethod
     @abstractmethod
-    def from_credentials(credentials: CredentialsDataOther) -> 'BaseRagService':
+    def from_credentials(credentials: CredentialsDataOther) -> "BaseRagService":
         """Create service instance from credentials."""
         raise NotImplementedError
 
     # Common utility methods
     def get_base_url(self) -> str:
         """Get the base URL of the RAG service."""
-        return self.route.split('/')[0] + '//' + self.route.split('/')[2]
+        return self.route.split("/")[0] + "//" + self.route.split("/")[2]

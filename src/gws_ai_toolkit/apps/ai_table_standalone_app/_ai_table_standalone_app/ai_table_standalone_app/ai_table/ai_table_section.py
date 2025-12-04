@@ -31,14 +31,24 @@ def table_section():
         # Table info and extract button
         rx.hstack(
             rx.text(f"Rows: {AiTableDataState.nb_rows}", font_weight="bold", color="blue.600"),
-            rx.text(f"Columns: {AiTableDataState.nb_columns}", font_weight="bold", color="blue.600"),
-            rx.text(f"Table: {AiTableDataState.current_table_name}", font_weight="bold", color="green.600"),
+            rx.text(
+                f"Columns: {AiTableDataState.nb_columns}", font_weight="bold", color="blue.600"
+            ),
+            rx.text(
+                f"Table: {AiTableDataState.current_table_name}",
+                font_weight="bold",
+                color="green.600",
+            ),
             rx.spacer(),
             # Column width controls
             rx.menu.root(
                 rx.menu.trigger(
                     rx.button(
-                        rx.cond(AiTableDataState.column_size_mode == "default", "View: Default", "View: Dense"),
+                        rx.cond(
+                            AiTableDataState.column_size_mode == "default",
+                            "View: Default",
+                            "View: Dense",
+                        ),
                         size="2",
                         variant="soft",
                     ),

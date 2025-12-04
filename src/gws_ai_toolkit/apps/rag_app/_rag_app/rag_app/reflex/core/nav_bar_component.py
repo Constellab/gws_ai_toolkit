@@ -5,7 +5,7 @@ import reflex as rx
 
 
 @dataclass
-class NavBarItem():
+class NavBarItem:
     text: str
     icon: str
     url: str
@@ -16,9 +16,9 @@ def _navbar_link(item: NavBarItem) -> rx.Component:
         rx.hstack(
             rx.icon(item.icon, size=16),
             rx.text(item.text, size="4", weight="medium"),
-            align_items="center"
+            align_items="center",
         ),
-        href=item.url
+        href=item.url,
     )
 
 

@@ -7,7 +7,10 @@ from gws_ai_toolkit._app.ai_chat import (
     user_message_base,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageDataTableFront
-from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTableFront, ChatUserTable
+from gws_ai_toolkit.models.chat.message.chat_user_message_table import (
+    ChatUserMessageTableFront,
+    ChatUserTable,
+)
 
 from ...ai_table_data_state import AiTableDataState
 from .ai_table_agent_chat_state import AiTableAgentChatState, SelectedTableDTO

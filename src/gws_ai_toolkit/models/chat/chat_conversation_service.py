@@ -31,7 +31,9 @@ class ChatConversationService:
         chat_app = ChatAppService().get_by_name(chat_app_name)
         if not chat_app:
             return []
-        return list(ChatConversation.get_by_chat_app_and_user(chat_app.id, self._get_current_user().id))
+        return list(
+            ChatConversation.get_by_chat_app_and_user(chat_app.id, self._get_current_user().id)
+        )
 
     @AiToolkitDbManager.transaction()
     def save_conversation(self, conversation_dto: SaveChatConversationDTO) -> ChatConversation:
@@ -65,7 +67,9 @@ class ChatConversationService:
 
         return conversation
 
-    def _save_message(self, conversation: ChatConversation, message: ChatMessageBase) -> ChatMessageBase:
+    def _save_message(
+        self, conversation: ChatConversation, message: ChatMessageBase
+    ) -> ChatMessageBase:
         """Internal method to save a message with its sources.
 
         Used by save_conversation when creating conversations with messages.
@@ -178,7 +182,9 @@ class ChatConversationService:
             db_sources.append(source_record.save())
         return db_sources
 
-    def set_conversation_external_id(self, conversation_id: str, external_id: str) -> ChatConversation:
+    def set_conversation_external_id(
+        self, conversation_id: str, external_id: str
+    ) -> ChatConversation:
         """Set the external ID of a conversation.
 
         :param conversation_id: The ID of the conversation

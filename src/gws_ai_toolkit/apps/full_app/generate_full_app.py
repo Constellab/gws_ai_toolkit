@@ -28,7 +28,9 @@ class FullAppAppConfig(AppConfig):
         return self.get_app_folder_from_relative_path(__file__, "_full_app")
 
 
-@task_decorator("GenerateFullApp", human_name="Generate FullApp app", style=ReflexResource.copy_style())
+@task_decorator(
+    "GenerateFullApp", human_name="Generate FullApp app", style=ReflexResource.copy_style()
+)
 class GenerateFullApp(Task):
     """
     Task that generates the FullApp app.
@@ -60,7 +62,9 @@ class GenerateFullApp(Task):
 
         # add the config file to the reflex resource and set the configuration file path
         app_config_file: File = cast(File, inputs["app_config"])
-        reflex_resource = GenerateDatahubRagFlowApp.set_configuration_file_path(reflex_resource, app_config_file)
+        reflex_resource = GenerateDatahubRagFlowApp.set_configuration_file_path(
+            reflex_resource, app_config_file
+        )
 
         reflex_resource.set_app_config(FullAppAppConfig())
         reflex_resource.name = "FullApp app"

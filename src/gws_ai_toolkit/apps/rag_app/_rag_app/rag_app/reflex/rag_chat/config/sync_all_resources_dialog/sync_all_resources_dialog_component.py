@@ -6,19 +6,19 @@ from .sync_all_resources_dialog_state import SyncAllResourcesDialogState
 def _sync_pending() -> rx.Component:
     """Content for the sync pending state."""
     return rx.vstack(
-
         rx.text(
             f"Are you sure you want to sync all {SyncAllResourcesDialogState.count_resources_to_sync} resources?",
-            size="4", margin_bottom="1em"
+            size="4",
+            margin_bottom="1em",
         ),
         rx.hstack(
             rx.button(
                 "Sync resources",
                 size="3",
-                on_click=SyncAllResourcesDialogState.sync_resources_to_rag),
-            rx.button("Cancel", size="3",
-                      on_click=SyncAllResourcesDialogState.close_dialog),
-        )
+                on_click=SyncAllResourcesDialogState.sync_resources_to_rag,
+            ),
+            rx.button("Cancel", size="3", on_click=SyncAllResourcesDialogState.close_dialog),
+        ),
     )
 
 
@@ -27,11 +27,17 @@ def _sync_running() -> rx.Component:
     return rx.vstack(
         rx.text("Syncing resources..."),
         rx.hstack(
-            rx.progress(value=SyncAllResourcesDialogState.get_resource_sync_progress_percent, flex='1'),
+            rx.progress(
+                value=SyncAllResourcesDialogState.get_resource_sync_progress_percent, flex="1"
+            ),
             rx.text(
-                f"{SyncAllResourcesDialogState.sync_resource_progress}/{SyncAllResourcesDialogState.count_resources_to_sync}"),
-            align_items="center", width='100%'),
-        width='100%')
+                f"{SyncAllResourcesDialogState.sync_resource_progress}/{SyncAllResourcesDialogState.count_resources_to_sync}"
+            ),
+            align_items="center",
+            width="100%",
+        ),
+        width="100%",
+    )
 
 
 def _sync_done() -> rx.Component:
@@ -39,7 +45,7 @@ def _sync_done() -> rx.Component:
     return rx.vstack(
         rx.text("Sync finished", size="3"),
         rx.foreach(SyncAllResourcesDialogState.sync_errors, lambda error: rx.text(error, size="3")),
-        rx.button("Close", size="3", on_click=SyncAllResourcesDialogState.close_dialog)
+        rx.button("Close", size="3", on_click=SyncAllResourcesDialogState.close_dialog),
     )
 
 
@@ -60,16 +66,17 @@ def sync_all_resources_dialog() -> rx.Component:
         rx.callout(
             rx.markdown(
                 SyncAllResourcesDialogState.get_compatible_resource_explanation,
-                class_name='dense-markdown',
+                class_name="dense-markdown",
             ),
-            margin_bottom="1em"
+            margin_bottom="1em",
         ),
-        rx.cond(SyncAllResourcesDialogState.has_loaded_resources_to_sync,
-                _dialog_content(),
-                rx.hstack(
-                    rx.spinner(),
-                    rx.text("Loading resources...", size="3"),
-                    align_items="center",
-                ),
-                ),
+        rx.cond(
+            SyncAllResourcesDialogState.has_loaded_resources_to_sync,
+            _dialog_content(),
+            rx.hstack(
+                rx.spinner(),
+                rx.text("Loading resources...", size="3"),
+                align_items="center",
+            ),
+        ),
     )

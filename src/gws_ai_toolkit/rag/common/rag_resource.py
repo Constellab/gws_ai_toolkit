@@ -2,17 +2,31 @@ import json
 from datetime import datetime
 from typing import List, Optional, cast
 
-from gws_core import (CurrentUserService, DataHubS3ServerService, DateHelper,
-                      EntityTag, EntityTagList, File, FileHelper,
-                      ResourceModel, ResourceSearchBuilder, ResourceService,
-                      RichText, RichTextAggregateDTO, Settings, SpaceFolder,
-                      Tag, TagEntityType, TagOrigins, TagOriginType)
+from gws_core import (
+    CurrentUserService,
+    DataHubS3ServerService,
+    DateHelper,
+    EntityTag,
+    EntityTagList,
+    File,
+    FileHelper,
+    ResourceModel,
+    ResourceSearchBuilder,
+    ResourceService,
+    RichText,
+    RichTextAggregateDTO,
+    Settings,
+    SpaceFolder,
+    Tag,
+    TagEntityType,
+    TagOrigins,
+    TagOriginType,
+)
 
-from .rag_enums import (RAG_COMMON_MAX_FILE_SIZE_MB,
-                        RAG_COMMON_SUPPORTED_EXTENSIONS)
+from .rag_enums import RAG_COMMON_MAX_FILE_SIZE_MB, RAG_COMMON_SUPPORTED_EXTENSIONS
 
 
-class RagResource():
+class RagResource:
     """
     Resource wrappers that manage links
     between the data lab and RAG platforms.
@@ -27,9 +41,9 @@ class RagResource():
     MAX_FILE_SIZE_MB = RAG_COMMON_MAX_FILE_SIZE_MB
 
     # Tag keys specific to RagFlow
-    RAG_DOC_TAG_KEY = 'rag_document'
-    RAG_DATASET_ID_TAG_KEY = 'rag_dataset_id'
-    RAG_SYNC_TAG_KEY = 'rag_sync'
+    RAG_DOC_TAG_KEY = "rag_document"
+    RAG_DATASET_ID_TAG_KEY = "rag_dataset_id"
+    RAG_SYNC_TAG_KEY = "rag_sync"
 
     def __init__(self, resource_model: ResourceModel):
         self.resource_model = resource_model
@@ -45,10 +59,12 @@ class RagResource():
             return False
 
         # If the file is a json, we only accept rich text json
-        if resource.extension == 'json':
+        if resource.extension == "json":
             try:
                 dict_ = json.loads(resource.read())
-                if not RichText.is_rich_text_json(dict_) and not RichTextAggregateDTO.json_is_rich_text_aggregate(dict_):
+                if not RichText.is_rich_text_json(
+                    dict_
+                ) and not RichTextAggregateDTO.json_is_rich_text_aggregate(dict_):
                     return False
             except json.JSONDecodeError as e:
                 raise Exception(f"Error decoding JSON: {e}") from e
@@ -112,7 +128,7 @@ class RagResource():
 
         # For rich text, we convert it to a markdown file
         file = self.get_raw_file()
-        if file.extension == 'json':
+        if file.extension == "json":
             rich_text: RichText = None
             dict_ = json.loads(file.read())
 
@@ -126,7 +142,7 @@ class RagResource():
 
             self._tmp_dir = Settings.make_temp_dir()
             file_path = f"{self._tmp_dir}/{file.name}.md"
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(rich_text.to_markdown())
 
             return File(file_path)
@@ -140,7 +156,7 @@ class RagResource():
         tags = [
             Tag(self.RAG_DOC_TAG_KEY, document_id, origins=origins),
             Tag(self.RAG_DATASET_ID_TAG_KEY, dataset_id, origins=origins),
-            Tag(self.RAG_SYNC_TAG_KEY, str(DateHelper.now_utc_as_milliseconds()), origins=origins)
+            Tag(self.RAG_SYNC_TAG_KEY, str(DateHelper.now_utc_as_milliseconds()), origins=origins),
         ]
         resource_tags.replace_tags(tags)
 
@@ -185,7 +201,9 @@ class RagResource():
     def get_tags(self) -> EntityTagList:
         """Get the tags of the resource."""
         if self._entity_tag_list is None:
-            self._entity_tag_list = EntityTagList.find_by_entity(TagEntityType.RESOURCE, self.resource_model.id)
+            self._entity_tag_list = EntityTagList.find_by_entity(
+                TagEntityType.RESOURCE, self.resource_model.id
+            )
         return self._entity_tag_list
 
     def get_raw_file(self) -> File:
@@ -200,9 +218,9 @@ class RagResource():
         """Get the chunk separator for the resource."""
         extension = FileHelper.get_extension(file_path)
         # for markdown
-        if extension == 'md':
-            return '## '
-        return '\n\n'
+        if extension == "md":
+            return "## "
+        return "\n\n"
 
     def get_id(self) -> str:
         """Get the ID of the resource."""
@@ -217,7 +235,7 @@ class RagResource():
         return cls(resource_model)
 
     @classmethod
-    def from_document_id(cls, document_id: str) -> Optional['RagResource']:
+    def from_document_id(cls, document_id: str) -> Optional["RagResource"]:
         """Create a resource wrapper from a platform document id."""
         research_search = ResourceSearchBuilder()
         research_search.add_tag_filter(Tag(cls.RAG_DOC_TAG_KEY, document_id))
@@ -229,7 +247,7 @@ class RagResource():
         return cls(resource_model)
 
     @classmethod
-    def from_document_or_resource_id_and_check(cls, id_: str) -> 'RagResource':
+    def from_document_or_resource_id_and_check(cls, id_: str) -> "RagResource":
         """Create a resource wrapper from either a document id or a resource model id."""
         rag_resource = cls.from_document_id(id_)
         if rag_resource:

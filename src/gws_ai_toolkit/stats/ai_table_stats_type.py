@@ -1,4 +1,3 @@
-
 import json
 from typing import Any, Dict, List, Literal, Optional, Union
 
@@ -7,9 +6,7 @@ from gws_core import BaseModelDTO
 from plotly.graph_objs import Figure
 from pydantic import field_validator
 
-AiTableStatsAdditionalTestName = Literal[
-    "Student t-test (independent paired wise)",
-]
+AiTableStatsAdditionalTestName = Literal["Student t-test (independent paired wise)",]
 
 
 AiTableStatsTestName = Literal[
@@ -38,7 +35,6 @@ AiTableStatsTestName = Literal[
 
 # Forward declaration of detail types (will be defined later)
 class BaseTestDetails(BaseModelDTO):
-
     class Config:
         arbitrary_types_allowed = True
 
@@ -202,7 +198,6 @@ AiTableStatsDetailsType = Union[
 
 
 class AiTableStatsResults(BaseModelDTO):
-
     test_name: AiTableStatsTestName
     result_text: str
     result_figure: Optional[Figure] = None
@@ -220,7 +215,9 @@ class AiTableStatsResults(BaseModelDTO):
         if self.statistic is not None:
             self.statistic_scientific = f"{self.statistic:.2e}"
 
-    @field_validator('result_figure', mode='before')  # Updated to field_validator with mode='before'
+    @field_validator(
+        "result_figure", mode="before"
+    )  # Updated to field_validator with mode='before'
     @classmethod  # Add classmethod decorator (required in V2)
     def deserialize_result_figure(cls, value):
         if not value:
@@ -233,19 +230,18 @@ class AiTableStatsResults(BaseModelDTO):
             value = json.loads(value)
 
         if not isinstance(value, dict):
-            raise ValueError("result_figure must be a dict or JSON string representing a Plotly result_figure")
+            raise ValueError(
+                "result_figure must be a dict or JSON string representing a Plotly result_figure"
+            )
 
         return Figure(value)
 
     class Config:
         arbitrary_types_allowed = True
-        json_encoders = {
-            Figure: lambda fig: json.loads(fig.to_json())
-        }
+        json_encoders = {Figure: lambda fig: json.loads(fig.to_json())}
 
 
-class AiTableStatsResultList():
-
+class AiTableStatsResultList:
     _results: List[AiTableStatsResults]
 
     def __init__(self, results: Optional[List[AiTableStatsResults]] = None):

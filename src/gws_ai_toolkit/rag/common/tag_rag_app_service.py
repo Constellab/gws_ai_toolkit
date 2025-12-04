@@ -15,17 +15,19 @@ class TagRagAppService(BaseRagAppService):
     tag_key: str
     tag_value: str
 
-    def __init__(self, rag_service: BaseRagService, dataset_id: str, additional_config: Dict[str, Any] = None) -> None:
+    def __init__(
+        self, rag_service: BaseRagService, dataset_id: str, additional_config: Dict[str, Any] = None
+    ) -> None:
         if additional_config is None:
             additional_config = {}
 
-        if 'tag_key' not in additional_config:
+        if "tag_key" not in additional_config:
             raise ValueError("tag_key must be provided in additional_config")
-        if 'tag_value' not in additional_config:
+        if "tag_value" not in additional_config:
             raise ValueError("tag_value must be provided in additional_config")
 
-        self.tag_key = additional_config['tag_key']
-        self.tag_value = additional_config['tag_value']
+        self.tag_key = additional_config["tag_key"]
+        self.tag_value = additional_config["tag_value"]
 
         super().__init__(rag_service, dataset_id)
 
@@ -45,13 +47,11 @@ class TagRagAppService(BaseRagAppService):
         return research_search.search_all()
 
     def get_chat_default_filters(self) -> Dict[str, Any]:
-        """Get the default inputs for the chat. This can be used to filter chat response.
-        """
+        """Get the default inputs for the chat. This can be used to filter chat response."""
         return {}
 
     def get_compatible_resource_explanation(self) -> str:
-        """Get a text explaining how the filtration is done.
-        """
+        """Get a text explaining how the filtration is done."""
         text = super().get_compatible_resource_explanation()
         text += f"\n- Have the tag '{self.get_sync_to_rag_tag()}'"
         text += "\n- Not be archived"

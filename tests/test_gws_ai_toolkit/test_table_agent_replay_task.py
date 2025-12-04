@@ -154,13 +154,19 @@ class TestTableAgentReplayTask(unittest.TestCase):
         output_resources = output_resource_set.get_resources()
 
         # We should have only the transformed table (input tables are NOT included in output)
-        self.assertEqual(len(output_resources), 1, "Should have exactly 1 transformed table in output")
+        self.assertEqual(
+            len(output_resources), 1, "Should have exactly 1 transformed table in output"
+        )
 
         # Check that the renamed table exists
-        self.assertIn("test_data_renamed", output_resources, "Output should contain 'test_data_renamed' table")
+        self.assertIn(
+            "test_data_renamed", output_resources, "Output should contain 'test_data_renamed' table"
+        )
 
         # Verify that the original input table is NOT in the output
-        self.assertNotIn("test_data", output_resources, "Input table 'test_data' should NOT be in output")
+        self.assertNotIn(
+            "test_data", output_resources, "Input table 'test_data' should NOT be in output"
+        )
 
         # Validate the transformed table
         renamed_table = output_resources["test_data_renamed"]
@@ -172,5 +178,7 @@ class TestTableAgentReplayTask(unittest.TestCase):
 
         # Verify column names
         self.assertIn("x_values", renamed_df.columns, "Renamed table should have 'x_values' column")
-        self.assertNotIn("hello", renamed_df.columns, "Renamed table should not have 'hello' column")
+        self.assertNotIn(
+            "hello", renamed_df.columns, "Renamed table should not have 'hello' column"
+        )
         self.assertIn("y_values", renamed_df.columns, "Renamed table should have 'y_values' column")

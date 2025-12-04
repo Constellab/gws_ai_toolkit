@@ -63,7 +63,9 @@ class TableAgentAiService:
 
             # For BaseFunctionWithSubAgentSerializableEvent types
             # These are already serializable, just add them
-            elif isinstance(event, (FunctionCallEvent, ResponseFullTextEvent, CreateSubAgent, SubAgentSuccess)):
+            elif isinstance(
+                event, (FunctionCallEvent, ResponseFullTextEvent, CreateSubAgent, SubAgentSuccess)
+            ):
                 serializable_events.append(event)
 
         return serializable_events
@@ -111,7 +113,9 @@ class TableAgentAiService:
 
         # Step 2: Create ResourceSet from input tables
         # For now, we'll create it in memory - you need to implement the save logic
-        table_models = cls.create_table_resources(table_agent_ai.get_input_tables(), "Agent Input Tables")
+        table_models = cls.create_table_resources(
+            table_agent_ai.get_input_tables(), "Agent Input Tables"
+        )
 
         # Step 3: Create a scenario to run the TableAgentReplayTask
         scenario: ScenarioProxy = ScenarioProxy(title=scenario_title)

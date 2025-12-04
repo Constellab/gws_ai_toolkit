@@ -63,7 +63,9 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
 
         # Verify the calculation is correct
         expected_values = test_dataframe["salary"] / test_dataframe["experience"]
-        pd.testing.assert_series_equal(transformed_df["salary_per_year_exp"], expected_values, check_names=False)
+        pd.testing.assert_series_equal(
+            transformed_df["salary_per_year_exp"], expected_values, check_names=False
+        )
 
         # Verify the generated code contains expected elements
         self.assertIn("salary_per_year_exp", transform_event.code)
@@ -110,7 +112,9 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
         test_dataframe = pd.DataFrame({"name": ["Alice", "Bob", "Charlie"], "score": [85, 90, 75]})
 
         # Create TableTransformAgentAi instance without table
-        agent = TableTransformAgentAi(openai_api_key=os.getenv("OPENAI_API_KEY", ""), model="gpt-4o", temperature=0.1)
+        agent = TableTransformAgentAi(
+            openai_api_key=os.getenv("OPENAI_API_KEY", ""), model="gpt-4o", temperature=0.1
+        )
 
         # Create user query with table
         user_query = UserQueryTableTransformEvent(
@@ -147,6 +151,12 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
         self.assertIn("grade_category", transformed_df.columns)
 
         # Verify the categorization is correct
-        self.assertEqual(transformed_df.loc[transformed_df["score"] == 75, "grade_category"].iloc[0], "Low")
-        self.assertEqual(transformed_df.loc[transformed_df["score"] == 85, "grade_category"].iloc[0], "Medium")
-        self.assertEqual(transformed_df.loc[transformed_df["score"] == 90, "grade_category"].iloc[0], "High")
+        self.assertEqual(
+            transformed_df.loc[transformed_df["score"] == 75, "grade_category"].iloc[0], "Low"
+        )
+        self.assertEqual(
+            transformed_df.loc[transformed_df["score"] == 85, "grade_category"].iloc[0], "Medium"
+        )
+        self.assertEqual(
+            transformed_df.loc[transformed_df["score"] == 90, "grade_category"].iloc[0], "High"
+        )

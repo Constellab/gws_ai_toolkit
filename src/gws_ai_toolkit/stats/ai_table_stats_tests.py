@@ -1,4 +1,3 @@
-
 from typing import List, Optional, Union
 
 import numpy as np
@@ -14,22 +13,27 @@ from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.weightstats import ttest_ind
 
 from .ai_table_stats_plots import AiTableStatsPlots
-from .ai_table_stats_type import (AiTableStatsResults, AnovaTestDetails,
-                                  BenjaminiHochbergTestDetails,
-                                  BonferroniTestDetails,
-                                  ChiSquaredAdjustmentTestDetails,
-                                  ChiSquaredIndependenceTestDetails,
-                                  DunnTestDetails, FriedmanTestDetails,
-                                  HolmTestDetails, HomogeneityTestDetails,
-                                  McNemarTestDetails,
-                                  MultiGroupNonParametricTestDetails,
-                                  NormalityTestDetails,
-                                  PairedNonParametricTestDetails,
-                                  ScheffeTestDetails,
-                                  StudentTTestIndependentDetails,
-                                  StudentTTestPairedDetails,
-                                  TukeyHSDTestDetails,
-                                  TwoGroupNonParametricTestDetails)
+from .ai_table_stats_type import (
+    AiTableStatsResults,
+    AnovaTestDetails,
+    BenjaminiHochbergTestDetails,
+    BonferroniTestDetails,
+    ChiSquaredAdjustmentTestDetails,
+    ChiSquaredIndependenceTestDetails,
+    DunnTestDetails,
+    FriedmanTestDetails,
+    HolmTestDetails,
+    HomogeneityTestDetails,
+    McNemarTestDetails,
+    MultiGroupNonParametricTestDetails,
+    NormalityTestDetails,
+    PairedNonParametricTestDetails,
+    ScheffeTestDetails,
+    StudentTTestIndependentDetails,
+    StudentTTestPairedDetails,
+    TukeyHSDTestDetails,
+    TwoGroupNonParametricTestDetails,
+)
 
 
 class AiTableStatsTests:
@@ -38,7 +42,9 @@ class AiTableStatsTests:
     plots = AiTableStatsPlots()
 
     # Normality tests
-    def shapiro_wilk_test(self, data: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
+    def shapiro_wilk_test(
+        self, data: Union[np.ndarray, pd.Series, List[float]]
+    ) -> AiTableStatsResults:
         """Shapiro-Wilk normality test."""
         statistic, p_value = stats.shapiro(data)
 
@@ -49,19 +55,19 @@ class AiTableStatsTests:
             result_text = "Data appears to follow a normal distribution."
 
         return AiTableStatsResults(
-            test_name='Shapiro-Wilk',
+            test_name="Shapiro-Wilk",
             result_text=result_text,
             result_figure=None,
             statistic=float(statistic),
             p_value=float(p_value),
-            details=NormalityTestDetails(
-                sample_size=len(data)
-            )
+            details=NormalityTestDetails(sample_size=len(data)),
         )
 
-    def kolmogorov_smirnov_test(self, data: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
+    def kolmogorov_smirnov_test(
+        self, data: Union[np.ndarray, pd.Series, List[float]]
+    ) -> AiTableStatsResults:
         """Kolmogorov-Smirnov normality test using Lilliefors from statsmodels."""
-        statistic, p_value = lilliefors(data, dist='norm')
+        statistic, p_value = lilliefors(data, dist="norm")
 
         # Generate result text based on p-value
         if p_value < 0.05:
@@ -70,18 +76,18 @@ class AiTableStatsTests:
             result_text = "Data appears to follow a normal distribution."
 
         return AiTableStatsResults(
-            test_name='Kolmogorov-Smirnov (Lilliefors)',
+            test_name="Kolmogorov-Smirnov (Lilliefors)",
             result_text=result_text,
             result_figure=None,
             statistic=float(statistic),
             p_value=float(p_value),
-            details=NormalityTestDetails(
-                sample_size=len(data)
-            )
+            details=NormalityTestDetails(sample_size=len(data)),
         )
 
     # Homogeneity tests
-    def bartlett_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
+    def bartlett_test(
+        self, *groups: Union[np.ndarray, pd.Series, List[float]]
+    ) -> AiTableStatsResults:
         """Bartlett's test for homogeneity of variances."""
         statistic, p_value = stats.bartlett(*groups)
 
@@ -92,17 +98,17 @@ class AiTableStatsTests:
             result_text = "Groups have similar variances (homogeneity assumption met)."
 
         return AiTableStatsResults(
-            test_name='Bartlett',
+            test_name="Bartlett",
             result_text=result_text,
             result_figure=None,
             statistic=float(statistic),
             p_value=float(p_value),
-            details=HomogeneityTestDetails(
-                groups_count=len(groups)
-            )
+            details=HomogeneityTestDetails(groups_count=len(groups)),
         )
 
-    def levene_test(self, *groups: Union[np.ndarray, pd.Series, List[float]]) -> AiTableStatsResults:
+    def levene_test(
+        self, *groups: Union[np.ndarray, pd.Series, List[float]]
+    ) -> AiTableStatsResults:
         """Levene's test for homogeneity of variances."""
         statistic, p_value = stats.levene(*groups)
 
@@ -113,18 +119,18 @@ class AiTableStatsTests:
             result_text = "Groups have similar variances (homogeneity assumption met)."
 
         return AiTableStatsResults(
-            test_name='Levene',
+            test_name="Levene",
             result_text=result_text,
             result_figure=None,
             statistic=float(statistic),
             p_value=float(p_value),
-            details=HomogeneityTestDetails(
-                groups_count=len(groups)
-            )
+            details=HomogeneityTestDetails(groups_count=len(groups)),
         )
 
     # Qualitative tests
-    def chi2_adjustment_test(self, observed_freq: Union[np.ndarray, List[int]]) -> AiTableStatsResults:
+    def chi2_adjustment_test(
+        self, observed_freq: Union[np.ndarray, List[int]]
+    ) -> AiTableStatsResults:
         """Chi-squared goodness of fit test (adjustment test)."""
         # For goodness of fit, we compare observed vs expected uniform distribution
         expected_freq = np.full_like(observed_freq, np.mean(observed_freq))
@@ -137,18 +143,19 @@ class AiTableStatsTests:
             result_text = "Observed frequencies fit the expected distribution well."
 
         return AiTableStatsResults(
-            test_name='Chi-squared adjustment',
+            test_name="Chi-squared adjustment",
             result_text=result_text,
             result_figure=None,
             statistic=float(statistic),
             p_value=float(p_value),
             details=ChiSquaredAdjustmentTestDetails(
-                categories=len(observed_freq),
-                expected_freq=expected_freq.tolist()
-            )
+                categories=len(observed_freq), expected_freq=expected_freq.tolist()
+            ),
         )
 
-    def chi2_independence_test(self, contingency_table: Union[np.ndarray, List[List[int]]]) -> AiTableStatsResults:
+    def chi2_independence_test(
+        self, contingency_table: Union[np.ndarray, List[List[int]]]
+    ) -> AiTableStatsResults:
         """Chi-squared test of independence."""
         chi2_stat, p_value, dof, expected = stats.chi2_contingency(contingency_table)
 
@@ -159,7 +166,7 @@ class AiTableStatsTests:
             result_text = "Variables appear to be independent."
 
         return AiTableStatsResults(
-            test_name='Chi-squared independence',
+            test_name="Chi-squared independence",
             result_text=result_text,
             result_figure=None,
             statistic=float(chi2_stat),
@@ -167,8 +174,8 @@ class AiTableStatsTests:
             details=ChiSquaredIndependenceTestDetails(
                 degrees_of_freedom=int(dof),
                 expected_frequencies=expected.tolist(),
-                raw_data=np.array(contingency_table).tolist()
-            )
+                raw_data=np.array(contingency_table).tolist(),
+            ),
         )
 
     def mcnemar_test(self, table: Union[np.ndarray, List[List[int]]]) -> AiTableStatsResults:
@@ -182,22 +189,25 @@ class AiTableStatsTests:
             result_text = "No significant difference between paired responses."
 
         return AiTableStatsResults(
-            test_name='McNemar',
+            test_name="McNemar",
             result_text=result_text,
             result_figure=None,
             statistic=float(result.statistic),
             p_value=float(result.pvalue),
-            details=McNemarTestDetails()
+            details=McNemarTestDetails(),
         )
 
     # Quantitative tests - parametric
-    def student_independent_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
-                                 group2: Union[np.ndarray, pd.Series, List[float]],
-                                 group_name_1: Optional[str] = None,
-                                 group_name_2: Optional[str] = None) -> AiTableStatsResults:
+    def student_independent_test(
+        self,
+        group1: Union[np.ndarray, pd.Series, List[float]],
+        group2: Union[np.ndarray, pd.Series, List[float]],
+        group_name_1: Optional[str] = None,
+        group_name_2: Optional[str] = None,
+    ) -> AiTableStatsResults:
         """Student's t-test for independent samples."""
 
-        statistic, p_value, degrees_of_freedom = ttest_ind(group1, group2, usevar='pooled')
+        statistic, p_value, degrees_of_freedom = ttest_ind(group1, group2, usevar="pooled")
 
         # Generate result text based on p-value
         if p_value < 0.05:
@@ -208,26 +218,28 @@ class AiTableStatsTests:
         # Generate box plot
         group_names = [
             group_name_1 if group_name_1 is not None else "Group 1",
-            group_name_2 if group_name_2 is not None else "Group 2"
+            group_name_2 if group_name_2 is not None else "Group 2",
         ]
         box_plot_figure = self.plots.generate_box_plot([list(group1), list(group2)], group_names)
 
         return AiTableStatsResults(
-            test_name='Student t-test (independent)',
+            test_name="Student t-test (independent)",
             result_text=result_text,
             result_figure=box_plot_figure,
             statistic=float(statistic),
             p_value=float(p_value),
             details=StudentTTestIndependentDetails(
-                degrees_of_freedom=degrees_of_freedom,
-                sample_sizes=[len(group1), len(group2)]
-            )
+                degrees_of_freedom=degrees_of_freedom, sample_sizes=[len(group1), len(group2)]
+            ),
         )
 
-    def student_paired_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
-                            group2: Union[np.ndarray, pd.Series, List[float]],
-                            group_name_1: Optional[str] = None,
-                            group_name_2: Optional[str] = None) -> AiTableStatsResults:
+    def student_paired_test(
+        self,
+        group1: Union[np.ndarray, pd.Series, List[float]],
+        group2: Union[np.ndarray, pd.Series, List[float]],
+        group_name_1: Optional[str] = None,
+        group_name_2: Optional[str] = None,
+    ) -> AiTableStatsResults:
         """Student's t-test for paired samples."""
         statistic, p_value = stats.ttest_rel(group1, group2)
 
@@ -240,19 +252,17 @@ class AiTableStatsTests:
         # Generate box plot
         group_names = [
             group_name_1 if group_name_1 is not None else "Before",
-            group_name_2 if group_name_2 is not None else "After"
+            group_name_2 if group_name_2 is not None else "After",
         ]
         box_plot_figure = self.plots.generate_box_plot([list(group1), list(group2)], group_names)
 
         return AiTableStatsResults(
-            test_name='Student t-test (paired)',
+            test_name="Student t-test (paired)",
             result_text=result_text,
             result_figure=box_plot_figure,
             statistic=float(statistic),
             p_value=float(p_value),
-            details=StudentTTestPairedDetails(
-                pairs_count=len(group1)
-            )
+            details=StudentTTestPairedDetails(pairs_count=len(group1)),
         )
 
     def anova_test(self, dataframe: pd.DataFrame) -> AiTableStatsResults:
@@ -275,25 +285,27 @@ class AiTableStatsTests:
         box_plot_figure = self.plots.generate_box_plot(group_data, group_names)
 
         return AiTableStatsResults(
-            test_name='ANOVA',
+            test_name="ANOVA",
             result_text=result_text,
             result_figure=box_plot_figure,
             statistic=float(statistic),
             p_value=float(p_value),
             details=AnovaTestDetails(
-                groups_count=len(groups),
-                total_observations=sum(len(group) for group in groups)
-            )
+                groups_count=len(groups), total_observations=sum(len(group) for group in groups)
+            ),
         )
 
     # Quantitative tests - non-parametric
 
-    def mann_whitney_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
-                          group2: Union[np.ndarray, pd.Series, List[float]],
-                          group_name_1: Optional[str] = None,
-                          group_name_2: Optional[str] = None) -> AiTableStatsResults:
+    def mann_whitney_test(
+        self,
+        group1: Union[np.ndarray, pd.Series, List[float]],
+        group2: Union[np.ndarray, pd.Series, List[float]],
+        group_name_1: Optional[str] = None,
+        group_name_2: Optional[str] = None,
+    ) -> AiTableStatsResults:
         """Mann-Whitney test."""
-        statistic, p_value = stats.mannwhitneyu(group1, group2, alternative='two-sided')
+        statistic, p_value = stats.mannwhitneyu(group1, group2, alternative="two-sided")
 
         # Generate result text based on p-value
         if p_value < 0.05:
@@ -304,27 +316,28 @@ class AiTableStatsTests:
         # Generate box plot
         group_names = [
             group_name_1 if group_name_1 is not None else "Group 1",
-            group_name_2 if group_name_2 is not None else "Group 2"
+            group_name_2 if group_name_2 is not None else "Group 2",
         ]
         box_plot_figure = self.plots.generate_box_plot([list(group1), list(group2)], group_names)
 
         return AiTableStatsResults(
-            test_name='Mann-Whitney',
+            test_name="Mann-Whitney",
             result_text=result_text,
             result_figure=box_plot_figure,
             statistic=float(statistic),
             p_value=float(p_value),
-            details=TwoGroupNonParametricTestDetails(
-                sample_sizes=[len(group1), len(group2)]
-            )
+            details=TwoGroupNonParametricTestDetails(sample_sizes=[len(group1), len(group2)]),
         )
 
-    def wilcoxon_test(self, group1: Union[np.ndarray, pd.Series, List[float]],
-                      group2: Union[np.ndarray, pd.Series, List[float]],
-                      group_name_1: Optional[str] = None,
-                      group_name_2: Optional[str] = None) -> AiTableStatsResults:
+    def wilcoxon_test(
+        self,
+        group1: Union[np.ndarray, pd.Series, List[float]],
+        group2: Union[np.ndarray, pd.Series, List[float]],
+        group_name_1: Optional[str] = None,
+        group_name_2: Optional[str] = None,
+    ) -> AiTableStatsResults:
         """Wilcoxon signed-rank test for paired samples."""
-        statistic, p_value = stats.wilcoxon(group1, group2, alternative='two-sided')
+        statistic, p_value = stats.wilcoxon(group1, group2, alternative="two-sided")
 
         # Generate result text based on p-value
         if p_value < 0.05:
@@ -335,19 +348,17 @@ class AiTableStatsTests:
         # Generate box plot
         group_names = [
             group_name_1 if group_name_1 is not None else "Before",
-            group_name_2 if group_name_2 is not None else "After"
+            group_name_2 if group_name_2 is not None else "After",
         ]
         box_plot_figure = self.plots.generate_box_plot([list(group1), list(group2)], group_names)
 
         return AiTableStatsResults(
-            test_name='Wilcoxon signed-rank',
+            test_name="Wilcoxon signed-rank",
             result_text=result_text,
             result_figure=box_plot_figure,
             statistic=float(statistic),
             p_value=float(p_value),
-            details=PairedNonParametricTestDetails(
-                pairs_count=len(group1)
-            )
+            details=PairedNonParametricTestDetails(pairs_count=len(group1)),
         )
 
     def kruskal_wallis_test(self, dataframe: pd.DataFrame) -> AiTableStatsResults:
@@ -369,15 +380,14 @@ class AiTableStatsTests:
         box_plot_figure = self.plots.generate_box_plot(group_data, group_names)
 
         return AiTableStatsResults(
-            test_name='Kruskal-Wallis',
+            test_name="Kruskal-Wallis",
             result_text=result_text,
             result_figure=box_plot_figure,
             statistic=float(statistic),
             p_value=float(p_value),
             details=MultiGroupNonParametricTestDetails(
-                groups_count=len(groups),
-                total_observations=sum(len(group) for group in groups)
-            )
+                groups_count=len(groups), total_observations=sum(len(group) for group in groups)
+            ),
         )
 
     def friedman_test(self, dataframe: pd.DataFrame) -> AiTableStatsResults:
@@ -399,23 +409,25 @@ class AiTableStatsTests:
         box_plot_figure = self.plots.generate_box_plot(group_data, group_names)
 
         return AiTableStatsResults(
-            test_name='Friedman',
+            test_name="Friedman",
             result_text=result_text,
             result_figure=box_plot_figure,
             statistic=float(statistic),
             p_value=float(p_value),
             details=FriedmanTestDetails(
-                conditions_count=len(groups),
-                subjects_count=len(groups[0]) if groups else 0
-            )
+                conditions_count=len(groups), subjects_count=len(groups[0]) if groups else 0
+            ),
         )
 
     # Correlation tests
-    def pearson_correlation_test(self, x: Union[np.ndarray, pd.Series, List[float]],
-                                 y: Union[np.ndarray, pd.Series, List[float]],
-                                 x_name: Optional[str] = None,
-                                 y_name: Optional[str] = None,
-                                 generate_plot: bool = True) -> AiTableStatsResults:
+    def pearson_correlation_test(
+        self,
+        x: Union[np.ndarray, pd.Series, List[float]],
+        y: Union[np.ndarray, pd.Series, List[float]],
+        x_name: Optional[str] = None,
+        y_name: Optional[str] = None,
+        generate_plot: bool = True,
+    ) -> AiTableStatsResults:
         """Pearson correlation test between two variables."""
         correlation, p_value = pearsonr(x, y)
 
@@ -429,7 +441,9 @@ class AiTableStatsTests:
                 strength = "weak"
 
             direction = "positive" if correlation > 0 else "negative"
-            result_text = f"Significant {strength} {direction} linear correlation (r={correlation:.3f})."
+            result_text = (
+                f"Significant {strength} {direction} linear correlation (r={correlation:.3f})."
+            )
         else:
             result_text = f"No significant linear correlation (r={correlation:.3f})."
 
@@ -439,21 +453,22 @@ class AiTableStatsTests:
             scatter_plot_figure = self.plots.generate_scatter_plot(x, y, x_name, y_name, "Pearson")
 
         return AiTableStatsResults(
-            test_name='Pearson correlation',
+            test_name="Pearson correlation",
             result_text=result_text,
             result_figure=scatter_plot_figure,
             statistic=float(correlation),
             p_value=float(p_value),
-            details=TwoGroupNonParametricTestDetails(
-                sample_sizes=[len(x), len(y)]
-            )
+            details=TwoGroupNonParametricTestDetails(sample_sizes=[len(x), len(y)]),
         )
 
-    def spearman_correlation_test(self, x: Union[np.ndarray, pd.Series, List[float]],
-                                  y: Union[np.ndarray, pd.Series, List[float]],
-                                  x_name: Optional[str] = None,
-                                  y_name: Optional[str] = None,
-                                  generate_plot: bool = True) -> AiTableStatsResults:
+    def spearman_correlation_test(
+        self,
+        x: Union[np.ndarray, pd.Series, List[float]],
+        y: Union[np.ndarray, pd.Series, List[float]],
+        x_name: Optional[str] = None,
+        y_name: Optional[str] = None,
+        generate_plot: bool = True,
+    ) -> AiTableStatsResults:
         """Spearman rank correlation test between two variables."""
         correlation, p_value = spearmanr(x, y)
 
@@ -467,7 +482,9 @@ class AiTableStatsTests:
                 strength = "weak"
 
             direction = "positive" if correlation > 0 else "negative"
-            result_text = f"Significant {strength} {direction} monotonic correlation (ρ={correlation:.3f})."
+            result_text = (
+                f"Significant {strength} {direction} monotonic correlation (ρ={correlation:.3f})."
+            )
         else:
             result_text = f"No significant monotonic correlation (ρ={correlation:.3f})."
 
@@ -477,14 +494,12 @@ class AiTableStatsTests:
             scatter_plot_figure = self.plots.generate_scatter_plot(x, y, x_name, y_name, "Spearman")
 
         return AiTableStatsResults(
-            test_name='Spearman correlation',
+            test_name="Spearman correlation",
             result_text=result_text,
             result_figure=scatter_plot_figure,
             statistic=float(correlation),
             p_value=float(p_value),
-            details=TwoGroupNonParametricTestDetails(
-                sample_sizes=[len(x), len(y)]
-            )
+            details=TwoGroupNonParametricTestDetails(sample_sizes=[len(x), len(y)]),
         )
 
     # Post-hoc tests
@@ -502,11 +517,13 @@ class AiTableStatsTests:
         # Check if any comparisons are significant
         significant_pairs = []
         for row in tukey_result.summary().data[1:]:  # Skip header
-            if row[5] == 'True':  # reject column
+            if row[5] == "True":  # reject column
                 significant_pairs.append(f"{row[0]} vs {row[1]}")
 
         if significant_pairs:
-            result_text = f"Significant differences found in {len(significant_pairs)} pairwise comparisons."
+            result_text = (
+                f"Significant differences found in {len(significant_pairs)} pairwise comparisons."
+            )
         else:
             result_text = "No significant pairwise differences found."
 
@@ -528,7 +545,7 @@ class AiTableStatsTests:
         heatmap_figure = self.plots.generate_p_values_heatmap(p_values_matrix, "Tukey HSD P-values")
 
         return AiTableStatsResults(
-            test_name='Tukey HSD',
+            test_name="Tukey HSD",
             result_text=result_text,
             result_figure=heatmap_figure,
             statistic=None,
@@ -537,8 +554,8 @@ class AiTableStatsTests:
                 summary=str(tukey_result),
                 pairwise_comparisons=tukey_result.summary().data,
                 significant_pairs=significant_pairs,
-                raw_data=tukey_result
-            )
+                raw_data=tukey_result,
+            ),
         )
 
     def dunn_test(self, dataframe: pd.DataFrame) -> AiTableStatsResults:
@@ -546,7 +563,9 @@ class AiTableStatsTests:
         # Melt the dataframe to create group and value columns
         melted_df = pd.melt(dataframe, var_name="group", value_name="value").dropna()
 
-        dunn_result = posthoc_dunn(melted_df, val_col='value', group_col='group', p_adjust='bonferroni')
+        dunn_result = posthoc_dunn(
+            melted_df, val_col="value", group_col="group", p_adjust="bonferroni"
+        )
 
         # Count significant comparisons (p < 0.05)
         significant_count = 0
@@ -559,7 +578,9 @@ class AiTableStatsTests:
         significant_count = significant_count // 2  # Each comparison counted twice
 
         if significant_count > 0:
-            result_text = f"Significant differences found in {significant_count} pairwise comparisons."
+            result_text = (
+                f"Significant differences found in {significant_count} pairwise comparisons."
+            )
         else:
             result_text = "No significant pairwise differences found."
 
@@ -567,17 +588,17 @@ class AiTableStatsTests:
         heatmap_figure = self.plots.generate_p_values_heatmap(dunn_result, "Dunn Test P-values")
 
         return AiTableStatsResults(
-            test_name='Dunn',
+            test_name="Dunn",
             result_text=result_text,
             result_figure=heatmap_figure,
             statistic=None,
             p_value=None,
             details=DunnTestDetails(
                 pairwise_matrix=dunn_result.to_dict(),
-                adjustment_method='bonferroni',
+                adjustment_method="bonferroni",
                 significant_comparisons=significant_count,
-                raw_data=dunn_result
-            )
+                raw_data=dunn_result,
+            ),
         )
 
     def bonferroni_test(self, p_values: pd.DataFrame) -> AiTableStatsResults:
@@ -587,7 +608,9 @@ class AiTableStatsTests:
         p_values_list = p_values.values.flatten().tolist()
 
         # Apply Bonferroni correction
-        rejected, corrected_p_values, _, alpha_bonf = multipletests(p_values_list, method='bonferroni')
+        rejected, corrected_p_values, _, alpha_bonf = multipletests(
+            p_values_list, method="bonferroni"
+        )
 
         # Count significant comparisons after correction
         significant_count = sum(1 for p in corrected_p_values if p < 0.05)
@@ -601,10 +624,12 @@ class AiTableStatsTests:
         corrected_matrix = p_values.copy()
         corrected_values_reshaped = np.array(corrected_p_values).reshape(p_values.shape)
         corrected_matrix.iloc[:, :] = corrected_values_reshaped
-        heatmap_figure = self.plots.generate_p_values_heatmap(corrected_matrix, "Bonferroni Corrected P-values")
+        heatmap_figure = self.plots.generate_p_values_heatmap(
+            corrected_matrix, "Bonferroni Corrected P-values"
+        )
 
         return AiTableStatsResults(
-            test_name='Student t-test (independent paired wise)',
+            test_name="Student t-test (independent paired wise)",
             result_text=result_text,
             result_figure=heatmap_figure,
             statistic=None,
@@ -612,11 +637,11 @@ class AiTableStatsTests:
             details=BonferroniTestDetails(
                 original_p_values=p_values_list,
                 corrected_p_values=corrected_p_values.tolist(),
-                adjustment_method='bonferroni',
+                adjustment_method="bonferroni",
                 significant_comparisons=significant_count,
                 total_comparisons=len(p_values_list),
-                corrected_alpha=float(alpha_bonf)
-            )
+                corrected_alpha=float(alpha_bonf),
+            ),
         )
 
     def scheffe_test(self, p_values: pd.DataFrame, num_groups: int) -> AiTableStatsResults:
@@ -629,7 +654,7 @@ class AiTableStatsTests:
             raise ValueError("Number of groups must be at least 2 for Scheffe correction.")
 
         # Calculate Scheffe critical value
-        critical_value = stats.f.ppf(0.95, num_groups - 1, float('inf'))  # F critical value
+        critical_value = stats.f.ppf(0.95, num_groups - 1, float("inf"))  # F critical value
         scheffe_multiplier = (num_groups - 1) * critical_value
 
         # Apply Scheffe correction: multiply p-values by the Scheffe multiplier
@@ -647,10 +672,12 @@ class AiTableStatsTests:
         corrected_matrix = p_values.copy()
         corrected_values_reshaped = np.array(corrected_p_values).reshape(p_values.shape)
         corrected_matrix.iloc[:, :] = corrected_values_reshaped
-        heatmap_figure = self.plots.generate_p_values_heatmap(corrected_matrix, "Scheffé Corrected P-values")
+        heatmap_figure = self.plots.generate_p_values_heatmap(
+            corrected_matrix, "Scheffé Corrected P-values"
+        )
 
         return AiTableStatsResults(
-            test_name='Student t-test (independent paired wise)',
+            test_name="Student t-test (independent paired wise)",
             result_text=result_text,
             result_figure=heatmap_figure,
             statistic=None,
@@ -658,22 +685,24 @@ class AiTableStatsTests:
             details=ScheffeTestDetails(
                 original_p_values=p_values_list,
                 corrected_p_values=corrected_p_values,
-                adjustment_method='scheffe',
+                adjustment_method="scheffe",
                 significant_comparisons=significant_count,
                 total_comparisons=len(p_values_list),
                 scheffe_multiplier=float(scheffe_multiplier),
-                num_groups=num_groups
-            )
+                num_groups=num_groups,
+            ),
         )
 
-    def benjamini_hochberg_test(self, p_values: pd.DataFrame, fdr: float = 0.05) -> AiTableStatsResults:
+    def benjamini_hochberg_test(
+        self, p_values: pd.DataFrame, fdr: float = 0.05
+    ) -> AiTableStatsResults:
         """Benjamini-Hochberg correction for controlling false discovery rate (FDR)."""
 
         # Convert DataFrame to list for processing
         p_values_list = p_values.values.flatten().tolist()
 
         # Apply Benjamini-Hochberg correction
-        _, corrected_p_values, _, _ = multipletests(p_values_list, method='fdr_bh', alpha=fdr)
+        _, corrected_p_values, _, _ = multipletests(p_values_list, method="fdr_bh", alpha=fdr)
 
         # Count significant comparisons after correction
         significant_count = sum(1 for p in corrected_p_values if p < fdr)
@@ -681,16 +710,20 @@ class AiTableStatsTests:
         if significant_count > 0:
             result_text = f"Significant differences found in {significant_count} of {len(p_values_list)} comparisons after Benjamini-Hochberg correction (FDR={fdr})."
         else:
-            result_text = f"No significant differences found after Benjamini-Hochberg correction (FDR={fdr})."
+            result_text = (
+                f"No significant differences found after Benjamini-Hochberg correction (FDR={fdr})."
+            )
 
         # Create corrected p-values matrix with same structure as original
         corrected_matrix = p_values.copy()
         corrected_values_reshaped = np.array(corrected_p_values).reshape(p_values.shape)
         corrected_matrix.iloc[:, :] = corrected_values_reshaped
-        heatmap_figure = self.plots.generate_p_values_heatmap(corrected_matrix, "Benjamini-Hochberg Corrected P-values")
+        heatmap_figure = self.plots.generate_p_values_heatmap(
+            corrected_matrix, "Benjamini-Hochberg Corrected P-values"
+        )
 
         return AiTableStatsResults(
-            test_name='Student t-test (independent paired wise)',
+            test_name="Student t-test (independent paired wise)",
             result_text=result_text,
             result_figure=heatmap_figure,
             statistic=None,
@@ -698,11 +731,11 @@ class AiTableStatsTests:
             details=BenjaminiHochbergTestDetails(
                 original_p_values=p_values_list,
                 corrected_p_values=corrected_p_values.tolist(),
-                adjustment_method='fdr_bh',
+                adjustment_method="fdr_bh",
                 significant_comparisons=significant_count,
                 total_comparisons=len(p_values_list),
-                false_discovery_rate=float(fdr)
-            )
+                false_discovery_rate=float(fdr),
+            ),
         )
 
     def holm_test(self, p_values: pd.DataFrame) -> AiTableStatsResults:
@@ -712,7 +745,7 @@ class AiTableStatsTests:
         p_values_list = p_values.values.flatten().tolist()
 
         # Apply Holm correction
-        _, corrected_p_values, _, _ = multipletests(p_values_list, method='holm')
+        _, corrected_p_values, _, _ = multipletests(p_values_list, method="holm")
 
         # Count significant comparisons after correction
         significant_count = sum(1 for p in corrected_p_values if p < 0.05)
@@ -726,10 +759,12 @@ class AiTableStatsTests:
         corrected_matrix = p_values.copy()
         corrected_values_reshaped = np.array(corrected_p_values).reshape(p_values.shape)
         corrected_matrix.iloc[:, :] = corrected_values_reshaped
-        heatmap_figure = self.plots.generate_p_values_heatmap(corrected_matrix, "Holm Corrected P-values")
+        heatmap_figure = self.plots.generate_p_values_heatmap(
+            corrected_matrix, "Holm Corrected P-values"
+        )
 
         return AiTableStatsResults(
-            test_name='Student t-test (independent paired wise)',
+            test_name="Student t-test (independent paired wise)",
             result_text=result_text,
             result_figure=heatmap_figure,
             statistic=None,
@@ -737,8 +772,8 @@ class AiTableStatsTests:
             details=HolmTestDetails(
                 original_p_values=p_values_list,
                 corrected_p_values=corrected_p_values.tolist(),
-                adjustment_method='holm',
+                adjustment_method="holm",
                 significant_comparisons=significant_count,
-                total_comparisons=len(p_values_list)
-            )
+                total_comparisons=len(p_values_list),
+            ),
         )

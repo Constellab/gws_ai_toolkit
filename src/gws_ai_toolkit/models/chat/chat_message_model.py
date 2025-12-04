@@ -25,7 +25,9 @@ class ChatMessageModel(Model):
         data: Additional data object stored as JSON
     """
 
-    conversation: ChatConversation = ForeignKeyField(ChatConversation, backref="+", on_delete="CASCADE")
+    conversation: ChatConversation = ForeignKeyField(
+        ChatConversation, backref="+", on_delete="CASCADE"
+    )
     role: Literal["user", "assistant"] = CharField(max_length=20)
     type: str = CharField(max_length=20)
     external_id: str | None = CharField(null=True, max_length=100)
@@ -51,7 +53,9 @@ class ChatMessageModel(Model):
         :return: ModelSelect query for messages
         :rtype: List[ChatMessage]
         """
-        return list(cls.select().where(cls.conversation == conversation_id).order_by(cls.created_at.asc()))
+        return list(
+            cls.select().where(cls.conversation == conversation_id).order_by(cls.created_at.asc())
+        )
 
     @classmethod
     def build_message(

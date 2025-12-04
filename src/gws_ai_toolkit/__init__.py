@@ -27,7 +27,11 @@ from .core.agents.env_generator_ai import CondaEnvGeneratorAi, PipEnvGeneratorAi
 from .core.agents.table.multi_table_agent_ai import MultiTableAgentAi, MultiTableTransformConfig
 from .core.agents.table.multi_table_agent_ai_events import MultiTableTransformEvent
 from .core.agents.table.plotly_agent_ai import PlotlyAgentAi
-from .core.agents.table.table_agent_ai import PlotRequestConfig, TableAgentAi, TransformRequestConfig
+from .core.agents.table.table_agent_ai import (
+    PlotRequestConfig,
+    TableAgentAi,
+    TransformRequestConfig,
+)
 from .core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent, UserQueryTableEvent
 from .core.agents.table.table_transform_agent_ai import TableTransformAgentAi, TableTransformConfig
 from .core.agents.table.table_transform_agent_ai_events import TableTransformEvent

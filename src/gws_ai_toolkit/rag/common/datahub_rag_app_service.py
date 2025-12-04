@@ -3,8 +3,7 @@ from typing import Any, Dict, List
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.dify.rag_dify_service import RagDifyService
-from gws_core import (DataHubS3ServerService, ResourceModel,
-                      ResourceSearchBuilder, SpaceService)
+from gws_core import DataHubS3ServerService, ResourceModel, ResourceSearchBuilder, SpaceService
 
 from .base_rag_service import BaseRagService
 
@@ -27,13 +26,15 @@ class DatahubRagAppService(BaseRagAppService):
     _current_user_folders_ids: List[str] = None
 
     # Common constants
-    ROOT_FOLDER_ID_METADATA_KEY = 'root_folder_id'
-    CHAT_INPUT_ACCESS_KEY = 'folder_'
+    ROOT_FOLDER_ID_METADATA_KEY = "root_folder_id"
+    CHAT_INPUT_ACCESS_KEY = "folder_"
 
     # Number max of folder supported by the filter
     FOLDER_LIMIT = 20
 
-    def __init__(self, rag_service: BaseRagService, dataset_id: str, additional_config: Dict[str, Any] = None) -> None:
+    def __init__(
+        self, rag_service: BaseRagService, dataset_id: str, additional_config: Dict[str, Any] = None
+    ) -> None:
         if additional_config is None:
             additional_config = {}
 
@@ -56,8 +57,7 @@ class DatahubRagAppService(BaseRagAppService):
         return research_search.search_all()
 
     def get_chat_default_filters(self) -> Dict[str, Any]:
-        """Get the default inputs for the chat. This can be used to filter chat response.
-        """
+        """Get the default inputs for the chat. This can be used to filter chat response."""
         # Load all the root folders of the current user
         if self._current_user_folders_ids is None:
             folders = SpaceService.get_instance().get_all_current_user_root_folders()
@@ -66,7 +66,7 @@ class DatahubRagAppService(BaseRagAppService):
 
                 # limit the number of folders
                 if len(folder_ids) > self.FOLDER_LIMIT:
-                    folder_ids = folder_ids[:self.FOLDER_LIMIT]
+                    folder_ids = folder_ids[: self.FOLDER_LIMIT]
                 self._current_user_folders_ids = folder_ids
 
         # Add folder filtering to inputs - this format depends on how the
@@ -83,14 +83,15 @@ class DatahubRagAppService(BaseRagAppService):
         # Add the root folder of the document as metadata
         root_folder = rag_resource.get_root_folder()
         if root_folder is None:
-            raise ValueError("The resource is not associated with a folder, it can't be synced with the rag.")
+            raise ValueError(
+                "The resource is not associated with a folder, it can't be synced with the rag."
+            )
         metadata[self.ROOT_FOLDER_ID_METADATA_KEY] = root_folder.id
 
         return metadata
 
     def get_compatible_resource_explanation(self) -> str:
-        """Get a text explaining how the filtration is done.
-        """
+        """Get a text explaining how the filtration is done."""
         text = super().get_compatible_resource_explanation()
         s3_service = DataHubS3ServerService.get_instance()
         text += f"\n- Have the tag '{s3_service.get_datahub_tag()}'"

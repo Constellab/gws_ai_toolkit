@@ -116,7 +116,9 @@ def upload_section():
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
                 },
                 max_files=10,
-                on_drop=MainState.handle_upload(rx.upload_files(on_upload_progress=MainState.handle_upload_progress)),
+                on_drop=MainState.handle_upload(
+                    rx.upload_files(on_upload_progress=MainState.handle_upload_progress)
+                ),
                 style={
                     "width": "100%",
                     "height": "12rem",

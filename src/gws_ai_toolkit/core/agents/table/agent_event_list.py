@@ -40,7 +40,9 @@ class AgentEventList(Generic[T]):
 
     def get_events_by_response_id(self, response_id: str) -> list[T]:
         """Get all events for a specific response ID"""
-        return [event for event in self._events if getattr(event, "response_id", None) == response_id]
+        return [
+            event for event in self._events if getattr(event, "response_id", None) == response_id
+        ]
 
     def get_agent_and_sub_agents_events(self, agent_id: str) -> list[T]:
         """Get all events for a specific agent and its sub-agents.
@@ -88,7 +90,10 @@ class AgentEventList(Generic[T]):
                 continue
 
             # Check if this is a ResponseCompletedEvent for one of our tracked responses
-            if isinstance(event, ResponseCompletedEvent) and event_response_id in active_response_ids:
+            if (
+                isinstance(event, ResponseCompletedEvent)
+                and event_response_id in active_response_ids
+            ):
                 agent_events.append(event)
                 # Stop tracking this response
                 active_response_ids.discard(event_response_id)

@@ -4,9 +4,12 @@ from gws_core import CredentialsDataOther
 from ragflow_sdk import Chunk, Document
 
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
-from gws_ai_toolkit.rag.common.rag_models import (RagChatEndStreamResponse,
-                                                  RagChatStreamResponse,
-                                                  RagChunk, RagDocument)
+from gws_ai_toolkit.rag.common.rag_models import (
+    RagChatEndStreamResponse,
+    RagChatStreamResponse,
+    RagChunk,
+    RagDocument,
+)
 
 from .ragflow_class import RagFlowUpdateDocumentOptions
 from .ragflow_service import RagFlowService
@@ -20,21 +23,22 @@ class RagRagFlowService(BaseRagService):
         self._ragflow_service = RagFlowService(route, api_key)
 
     # Implement BaseRagService abstract methods
-    def upload_document_and_parse(self, doc_path: str, dataset_id: str, options: Any,
-                                  filename: str = None) -> RagDocument:
+    def upload_document_and_parse(
+        self, doc_path: str, dataset_id: str, options: Any, filename: str = None
+    ) -> RagDocument:
         """Upload a document to the knowledge base."""
         sdk_doc = self._ragflow_service.upload_document(doc_path, dataset_id, filename)
         self._ragflow_service.parse_documents(dataset_id, [sdk_doc.id])
         return self._convert_document_to_rag_document(sdk_doc)
 
-    def update_document_and_parse(self, doc_path: str, dataset_id: str, document_id: str,
-                                  options: Any, filename: str = None) -> RagDocument:
+    def update_document_and_parse(
+        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str = None
+    ) -> RagDocument:
         """Update an existing document in the knowledge base."""
         self.delete_document(dataset_id, document_id)
         return self.upload_document_and_parse(doc_path, dataset_id, filename)
 
-    def update_document_metadata(self, dataset_id: str, document_id: str,
-                                 metadata: dict) -> None:
+    def update_document_metadata(self, dataset_id: str, document_id: str, metadata: dict) -> None:
         options = RagFlowUpdateDocumentOptions(meta_fields=metadata)
         self._ragflow_service.update_document(dataset_id, document_id, options)
 
@@ -59,12 +63,18 @@ class RagRagFlowService(BaseRagService):
         except ValueError:
             return None
 
-    def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5,
-                        document_ids: List[str] | None = None,
-                        **kwargs) -> List[RagChunk]:
+    def retrieve_chunks(
+        self,
+        dataset_id: str,
+        query: str,
+        top_k: int = 5,
+        document_ids: List[str] | None = None,
+        **kwargs,
+    ) -> List[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
         sdk_response = self._ragflow_service.retrieve_chunks(
-            dataset_id, query, top_k=top_k, document_ids=document_ids, **kwargs)
+            dataset_id, query, top_k=top_k, document_ids=document_ids, **kwargs
+        )
 
         # Convert SDK response directly to RagChunk
         chunks = []
@@ -74,33 +84,41 @@ class RagRagFlowService(BaseRagService):
 
         return chunks
 
-    def get_document_chunks(self, dataset_id: str, document_id: str, keyword: str | None = None,
-                            page: int = 1, limit: int = 20) -> List[RagChunk]:
-        response = self._ragflow_service.get_document_chunks(dataset_id, document_id, keyword, page, limit)
+    def get_document_chunks(
+        self,
+        dataset_id: str,
+        document_id: str,
+        keyword: str | None = None,
+        page: int = 1,
+        limit: int = 20,
+    ) -> List[RagChunk]:
+        response = self._ragflow_service.get_document_chunks(
+            dataset_id, document_id, keyword, page, limit
+        )
         return [self._convert_chunk_to_rag_chunk(chunk) for chunk in response]
 
-    def chat_stream(self,
-                    query: str,
-                    conversation_id: Optional[str] = None,
-                    user_id: Optional[str] = None,
-                    chat_id: Optional[str] = None,
-                    **kwargs) -> Generator[
-        Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None
-    ]:
+    def chat_stream(
+        self,
+        query: str,
+        conversation_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        chat_id: Optional[str] = None,
+        **kwargs,
+    ) -> Generator[Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None]:
         """Send a query and get streaming chat response."""
         # RagFlow requires a chat_id, so we need to handle this differently
         for answer in self._ragflow_service.ask_stream(chat_id, query, conversation_id):
-            if answer.role == 'assistant':
+            if answer.role == "assistant":
                 if answer.reference:
                     # Convert directly to RagChunk references
                     chat_end = RagChatEndStreamResponse(session_id=answer.session_id)
                     for ref in answer.reference:
                         chat_end.add_source(
-                            document_id=ref['document_id'],
-                            document_name=ref['document_name'],
-                            chunk_id=ref['id'],
-                            chunk_score=ref['vector_similarity'],
-                            chunk_content=ref['content']
+                            document_id=ref["document_id"],
+                            document_name=ref["document_name"],
+                            chunk_id=ref["id"],
+                            chunk_score=ref["vector_similarity"],
+                            chunk_content=ref["content"],
                         )
 
                     yield chat_end
@@ -109,18 +127,18 @@ class RagRagFlowService(BaseRagService):
                         id=None,  # there is not id in the SDK response
                         answer=answer.content,
                         is_from_beginning=True,
-                        session_id=answer.session_id
+                        session_id=answer.session_id,
                     )
 
     @staticmethod
-    def from_credentials(credentials: CredentialsDataOther) -> 'RagRagFlowService':
+    def from_credentials(credentials: CredentialsDataOther) -> "RagRagFlowService":
         """Create service instance from credentials."""
         # Check credentials
-        if 'route' not in credentials.data:
+        if "route" not in credentials.data:
             raise ValueError("The credentials must contain the field 'route'")
-        if 'api_key' not in credentials.data:
+        if "api_key" not in credentials.data:
             raise ValueError("The credentials must contain the field 'api_key'")
-        return RagRagFlowService(credentials.data['route'], credentials.data['api_key'])
+        return RagRagFlowService(credentials.data["route"], credentials.data["api_key"])
 
     # Provide access to underlying RagFlow service for advanced use cases
     @property
@@ -134,21 +152,18 @@ class RagRagFlowService(BaseRagService):
     def _convert_document_to_rag_document(self, document: Document) -> RagDocument:
         """Convert SDK Document directly to RagDocument."""
 
-        parsed_status: Literal['DONE', 'PENDING', 'RUNNING', 'ERROR'] = None
-        if document.run == 'UNSTART':
-            parsed_status = 'PENDING'
-        elif document.run == 'DONE':
-            parsed_status = 'DONE'
-        elif document.run == 'RUNNING':
-            parsed_status = 'RUNNING'
+        parsed_status: Literal["DONE", "PENDING", "RUNNING", "ERROR"] = None
+        if document.run == "UNSTART":
+            parsed_status = "PENDING"
+        elif document.run == "DONE":
+            parsed_status = "DONE"
+        elif document.run == "RUNNING":
+            parsed_status = "RUNNING"
         else:  # FAIL
-            parsed_status = 'ERROR'
+            parsed_status = "ERROR"
 
         return RagDocument(
-            id=document.id,
-            name=document.name,
-            size=document.size,
-            parsed_status=parsed_status
+            id=document.id, name=document.name, size=document.size, parsed_status=parsed_status
         )
 
     def _convert_chunk_to_rag_chunk(self, chunk: Chunk) -> RagChunk:
@@ -158,5 +173,5 @@ class RagRagFlowService(BaseRagService):
             content=chunk.content,
             document_id=chunk.document_id,
             document_name=chunk.document_name,
-            score=chunk.vector_similarity
+            score=chunk.vector_similarity,
         )

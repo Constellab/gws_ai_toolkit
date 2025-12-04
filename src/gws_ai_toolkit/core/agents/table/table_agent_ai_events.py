@@ -29,4 +29,6 @@ TableAgentEvent = (
     | UserQueryMultiTablesEvent
 )
 
-SerializableTableAgentEvent = SerializableUserQueryMultiTablesEvent | BaseFunctionWithSubAgentSerializableEvent
+SerializableTableAgentEvent = (
+    SerializableUserQueryMultiTablesEvent | BaseFunctionWithSubAgentSerializableEvent
+)

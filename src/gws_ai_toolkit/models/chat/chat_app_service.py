@@ -1,5 +1,3 @@
-
-
 from typing import Optional
 
 from gws_core import NotFoundException

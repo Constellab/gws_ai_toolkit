@@ -210,7 +210,9 @@ class TestTableAgentAiIntegration(unittest.TestCase):
 
         # The agent should perform BOTH operations
         transform_events = [e for e in replayed_events if isinstance(e, TableTransformEvent)]
-        self.assertEqual(len(transform_events), 2, "Should have TWO transform events (both operations)")
+        self.assertEqual(
+            len(transform_events), 2, "Should have TWO transform events (both operations)"
+        )
 
         # Get output tables from agent
         output_tables = replay_agent.get_output_tables()

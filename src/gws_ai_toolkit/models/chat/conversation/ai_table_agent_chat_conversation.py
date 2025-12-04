@@ -48,7 +48,9 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
         self.table_agent = table_agent
         self._current_external_response_id = None
 
-    def call_ai_chat(self, user_message: ChatUserMessageTable) -> Generator[ChatMessage, None, None]:
+    def call_ai_chat(
+        self, user_message: ChatUserMessageTable
+    ) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service using TableAgentAi.
 
         Routes requests through the TableAgentAi which intelligently delegates
@@ -86,7 +88,9 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
             list[AllChatMessages]: A list of messages (empty list if no messages to return)
         """
         if event.type == "text_delta":
-            message = self.build_current_message(event.delta, external_id=self._current_external_response_id)
+            message = self.build_current_message(
+                event.delta, external_id=self._current_external_response_id
+            )
             return [message] if message else []
 
         elif event.type == "plot_generated":

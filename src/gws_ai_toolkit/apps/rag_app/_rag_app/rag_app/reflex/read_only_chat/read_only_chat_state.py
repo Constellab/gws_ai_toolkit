@@ -56,7 +56,9 @@ class ReadOnlyChatState(ConversationChatStateBase, rx.State):
 
             # Set subtitle with timestamp
             try:
-                self.subtitle = f"Created on {conversation.last_modified_at.strftime('%B %d, %Y at %I:%M %p')}"
+                self.subtitle = (
+                    f"Created on {conversation.last_modified_at.strftime('%B %d, %Y at %I:%M %p')}"
+                )
             except:
                 self.subtitle = f"Last modified: {str(conversation.last_modified_at)}"
 

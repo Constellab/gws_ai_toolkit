@@ -16,21 +16,21 @@ def _chunk_item(chunk: RagChunk, index: int) -> rx.Component:
                     rx.cond(
                         DocumentChunksState.view_as_raw,
                         rx.text(chunk.content, white_space="pre-wrap"),
-                        rx.markdown(chunk.content, class_name='dense-markdown')
+                        rx.markdown(chunk.content, class_name="dense-markdown"),
                     ),
-                    rx.text("No content")
+                    rx.text("No content"),
                 ),
                 white_space="pre-wrap",
                 max_height="300px",
-                overflow="auto"
+                overflow="auto",
             ),
             spacing="2",
-            align="start"
+            align="start",
         ),
         padding="12px",
         border="1px solid var(--gray-6)",
         border_radius="6px",
-        width="100%"
+        width="100%",
     )
 
 
@@ -42,59 +42,45 @@ def document_chunks_dialog():
                 rx.dialog.title("RAG Document Chunks"),
                 rx.spacer(),
                 rx.button(
-                    rx.cond(
-                        DocumentChunksState.view_as_raw,
-                        "View as Markdown",
-                        "View as Raw"
-                    ),
+                    rx.cond(DocumentChunksState.view_as_raw, "View as Markdown", "View as Raw"),
                     on_click=DocumentChunksState.toggle_raw_view,
                     variant="outline",
-                    size="2"
-                )
+                    size="2",
+                ),
             ),
-            rx.dialog.description(
-                "Showing chunks for the selected document"
-            ),
-
+            rx.dialog.description("Showing chunks for the selected document"),
             rx.cond(
                 DocumentChunksState.chunks_loading & (DocumentChunksState.chunks_page == 1),
-                rx.center(
-                    rx.spinner(size="3"),
-                    height="200px"
-                ),
+                rx.center(rx.spinner(size="3"), height="200px"),
                 rx.scroll_area(
                     rx.vstack(
                         rx.cond(
                             DocumentChunksState.chunks,
                             rx.foreach(DocumentChunksState.chunks, _chunk_item),
-                            rx.text("No chunks found", color="gray")
+                            rx.text("No chunks found", color="gray"),
                         ),
                         spacing="3",
-                        width="100%"
+                        width="100%",
                     ),
                     flex="1",
-                    width="100%"
-                )
+                    width="100%",
+                ),
             ),
-
             rx.hstack(
                 rx.button(
                     rx.spinner(loading=DocumentChunksState.chunks_loading),
                     "Load More",
                     on_click=DocumentChunksState.load_next_chunks_page,
                     disabled=DocumentChunksState.chunks_loading,
-                    variant="outline"
+                    variant="outline",
                 ),
                 rx.button(
-                    "Close",
-                    on_click=DocumentChunksState.close_chunks_dialog,
-                    variant="solid"
+                    "Close", on_click=DocumentChunksState.close_chunks_dialog, variant="solid"
                 ),
                 justify="between",
                 width="100%",
-                margin_top="16px"
+                margin_top="16px",
             ),
-
             max_width="800px",
             width="90vw",
             height="90vh",
@@ -102,7 +88,7 @@ def document_chunks_dialog():
             flex_direction="column",
         ),
         open=DocumentChunksState.chunks_dialog_open,
-        on_open_change=DocumentChunksState.set_chunks_dialog_open
+        on_open_change=DocumentChunksState.set_chunks_dialog_open,
     )
 
 
@@ -112,7 +98,7 @@ def load_chunks_button(dataset_id: str, document_id: str):
         "Load Chunks",
         on_click=lambda: [
             DocumentChunksState.open_chunks_dialog(dataset_id, document_id),
-            DocumentChunksState.load_chunks()
+            DocumentChunksState.load_chunks(),
         ],
         variant="outline",
         color_scheme="blue",

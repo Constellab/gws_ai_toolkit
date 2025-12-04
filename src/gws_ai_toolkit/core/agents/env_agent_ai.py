@@ -3,7 +3,13 @@ import tempfile
 from collections.abc import Generator
 from typing import Any, Literal
 
-from gws_core import BaseModelDTO, CondaShellProxy, MambaShellProxy, MessageDispatcher, PipShellProxy
+from gws_core import (
+    BaseModelDTO,
+    CondaShellProxy,
+    MambaShellProxy,
+    MessageDispatcher,
+    PipShellProxy,
+)
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
@@ -62,7 +68,9 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
             message_dispatcher: Optional message dispatcher for logging
             skip_success_response: Whether to skip success response
         """
-        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
+        super().__init__(
+            openai_api_key, model, temperature, skip_success_response=skip_success_response
+        )
         self._existing_env_content = existing_env_content
         self._env_type = env_type
 
@@ -168,19 +176,27 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
                 f.write(env_file_content)
 
             # Import the appropriate shell proxy
-            message_dispatcher = MessageDispatcher(interval_time_merging_message=0, interval_time_dispatched_buffer=0)
+            message_dispatcher = MessageDispatcher(
+                interval_time_merging_message=0, interval_time_dispatched_buffer=0
+            )
 
             if self._env_type == "mamba":
                 shell_proxy = MambaShellProxy(
-                    env_file_path=env_file_path, working_dir=temp_dir, message_dispatcher=message_dispatcher
+                    env_file_path=env_file_path,
+                    working_dir=temp_dir,
+                    message_dispatcher=message_dispatcher,
                 )
             elif self._env_type == "pipenv":
                 shell_proxy = PipShellProxy(
-                    env_file_path=env_file_path, working_dir=temp_dir, message_dispatcher=message_dispatcher
+                    env_file_path=env_file_path,
+                    working_dir=temp_dir,
+                    message_dispatcher=message_dispatcher,
                 )
             else:
                 shell_proxy = CondaShellProxy(
-                    env_file_path=env_file_path, working_dir=temp_dir, message_dispatcher=message_dispatcher
+                    env_file_path=env_file_path,
+                    working_dir=temp_dir,
+                    message_dispatcher=message_dispatcher,
                 )
 
             # Install the environment

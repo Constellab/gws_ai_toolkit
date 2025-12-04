@@ -1,4 +1,3 @@
-
 import json
 import os
 from typing import List, Optional, cast
@@ -83,14 +82,14 @@ class AiTableStatsState(rx.State):
 
             # Convert prompt to analysis parameters using OpenAI
             last_run_config = await self._convert_prompt_to_analysis_params(
-                prompt=prompt,
-                current_df=current_df
+                prompt=prompt, current_df=current_df
             )
 
             if not last_run_config.columns:
                 return rx.toast.error(
                     "Could not extract valid column names from the prompt. "
-                    "Please check your prompt and ensure you reference existing column names.")
+                    "Please check your prompt and ensure you reference existing column names."
+                )
 
             async with self:
                 self.last_run_config = last_run_config
@@ -102,7 +101,7 @@ class AiTableStatsState(rx.State):
                 group_input=last_run_config.group_input,
                 columns_are_paired=last_run_config.columns_are_paired,
                 relation=last_run_config.relation,
-                reference_column=last_run_config.reference_column
+                reference_column=last_run_config.reference_column,
             )
 
             if toast:
@@ -114,9 +113,9 @@ class AiTableStatsState(rx.State):
             async with self:
                 self.is_processing = False
 
-    async def _convert_prompt_to_analysis_params(self,
-                                                 prompt: str,
-                                                 current_df: DataFrame) -> AiTableStatsRunConfig:
+    async def _convert_prompt_to_analysis_params(
+        self, prompt: str, current_df: DataFrame
+    ) -> AiTableStatsRunConfig:
         # Create OpenAI client
         client = self._get_openai_client()
 
@@ -128,8 +127,8 @@ class AiTableStatsState(rx.State):
                     "strict": True,
                     "name": "analyze_columns",
                     "description": "Extract column analysis parameters from user prompt",
-                    "parameters": AiTableFunctionTool.model_json_schema()
-                }
+                    "parameters": AiTableFunctionTool.model_json_schema(),
+                },
             }
         ]
 
@@ -141,7 +140,7 @@ class AiTableStatsState(rx.State):
             col_type = str(current_df[col].dtype)
             column_info.append(f"'{col}' ({col_type})")
 
-        columns_with_types = ', '.join(column_info)
+        columns_with_types = ", ".join(column_info)
 
         # Create the system prompt with available columns and types
         system_prompt = f"""You are an expert data analyst. The user has a dataset with these columns: {columns_with_types}.
@@ -177,7 +176,7 @@ Available columns: {columns_with_types}"""
         # Create the input for OpenAI
         input_list = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ]
 
         # Call OpenAI API
@@ -186,7 +185,7 @@ Available columns: {columns_with_types}"""
             messages=input_list,
             tools=tools,
             # force the model to use the function
-            tool_choice={"type": "function", "function": {"name": "analyze_columns"}}
+            tool_choice={"type": "function", "function": {"name": "analyze_columns"}},
         )
 
         # Extract function call result
@@ -218,14 +217,14 @@ Available columns: {columns_with_types}"""
         )
 
     async def validate_and_run_analysis(
-            self,
-            current_df: DataFrame,
-            columns: List[str],
-            group_input: Optional[str],
-            columns_are_paired: bool,
-            relation: bool,
-            reference_column: Optional[str] = None):
-
+        self,
+        current_df: DataFrame,
+        columns: List[str],
+        group_input: Optional[str],
+        columns_are_paired: bool,
+        relation: bool,
+        reference_column: Optional[str] = None,
+    ):
         available_columns = list(current_df.columns)
 
         # Basic validation - check for existence in dataframe
@@ -237,7 +236,8 @@ Available columns: {columns_with_types}"""
         # Show validation results for main columns
         if missing_columns:
             return rx.toast.error(
-                f"Columns not found in dataframe: '{', '.join(missing_columns)}'. Available columns: '{', '.join(available_columns)}'")
+                f"Columns not found in dataframe: '{', '.join(missing_columns)}'. Available columns: '{', '.join(available_columns)}'"
+            )
 
         group_column: Optional[str] = None
         if group_input:
@@ -252,12 +252,14 @@ Available columns: {columns_with_types}"""
             # Validate group column if provided
             if group_column not in available_columns:
                 return rx.toast.error(
-                    f"Group column '{group_column}' not found in dataframe. Available columns: '{', '.join(available_columns)}'")
+                    f"Group column '{group_column}' not found in dataframe. Available columns: '{', '.join(available_columns)}'"
+                )
 
             # If group column is provided, only allow 1 selected column
             if len(columns) > 1:
                 return rx.toast.error(
-                    f"When a group column is provided, only 1 column can be selected. You selected {len(columns)} columns: {', '.join(columns)}")
+                    f"When a group column is provided, only 1 column can be selected. You selected {len(columns)} columns: {', '.join(columns)}"
+                )
 
         # Check that all selected columns have the same number of non-null rows
         # row_counts = {}
@@ -274,20 +276,19 @@ Available columns: {columns_with_types}"""
 
         # Filter and unfold the dataframe if group column is provided
         processed_df = self._get_filtered_and_unfolded_dataframe(
-            selected_columns=columns,
-            group_column=group_column,
-            original_df=current_df
+            selected_columns=columns, group_column=group_column, original_df=current_df
         )
 
         # Check if relation analysis is requested
         if relation:
-
             # Validate reference column for relation analysis if provided
             if reference_column:
                 reference_column = self._get_and_check_reference_column(reference_column)
 
             # Create relation analyzer with optional reference column
-            relation_analyzer = AiTableRelationStats(dataframe=processed_df, reference_column=reference_column)
+            relation_analyzer = AiTableRelationStats(
+                dataframe=processed_df, reference_column=reference_column
+            )
 
             # Run correlation analysis
             relation_analyzer.run_correlation_analysis()
@@ -298,7 +299,6 @@ Available columns: {columns_with_types}"""
 
         # Generate AI summary response after analysis
         else:
-
             stats_analyzer = AiTableStats(
                 dataframe=processed_df,
                 columns_are_independent=not columns_are_paired,
@@ -355,9 +355,9 @@ Please provide a clear, direct answer to the user's original question based on t
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
+                    {"role": "user", "content": user_message},
                 ],
-                temperature=0.3
+                temperature=0.3,
             )
 
             # Store the AI response (you might want to add a state variable for this)
@@ -371,9 +371,9 @@ Please provide a clear, direct answer to the user's original question based on t
             async with self:
                 self.ai_summary_response = f"Error generating summary: {str(e)}"
 
-    def _get_filtered_and_unfolded_dataframe(self, selected_columns: list,
-                                             group_column: Optional[str],
-                                             original_df: DataFrame):
+    def _get_filtered_and_unfolded_dataframe(
+        self, selected_columns: list, group_column: Optional[str], original_df: DataFrame
+    ):
         """
         Filter the dataframe to selected columns + group column, then unfold by group column.
 
@@ -446,12 +446,15 @@ Please provide a clear, direct answer to the user's original question based on t
             return rx.toast.error("Analysis already in progress. Please wait.")
 
         if not self._current_stats_analyzer or not self.last_run_config:
-            return rx.toast.error("No statistical analysis available. Please run an analysis first.")
+            return rx.toast.error(
+                "No statistical analysis available. Please run an analysis first."
+            )
 
         stats_analyzer = cast(AiTableStats, self._current_stats_analyzer)
         if not isinstance(stats_analyzer, AiTableStats):
             return rx.toast.error(
-                "Additional tests can only be run for standard statistical analyses, not relation analyses.")
+                "Additional tests can only be run for standard statistical analyses, not relation analyses."
+            )
 
         # Get reference column/group from form
         reference_input: str = form_data.get("reference_column", "")
@@ -487,7 +490,8 @@ Please provide a clear, direct answer to the user's original question based on t
             # Use AiTableStats methods to validate column existence
             if not self._current_stats_analyzer.has_column(reference_column):
                 raise ValueError(
-                    f"Reference group '{reference_input}' not found in the column '{self.last_run_config.group_input}'.")
+                    f"Reference group '{reference_input}' not found in the column '{self.last_run_config.group_input}'."
+                )
 
             return reference_column
 
@@ -496,7 +500,8 @@ Please provide a clear, direct answer to the user's original question based on t
             # Use AiTableStats methods to validate column existence
             if not self._current_stats_analyzer.has_column(reference_input):
                 raise ValueError(
-                    f"Reference column '{reference_input}' not found in dataframe or is not a selected column.")
+                    f"Reference column '{reference_input}' not found in dataframe or is not a selected column."
+                )
 
             return reference_input
 

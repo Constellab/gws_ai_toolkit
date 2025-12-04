@@ -36,7 +36,9 @@ class AiTableAgentChatConfigState(rx.State):
     async def get_config(self) -> AiTableAgentChatConfig:
         """Get the current configuration for this analysis type"""
         app_config_state = await AppConfigState.get_instance(self)
-        config = await app_config_state.get_config_section(self.get_config_section_name(), AiTableAgentChatConfig)
+        config = await app_config_state.get_config_section(
+            self.get_config_section_name(), AiTableAgentChatConfig
+        )
         return cast(AiTableAgentChatConfig, config)
 
     @rx.var
@@ -89,7 +91,9 @@ class AiTableAgentChatConfigState(rx.State):
         """
         # Update the config in AppConfigState
         app_config_state = await AppConfigState.get_instance(self)
-        return await app_config_state.update_config_section(self.get_config_section_name(), new_config)
+        return await app_config_state.update_config_section(
+            self.get_config_section_name(), new_config
+        )
 
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):

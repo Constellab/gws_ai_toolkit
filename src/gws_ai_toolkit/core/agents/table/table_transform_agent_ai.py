@@ -5,7 +5,11 @@ import pandas as pd
 from gws_core import BaseModelDTO, Table
 from pydantic import Field
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
+    CodeEvent,
+    FunctionCallEvent,
+    FunctionErrorEvent,
+)
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableTransformEvent
 
 from ..base_function_agent_ai import BaseFunctionAgentAi
@@ -27,7 +31,9 @@ class TableTransformConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent, UserQueryTableTransformEvent]):
+class TableTransformAgentAi(
+    BaseFunctionAgentAi[DataFrameTransformAgentEvent, UserQueryTableTransformEvent]
+):
     """Standalone DataFrame transform agent service for data manipulation using OpenAI"""
 
     def __init__(
@@ -37,7 +43,9 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent, Us
         temperature: float,
         skip_success_response: bool = False,
     ):
-        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
+        super().__init__(
+            openai_api_key, model, temperature, skip_success_response=skip_success_response
+        )
 
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
@@ -77,7 +85,9 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent, Us
             agent_id=self.id,
         )
 
-        transformed_table_name = user_query.output_table_name or arguments.get("transformed_table_name")
+        transformed_table_name = user_query.output_table_name or arguments.get(
+            "transformed_table_name"
+        )
         if not transformed_table_name:
             yield FunctionErrorEvent(
                 message="No transformed_table_name provided in function arguments",
@@ -177,7 +187,11 @@ class TableTransformAgentAi(BaseFunctionAgentAi[DataFrameTransformAgentEvent, Us
 
         table_metadata = user_query.table.get_ai_description()
         table_name = f"Input table name : {user_query.table_name}" if user_query.table_name else ""
-        output_table_name = f"Output table name: {user_query.output_table_name}" if user_query.output_table_name else ""
+        output_table_name = (
+            f"Output table name: {user_query.output_table_name}"
+            if user_query.output_table_name
+            else ""
+        )
         return f"""You are an AI assistant specialized in data cleaning, transformation, and manipulation. You have access to information about a table/dataset but not the actual data.
 
 {table_name}

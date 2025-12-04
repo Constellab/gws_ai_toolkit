@@ -3,8 +3,14 @@ from typing import List, Optional
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_core import (AuthenticateUser, BaseModelDTO, Logger, ResourceModel,
-                      ResourceSearchBuilder, User)
+from gws_core import (
+    AuthenticateUser,
+    BaseModelDTO,
+    Logger,
+    ResourceModel,
+    ResourceSearchBuilder,
+    User,
+)
 from gws_reflex_main import ReflexMainState
 
 from ..rag_config_state import RagConfigState
@@ -16,7 +22,6 @@ class ResourceDTO(BaseModelDTO):
 
 
 class SyncResourceState(rx.State):
-
     text: str = ""
 
     popover_opened: bool = False
@@ -79,7 +84,9 @@ class SyncResourceState(rx.State):
         if not self._selected_resource:
             return None
         return ResourceDTO(
-            id=self._selected_resource.resource_model.id, name=self._selected_resource.resource_model.name)
+            id=self._selected_resource.resource_model.id,
+            name=self._selected_resource.resource_model.name,
+        )
 
     @rx.event(background=True)
     async def select_resource(self, resource_id: str):
@@ -156,10 +163,7 @@ class SyncResourceState(rx.State):
             rag_service = await config_state.get_dataset_rag_app_service()
             if rag_service:
                 with AuthenticateUser(user):
-                    rag_service.send_resource_to_rag(
-                        self._selected_resource,
-                        upload_options=None
-                    )
+                    rag_service.send_resource_to_rag(self._selected_resource, upload_options=None)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
             yield rx.toast.error(f"Failed to send resource to RAG: {e}", duration=3000)
@@ -223,9 +227,7 @@ class SyncResourceState(rx.State):
             if dataset_id and document_id and rag_app_service:
                 with AuthenticateUser(user):
                     rag_service = rag_app_service.get_rag_service()
-                    parsed_document = rag_service.parse_document(
-                        dataset_id, document_id
-                    )
+                    parsed_document = rag_service.parse_document(dataset_id, document_id)
                     async with self:
                         self.selected_resource_document = parsed_document
         except Exception as e:
@@ -268,11 +270,13 @@ class SyncResourceState(rx.State):
             document_id = self.selected_resource_document_id
 
             rag_app_service = await config_state.get_dataset_rag_app_service()
-            if selected_resource.get_dataset_base_id() and selected_resource.get_document_id() and rag_app_service:
+            if (
+                selected_resource.get_dataset_base_id()
+                and selected_resource.get_document_id()
+                and rag_app_service
+            ):
                 rag_service = rag_app_service.get_rag_service()
-                document = rag_service.get_document(
-                    dataset_id, document_id
-                )
+                document = rag_service.get_document(dataset_id, document_id)
 
                 async with self:
                     self.selected_resource_document = document

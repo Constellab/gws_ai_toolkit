@@ -34,11 +34,11 @@ class AiExpertConfigState(rx.State):
             used for dynamic field visibility and validation.
     """
 
-    current_form_mode: AiExpertChatMode = 'full_file'
+    current_form_mode: AiExpertChatMode = "full_file"
 
     async def get_config(self) -> AiExpertConfig:
         app_config_state = await AppConfigState.get_instance(self)
-        config = await app_config_state.get_config_section('ai_expert_page', AiExpertConfig)
+        config = await app_config_state.get_config_section("ai_expert_page", AiExpertConfig)
         return cast(AiExpertConfig, config)
 
     @rx.var
@@ -82,16 +82,16 @@ class AiExpertConfigState(rx.State):
         """Handle the combined configuration form submission (mode, system prompt, model, and temperature)"""
         try:
             # Get the new values from form data
-            new_mode = form_data.get('mode', '').strip()
-            new_system_prompt = form_data.get('system_prompt', '').strip()
-            new_model = form_data.get('model', '').strip()
-            new_temperature_str = form_data.get('temperature', '').strip()
-            new_max_chunks_str = form_data.get('max_chunks', '').strip()
+            new_mode = form_data.get("mode", "").strip()
+            new_system_prompt = form_data.get("system_prompt", "").strip()
+            new_model = form_data.get("model", "").strip()
+            new_temperature_str = form_data.get("temperature", "").strip()
+            new_max_chunks_str = form_data.get("max_chunks", "").strip()
 
             if not new_system_prompt:
                 return rx.toast.error("System prompt cannot be empty")
 
-            if not new_mode or new_mode not in ['full_text_chunk', 'relevant_chunks', 'full_file']:
+            if not new_mode or new_mode not in ["full_text_chunk", "relevant_chunks", "full_file"]:
                 return rx.toast.error("Invalid mode selected")
 
             if not new_model:
@@ -107,7 +107,7 @@ class AiExpertConfigState(rx.State):
 
             # Validate max_chunks (only required for relevant_chunks mode)
             new_max_chunks = 5  # default value
-            if new_mode == 'relevant_chunks':
+            if new_mode == "relevant_chunks":
                 if not new_max_chunks_str:
                     return rx.toast.error("Chunk count is required for relevant chunks mode")
                 try:
@@ -130,7 +130,8 @@ class AiExpertConfigState(rx.State):
 
             if current_config.prompt_file_placeholder not in new_system_prompt:
                 return rx.toast.error(
-                    f"System prompt must include the prompt file placeholder: {current_config.prompt_file_placeholder}")
+                    f"System prompt must include the prompt file placeholder: {current_config.prompt_file_placeholder}"
+                )
 
             # Create new config with updated values
             new_config = AiExpertConfig(
@@ -139,13 +140,13 @@ class AiExpertConfigState(rx.State):
                 mode=new_mode,
                 model=new_model,
                 temperature=new_temperature,
-                max_chunks=new_max_chunks
+                max_chunks=new_max_chunks,
             )
 
             # Update the config in AppConfigState
 
             app_config_state = await AppConfigState.get_instance(self)
-            result = await app_config_state.update_config_section('ai_expert_page', new_config)
+            result = await app_config_state.update_config_section("ai_expert_page", new_config)
 
             # Show success message
             if result:
@@ -168,4 +169,7 @@ class AiExpertConfigState(rx.State):
 
     @rx.var
     def show_max_chunk_config(self) -> bool:
-        return self.current_form_mode == "relevant_chunks" or self.current_form_mode == "full_text_chunk"
+        return (
+            self.current_form_mode == "relevant_chunks"
+            or self.current_form_mode == "full_text_chunk"
+        )

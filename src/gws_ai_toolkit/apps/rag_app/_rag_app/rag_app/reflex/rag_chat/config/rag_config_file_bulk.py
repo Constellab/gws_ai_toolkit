@@ -1,11 +1,19 @@
 import reflex as rx
 
-from .delete_expired_documents_dialog.delete_expired_documents_dialog_component import delete_expired_documents_dialog
-from .delete_expired_documents_dialog.delete_expired_documents_dialog_state import DeleteExpiredDocumentsDialogState
+from .delete_expired_documents_dialog.delete_expired_documents_dialog_component import (
+    delete_expired_documents_dialog,
+)
+from .delete_expired_documents_dialog.delete_expired_documents_dialog_state import (
+    DeleteExpiredDocumentsDialogState,
+)
 from .sync_all_resources_dialog.sync_all_resources_dialog_component import sync_all_resources_dialog
 from .sync_all_resources_dialog.sync_all_resources_dialog_state import SyncAllResourcesDialogState
-from .unsync_all_resources_dialog.unsync_all_resources_dialog_component import unsync_all_resources_dialog
-from .unsync_all_resources_dialog.unsync_all_resources_dialog_state import UnsyncAllResourcesDialogState
+from .unsync_all_resources_dialog.unsync_all_resources_dialog_component import (
+    unsync_all_resources_dialog,
+)
+from .unsync_all_resources_dialog.unsync_all_resources_dialog_state import (
+    UnsyncAllResourcesDialogState,
+)
 
 
 def bulk_action_buttons() -> rx.Component:
@@ -24,7 +32,7 @@ def bulk_action_buttons() -> rx.Component:
                 sync_all_resources_dialog(),
             ),
             on_open_change=SyncAllResourcesDialogState.on_sync_resource_dialog_event,
-            open=SyncAllResourcesDialogState.resources_to_sync_dialog_opened
+            open=SyncAllResourcesDialogState.resources_to_sync_dialog_opened,
         ),
         rx.dialog.root(
             rx.dialog.trigger(
@@ -39,7 +47,7 @@ def bulk_action_buttons() -> rx.Component:
                 unsync_all_resources_dialog(),
             ),
             on_open_change=UnsyncAllResourcesDialogState.on_unsync_resource_dialog_event,
-            open=UnsyncAllResourcesDialogState.resources_to_unsync_dialog_opened
+            open=UnsyncAllResourcesDialogState.resources_to_unsync_dialog_opened,
         ),
         rx.dialog.root(
             rx.dialog.trigger(
@@ -55,7 +63,7 @@ def bulk_action_buttons() -> rx.Component:
                 delete_expired_documents_dialog(),
             ),
             on_open_change=DeleteExpiredDocumentsDialogState.on_delete_documents_dialog_event,
-            open=DeleteExpiredDocumentsDialogState.documents_to_delete_dialog_opened
+            open=DeleteExpiredDocumentsDialogState.documents_to_delete_dialog_opened,
         ),
         spacing="3",
         wrap="wrap",

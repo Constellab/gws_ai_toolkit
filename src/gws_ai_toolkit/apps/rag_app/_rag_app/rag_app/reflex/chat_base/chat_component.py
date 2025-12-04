@@ -72,8 +72,20 @@ def _empty_chat(config: ChatConfig) -> rx.Component:
     return rx.vstack(
         chat_header_component(config),
         rx.box(flex="1"),  # Spacer to push input to center
-        rx.heading(config.state.empty_state_message, size="6", margin_bottom="1em", text_align="center", width="100%"),
-        rx.box(chat_input_component(config), width="100%", max_width="800px", margin="auto", class_name="chat"),
+        rx.heading(
+            config.state.empty_state_message,
+            size="6",
+            margin_bottom="1em",
+            text_align="center",
+            width="100%",
+        ),
+        rx.box(
+            chat_input_component(config),
+            width="100%",
+            max_width="800px",
+            margin="auto",
+            class_name="chat",
+        ),
         rx.box(flex="2"),  # Spacer to center input
         width="100%",
         flex="1",
@@ -120,7 +132,11 @@ def chat_component(config: ChatConfig) -> rx.Component:
 
     return rx.auto_scroll(
         rx.hstack(
-            rx.box(config.left_section(config.state) if config.left_section else None, flex="1", height="100%"),
+            rx.box(
+                config.left_section(config.state) if config.left_section else None,
+                flex="1",
+                height="100%",
+            ),
             rx.box(
                 rx.cond(
                     # When there are messages, show normal layout with fixed input
@@ -136,7 +152,11 @@ def chat_component(config: ChatConfig) -> rx.Component:
                 display="flex",
                 flex_direction="column",
             ),
-            rx.box(config.right_section(config.state) if config.right_section else None, flex="1", height="100%"),
+            rx.box(
+                config.right_section(config.state) if config.right_section else None,
+                flex="1",
+                height="100%",
+            ),
             align_items="stretch",
             justify_content="stretch",
             width="100%",

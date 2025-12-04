@@ -25,7 +25,7 @@ class UnsyncAllResourcesDialogState(rx.State):
         return self.resources_to_unsync is not None
 
     @rx.var
-    def resources_unsync_status(self) -> Literal['pending', 'running', 'done']:
+    def resources_unsync_status(self) -> Literal["pending", "running", "done"]:
         if self.unsync_resource_progress < 0:
             return "pending"
         elif self.unsync_resource_progress < self.count_resources_to_unsync:
@@ -82,7 +82,6 @@ class UnsyncAllResourcesDialogState(rx.State):
         rag_service = await config_state.get_dataset_rag_app_service()
 
         for resource in self.resources_to_unsync:
-
             try:
                 with AuthenticateUser(user):
                     rag_service.delete_resource_from_rag(resource)
@@ -91,7 +90,8 @@ class UnsyncAllResourcesDialogState(rx.State):
                 Logger.log_exception_stack_trace(e)
                 async with self:
                     self.unsync_errors.append(
-                        f"Error unsyncing resource '{resource.resource_model.name}' {resource.resource_model.id}: {e}")
+                        f"Error unsyncing resource '{resource.resource_model.name}' {resource.resource_model.id}: {e}"
+                    )
 
             async with self:
                 self.unsync_resource_progress += 1

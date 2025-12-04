@@ -57,13 +57,16 @@ class AiTableRelationStats(AiTableStatsBase):
             raise ValueError(f"Relation analysis requires at least 2 columns, got {num_columns}")
 
         # Check if columns are quantitative
-        if not all(api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns):
+        if not all(
+            api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns
+        ):
             raise ValueError("Relation analysis requires quantitative (numeric) columns")
 
         # Validate reference column if provided
         if self._reference_column and self._reference_column not in self._dataframe.columns:
             raise ValueError(
-                f"Reference column '{self._reference_column}' not found in dataframe columns: {list(self._dataframe.columns)}")
+                f"Reference column '{self._reference_column}' not found in dataframe columns: {list(self._dataframe.columns)}"
+            )
 
     def run_correlation_analysis(self) -> None:
         """Run correlation analysis between columns."""
@@ -87,22 +90,27 @@ class AiTableRelationStats(AiTableStatsBase):
 
             # Run Pearson correlation test
             Logger.debug("Running: Pearson correlation")
-            pearson_result = simple_tests.pearson_correlation_test(col1_data, col2_data, col1_name, col2_name)
+            pearson_result = simple_tests.pearson_correlation_test(
+                col1_data, col2_data, col1_name, col2_name
+            )
             self._record_test(pearson_result)
             Logger.debug(f"Pearson Result: {pearson_result}")
 
             # Run Spearman correlation test
             Logger.debug("Running: Spearman correlation")
             # Do not generate scatter plot as this was already done in Pearson test
-            spearman_result = simple_tests.spearman_correlation_test(col1_data, col2_data, col1_name, col2_name,
-                                                                     generate_plot=False)
+            spearman_result = simple_tests.spearman_correlation_test(
+                col1_data, col2_data, col1_name, col2_name, generate_plot=False
+            )
             self._record_test(spearman_result)
             Logger.debug(f"Spearman Result: {spearman_result}")
 
         else:
             pairwise_tests = AiTableStatsTestsPairWise()
             # Multi-column case: Use pairwise correlation tests
-            Logger.debug(f"Running multi-column pairwise correlation analysis ({num_columns} columns)")
+            Logger.debug(
+                f"Running multi-column pairwise correlation analysis ({num_columns} columns)"
+            )
             if self._reference_column:
                 Logger.debug(f"Using reference column: {self._reference_column}")
             else:
@@ -117,7 +125,9 @@ class AiTableRelationStats(AiTableStatsBase):
             Logger.debug(f"Pearson Pairwise Result: {pearson_result}")
 
             # Run Dunn post-hoc test if Pearson pairwise produced a comparison matrix
-            self._run_correction_after_pairwise(cast(CorrelationPairwiseDetails, pearson_result.details))
+            self._run_correction_after_pairwise(
+                cast(CorrelationPairwiseDetails, pearson_result.details)
+            )
 
             # Run Spearman pairwise correlation test
             Logger.debug("Running: Spearman pairwise correlation")
@@ -128,22 +138,29 @@ class AiTableRelationStats(AiTableStatsBase):
             Logger.debug(f"Spearman Pairwise Result: {spearman_result}")
 
             # Run Dunn post-hoc test if Spearman pairwise produced a comparison matrix
-            self._run_correction_after_pairwise(cast(CorrelationPairwiseDetails, spearman_result.details))
+            self._run_correction_after_pairwise(
+                cast(CorrelationPairwiseDetails, spearman_result.details)
+            )
 
     def _run_correction_after_pairwise(self, result_details: CorrelationPairwiseDetails) -> None:
         """Run Dunn post-hoc test on pairwise comparison matrix."""
         if result_details.pairwise_comparisons_matrix is not None:
-
             simple_tests = AiTableStatsTests()
             if result_details.total_comparisons <= 10:
-                Logger.debug("Running post-hoc: Holm test on p-values because total comparisons <= 10")
+                Logger.debug(
+                    "Running post-hoc: Holm test on p-values because total comparisons <= 10"
+                )
                 holm_result = simple_tests.holm_test(result_details.pairwise_comparisons_matrix)
                 self._record_test(holm_result)
                 Logger.debug(f"Holm Result: {holm_result}")
             else:
-                Logger.debug("Running post-hoc: Benjamini–Hochberg test on p-values skipped because total comparisons > 10")
+                Logger.debug(
+                    "Running post-hoc: Benjamini–Hochberg test on p-values skipped because total comparisons > 10"
+                )
                 Logger.debug(f"Total comparisons: {result_details.total_comparisons}")
                 # If needed, implement other corrections for large number of comparisons
-                bonferroni_result = simple_tests.benjamini_hochberg_test(result_details.pairwise_comparisons_matrix)
+                bonferroni_result = simple_tests.benjamini_hochberg_test(
+                    result_details.pairwise_comparisons_matrix
+                )
                 self._record_test(bonferroni_result)
                 Logger.debug(f"Benjamini–Hochberg Result: {bonferroni_result}")

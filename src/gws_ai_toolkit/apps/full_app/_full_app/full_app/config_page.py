@@ -1,4 +1,3 @@
-
 import reflex as rx
 
 from gws_ai_toolkit._app.ai_rag import ai_expert_config_component
@@ -9,10 +8,17 @@ def combined_config_page() -> rx.Component:
     return rx.vstack(
         rx.tabs.root(
             rx.tabs.list(
-                rx.tabs.trigger("AI Expert", value="ai_expert", cursor="pointer",),
-                rx.tabs.trigger("AI Table", value="ai_table", cursor="pointer",),
+                rx.tabs.trigger(
+                    "AI Expert",
+                    value="ai_expert",
+                    cursor="pointer",
+                ),
+                rx.tabs.trigger(
+                    "AI Table",
+                    value="ai_table",
+                    cursor="pointer",
+                ),
             ),
-
             rx.tabs.content(
                 rx.vstack(
                     ai_expert_config_component(),
@@ -23,7 +29,6 @@ def combined_config_page() -> rx.Component:
                 padding_top="1em",
                 padding_bottom="1em",
             ),
-
             # rx.tabs.content(
             #     rx.vstack(
             #         ai_table_chat_config_component(),
@@ -34,11 +39,9 @@ def combined_config_page() -> rx.Component:
             #     padding_top="1em",
             #     padding_bottom="1em",
             # ),
-
             default_value="ai_expert",
             width="100%",
         ),
-
         spacing="6",
         width="100%",
     )

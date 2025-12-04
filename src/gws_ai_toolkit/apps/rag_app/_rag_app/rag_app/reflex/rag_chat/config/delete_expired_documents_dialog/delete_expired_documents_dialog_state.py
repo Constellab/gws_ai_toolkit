@@ -29,7 +29,7 @@ class DeleteExpiredDocumentsDialogState(rx.State):
         return [f"{doc.name} ({doc.id})" for doc in self.documents_to_delete]
 
     @rx.var
-    def documents_delete_status(self) -> Literal['pending', 'running', 'done']:
+    def documents_delete_status(self) -> Literal["pending", "running", "done"]:
         if self.delete_documents_progress < 0:
             return "pending"
         elif self.delete_documents_progress < self.count_documents_to_delete:
@@ -93,7 +93,8 @@ class DeleteExpiredDocumentsDialogState(rx.State):
                 Logger.error(f"Error deleting document '{document.name}' {document.id}: {e}")
                 async with self:
                     self.delete_errors.append(
-                        f"Error deleting document '{document.name}' {document.id}: {e}")
+                        f"Error deleting document '{document.name}' {document.id}: {e}"
+                    )
 
             async with self:
                 self.delete_documents_progress += 1

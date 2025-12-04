@@ -8,7 +8,10 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseC
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
-from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase, ChatUserMessageText
+from gws_ai_toolkit.models.chat.message.chat_user_message import (
+    ChatUserMessageBase,
+    ChatUserMessageText,
+)
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_reflex_main import ReflexMainState
 
@@ -185,7 +188,11 @@ class ConversationChatStateBase(rx.State, mixin=True):
     @rx.var
     def show_empty_chat(self) -> bool:
         """Check if there are no messages in the chat."""
-        return len(self._chat_messages) == 0 and not self.current_response_message and not self.is_streaming
+        return (
+            len(self._chat_messages) == 0
+            and not self.current_response_message
+            and not self.is_streaming
+        )
 
     @rx.var
     def chat_messages(self) -> list[ChatMessageFront]:

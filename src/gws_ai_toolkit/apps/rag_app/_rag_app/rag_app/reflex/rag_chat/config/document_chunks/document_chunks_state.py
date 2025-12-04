@@ -79,7 +79,7 @@ class DocumentChunksState(rx.State):
                         self.selected_document_id,
                         None,
                         page,
-                        self.chunks_per_page
+                        self.chunks_per_page,
                     )
 
                     if len(chunks) == 0:

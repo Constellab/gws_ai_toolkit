@@ -25,7 +25,7 @@ class SyncAllResourcesDialogState(rx.State):
         return self.resources_to_sync is not None
 
     @rx.var
-    def resources_sync_status(self) -> Literal['pending', 'running', 'done']:
+    def resources_sync_status(self) -> Literal["pending", "running", "done"]:
         if self.sync_resource_progress < 0:
             return "pending"
         elif self.sync_resource_progress < self.count_resources_to_sync:
@@ -82,17 +82,16 @@ class SyncAllResourcesDialogState(rx.State):
         rag_service = await config_state.get_dataset_rag_app_service()
 
         for resource in self.resources_to_sync:
-
             try:
                 with AuthenticateUser(user):
-                    rag_service.send_resource_to_rag(resource,
-                                                     upload_options=None)
+                    rag_service.send_resource_to_rag(resource, upload_options=None)
 
             except Exception as e:
                 Logger.log_exception_stack_trace(e)
                 async with self:
                     self.sync_errors.append(
-                        f"Error syncing resource '{resource.resource_model.name}' {resource.resource_model.id}: {e}")
+                        f"Error syncing resource '{resource.resource_model.name}' {resource.resource_model.id}: {e}"
+                    )
 
             async with self:
                 self.sync_resource_progress += 1

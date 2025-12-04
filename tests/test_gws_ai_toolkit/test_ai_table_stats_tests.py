@@ -5,14 +5,26 @@ import pandas as pd
 
 from gws_ai_toolkit.stats.ai_table_stats_tests import AiTableStatsTests
 from gws_ai_toolkit.stats.ai_table_stats_type import (
-    AiTableStatsResults, AnovaTestDetails, BenjaminiHochbergTestDetails,
-    BonferroniTestDetails, ChiSquaredAdjustmentTestDetails,
-    ChiSquaredIndependenceTestDetails, DunnTestDetails, FriedmanTestDetails,
-    HolmTestDetails, HomogeneityTestDetails, McNemarTestDetails,
-    MultiGroupNonParametricTestDetails, NormalityTestDetails,
-    PairedNonParametricTestDetails, ScheffeTestDetails,
-    StudentTTestIndependentDetails, StudentTTestPairedDetails,
-    TukeyHSDTestDetails, TwoGroupNonParametricTestDetails)
+    AiTableStatsResults,
+    AnovaTestDetails,
+    BenjaminiHochbergTestDetails,
+    BonferroniTestDetails,
+    ChiSquaredAdjustmentTestDetails,
+    ChiSquaredIndependenceTestDetails,
+    DunnTestDetails,
+    FriedmanTestDetails,
+    HolmTestDetails,
+    HomogeneityTestDetails,
+    McNemarTestDetails,
+    MultiGroupNonParametricTestDetails,
+    NormalityTestDetails,
+    PairedNonParametricTestDetails,
+    ScheffeTestDetails,
+    StudentTTestIndependentDetails,
+    StudentTTestPairedDetails,
+    TukeyHSDTestDetails,
+    TwoGroupNonParametricTestDetails,
+)
 
 
 # test_ai_table_stats_tests.py
@@ -29,11 +41,13 @@ class TestAiTableStatsTests(TestCase):
         self.group1 = np.random.normal(0, 1, 50)
         self.group2 = np.random.normal(1, 1, 50)
         self.group3 = np.random.normal(2, 1, 50)
-        self.dataframe = pd.DataFrame({
-            'A': np.random.normal(0, 1, 100),
-            'B': np.random.normal(1, 1, 100),
-            'C': np.random.normal(2, 1, 100)
-        })
+        self.dataframe = pd.DataFrame(
+            {
+                "A": np.random.normal(0, 1, 100),
+                "B": np.random.normal(1, 1, 100),
+                "C": np.random.normal(2, 1, 100),
+            }
+        )
 
         # Paired data
         self.paired_data1 = np.random.normal(0, 1, 30)
@@ -51,7 +65,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.shapiro_wilk_test(self.normal_data)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Shapiro-Wilk')
+        self.assertEqual(result.test_name, "Shapiro-Wilk")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, NormalityTestDetails)
@@ -65,7 +79,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.shapiro_wilk_test(heavily_skewed_data)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Shapiro-Wilk')
+        self.assertEqual(result.test_name, "Shapiro-Wilk")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
 
@@ -74,7 +88,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.kolmogorov_smirnov_test(self.normal_data)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Kolmogorov-Smirnov (Lilliefors)')
+        self.assertEqual(result.test_name, "Kolmogorov-Smirnov (Lilliefors)")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, NormalityTestDetails)
@@ -85,7 +99,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.bartlett_test(self.group1, self.group2, self.group3)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Bartlett')
+        self.assertEqual(result.test_name, "Bartlett")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, HomogeneityTestDetails)
@@ -97,7 +111,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.levene_test(self.group1, self.group2)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Levene')
+        self.assertEqual(result.test_name, "Levene")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, HomogeneityTestDetails)
@@ -108,7 +122,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.chi2_adjustment_test(self.observed_freq)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Chi-squared adjustment')
+        self.assertEqual(result.test_name, "Chi-squared adjustment")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, ChiSquaredAdjustmentTestDetails)
@@ -120,7 +134,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.chi2_independence_test(self.contingency_table)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Chi-squared independence')
+        self.assertEqual(result.test_name, "Chi-squared independence")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, ChiSquaredIndependenceTestDetails)
@@ -133,7 +147,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.mcnemar_test(self.mcnemar_table)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'McNemar')
+        self.assertEqual(result.test_name, "McNemar")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, McNemarTestDetails)
@@ -143,7 +157,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.student_independent_test(self.group1, self.group2)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Student t-test (independent)')
+        self.assertEqual(result.test_name, "Student t-test (independent)")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, StudentTTestIndependentDetails)
@@ -155,7 +169,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.student_paired_test(self.paired_data1, self.paired_data2)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Student t-test (paired)')
+        self.assertEqual(result.test_name, "Student t-test (paired)")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, StudentTTestPairedDetails)
@@ -166,7 +180,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.anova_test(self.dataframe)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'ANOVA')
+        self.assertEqual(result.test_name, "ANOVA")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, AnovaTestDetails)
@@ -178,7 +192,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.mann_whitney_test(self.group1, self.group2)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Mann-Whitney')
+        self.assertEqual(result.test_name, "Mann-Whitney")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, TwoGroupNonParametricTestDetails)
@@ -189,7 +203,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.wilcoxon_test(self.paired_data1, self.paired_data2)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Wilcoxon signed-rank')
+        self.assertEqual(result.test_name, "Wilcoxon signed-rank")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, PairedNonParametricTestDetails)
@@ -200,7 +214,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.kruskal_wallis_test(self.dataframe)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Kruskal-Wallis')
+        self.assertEqual(result.test_name, "Kruskal-Wallis")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, MultiGroupNonParametricTestDetails)
@@ -212,7 +226,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.friedman_test(self.dataframe)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Friedman')
+        self.assertEqual(result.test_name, "Friedman")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, FriedmanTestDetails)
@@ -227,7 +241,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.pearson_correlation_test(x, y)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Pearson correlation')
+        self.assertEqual(result.test_name, "Pearson correlation")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, TwoGroupNonParametricTestDetails)
@@ -242,7 +256,7 @@ class TestAiTableStatsTests(TestCase):
         result = self.stats_tests.spearman_correlation_test(x, y)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Spearman correlation')
+        self.assertEqual(result.test_name, "Spearman correlation")
         self.assertIsInstance(result.statistic, float)
         self.assertIsInstance(result.p_value, float)
         self.assertIsInstance(result.details, TwoGroupNonParametricTestDetails)
@@ -252,16 +266,18 @@ class TestAiTableStatsTests(TestCase):
     def test_tukey_hsd_test(self):
         """Test Tukey's HSD post-hoc test."""
         # Create DataFrame with different groups
-        df = pd.DataFrame({
-            'Group_A': np.random.normal(0, 1, 30),
-            'Group_B': np.random.normal(1, 1, 30),
-            'Group_C': np.random.normal(2, 1, 30)
-        })
+        df = pd.DataFrame(
+            {
+                "Group_A": np.random.normal(0, 1, 30),
+                "Group_B": np.random.normal(1, 1, 30),
+                "Group_C": np.random.normal(2, 1, 30),
+            }
+        )
 
         result = self.stats_tests.tukey_hsd_test(df)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Tukey HSD')
+        self.assertEqual(result.test_name, "Tukey HSD")
         self.assertIsInstance(result.details, TukeyHSDTestDetails)
         self.assertIsInstance(result.details.summary, str)
         self.assertIsInstance(result.details.pairwise_comparisons, list)
@@ -271,25 +287,27 @@ class TestAiTableStatsTests(TestCase):
     def test_dunn_test(self):
         """Test Dunn's post-hoc test."""
         # Create DataFrame with different groups
-        df = pd.DataFrame({
-            'Group_A': np.random.normal(0, 1, 30),
-            'Group_B': np.random.normal(1, 1, 30),
-            'Group_C': np.random.normal(2, 1, 30)
-        })
+        df = pd.DataFrame(
+            {
+                "Group_A": np.random.normal(0, 1, 30),
+                "Group_B": np.random.normal(1, 1, 30),
+                "Group_C": np.random.normal(2, 1, 30),
+            }
+        )
 
         result = self.stats_tests.dunn_test(df)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Dunn')
+        self.assertEqual(result.test_name, "Dunn")
         self.assertIsInstance(result.details, DunnTestDetails)
         self.assertIsInstance(result.details.pairwise_matrix, dict)
-        self.assertEqual(result.details.adjustment_method, 'bonferroni')
+        self.assertEqual(result.details.adjustment_method, "bonferroni")
         self.assertIsInstance(result.details.significant_comparisons, int)
         self.assertIn("pairwise", result.result_text.lower())
 
     def test_bonferroni_test_with_dataframe(self):
         """Test Bonferroni correction with DataFrame of p-values."""
-        p_values_df = pd.DataFrame({'p_vals': [0.01, 0.03, 0.05, 0.1, 0.2]})
+        p_values_df = pd.DataFrame({"p_vals": [0.01, 0.03, 0.05, 0.1, 0.2]})
         result = self.stats_tests.bonferroni_test(p_values_df)
 
         self.assertIsInstance(result, AiTableStatsResults)
@@ -310,7 +328,7 @@ class TestAiTableStatsTests(TestCase):
         # All should return valid results
         for result in [result_np, result_pd, result_list]:
             self.assertIsInstance(result, AiTableStatsResults)
-            self.assertEqual(result.test_name, 'Shapiro-Wilk')
+            self.assertEqual(result.test_name, "Shapiro-Wilk")
 
     def test_result_text_interpretation(self):
         """Test that result texts are correctly interpreted based on p-values."""
@@ -336,21 +354,24 @@ class TestAiTableStatsTests(TestCase):
     def test_benjamini_hochberg_test(self):
         """Test Benjamini-Hochberg correction for multiple comparisons."""
         # Create DataFrame with p-values for testing
-        p_values_df = pd.DataFrame({
-            'Group_A': [1.0, 0.02, 0.001, 0.15],
-            'Group_B': [0.02, 1.0, 0.03, 0.08],
-            'Group_C': [0.001, 0.03, 1.0, 0.04],
-            'Group_D': [0.15, 0.08, 0.04, 1.0]
-        }, index=['Group_A', 'Group_B', 'Group_C', 'Group_D'])
+        p_values_df = pd.DataFrame(
+            {
+                "Group_A": [1.0, 0.02, 0.001, 0.15],
+                "Group_B": [0.02, 1.0, 0.03, 0.08],
+                "Group_C": [0.001, 0.03, 1.0, 0.04],
+                "Group_D": [0.15, 0.08, 0.04, 1.0],
+            },
+            index=["Group_A", "Group_B", "Group_C", "Group_D"],
+        )
 
         result = self.stats_tests.benjamini_hochberg_test(p_values_df, fdr=0.05)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Student t-test (independent paired wise)')
+        self.assertEqual(result.test_name, "Student t-test (independent paired wise)")
         self.assertIsNone(result.statistic)
         self.assertIsNone(result.p_value)
         self.assertIsInstance(result.details, BenjaminiHochbergTestDetails)
-        self.assertEqual(result.details.adjustment_method, 'fdr_bh')
+        self.assertEqual(result.details.adjustment_method, "fdr_bh")
         self.assertEqual(result.details.false_discovery_rate, 0.05)
         self.assertEqual(result.details.total_comparisons, 16)  # 4x4 matrix
         self.assertIsInstance(result.details.significant_comparisons, int)
@@ -361,20 +382,23 @@ class TestAiTableStatsTests(TestCase):
     def test_holm_test(self):
         """Test Holm step-down correction for multiple comparisons."""
         # Create DataFrame with p-values for testing
-        p_values_df = pd.DataFrame({
-            'Group_A': [1.0, 0.02, 0.001],
-            'Group_B': [0.02, 1.0, 0.03],
-            'Group_C': [0.001, 0.03, 1.0]
-        }, index=['Group_A', 'Group_B', 'Group_C'])
+        p_values_df = pd.DataFrame(
+            {
+                "Group_A": [1.0, 0.02, 0.001],
+                "Group_B": [0.02, 1.0, 0.03],
+                "Group_C": [0.001, 0.03, 1.0],
+            },
+            index=["Group_A", "Group_B", "Group_C"],
+        )
 
         result = self.stats_tests.holm_test(p_values_df)
 
         self.assertIsInstance(result, AiTableStatsResults)
-        self.assertEqual(result.test_name, 'Student t-test (independent paired wise)')
+        self.assertEqual(result.test_name, "Student t-test (independent paired wise)")
         self.assertIsNone(result.statistic)
         self.assertIsNone(result.p_value)
         self.assertIsInstance(result.details, HolmTestDetails)
-        self.assertEqual(result.details.adjustment_method, 'holm')
+        self.assertEqual(result.details.adjustment_method, "holm")
         self.assertEqual(result.details.total_comparisons, 9)  # 3x3 matrix
         self.assertIsInstance(result.details.significant_comparisons, int)
         self.assertIsInstance(result.details.original_p_values, list)

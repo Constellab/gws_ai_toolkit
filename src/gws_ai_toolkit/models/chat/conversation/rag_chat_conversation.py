@@ -3,7 +3,11 @@ from collections.abc import Generator
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
-from gws_ai_toolkit.rag.common.rag_models import RagChatEndStreamResponse, RagChatSource, RagChatStreamResponse
+from gws_ai_toolkit.rag.common.rag_models import (
+    RagChatEndStreamResponse,
+    RagChatSource,
+    RagChatStreamResponse,
+)
 
 from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
 
@@ -20,7 +24,10 @@ class RagChatConversation(BaseChatConversation[ChatUserMessageText]):
     rag_chat_id: str
 
     def __init__(
-        self, config: BaseChatConversationConfig, rag_app_service: BaseRagAppService, rag_chat_id: str
+        self,
+        config: BaseChatConversationConfig,
+        rag_app_service: BaseRagAppService,
+        rag_chat_id: str,
     ) -> None:
         super().__init__(config, "RAG")
         self.rag_app_service = rag_app_service

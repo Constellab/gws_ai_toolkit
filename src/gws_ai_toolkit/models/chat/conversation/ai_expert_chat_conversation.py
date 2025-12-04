@@ -131,11 +131,15 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
             instructions = self.config.system_prompt.replace(
                 self.config.prompt_file_placeholder, f"{document_name}\n{file_id}"
             )
-            tools = [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": [file_id]}}]
+            tools = [
+                {"type": "code_interpreter", "container": {"type": "auto", "file_ids": [file_id]}}
+            ]
 
         elif self.config.mode == "relevant_chunks":
             # Relevant chunks mode - get only relevant chunks based on user question
-            document_chunks = self._get_relevant_document_chunks_text(user_message.content, self.config.max_chunks)
+            document_chunks = self._get_relevant_document_chunks_text(
+                user_message.content, self.config.max_chunks
+            )
             document_name = self.rag_resource.resource_model.name
 
             instructions = self.config.system_prompt.replace(
@@ -157,22 +161,31 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
         with client.responses.stream(
             model=self.config.model,
             instructions=instructions,
-            input=[{"role": "user", "content": [{"type": "input_text", "text": user_message.content}]}],
+            input=[
+                {"role": "user", "content": [{"type": "input_text", "text": user_message.content}]}
+            ],
             temperature=self.config.temperature,
             previous_response_id=self._previous_external_response_id,
             tools=tools,
         ) as stream:
             for event in stream:
                 if event.type == "response.output_text.delta":
-                    yield self.build_current_message(event.delta, external_id=self._current_external_response_id)
+                    yield self.build_current_message(
+                        event.delta, external_id=self._current_external_response_id
+                    )
 
                 elif event.type == "response.output_text.annotation.added":
                     message = self._handle_output_text_annotation_added(event, client)
                     if message:
                         yield message
 
-                elif event.type == "response.output_item.added" or event.type == "response.output_item.done":
-                    message = self.close_current_message(external_id=self._current_external_response_id)
+                elif (
+                    event.type == "response.output_item.added"
+                    or event.type == "response.output_item.done"
+                ):
+                    message = self.close_current_message(
+                        external_id=self._current_external_response_id
+                    )
                     if message:
                         yield message
 
@@ -216,7 +229,10 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
         document_id = self.rag_resource.get_document_id()
 
         chunks = self.rag_app_service.rag_service.get_document_chunks(
-            dataset_id=self.rag_app_service.dataset_id, document_id=document_id, page=1, limit=max_chunks
+            dataset_id=self.rag_app_service.dataset_id,
+            document_id=document_id,
+            page=1,
+            limit=max_chunks,
         )
 
         if len(chunks) == 0:
@@ -262,7 +278,10 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
         if isinstance(annotation, dict) and "file_id" in annotation and "filename" in annotation:
             try:
                 return self._extract_file_from_response(
-                    annotation["file_id"], annotation["filename"], client, container_id=annotation.get("container_id")
+                    annotation["file_id"],
+                    annotation["filename"],
+                    client,
+                    container_id=annotation.get("container_id"),
                 )
             except Exception as e:
                 Logger.log_exception_stack_trace(e)
@@ -280,7 +299,9 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
         """Extract file from OpenAI response - handles images and other files."""
         try:
             if file_id.startswith("cfile_") and container_id:
-                file_data_binary = client.containers.files.content.retrieve(file_id, container_id=container_id)
+                file_data_binary = client.containers.files.content.retrieve(
+                    file_id, container_id=container_id
+                )
             else:
                 file_data_binary = client.files.content(file_id)
 
@@ -288,7 +309,9 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
 
             if file_extension in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"]:
                 image_data = Image.open(io.BytesIO(file_data_binary.content))
-                image_message = ChatMessageImage(image=image_data, external_id=self._current_external_response_id)
+                image_message = ChatMessageImage(
+                    image=image_data, external_id=self._current_external_response_id
+                )
 
                 return self.save_message(message=image_message)
             else:

@@ -81,7 +81,9 @@ class TestMultiTableAgentAiIntegration(unittest.TestCase):
                 self.assertIn("Clothing", categories)
                 break
 
-        self.assertTrue(found_category_summary, "Should have a table with category and sales information")
+        self.assertTrue(
+            found_category_summary, "Should have a table with category and sales information"
+        )
 
         # Verify the generated code contains expected elements
         self.assertIn("merge", transform_event.code.lower())

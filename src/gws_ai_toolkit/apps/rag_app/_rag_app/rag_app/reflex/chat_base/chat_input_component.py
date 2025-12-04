@@ -13,8 +13,8 @@ def chat_input_component(config: ChatConfig) -> rx.Component:
             flex="1",
             disabled=config.state.is_streaming,
             border_radius="24px",
-            style={'input': {'padding-inline': '12px'}},
-            size="3"
+            style={"input": {"padding-inline": "12px"}},
+            size="3",
         ),
         # rx.box(width="34px", height="34px", flex_shrink="0"),  # Spacer to align with non-dense input
         rx.box(
@@ -30,7 +30,7 @@ def chat_input_component(config: ChatConfig) -> rx.Component:
             padding="8px",
             flex_shrink="0",
             margin_left="0.5em",
-            display="flex"
+            display="flex",
         ),
         on_submit=config.state.submit_input_form,
         reset_on_submit=True,

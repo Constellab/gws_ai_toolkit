@@ -16,7 +16,11 @@ class User(Model):
 
     def to_dto(self) -> UserDTO:
         return UserDTO(
-            id=self.id, email=self.email, first_name=self.first_name, last_name=self.last_name, photo=self.photo
+            id=self.id,
+            email=self.email,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            photo=self.photo,
         )
 
     @classmethod
@@ -26,7 +30,11 @@ class User(Model):
         :return: Query of real users ordered by first and last name
         :rtype: ModelSelect
         """
-        return list(User.select().where(User.group != UserGroup.SYSUSER).order_by(User.first_name, User.last_name))
+        return list(
+            User.select()
+            .where(User.group != UserGroup.SYSUSER)
+            .order_by(User.first_name, User.last_name)
+        )
 
     @classmethod
     def from_gws_core_user(cls, gws_core_user: GwsCoreUser) -> "User":

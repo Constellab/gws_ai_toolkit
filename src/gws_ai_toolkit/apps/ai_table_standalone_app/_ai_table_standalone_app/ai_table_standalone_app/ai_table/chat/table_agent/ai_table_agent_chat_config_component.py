@@ -37,17 +37,15 @@ def ai_table_agent_chat_config_component() -> rx.Component:
         rx.heading("AI Table Agent Configuration"),
         rx.text(
             "Configure AI settings for unified table operations with intelligent routing between plotting and transformation capabilities.",
-            color="gray"
+            color="gray",
         ),
-
         # Configuration modification form
         rx.form(
             rx.vstack(
-
                 rx.heading("Model Configuration", size="4", margin_top="1em"),
                 rx.text(
                     "OpenAI model to use for intelligent request routing and function calling:",
-                    color="gray"
+                    color="gray",
                 ),
                 rx.input(
                     placeholder="Enter model name (e.g., gpt-4o, gpt-4o-mini)...",
@@ -55,11 +53,10 @@ def ai_table_agent_chat_config_component() -> rx.Component:
                     default_value=AiTableAgentChatConfigState.model,
                     width="100%",
                 ),
-
                 rx.heading("Temperature", size="4", margin_top="4"),
                 rx.text(
                     "Controls randomness: Lower values (0.1-0.3) recommended for precise function calling",
-                    color="gray"
+                    color="gray",
                 ),
                 rx.input(
                     placeholder="0.3",
@@ -67,7 +64,7 @@ def ai_table_agent_chat_config_component() -> rx.Component:
                     default_value=rx.cond(
                         AiTableAgentChatConfigState.temperature,
                         AiTableAgentChatConfigState.temperature.to_string(),
-                        "0.3"
+                        "0.3",
                     ),
                     type="number",
                     min=0.0,
@@ -76,16 +73,13 @@ def ai_table_agent_chat_config_component() -> rx.Component:
                     width="100%",
                 ),
                 rx.button(
-                    "Update Configuration",
-                    type="submit",
-                    color_scheme="blue",
-                    cursor="pointer"
+                    "Update Configuration", type="submit", color_scheme="blue", cursor="pointer"
                 ),
                 spacing="3",
-                width="100%"
+                width="100%",
             ),
             on_submit=AiTableAgentChatConfigState.handle_config_form_submit,
-            width="100%"
+            width="100%",
         ),
         spacing="0",
         width="100%",

@@ -1,4 +1,3 @@
-
 from gws_core import CredentialsDataOther
 
 from .base_rag_service import BaseRagService
@@ -24,9 +23,11 @@ class RagServiceFactory:
         """
         if provider == "dify":
             from ..dify.rag_dify_service import RagDifyService
+
             return RagDifyService.from_credentials(credentials)
         elif provider == "ragflow":
             from ..ragflow.rag_ragflow_service import RagRagFlowService
+
             return RagRagFlowService.from_credentials(credentials)
         else:
             raise ValueError(f"Unsupported RAG provider: {provider}")

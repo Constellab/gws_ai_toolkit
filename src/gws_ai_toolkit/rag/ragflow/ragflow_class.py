@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from gws_core import BaseModelDTO
 
-RagFlowParserMethod = Literal['naive', 'manual', 'qa', 'table', 'paper', 'book', 'laws', 'resume']
+RagFlowParserMethod = Literal["naive", "manual", "qa", "table", "paper", "book", "laws", "resume"]
 
 
 class RagFlowUpdateDocumentOptions(BaseModelDTO):
@@ -12,19 +12,21 @@ class RagFlowUpdateDocumentOptions(BaseModelDTO):
 
 class RagFlowCreateDatasetRequest(BaseModelDTO):
     """Request model for creating a dataset."""
+
     name: str
     avatar: Optional[str] = None
     description: Optional[str] = None
-    language: str = 'English'
+    language: str = "English"
     embedding_model: Optional[str] = None
-    permission: str = 'me'
+    permission: str = "me"
     document_count: int = 0
     chunk_count: int = 0
-    parse_method: RagFlowParserMethod = 'naive'
+    parse_method: RagFlowParserMethod = "naive"
 
 
 class RagFlowUpdateDatasetRequest(BaseModelDTO):
     """Request model for updating a dataset."""
+
     name: Optional[str] = None
     avatar: Optional[str] = None
     description: Optional[str] = None
@@ -36,6 +38,7 @@ class RagFlowUpdateDatasetRequest(BaseModelDTO):
 
 class RagFlowCreateChatRequest(BaseModelDTO):
     """Request model for creating a chat assistant."""
+
     name: str
     avatar: Optional[str] = ""
     knowledgebases: Optional[List[str]] = []
@@ -45,6 +48,7 @@ class RagFlowCreateChatRequest(BaseModelDTO):
 
 class RagFlowUpdateChatRequest(BaseModelDTO):
     """Request model for updating a chat assistant."""
+
     name: Optional[str] = None
     avatar: Optional[str] = None
     knowledgebases: Optional[List[str]] = None
@@ -54,13 +58,15 @@ class RagFlowUpdateChatRequest(BaseModelDTO):
 
 class RagFlowCreateSessionRequest(BaseModelDTO):
     """Request model for creating a chat session."""
+
     name: str
 
 
 class RagflowAskStreamResponse(BaseModelDTO):
     """Response model for streaming chat responses.
     Note: there is no id in the SDK response for answers."""
+
     content: str
-    role: Literal['user', 'assistant']
+    role: Literal["user", "assistant"]
     reference: List[dict] | None = None
     session_id: str

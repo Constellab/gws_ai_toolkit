@@ -5,9 +5,11 @@ from scipy.stats import pearsonr, spearmanr
 from statsmodels.stats.weightstats import ttest_ind
 
 from .ai_table_stats_plots import AiTableStatsPlots
-from .ai_table_stats_type import (AiTableStatsResults,
-                                  CorrelationPairwiseDetails,
-                                  StudentTTestPairwiseDetails)
+from .ai_table_stats_type import (
+    AiTableStatsResults,
+    CorrelationPairwiseDetails,
+    StudentTTestPairwiseDetails,
+)
 
 
 class AiTableStatsTestsPairWise:
@@ -15,10 +17,16 @@ class AiTableStatsTestsPairWise:
 
     plots = AiTableStatsPlots()
 
-    def _perform_pairwise_analysis(self, dataframe: pd.DataFrame, reference_column: Optional[str],
-                                   comparison_function, test_name: str,
-                                   details_class, diagonal_p_value: float = 0.0,
-                                   diagonal_stat_value: float = 1.0) -> AiTableStatsResults:
+    def _perform_pairwise_analysis(
+        self,
+        dataframe: pd.DataFrame,
+        reference_column: Optional[str],
+        comparison_function,
+        test_name: str,
+        details_class,
+        diagonal_p_value: float = 0.0,
+        diagonal_stat_value: float = 1.0,
+    ) -> AiTableStatsResults:
         """
         Generic method for performing pairwise statistical comparisons.
 
@@ -35,10 +43,14 @@ class AiTableStatsTestsPairWise:
         columns = dataframe.columns.tolist()
 
         if len(columns) < 2:
-            raise ValueError("The table must contain at least two columns for pairwise comparisons.")
+            raise ValueError(
+                "The table must contain at least two columns for pairwise comparisons."
+            )
 
         if reference_column and reference_column not in columns:
-            raise ValueError(f"Reference column '{reference_column}' not found in dataframe columns.")
+            raise ValueError(
+                f"Reference column '{reference_column}' not found in dataframe columns."
+            )
 
         # Initialize matrices for p-values and statistics
         p_value_matrix = pd.DataFrame(index=columns, columns=columns, dtype=float)
@@ -141,12 +153,13 @@ class AiTableStatsTestsPairWise:
             details=details_class(
                 pairwise_comparisons_matrix=comparison_matrix,
                 significant_comparisons=significant_count,
-                total_comparisons=valid_comparisons
-            )
+                total_comparisons=valid_comparisons,
+            ),
         )
 
     def student_independent_pairwise_test(
-            self, dataframe: pd.DataFrame, reference_column: Optional[str] = None) -> AiTableStatsResults:
+        self, dataframe: pd.DataFrame, reference_column: Optional[str] = None
+    ) -> AiTableStatsResults:
         """Student's t-test for independent pairwise comparisons (post-hoc after ANOVA).
 
         Args:
@@ -160,19 +173,20 @@ class AiTableStatsTestsPairWise:
             dataframe=dataframe,
             reference_column=reference_column,
             comparison_function=self._ttest_wrapper,
-            test_name='Student t-test (independent paired wise)',
+            test_name="Student t-test (independent paired wise)",
             details_class=StudentTTestPairwiseDetails,
             diagonal_p_value=1.0,
-            diagonal_stat_value=1.0  # t-statistic for comparison with self is 0
+            diagonal_stat_value=1.0,  # t-statistic for comparison with self is 0
         )
 
     def _ttest_wrapper(self, group1: pd.Series, group2: pd.Series) -> tuple[float, float]:
         """Wrapper for t-test to match the interface expected by _perform_pairwise_analysis."""
-        statistic, p_value, _ = ttest_ind(group1, group2, usevar='pooled')
+        statistic, p_value, _ = ttest_ind(group1, group2, usevar="pooled")
         return float(statistic), float(p_value)
 
     def pearson_correlation_pairwise_test(
-            self, dataframe: pd.DataFrame, reference_column: Optional[str] = None) -> AiTableStatsResults:
+        self, dataframe: pd.DataFrame, reference_column: Optional[str] = None
+    ) -> AiTableStatsResults:
         """Pearson correlation test for pairwise comparisons.
 
         Args:
@@ -186,16 +200,15 @@ class AiTableStatsTestsPairWise:
             dataframe=dataframe,
             reference_column=reference_column,
             comparison_function=pearsonr,
-            test_name='Pearson correlation',
+            test_name="Pearson correlation",
             details_class=CorrelationPairwiseDetails,
             diagonal_p_value=1.0,
-            diagonal_stat_value=1.0
+            diagonal_stat_value=1.0,
         )
 
     def spearman_correlation_pairwise_test(
-            self,
-            dataframe: pd.DataFrame,
-            reference_column: Optional[str] = None) -> AiTableStatsResults:
+        self, dataframe: pd.DataFrame, reference_column: Optional[str] = None
+    ) -> AiTableStatsResults:
         """Spearman rank correlation test for pairwise comparisons.
 
         Args:
@@ -209,8 +222,8 @@ class AiTableStatsTestsPairWise:
             dataframe=dataframe,
             reference_column=reference_column,
             comparison_function=spearmanr,
-            test_name='Spearman correlation',
+            test_name="Spearman correlation",
             details_class=CorrelationPairwiseDetails,
             diagonal_p_value=1.0,
-            diagonal_stat_value=1.0
+            diagonal_stat_value=1.0,
         )

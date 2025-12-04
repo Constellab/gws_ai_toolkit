@@ -56,7 +56,8 @@ class UserQueryMultiTablesEvent(UserQueryEventBase):
 
     def get_tables_info(self) -> str:
         return "\n".join(
-            self._get_table_ai_info(table_unique_name, table) for table_unique_name, table in self.tables.items()
+            self._get_table_ai_info(table_unique_name, table)
+            for table_unique_name, table in self.tables.items()
         )
 
     def _get_table_ai_info(self, table_unique_name: str, table: Table) -> str:
@@ -74,7 +75,9 @@ class UserQueryMultiTablesEvent(UserQueryEventBase):
 
         table_unique_name = table_unique_name.strip()
         if table_unique_name not in self.tables:
-            raise Exception(f"Table '{table_unique_name}' not found. Available tables: {', '.join(self.tables.keys())}")
+            raise Exception(
+                f"Table '{table_unique_name}' not found. Available tables: {', '.join(self.tables.keys())}"
+            )
         return self.tables[table_unique_name]
 
     def to_serializable(self) -> SerializableUserQueryMultiTablesEvent:

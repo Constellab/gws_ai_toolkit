@@ -57,5 +57,8 @@ class ChatMessageSourceModel(Model):
 
     def to_rag_dto(self) -> RagChatSource:
         return RagChatSource(
-            document_id=self.document_id, document_name=self.document_name, score=self.score, chunks=self.get_chunks()
+            document_id=self.document_id,
+            document_name=self.document_name,
+            score=self.score,
+            chunks=self.get_chunks(),
         )

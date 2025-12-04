@@ -21,7 +21,10 @@ class ChatApp(Model):
         :rtype: ChatAppDTO
         """
         return ChatAppDTO(
-            id=self.id, name=self.name, created_at=self.created_at, last_modified_at=self.last_modified_at
+            id=self.id,
+            name=self.name,
+            created_at=self.created_at,
+            last_modified_at=self.last_modified_at,
         )
 
     class Meta:

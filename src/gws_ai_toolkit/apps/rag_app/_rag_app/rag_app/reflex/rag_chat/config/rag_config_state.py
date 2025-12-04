@@ -3,10 +3,8 @@ from typing import Optional, Type, cast
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
-from gws_ai_toolkit.rag.common.rag_app_service_factory import \
-    RagAppServiceFactory
-from gws_ai_toolkit.rag.common.rag_enums import (RagProvider,
-                                                 RagResourceSyncMode)
+from gws_ai_toolkit.rag.common.rag_app_service_factory import RagAppServiceFactory
+from gws_ai_toolkit.rag.common.rag_enums import RagProvider, RagResourceSyncMode
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
 from gws_core import BaseModelDTO, Credentials, CredentialsDataOther
 from gws_reflex_main import ReflexMainState
@@ -46,7 +44,7 @@ class RagConfigState(rx.State, mixin=True):
     _rag_config: RagConfigStateConfig
     _credentials: CredentialsDataOther
 
-    __sub_class_type__: Type['RagConfigState'] | None = None
+    __sub_class_type__: Type["RagConfigState"] | None = None
 
     @abstractmethod
     async def _get_rag_config_data(self) -> RagConfigStateConfig:
@@ -127,7 +125,9 @@ class RagConfigState(rx.State, mixin=True):
             return None
         return await self._build_rag_app_service(credentials)
 
-    async def _build_rag_app_service(self, credentials: CredentialsDataOther) -> Optional[BaseRagAppService]:
+    async def _build_rag_app_service(
+        self, credentials: CredentialsDataOther
+    ) -> Optional[BaseRagAppService]:
         """Build a RAG app service."""
         provider = await self.get_rag_provider()
         if not provider:
@@ -139,15 +139,16 @@ class RagConfigState(rx.State, mixin=True):
 
         additional_config = {}
         if config.resource_tag_key:
-            additional_config['tag_key'] = config.resource_tag_key
+            additional_config["tag_key"] = config.resource_tag_key
         if config.resource_tag_value:
-            additional_config['tag_value'] = config.resource_tag_value
+            additional_config["tag_value"] = config.resource_tag_value
 
-        return RagAppServiceFactory.create_service(await self.get_resource_sync_mode(),
-                                                   rag_service, dataset_id or "", additional_config)
+        return RagAppServiceFactory.create_service(
+            await self.get_resource_sync_mode(), rag_service, dataset_id or "", additional_config
+        )
 
     @staticmethod
-    async def get_instance(state: rx.State) -> 'RagConfigState':
+    async def get_instance(state: rx.State) -> "RagConfigState":
         """Get the RagConfigState instance from any state."""
 
         if RagConfigState.__sub_class_type__ is None:
@@ -160,7 +161,7 @@ class RagConfigState(rx.State, mixin=True):
         return await state.get_state(RagConfigState.__sub_class_type__)
 
     @staticmethod
-    def set_rag_config_state_class_type(state_type: Type['RagConfigState']):
+    def set_rag_config_state_class_type(state_type: Type["RagConfigState"]):
         """Set the RagConfigState subclass type for the app.
 
         Args:
@@ -169,7 +170,8 @@ class RagConfigState(rx.State, mixin=True):
 
         if RagConfigState.__sub_class_type__ is not None:
             raise ValueError(
-                "RagConfigState subclass type is already set. Use Utils.get_first_state_of_type to get the instance.")
+                "RagConfigState subclass type is already set. Use Utils.get_first_state_of_type to get the instance."
+            )
 
         RagConfigState.__sub_class_type__ = state_type
 
@@ -187,7 +189,7 @@ class RagConfigStateFromParams(RagConfigState, rx.State):
         params = await base_state.get_params()
         return RagConfigStateConfig(
             chat_app_name=params.get("chat_app_name", ""),
-            rag_provider=params.get("rag_provider", 'ragflow'),
+            rag_provider=params.get("rag_provider", "ragflow"),
             resource_sync_mode=params.get("resource_sync_mode", "tag"),
             rag_dataset_id=params.get("rag_dataset_id"),
             rag_dataset_credentials_name=params.get("rag_dataset_credentials_name"),

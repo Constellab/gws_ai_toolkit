@@ -19,4 +19,6 @@ class MultiTableTransformEvent(FunctionSuccessEvent):
 
 
 # Union type for all events
-MultiTableTransformAgentEvent = MultiTableTransformEvent | UserQueryMultiTablesEvent | BaseFunctionAgentEvent
+MultiTableTransformAgentEvent = (
+    MultiTableTransformEvent | UserQueryMultiTablesEvent | BaseFunctionAgentEvent
+)

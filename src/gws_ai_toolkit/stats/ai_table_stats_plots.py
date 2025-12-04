@@ -1,4 +1,3 @@
-
 from typing import List, Optional, Union
 
 import numpy as np
@@ -58,38 +57,36 @@ class AiTableStatsPlots:
             text_matrix.append(text_row)
 
         # Create heatmap using transformed values
-        fig = Figure(data=Heatmap(
-            z=log_p_values.values,
-            x=p_values_matrix.columns.tolist(),
-            y=p_values_matrix.index.tolist(),
-            text=text_matrix,
-            texttemplate="%{text}",
-            textfont={"size": 10},
-            colorscale=[
-                [0.0, "darkgreen"],    # p = 1.0 (-log10(1) = 0)
-                [0.25, "lightgreen"], # p = 0.1 (-log10(0.1) = 1)
-                [0.5, "yellow"],       # p = 0.05 (-log10(0.05) ≈ 1.3)
-                [0.75, "orange"],      # p = 0.01 (-log10(0.01) = 2)
-                [1.0, "darkred"]       # p < 0.001 (-log10(0.001) = 3+)
-            ],
-            colorbar=dict(
-                title="P-value",
-                titleside="right",
-                tickmode="array",
-                tickvals=[0, 1, 1.3, 2, 3],
-                ticktext=["1.0", "0.1", "0.05", "0.01", "0.001"],
-                tickfont=dict(size=10)
-            ),
-            hoverongaps=False,
-            hovertemplate='<b>%{y} vs %{x}</b><br>P-value: %{text}<extra></extra>'
-        ))
+        fig = Figure(
+            data=Heatmap(
+                z=log_p_values.values,
+                x=p_values_matrix.columns.tolist(),
+                y=p_values_matrix.index.tolist(),
+                text=text_matrix,
+                texttemplate="%{text}",
+                textfont={"size": 10},
+                colorscale=[
+                    [0.0, "darkgreen"],  # p = 1.0 (-log10(1) = 0)
+                    [0.25, "lightgreen"],  # p = 0.1 (-log10(0.1) = 1)
+                    [0.5, "yellow"],  # p = 0.05 (-log10(0.05) ≈ 1.3)
+                    [0.75, "orange"],  # p = 0.01 (-log10(0.01) = 2)
+                    [1.0, "darkred"],  # p < 0.001 (-log10(0.001) = 3+)
+                ],
+                colorbar=dict(
+                    title="P-value",
+                    titleside="right",
+                    tickmode="array",
+                    tickvals=[0, 1, 1.3, 2, 3],
+                    ticktext=["1.0", "0.1", "0.05", "0.01", "0.001"],
+                    tickfont=dict(size=10),
+                ),
+                hoverongaps=False,
+                hovertemplate="<b>%{y} vs %{x}</b><br>P-value: %{text}<extra></extra>",
+            )
+        )
 
         fig.update_layout(
-            title={
-                'text': title,
-                'x': 0.5,
-                'xanchor': 'center'
-            },
+            title={"text": title, "x": 0.5, "xanchor": "center"},
             xaxis_title="Groups",
             yaxis_title="Groups",
             xaxis=dict(side="bottom"),
@@ -99,11 +96,14 @@ class AiTableStatsPlots:
 
         return fig
 
-    def generate_scatter_plot(self, x: Union[np.ndarray, pd.Series, List[float]],
-                              y: Union[np.ndarray, pd.Series, List[float]],
-                              x_name: Optional[str] = None,
-                              y_name: Optional[str] = None,
-                              correlation_type: str = "correlation") -> Figure:
+    def generate_scatter_plot(
+        self,
+        x: Union[np.ndarray, pd.Series, List[float]],
+        y: Union[np.ndarray, pd.Series, List[float]],
+        x_name: Optional[str] = None,
+        y_name: Optional[str] = None,
+        correlation_type: str = "correlation",
+    ) -> Figure:
         """Generate a scatter plot for correlation analysis.
 
         Args:
@@ -129,32 +129,33 @@ class AiTableStatsPlots:
         # Create scatter plot
         fig = Figure()
 
-        fig.add_trace(Scatter(
-            x=x_data,
-            y=y_data,
-            mode='markers',
-            marker=dict(
-                size=8,
-                color='blue',
-                opacity=0.7,
-                line=dict(width=1, color='darkblue')
-            ),
-            name='Data Points',
-            hovertemplate=f'<b>{x_name}</b>: %{{x}}<br><b>{y_name}</b>: %{{y}}<extra></extra>'
-        ))
+        fig.add_trace(
+            Scatter(
+                x=x_data,
+                y=y_data,
+                mode="markers",
+                marker=dict(
+                    size=8, color="blue", opacity=0.7, line=dict(width=1, color="darkblue")
+                ),
+                name="Data Points",
+                hovertemplate=f"<b>{x_name}</b>: %{{x}}<br><b>{y_name}</b>: %{{y}}<extra></extra>",
+            )
+        )
 
         # Add trend line
         z = np.polyfit(x_data, y_data, 1)
         p = np.poly1d(z)
 
-        fig.add_trace(Scatter(
-            x=x_data,
-            y=p(x_data),
-            mode='lines',
-            line=dict(color='red', width=2, dash='dash'),
-            name='Trend Line',
-            hoverinfo='skip'
-        ))
+        fig.add_trace(
+            Scatter(
+                x=x_data,
+                y=p(x_data),
+                mode="lines",
+                line=dict(color="red", width=2, dash="dash"),
+                name="Trend Line",
+                hoverinfo="skip",
+            )
+        )
 
         fig.update_layout(
             title=f"{correlation_type} Correlation Analysis",
@@ -166,8 +167,9 @@ class AiTableStatsPlots:
 
         return fig
 
-    def generate_box_plot(self, groups: List[List[Union[float, int]]],
-                          group_names: Optional[List[str]] = None) -> Figure:
+    def generate_box_plot(
+        self, groups: List[List[Union[float, int]]], group_names: Optional[List[str]] = None
+    ) -> Figure:
         """Generate a box plot for multiple groups of data.
 
         Args:
@@ -181,7 +183,7 @@ class AiTableStatsPlots:
             raise ValueError("At least one group must be provided")
 
         if group_names is None:
-            group_names = [f"Group {i+1}" for i in range(len(groups))]
+            group_names = [f"Group {i + 1}" for i in range(len(groups))]
 
         if len(groups) != len(group_names):
             raise ValueError("Number of groups must match number of group names")
@@ -189,27 +191,26 @@ class AiTableStatsPlots:
         fig = Figure()
 
         for i, (group_data, group_name) in enumerate(zip(groups, group_names)):
-            fig.add_trace(Box(
-                y=group_data,
-                name=group_name,
-                boxpoints='outliers',
-                jitter=0.3,
-                pointpos=-1.8
-            ))
+            fig.add_trace(
+                Box(y=group_data, name=group_name, boxpoints="outliers", jitter=0.3, pointpos=-1.8)
+            )
 
         fig.update_layout(
             title="Box Plot Comparison",
             yaxis_title="Values",
             xaxis_title="Groups",
             showlegend=False,
-            template="plotly_white"
+            template="plotly_white",
         )
 
         return fig
 
-    def generate_histogram(self, dataframe: pd.DataFrame,
-                          title: str = "Distribution Histogram",
-                          bins: Optional[int] = None) -> Figure:
+    def generate_histogram(
+        self,
+        dataframe: pd.DataFrame,
+        title: str = "Distribution Histogram",
+        bins: Optional[int] = None,
+    ) -> Figure:
         """Generate a histogram with multiple series for each dataframe column.
 
         Args:
@@ -226,7 +227,18 @@ class AiTableStatsPlots:
         fig = Figure()
 
         # Define lighter colors for different series
-        colors = ['lightblue', 'lightcoral', 'lightgreen', 'lightsalmon', 'plum', 'sandybrown', 'lightpink', 'lightgray', 'khaki', 'lightcyan']
+        colors = [
+            "lightblue",
+            "lightcoral",
+            "lightgreen",
+            "lightsalmon",
+            "plum",
+            "sandybrown",
+            "lightpink",
+            "lightgray",
+            "khaki",
+            "lightcyan",
+        ]
 
         for i, col in enumerate(dataframe.columns):
             column_data = dataframe[col].dropna()
@@ -236,36 +248,25 @@ class AiTableStatsPlots:
 
             color = colors[i % len(colors)]
 
-            fig.add_trace(Histogram(
-                x=column_data,
-                name=col,
-                nbinsx=bins,
-                opacity=0.6,  # Make bars transparent
-                marker=dict(
-                    color=color,
-                    line=dict(color='black', width=1)
-                ),
-                hovertemplate=f'<b>{col}</b><br>Value: %{{x}}<br>Count: %{{y}}<extra></extra>'
-            ))
+            fig.add_trace(
+                Histogram(
+                    x=column_data,
+                    name=col,
+                    nbinsx=bins,
+                    opacity=0.6,  # Make bars transparent
+                    marker=dict(color=color, line=dict(color="black", width=1)),
+                    hovertemplate=f"<b>{col}</b><br>Value: %{{x}}<br>Count: %{{y}}<extra></extra>",
+                )
+            )
 
         fig.update_layout(
-            title={
-                'text': title,
-                'x': 0.5,
-                'xanchor': 'center'
-            },
+            title={"text": title, "x": 0.5, "xanchor": "center"},
             xaxis_title="Values",
             yaxis_title="Frequency",
-            barmode='overlay',  # Overlay bars so they can be placed at the same position
+            barmode="overlay",  # Overlay bars so they can be placed at the same position
             showlegend=True,
             template="plotly_white",
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=1,
-                xanchor="left",
-                x=1.02
-            )
+            legend=dict(orientation="v", yanchor="top", y=1, xanchor="left", x=1.02),
         )
 
         return fig

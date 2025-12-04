@@ -5,7 +5,11 @@ import plotly.graph_objects as go
 from gws_core import BaseModelDTO, PlotlyResource, Table
 from pydantic import Field
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
+    CodeEvent,
+    FunctionCallEvent,
+    FunctionErrorEvent,
+)
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent
 
 from ..base_function_agent_ai import BaseFunctionAgentAi
@@ -36,7 +40,9 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
         temperature: float,
         skip_success_response: bool = False,
     ):
-        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
+        super().__init__(
+            openai_api_key, model, temperature, skip_success_response=skip_success_response
+        )
 
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""

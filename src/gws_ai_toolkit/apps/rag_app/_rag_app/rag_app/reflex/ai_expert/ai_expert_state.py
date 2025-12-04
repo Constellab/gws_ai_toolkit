@@ -1,5 +1,8 @@
 import reflex as rx
-from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import AiExpertChatConversation, AiExpertConfig
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import (
+    AiExpertChatConversation,
+    AiExpertConfig,
+)
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
     BaseChatConversation,
     BaseChatConversationConfig,

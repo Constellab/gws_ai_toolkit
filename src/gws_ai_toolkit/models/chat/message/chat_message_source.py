@@ -37,7 +37,9 @@ class ChatMessageSource(ChatMessageBase):
         This is called after the initial creation in from_chat_message_model.
         """
         self.content = chat_message.message or ""
-        self.sources = [source.to_rag_dto() for source in chat_message.sources] if chat_message.sources else []
+        self.sources = (
+            [source.to_rag_dto() for source in chat_message.sources] if chat_message.sources else []
+        )
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.

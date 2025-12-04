@@ -4,10 +4,14 @@ from gws_core import CredentialsDataOther
 from ragflow_sdk import Chat, Chunk, DataSet, Document, RAGFlow, Session
 
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
-    RagflowAskStreamResponse, RagFlowCreateChatRequest,
-    RagFlowCreateDatasetRequest, RagFlowCreateSessionRequest,
-    RagFlowUpdateChatRequest, RagFlowUpdateDatasetRequest,
-    RagFlowUpdateDocumentOptions)
+    RagflowAskStreamResponse,
+    RagFlowCreateChatRequest,
+    RagFlowCreateDatasetRequest,
+    RagFlowCreateSessionRequest,
+    RagFlowUpdateChatRequest,
+    RagFlowUpdateDatasetRequest,
+    RagFlowUpdateDocumentOptions,
+)
 
 
 class RagFlowService:
@@ -18,7 +22,7 @@ class RagFlowService:
     api_key: str
 
     def __init__(self, base_url: str, api_key: str):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self._client = None
 
@@ -26,7 +30,6 @@ class RagFlowService:
         """Get or create the RagFlow SDK client."""
         if self._client is None:
             try:
-
                 self._client = RAGFlow(api_key=self.api_key, base_url=self.base_url)
             except ImportError:
                 raise RuntimeError(
@@ -54,8 +57,8 @@ class RagFlowService:
         try:
             sdk_dataset = client.create_dataset(
                 name=dataset.name,
-                chunk_method=dataset.parse_method if hasattr(dataset, 'parse_method') else 'naive',
-                permission=dataset.permission if hasattr(dataset, 'permission') else 'me'
+                chunk_method=dataset.parse_method if hasattr(dataset, "parse_method") else "naive",
+                permission=dataset.permission if hasattr(dataset, "permission") else "me",
             )
 
             return sdk_dataset
@@ -103,8 +106,9 @@ class RagFlowService:
 
     ################################# DOCUMENT MANAGEMENT #################################
 
-    def upload_documents(self, doc_paths: List[str], dataset_id: str,
-                         filenames: List[str] | None = None) -> List[Document]:
+    def upload_documents(
+        self, doc_paths: List[str], dataset_id: str, filenames: List[str] | None = None
+    ) -> List[Document]:
         """Upload multiple documents using SDK."""
         try:
             # Get dataset object using our helper method
@@ -114,13 +118,10 @@ class RagFlowService:
             documents = []
             for i, doc_path in enumerate(doc_paths):
                 filename = filenames[i] if filenames and i < len(filenames) else None
-                display_name = filename if filename else doc_path.split('/')[-1]
+                display_name = filename if filename else doc_path.split("/")[-1]
 
-                with open(doc_path, 'rb') as f:
-                    documents.append({
-                        'display_name': display_name,
-                        'blob': f.read()
-                    })
+                with open(doc_path, "rb") as f:
+                    documents.append({"display_name": display_name, "blob": f.read()})
 
             # Upload documents
             ragflow_response: List[Document] = dataset.upload_documents(documents)
@@ -129,8 +130,9 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error uploading documents: {str(e)}") from e
 
-    def upload_document(self, doc_paths: str, dataset_id: str,
-                        filename: str | None = None) -> Document:
+    def upload_document(
+        self, doc_paths: str, dataset_id: str, filename: str | None = None
+    ) -> Document:
         """Upload single document using SDK."""
         response = self.upload_documents([doc_paths], dataset_id, [filename] if filename else None)
         return response[0]
@@ -168,15 +170,15 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error getting all documents: {str(e)}") from e
 
-    def update_document(self, dataset_id: str, document_id: str,
-                        options: RagFlowUpdateDocumentOptions) -> Document:
+    def update_document(
+        self, dataset_id: str, document_id: str, options: RagFlowUpdateDocumentOptions
+    ) -> Document:
         """Update a document (limited support in SDK)."""
         document = self.get_document(dataset_id, document_id)
 
-        rag_doc = document.update({
-            'display_name': options.display_name,
-            'meta_fields': options.meta_fields
-        })
+        rag_doc = document.update(
+            {"display_name": options.display_name, "meta_fields": options.meta_fields}
+        )
 
         return rag_doc
 
@@ -227,9 +229,15 @@ class RagFlowService:
 
     ################################# CHUNK MANAGEMENT #################################
 
-    def retrieve_chunks(self, dataset_id: str, query: str, top_k: int = 5, similarity_threshold: float = 0.0,
-                        vector_similarity_weight: float = 0.3,
-                        document_ids: List[str] | None = None) -> List[Chunk]:
+    def retrieve_chunks(
+        self,
+        dataset_id: str,
+        query: str,
+        top_k: int = 5,
+        similarity_threshold: float = 0.0,
+        vector_similarity_weight: float = 0.3,
+        document_ids: List[str] | None = None,
+    ) -> List[Chunk]:
         """Retrieve chunks using SDK."""
         client = self._get_client()
 
@@ -241,7 +249,7 @@ class RagFlowService:
                 similarity_threshold=similarity_threshold,
                 vector_similarity_weight=vector_similarity_weight,
                 top_k=top_k,
-                document_ids=document_ids
+                document_ids=document_ids,
             )
 
             return retrieved_chunks
@@ -249,10 +257,9 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error retrieving chunks: {str(e)}") from e
 
-    def get_document_chunks(self, dataset_id: str, document_id: str,
-                            keyword: str = "",
-                            page: int = 1,
-                            limit: int = 20) -> List[Chunk]:
+    def get_document_chunks(
+        self, dataset_id: str, document_id: str, keyword: str = "", page: int = 1, limit: int = 20
+    ) -> List[Chunk]:
         """Get chunks for a specific document using SDK."""
         try:
             # Get document object
@@ -296,21 +303,21 @@ class RagFlowService:
         try:
             # Build parameters for SDK call
             params = {
-                'name': chat.name,
+                "name": chat.name,
             }
 
             # Add optional parameters only if provided
             if chat.avatar:
-                params['avatar'] = chat.avatar
+                params["avatar"] = chat.avatar
 
             if chat.knowledgebases:
-                params['dataset_ids'] = chat.knowledgebases
+                params["dataset_ids"] = chat.knowledgebases
 
             if chat.llm is not None:
-                params['llm'] = chat.llm
+                params["llm"] = chat.llm
 
             if chat.prompt is not None:
-                params['prompt'] = chat.prompt
+                params["prompt"] = chat.prompt
 
             sdk_chat = client.create_chat(**params)
 
@@ -430,7 +437,9 @@ class RagFlowService:
         except Exception as e:
             raise RuntimeError(f"Error getting session: {str(e)}") from e
 
-    def ask_stream(self, chat_id: str, query: str, session_id: Optional[str] = None) -> Generator[RagflowAskStreamResponse, None, None]:
+    def ask_stream(
+        self, chat_id: str, query: str, session_id: Optional[str] = None
+    ) -> Generator[RagflowAskStreamResponse, None, None]:
         """Ask question using SDK with streaming."""
         try:
             # Get chat object
@@ -452,7 +461,7 @@ class RagFlowService:
                     content=answer.content,
                     role=answer.role,
                     reference=answer.reference,
-                    session_id=session.id
+                    session_id=session.id,
                 )
 
         except Exception as e:
@@ -477,8 +486,8 @@ class RagFlowService:
         ValueError
             If required credentials are missing
         """
-        if 'route' not in credentials.data:
+        if "route" not in credentials.data:
             raise ValueError("The credentials must contain the field 'route'")
-        if 'api_key' not in credentials.data:
+        if "api_key" not in credentials.data:
             raise ValueError("The credentials must contain the field 'api_key'")
-        return RagFlowService(credentials.data['route'], credentials.data['api_key'])
+        return RagFlowService(credentials.data["route"], credentials.data["api_key"])

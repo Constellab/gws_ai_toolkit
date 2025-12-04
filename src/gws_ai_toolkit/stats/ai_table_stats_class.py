@@ -1,5 +1,3 @@
-
-
 from typing import List, Optional, cast
 
 import pandas as pd
@@ -9,9 +7,11 @@ from pandas import DataFrame
 from .ai_table_stats_base import AiTableStatsBase
 from .ai_table_stats_tests import AiTableStatsTests
 from .ai_table_stats_tests_pairwise import AiTableStatsTestsPairWise
-from .ai_table_stats_type import (AiTableStatsResults,
-                                  NormalitySummaryTestDetails,
-                                  StudentTTestPairwiseDetails)
+from .ai_table_stats_type import (
+    AiTableStatsResults,
+    NormalitySummaryTestDetails,
+    StudentTTestPairwiseDetails,
+)
 
 
 class AiTableStats(AiTableStatsBase):
@@ -89,8 +89,7 @@ class AiTableStats(AiTableStatsBase):
 
     _tests: AiTableStatsTests
 
-    def __init__(self, dataframe: DataFrame,
-                 columns_are_independent: bool = True):
+    def __init__(self, dataframe: DataFrame, columns_are_independent: bool = True):
         super().__init__(dataframe)
         self._columns_are_independent = columns_are_independent
         self._tests = AiTableStatsTests()
@@ -119,14 +118,18 @@ class AiTableStats(AiTableStatsBase):
             if self._columns_are_independent:
                 # Chi2 independence test
                 Logger.debug("Running: Khi2 independance")
-                contingency_table = pd.crosstab(self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1])
+                contingency_table = pd.crosstab(
+                    self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
+                )
                 result = self._tests.chi2_independence_test(contingency_table.values)
                 self._record_test(result)
                 Logger.debug(f"Result: {result}")
             else:
                 # McNemar test
                 Logger.debug("Running: Khi2 McNemar")
-                contingency_table = pd.crosstab(self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1])
+                contingency_table = pd.crosstab(
+                    self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1]
+                )
                 result = self._tests.mcnemar_test(contingency_table.values)
                 self._record_test(result)
                 Logger.debug(f"Result: {result}")
@@ -151,16 +154,20 @@ class AiTableStats(AiTableStatsBase):
                 if self._columns_are_independent:
                     Logger.debug("Running: Student independent")
                     result = self._tests.student_independent_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
-                        self._dataframe.columns[0], self._dataframe.columns[1]
+                        self._dataframe.iloc[:, 0],
+                        self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0],
+                        self._dataframe.columns[1],
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
                 else:
                     Logger.debug("Running: Student paired")
                     result = self._tests.student_paired_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
-                        self._dataframe.columns[0], self._dataframe.columns[1]
+                        self._dataframe.iloc[:, 0],
+                        self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0],
+                        self._dataframe.columns[1],
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
@@ -180,23 +187,29 @@ class AiTableStats(AiTableStatsBase):
                         self._record_test(tukey_result)
                         Logger.debug(f"Tukey Result: {tukey_result}")
                 else:
-                    raise ValueError("Error: More than 2 non-independent quantitative columns not supported")
+                    raise ValueError(
+                        "Error: More than 2 non-independent quantitative columns not supported"
+                    )
         else:
             # Fifth step
             if num_columns == 2:
                 if self._columns_are_independent:
                     Logger.debug("Running: Mann-Whitney")
                     result = self._tests.mann_whitney_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
-                        self._dataframe.columns[0], self._dataframe.columns[1]
+                        self._dataframe.iloc[:, 0],
+                        self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0],
+                        self._dataframe.columns[1],
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
                 else:
                     Logger.debug("Running: Wilcoxon")
                     result = self._tests.wilcoxon_test(
-                        self._dataframe.iloc[:, 0], self._dataframe.iloc[:, 1],
-                        self._dataframe.columns[0], self._dataframe.columns[1]
+                        self._dataframe.iloc[:, 0],
+                        self._dataframe.iloc[:, 1],
+                        self._dataframe.columns[0],
+                        self._dataframe.columns[1],
                     )
                     self._record_test(result)
                     Logger.debug(f"Result: {result}")
@@ -254,21 +267,23 @@ class AiTableStats(AiTableStatsBase):
 
         # Generate histogram figure for visualization
         histogram_figure = self._tests.plots.generate_histogram(
-            dataframe,
-            title="Distribution Histogram for Normality Test"
+            dataframe, title="Distribution Histogram for Normality Test"
         )
 
         self._record_test(
             AiTableStatsResults(
                 test_name="Normality summary",
-                result_text="All columns are normal" if all_normal else "At least one column is not normal",
+                result_text="All columns are normal"
+                if all_normal
+                else "At least one column is not normal",
                 result_figure=histogram_figure,
                 details=NormalitySummaryTestDetails(
                     all_normal=all_normal,
-                    test_used='Shapiro-Wilk' if num_rows < 50 else 'Kolmogorov-Smirnov',
-                    result_texts=result_texts
-                )
-            ))
+                    test_used="Shapiro-Wilk" if num_rows < 50 else "Kolmogorov-Smirnov",
+                    result_texts=result_texts,
+                ),
+            )
+        )
 
         return all_normal
 
@@ -304,12 +319,16 @@ class AiTableStats(AiTableStatsBase):
             return None
 
         # If ANOVA was done and Student pairwise not done, suggest Student pairwise
-        if self.history_contains("ANOVA") and not self.history_contains("Student t-test (independent paired wise)"):
+        if self.history_contains("ANOVA") and not self.history_contains(
+            "Student t-test (independent paired wise)"
+        ):
             return "Student t-test (independent paired wise)"
 
         return None
 
-    def run_student_independent_pairwise(self, reference_column: Optional[str] = None) -> AiTableStatsResults:
+    def run_student_independent_pairwise(
+        self, reference_column: Optional[str] = None
+    ) -> AiTableStatsResults:
         """
         Run Student t-test (independent paired wise) with appropriate corrections.
 
@@ -336,15 +355,20 @@ class AiTableStats(AiTableStatsBase):
         """
         # Check prerequisites
         if not self.history_contains("ANOVA"):
-            raise ValueError("Error: ANOVA test must be performed before running Student t-test (independent paired wise)")
+            raise ValueError(
+                "Error: ANOVA test must be performed before running Student t-test (independent paired wise)"
+            )
 
         if not self.history_contains("Tukey HSD"):
             raise ValueError(
-                "Error: Tukey HSD test must be performed before running Student t-test (independent paired wise)")
+                "Error: Tukey HSD test must be performed before running Student t-test (independent paired wise)"
+            )
 
         # Get the raw pairwise t-test results
         pair_wise_tester = AiTableStatsTestsPairWise()
-        raw_result = pair_wise_tester.student_independent_pairwise_test(self._dataframe, reference_column)
+        raw_result = pair_wise_tester.student_independent_pairwise_test(
+            self._dataframe, reference_column
+        )
         self._record_test(raw_result)
 
         details: StudentTTestPairwiseDetails = cast(StudentTTestPairwiseDetails, raw_result.details)
@@ -362,7 +386,9 @@ class AiTableStats(AiTableStatsBase):
         else:
             # Apply Scheffe correction for paired columns
             # Never called for now
-            correction_result = self._tests.scheffe_test(details.pairwise_comparisons_matrix, num_columns)
+            correction_result = self._tests.scheffe_test(
+                details.pairwise_comparisons_matrix, num_columns
+            )
 
         self._record_test(correction_result)
         return correction_result

@@ -21,9 +21,7 @@ class AiTableDataState(rx.State):
     # UI state
     right_panel_state: RightPanelState = "closed"
     zoom_level: float = 1.0  # 1.0 = 100%, 0.3 = 30%, etc.
-    column_size_mode: ColumnSizeMode = (
-        "default"  # default = autoSize on columns, dense = ag_grid_auto_size_strategy, fixed = fixed widths
-    )
+    column_size_mode: ColumnSizeMode = "default"  # default = autoSize on columns, dense = ag_grid_auto_size_strategy, fixed = fixed widths
 
     # Table
     _excel_files: dict[str, ExcelFile] = {}
@@ -259,7 +257,10 @@ class AiTableDataState(rx.State):
         new_unique_name = Utils.generate_unique_str_for_list(list(existing_names), new_name)
 
         table_item = ExcelFile.from_file(
-            id_=str(uuid.uuid4()), name=new_unique_name, file_path=file.path, resource_model_id=resource_model_id
+            id_=str(uuid.uuid4()),
+            name=new_unique_name,
+            file_path=file.path,
+            resource_model_id=resource_model_id,
         )
 
         self.add_excel_file(table_item)

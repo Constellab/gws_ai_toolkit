@@ -92,7 +92,9 @@ class ExcelFile:
         return None
 
     @staticmethod
-    def from_file(id_: str, name: str, file_path: str, resource_model_id: str | None = None) -> "ExcelFile":
+    def from_file(
+        id_: str, name: str, file_path: str, resource_model_id: str | None = None
+    ) -> "ExcelFile":
         """Create DataFrameItem from file path"""
         item = ExcelFile(id_=id_, name=name, resource_model_id=resource_model_id)
 

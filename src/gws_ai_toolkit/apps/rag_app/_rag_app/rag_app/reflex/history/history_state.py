@@ -51,7 +51,9 @@ class HistoryState(rx.State):
             conversation_service = ChatConversationService()
 
             with await main_state.authenticate_user():
-                conversations = conversation_service.get_my_conversations_by_chat_app(chat_app_name=chat_app_name)
+                conversations = conversation_service.get_my_conversations_by_chat_app(
+                    chat_app_name=chat_app_name
+                )
 
                 # Convert ChatConversation models to ChatConversationDTOs
                 self.conversations = [conv.to_dto() for conv in conversations]

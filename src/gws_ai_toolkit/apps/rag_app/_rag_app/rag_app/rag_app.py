@@ -4,7 +4,10 @@ from gws_reflex_main import register_gws_reflex_app
 
 from .config_page import combined_config_page
 from .custom_states import CustomAppConfigState
-from .reflex.ai_expert.ai_expert_component import ai_expert_component, ai_expert_header_default_buttons_component
+from .reflex.ai_expert.ai_expert_component import (
+    ai_expert_component,
+    ai_expert_header_default_buttons_component,
+)
 from .reflex.ai_expert.ai_expert_state import AiExpertState
 from .reflex.chat_base.chat_config import ChatConfig
 from .reflex.core.app_config_state import AppConfigState

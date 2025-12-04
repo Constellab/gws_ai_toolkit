@@ -23,7 +23,9 @@ class MultiTableTransformConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent, UserQueryMultiTablesEvent]):
+class MultiTableAgentAi(
+    BaseFunctionAgentAi[MultiTableTransformAgentEvent, UserQueryMultiTablesEvent]
+):
     """Multi-table transform agent service for data manipulation using OpenAI"""
 
     def __init__(
@@ -33,7 +35,9 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent, UserQ
         temperature: float,
         skip_success_response: bool = False,
     ):
-        super().__init__(openai_api_key, model, temperature, skip_success_response=skip_success_response)
+        super().__init__(
+            openai_api_key, model, temperature, skip_success_response=skip_success_response
+        )
 
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
@@ -182,7 +186,7 @@ class MultiTableAgentAi(BaseFunctionAgentAi[MultiTableTransformAgentEvent, UserQ
             output_tables_instruction = f"""
 # Expected Output Tables
 The user expects the following output table names (use these as keys in the 'result_tables' dictionary):
-{', '.join(f"'{name}'" for name in user_query.output_table_names)}
+{", ".join(f"'{name}'" for name in user_query.output_table_names)}
 """
 
         return f"""You are an AI assistant specialized in multi-table data operations, including joining, merging, transforming, and analyzing multiple datasets. You have access to information about multiple tables/datasets but not the actual data.
@@ -194,7 +198,7 @@ Your role is to help users perform operations on multiple tables. When users req
 
 1. Generate Python code that works with multiple DataFrames
 2. Ensure the code assigns the final result(s) to a dictionary named 'result_tables'
-3. The 'result_tables' dictionary should have descriptive keys and pandas DataFrame values{' - use the expected output table names if provided above' if user_query.output_table_names else ''}
+3. The 'result_tables' dictionary should have descriptive keys and pandas DataFrame values{" - use the expected output table names if provided above" if user_query.output_table_names else ""}
 4. Use pandas operations for data manipulation and merging
 5. Make reasonable assumptions about data based on column names and types
 6. Handle potential data issues gracefully (missing values, data types, etc.)

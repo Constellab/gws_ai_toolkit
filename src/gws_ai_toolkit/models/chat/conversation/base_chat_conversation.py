@@ -142,7 +142,8 @@ class BaseChatConversation(ABC, Generic[U]):
             )
         else:
             return ChatMessageStreaming(
-                content=content, external_id=external_id or self.current_response_message.external_id
+                content=content,
+                external_id=external_id or self.current_response_message.external_id,
             )
 
     def _save_conversation(self, conversation_dto: SaveChatConversationDTO) -> None:

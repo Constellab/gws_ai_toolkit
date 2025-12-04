@@ -1,17 +1,28 @@
 import os
 from typing import cast
 
-from gws_core import (ConfigParams, ConfigSpecs, CredentialsDataBasic,
-                      CredentialsService, DockerComposeStatus, DockerService,
-                      InputSpecs, OutputSpecs, Task, TaskInputs, TaskOutputs,
-                      TypingStyle, task_decorator)
+from gws_core import (
+    ConfigParams,
+    ConfigSpecs,
+    CredentialsDataBasic,
+    CredentialsService,
+    DockerComposeStatus,
+    DockerService,
+    InputSpecs,
+    OutputSpecs,
+    Task,
+    TaskInputs,
+    TaskOutputs,
+    TypingStyle,
+    task_decorator,
+)
 
 
 @task_decorator(
     "RagflowStartDockerCompose",
     human_name="Start RagFlow Docker Compose",
     short_description="Start the RagFlow docker compose services",
-    style=TypingStyle.community_image("ragflow", "#4A90E2")
+    style=TypingStyle.community_image("ragflow", "#4A90E2"),
 )
 class RagflowStartDockerCompose(Task):
     """
@@ -66,8 +77,8 @@ class RagflowStartDockerCompose(Task):
         self.log_info_message("Retrieving credentials...")
         credentials = CredentialsService.get_or_create_basic_credential(
             name="gws_ai_toolkit-ragflow-docker",
-            username='user',
-            description="Basic credentials for Docker compose gws_ai_toolkit/ragflow"
+            username="user",
+            description="Basic credentials for Docker compose gws_ai_toolkit/ragflow",
         )
 
         credentials_data = cast(CredentialsDataBasic, credentials.get_data_object())
@@ -81,9 +92,7 @@ class RagflowStartDockerCompose(Task):
             unique_name="ragflow",
             folder_path=docker_folder_path,
             description="RagFlow docker compose services",
-            env={
-                "PASSWORD": credentials_data.password
-            }
+            env={"PASSWORD": credentials_data.password},
         )
 
         self.log_info_message("Docker Compose started, waiting for ready status...")
@@ -94,7 +103,7 @@ class RagflowStartDockerCompose(Task):
             unique_name="ragflow",
             interval_seconds=10,
             max_attempts=20,
-            message_dispatcher=self.message_dispatcher
+            message_dispatcher=self.message_dispatcher,
         )
 
         if response.composeStatus.status != DockerComposeStatus.UP:

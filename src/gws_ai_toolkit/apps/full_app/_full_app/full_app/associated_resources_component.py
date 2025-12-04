@@ -24,14 +24,18 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
         rx.text(resource.name, size="1"),
         rx.spacer(),
         rx.menu.root(
-            rx.menu.trigger(rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost", cursor="pointer")),
+            rx.menu.trigger(
+                rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost", cursor="pointer")
+            ),
             rx.menu.content(
                 rx.cond(
                     resource.is_in_rag,
                     rx.menu.item(
                         rx.icon("bot", size=16),
                         "Open AI Expert",
-                        on_click=lambda: AssociatedResourcesState.open_ai_expert_from_resource(resource.id),
+                        on_click=lambda: AssociatedResourcesState.open_ai_expert_from_resource(
+                            resource.id
+                        ),
                         cursor="pointer",
                     ),
                 ),
@@ -40,14 +44,18 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
                     rx.menu.item(
                         rx.icon("table", size=16),
                         "Open Excel AI Table",
-                        on_click=lambda: AssociatedResourcesState.open_ai_table_from_resource(resource.id),
+                        on_click=lambda: AssociatedResourcesState.open_ai_table_from_resource(
+                            resource.id
+                        ),
                         cursor="pointer",
                     ),
                 ),
                 rx.menu.item(
                     rx.icon("external-link", size=16),
                     "Open document",
-                    on_click=lambda: AssociatedResourcesState.open_document_from_resource(resource.id),
+                    on_click=lambda: AssociatedResourcesState.open_document_from_resource(
+                        resource.id
+                    ),
                     cursor="pointer",
                 ),
             ),

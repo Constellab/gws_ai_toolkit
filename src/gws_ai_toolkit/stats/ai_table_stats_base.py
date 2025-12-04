@@ -1,15 +1,11 @@
-
-
 from typing import Optional
 
 from pandas import DataFrame, api
 
-from .ai_table_stats_type import (AiTableStatsResultList, AiTableStatsResults,
-                                  AiTableStatsTestName)
+from .ai_table_stats_type import AiTableStatsResultList, AiTableStatsResults, AiTableStatsTestName
 
 
 class AiTableStatsBase:
-
     _dataframe: DataFrame
     _tests_history: AiTableStatsResultList
 
@@ -34,7 +30,9 @@ class AiTableStatsBase:
 
     def columns_are_quantitative(self) -> bool:
         """Check if all columns are quantitative (numeric)"""
-        return all(api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns)
+        return all(
+            api.types.is_numeric_dtype(self._dataframe[col]) for col in self._dataframe.columns
+        )
 
     def get_tests_history(self) -> AiTableStatsResultList:
         """Get the history of all statistical tests performed."""

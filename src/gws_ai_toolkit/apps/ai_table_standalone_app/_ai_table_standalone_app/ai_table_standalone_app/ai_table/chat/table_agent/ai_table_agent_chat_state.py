@@ -87,7 +87,9 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
         """
 
         if not self._selected_tables:
-            raise ValueError("No selected tables available for conversation, please select a table.")
+            raise ValueError(
+                "No selected tables available for conversation, please select a table."
+            )
 
         # Get config
         app_config_state = await self.get_state(AiTableAgentChatConfigState)
@@ -173,7 +175,8 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
                 id=current_table.id,
                 name=current_table.name,
                 sheet_name=current_table.sheet_name,
-                unique_name=current_table.name + (f" > {current_table.sheet_name}" if current_table.sheet_name else ""),
+                unique_name=current_table.name
+                + (f" > {current_table.sheet_name}" if current_table.sheet_name else ""),
             )
 
     @rx.event
@@ -181,7 +184,9 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
         """Remove a table from the current tables by id and sheet name."""
 
         self._selected_tables = [
-            t for t in self._selected_tables if not (t.id == table.id and t.sheet_name == table.sheet_name)
+            t
+            for t in self._selected_tables
+            if not (t.id == table.id and t.sheet_name == table.sheet_name)
         ]
 
     @rx.event

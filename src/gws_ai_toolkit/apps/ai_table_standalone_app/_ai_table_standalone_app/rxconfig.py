@@ -17,7 +17,7 @@ def _init_reflex() -> None:
     ReflexInit.init()
 
 
-api_url = os.environ.get('GWS_REFLEX_API_URL')
+api_url = os.environ.get("GWS_REFLEX_API_URL")
 if api_url is None:
     raise ValueError("GWS_REFLEX_API_URL environment variable is not set")
 # [END_AUTO_CODE]
@@ -26,7 +26,7 @@ config = rxe.Config(
     app_name="ai_table_standalone_app",
     plugins=[rx.plugins.SitemapPlugin()],
     # [START_AUTO_CODE]
-    api_url=api_url
+    api_url=api_url,
     # [END_AUTO_CODE]
 )
 

@@ -44,7 +44,9 @@ class TestChatConversationService(BaseTestCase):
     def tearDown(self):
         """Clean up after each test."""
         # Delete test data - CASCADE should handle message sources
-        ChatMessageModel.delete().where(ChatMessageModel.conversation == self.test_conversation).execute()
+        ChatMessageModel.delete().where(
+            ChatMessageModel.conversation == self.test_conversation
+        ).execute()
         ChatConversation.delete().where(ChatConversation.id == self.test_conversation.id).execute()
         ChatApp.delete().where(ChatApp.id == self.test_chat_app.id).execute()
 
@@ -89,9 +91,13 @@ class TestChatConversationService(BaseTestCase):
             mode="coding",
             label="Multi-message Conversation",
             messages=[
-                ChatMessageText(role="user", content="Can you write a Python function?", external_id="msg_001"),
+                ChatMessageText(
+                    role="user", content="Can you write a Python function?", external_id="msg_001"
+                ),
                 ChatMessageCode(
-                    role="assistant", code="def hello_world():\n    print('Hello, World!')", external_id="msg_002"
+                    role="assistant",
+                    code="def hello_world():\n    print('Hello, World!')",
+                    external_id="msg_002",
                 ),
                 ChatMessageText(role="user", content="Thank you!", external_id="msg_003"),
             ],
@@ -122,7 +128,9 @@ class TestChatConversationService(BaseTestCase):
 
         # Verify code message
         self.assertEqual(len(code_messages), 1)
-        self.assertEqual(code_messages[0].data["code"], "def hello_world():\n    print('Hello, World!')")
+        self.assertEqual(
+            code_messages[0].data["code"], "def hello_world():\n    print('Hello, World!')"
+        )
         self.assertEqual(code_messages[0].role, "assistant")
 
         # Verify assistant messages
@@ -192,7 +200,9 @@ class TestChatConversationService(BaseTestCase):
         self.assertIsNone(result)
 
         # Verify messages were also deleted (CASCADE)
-        messages = list(ChatMessageModel.select().where(ChatMessageModel.conversation == conversation_id))
+        messages = list(
+            ChatMessageModel.select().where(ChatMessageModel.conversation == conversation_id)
+        )
         self.assertEqual(len(messages), 0)
 
 

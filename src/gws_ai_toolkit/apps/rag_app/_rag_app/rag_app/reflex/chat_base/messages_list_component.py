@@ -13,7 +13,10 @@ from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSo
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
-from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase, ChatUserMessageText
+from gws_ai_toolkit.models.chat.message.chat_user_message import (
+    ChatUserMessageBase,
+    ChatUserMessageText,
+)
 from gws_reflex_main import user_profile_picture
 
 from .chat_config import ChatConfig
@@ -122,7 +125,9 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
                 width="100%",
             ),
             rx.box(
-                rx.foreach(config.state.chat_messages, lambda message: _message_bubble(message, config)),
+                rx.foreach(
+                    config.state.chat_messages, lambda message: _message_bubble(message, config)
+                ),
                 # Display current response message separately
                 rx.cond(
                     config.state.current_response_message,
@@ -184,7 +189,9 @@ def _message_component(message: ChatMessage, config: ChatConfig) -> rx.Component
     )
 
 
-def _text_content(message: ChatMessageText | ChatUserMessageText | ChatMessageStreaming) -> rx.Component:
+def _text_content(
+    message: ChatMessageText | ChatUserMessageText | ChatMessageStreaming,
+) -> rx.Component:
     """Renders text content with markdown support.
 
     Args:

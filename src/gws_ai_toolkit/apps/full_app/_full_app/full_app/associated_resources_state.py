@@ -4,7 +4,14 @@ import reflex as rx
 from gws_ai_toolkit._app.ai_rag import AiExpertState
 from gws_ai_toolkit.core.utils import Utils
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_core import BaseModelDTO, EntityTagList, Logger, ResourceModel, ResourceSearchBuilder, TagEntityType
+from gws_core import (
+    BaseModelDTO,
+    EntityTagList,
+    Logger,
+    ResourceModel,
+    ResourceSearchBuilder,
+    TagEntityType,
+)
 from gws_reflex_main import ReflexMainState
 
 

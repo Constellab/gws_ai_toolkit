@@ -34,7 +34,10 @@ from gws_core.config.param.code_param.json_code_param import JsonCodeParam
 from pydantic import TypeAdapter
 
 from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
-from gws_ai_toolkit.core.agents.table.table_agent_ai_events import SerializableTableAgentEvent, TableAgentEvent
+from gws_ai_toolkit.core.agents.table.table_agent_ai_events import (
+    SerializableTableAgentEvent,
+    TableAgentEvent,
+)
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import (
     SerializableUserQueryMultiTablesEvent,
     UserQueryMultiTablesEvent,
@@ -157,7 +160,9 @@ class TableAgentReplayTask(Task):
         for i, resource in enumerate(resource_list):
             if resource is not None:
                 if not isinstance(resource, Table):
-                    error_msg = f"Resource at index {i} is not a Table. All input resources must be Tables."
+                    error_msg = (
+                        f"Resource at index {i} is not a Table. All input resources must be Tables."
+                    )
                     self.log_error_message(error_msg)
                     raise ValueError(error_msg)
                 resource_name = resource.name if resource.name else f"table_{i}"
@@ -191,7 +196,9 @@ class TableAgentReplayTask(Task):
         temperature = params.get_value("temperature")
 
         # Create TableAgentAi instance
-        self.log_info_message(f"Initializing TableAgentAI with model={model}, temperature={temperature}")
+        self.log_info_message(
+            f"Initializing TableAgentAI with model={model}, temperature={temperature}"
+        )
 
         replay_agent = TableAgentAi(
             openai_api_key=openai_api_key,
@@ -217,11 +224,16 @@ class TableAgentReplayTask(Task):
         output_resource_set = ResourceSet()
         for resource_name, resource in output_resources.items():
             # Only include tables that are new or different from input tables
-            if resource_name not in input_resources or resource is not input_resources[resource_name]:
+            if (
+                resource_name not in input_resources
+                or resource is not input_resources[resource_name]
+            ):
                 output_resource_set.add_resource(resource, unique_name=resource_name)
 
         self.update_progress_value(100, "Replay completed")
-        self.log_success_message(f"Table Agent Replay completed with {len(output_resource_set)} output table(s)")
+        self.log_success_message(
+            f"Table Agent Replay completed with {len(output_resource_set)} output table(s)"
+        )
 
         return {"output_resource_set": output_resource_set}
 
@@ -304,7 +316,9 @@ class TableAgentReplayTask(Task):
         for serialized_event in chunk:
             # Handle UserQuery events - convert to runtime with current available tables
             if isinstance(serialized_event, SerializableUserQueryMultiTablesEvent):
-                runtime_event = UserQueryMultiTablesEvent.from_serializable(serialized_event, available_tables)
+                runtime_event = UserQueryMultiTablesEvent.from_serializable(
+                    serialized_event, available_tables
+                )
                 runtime_events.append(runtime_event)
 
             # For other serializable events (FunctionCallEvent, etc.), they're already runtime-compatible
