@@ -1,8 +1,9 @@
-from typing import Any, Dict, List
+from typing import Any
+
+from gws_core import ResourceModel, ResourceSearchBuilder, Tag
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
-from gws_core import ResourceModel, ResourceSearchBuilder, Tag
 
 
 class TagRagAppService(BaseRagAppService):
@@ -16,7 +17,7 @@ class TagRagAppService(BaseRagAppService):
     tag_value: str
 
     def __init__(
-        self, rag_service: BaseRagService, dataset_id: str, additional_config: Dict[str, Any] = None
+        self, rag_service: BaseRagService, dataset_id: str, additional_config: dict[str, Any] = None
     ) -> None:
         if additional_config is None:
             additional_config = {}
@@ -34,7 +35,7 @@ class TagRagAppService(BaseRagAppService):
     def get_sync_to_rag_tag(self) -> Tag:
         return Tag(self.tag_key, self.tag_value)
 
-    def get_all_resources_to_send_to_rag(self) -> List[ResourceModel]:
+    def get_all_resources_to_send_to_rag(self) -> list[ResourceModel]:
         """
         Get all resources compatible with the RAG platform.
         It return only resources store in folder in datahub.
@@ -46,7 +47,7 @@ class TagRagAppService(BaseRagAppService):
 
         return research_search.search_all()
 
-    def get_chat_default_filters(self) -> Dict[str, Any]:
+    def get_chat_default_filters(self) -> dict[str, Any]:
         """Get the default inputs for the chat. This can be used to filter chat response."""
         return {}
 

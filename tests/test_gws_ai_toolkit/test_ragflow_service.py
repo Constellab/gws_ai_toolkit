@@ -1,13 +1,12 @@
 import os
 from unittest import TestCase, skipIf
 
-from ragflow_sdk import Chat, Session
-
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagFlowCreateChatRequest,
     RagFlowCreateSessionRequest,
 )
 from gws_ai_toolkit.rag.ragflow.ragflow_service import RagFlowService
+from ragflow_sdk import Chat, Session
 
 
 # test_ragflow_service.py

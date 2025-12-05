@@ -1,4 +1,3 @@
-from typing import Optional
 
 from gws_core import NotFoundException
 
@@ -36,7 +35,7 @@ class ChatAppService:
 
         return chat_app
 
-    def get_by_id(self, chat_app_id: str) -> Optional[ChatApp]:
+    def get_by_id(self, chat_app_id: str) -> ChatApp | None:
         """Get a chat app by ID.
 
         :param chat_app_id: The ID of the chat app to retrieve
@@ -57,7 +56,7 @@ class ChatAppService:
         """
         return ChatApp.get_by_id_and_check(chat_app_id)
 
-    def get_by_name(self, name: str) -> Optional[ChatApp]:
+    def get_by_name(self, name: str) -> ChatApp | None:
         """Get a chat app by name.
 
         :param name: The name of the chat app to retrieve

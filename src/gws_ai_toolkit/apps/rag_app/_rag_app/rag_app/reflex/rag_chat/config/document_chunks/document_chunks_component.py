@@ -1,5 +1,4 @@
 import reflex as rx
-
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
 
 from .document_chunks_state import DocumentChunksState

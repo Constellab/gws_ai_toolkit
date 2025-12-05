@@ -1,4 +1,5 @@
-from typing import Any, Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Any
 
 from gws_core import CredentialsDataOther
 
@@ -98,12 +99,12 @@ class RagDifyService(BaseRagService):
         """Delete a document from the knowledge base."""
         self._dify_service.delete_document(dataset_id, document_id)
 
-    def get_all_documents(self, dataset_id: str) -> List[RagDocument]:
+    def get_all_documents(self, dataset_id: str) -> list[RagDocument]:
         """Get all documents from a knowledge base."""
         dify_documents = self._dify_service.get_all_documents(dataset_id)
         return [self._convert_to_rag_document(doc) for doc in dify_documents]
 
-    def get_document(self, dataset_id: str, document_id: str) -> Optional[RagDocument]:
+    def get_document(self, dataset_id: str, document_id: str) -> RagDocument | None:
         """Get a document from the knowledge base."""
         dify_document = self._dify_service.get_document(dataset_id, document_id)
         if dify_document is None:
@@ -115,9 +116,9 @@ class RagDifyService(BaseRagService):
         dataset_id: str,
         query: str,
         top_k: int = 5,
-        document_ids: List[str] | None = None,
+        document_ids: list[str] | None = None,
         **kwargs,
-    ) -> List[RagChunk]:
+    ) -> list[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
         if document_ids is not None:
             raise NotImplementedError("Filtering by document_ids is not supported in DifyService.")
@@ -135,7 +136,7 @@ class RagDifyService(BaseRagService):
         keyword: str | None = None,
         page: int = 1,
         limit: int = 20,
-    ) -> List[RagChunk]:
+    ) -> list[RagChunk]:
         response = self._dify_service.get_document_chunks(
             dataset_id, document_id, keyword, page, limit
         )
@@ -144,11 +145,11 @@ class RagDifyService(BaseRagService):
     def chat_stream(
         self,
         query: str,
-        conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        chat_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        chat_id: str | None = None,
         **kwargs,
-    ) -> Generator[Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None]:
+    ) -> Generator[RagChatStreamResponse | RagChatEndStreamResponse, None, None]:
         """Send a query and get streaming chat response."""
         for response in self._dify_service.send_message_stream(
             query, user_id, conversation_id, **kwargs

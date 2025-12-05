@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from gws_core import BaseModelDTO
 
@@ -23,7 +23,7 @@ class DifyDatasetDocument(BaseModelDTO):
     id: str
     position: int
     data_source_type: str
-    data_source_info: Dict[str, str]
+    data_source_info: dict[str, str]
     dataset_process_rule_id: str
     name: str
     created_from: str
@@ -31,10 +31,10 @@ class DifyDatasetDocument(BaseModelDTO):
     created_at: int
     tokens: int
     indexing_status: str
-    error: Optional[str] = None
+    error: str | None = None
     enabled: bool
-    disabled_at: Optional[int] = None
-    disabled_by: Optional[str] = None
+    disabled_at: int | None = None
+    disabled_by: str | None = None
     archived: bool
 
 
@@ -42,7 +42,7 @@ class DifySendDocumentResponse(BaseModelDTO):
     """Model for the response from sending a document."""
 
     document: DifyDatasetDocument
-    batch: Optional[str] = None
+    batch: str | None = None
 
 
 class DifySendMessageSource(BaseModelDTO):
@@ -63,13 +63,13 @@ class DifySendMessageStreamResponse(BaseModelDTO):
 
 class DifySendEndMessageStreamResponse(BaseModelDTO):
     conversation_id: str
-    sources: Optional[List[DifySendMessageSource]] = None
+    sources: list[DifySendMessageSource] | None = None
 
 
 class DifyGetDocumentsResponse(BaseModelDTO):
     """Model for the response from retrieving documents."""
 
-    data: List[DifyDatasetDocument]
+    data: list[DifyDatasetDocument]
     has_more: bool
     limit: int
     total: int
@@ -82,7 +82,7 @@ class DifyChunkDocument(BaseModelDTO):
     id: str
     data_source_type: str
     name: str
-    doc_type: Optional[str] = None
+    doc_type: str | None = None
 
 
 class DifySegment(BaseModelDTO):
@@ -93,23 +93,23 @@ class DifySegment(BaseModelDTO):
     document_id: str
     content: str
     sign_content: str
-    answer: Optional[str] = None
+    answer: str | None = None
     word_count: int
     tokens: int
-    keywords: List[str]
+    keywords: list[str]
     index_node_id: str
     index_node_hash: str
     hit_count: int
     enabled: bool
-    disabled_at: Optional[int] = None
-    disabled_by: Optional[str] = None
+    disabled_at: int | None = None
+    disabled_by: str | None = None
     status: str
     created_by: str
     created_at: int
     indexing_at: int
     completed_at: int
-    error: Optional[str] = None
-    stopped_at: Optional[int] = None
+    error: str | None = None
+    stopped_at: int | None = None
     document: DifyChunkDocument
 
 
@@ -117,18 +117,18 @@ class DifyChunkRecord(BaseModelDTO):
     """Model for a chunk record in the retrieval results."""
 
     segment: DifySegment
-    child_chunks: Optional[Any]
-    score: Optional[float] = None
-    tsne_position: Optional[Any] = None
+    child_chunks: Any | None
+    score: float | None = None
+    tsne_position: Any | None = None
 
 
 class DifyChunksResponse(BaseModelDTO):
     """Model for the response from retrieving chunks from a dataset."""
 
-    query: Dict[str, str]
-    records: List[DifyChunkRecord]
+    query: dict[str, str]
+    records: list[DifyChunkRecord]
 
-    def get_distinct_documents(self) -> List[DifyChunkDocument]:
+    def get_distinct_documents(self) -> list[DifyChunkDocument]:
         """Get distinct documents from the chunk records."""
         documents = {}
         for record in self.records:
@@ -145,29 +145,29 @@ class DifyDocumentChunk(BaseModelDTO):
     position: int
     document_id: str
     content: str
-    answer: Optional[str] = None
+    answer: str | None = None
     word_count: int
     tokens: int
-    keywords: List[str]
+    keywords: list[str]
     index_node_id: str
     index_node_hash: str
     hit_count: int
     enabled: bool
-    disabled_at: Optional[int] = None
-    disabled_by: Optional[str] = None
+    disabled_at: int | None = None
+    disabled_by: str | None = None
     status: str
     created_by: str
     created_at: int
     indexing_at: int
     completed_at: int
-    error: Optional[str] = None
-    stopped_at: Optional[int] = None
+    error: str | None = None
+    stopped_at: int | None = None
 
 
 class DifyDocumentChunksResponse(BaseModelDTO):
     """Model for the response from retrieving chunks from a document."""
 
-    data: List[DifyDocumentChunk]
+    data: list[DifyDocumentChunk]
     doc_form: str
     has_more: bool
     limit: int
@@ -234,7 +234,7 @@ class DifyUpdateDocumentsMetadataRequest(BaseModelDTO):
     """Model for updating metadata."""
 
     document_id: str
-    metadata_list: List[DifyMetadata]
+    metadata_list: list[DifyMetadata]
 
 
 class DifyGetDatasetMetadataResponseMetadata(BaseModelDTO):
@@ -247,5 +247,5 @@ class DifyGetDatasetMetadataResponseMetadata(BaseModelDTO):
 class DifyGetDatasetMetadataResponse(BaseModelDTO):
     """Model for getting dataset metadata."""
 
-    doc_metadata: List[DifyGetDatasetMetadataResponseMetadata]
+    doc_metadata: list[DifyGetDatasetMetadataResponseMetadata]
     built_in_field_enabled: bool

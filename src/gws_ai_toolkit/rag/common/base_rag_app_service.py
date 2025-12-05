@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gws_core import Logger, ResourceModel
 from pyparsing import abstractmethod
@@ -25,7 +25,7 @@ class BaseRagAppService:
         self.dataset_id = dataset_id
 
     @abstractmethod
-    def get_all_resources_to_send_to_rag(self) -> List[ResourceModel]:
+    def get_all_resources_to_send_to_rag(self) -> list[ResourceModel]:
         """Get all resources that need to be sent to Rag platform.
         The resource are then filtered to keep only compatible resources
         """
@@ -39,7 +39,7 @@ class BaseRagAppService:
         """
 
     @abstractmethod
-    def get_chat_default_filters(self) -> Dict[str, Any]:
+    def get_chat_default_filters(self) -> dict[str, Any]:
         """Get the default inputs for the chat. This can be used to filter chat response."""
 
     def send_resource_to_rag(self, rag_resource: RagResource, upload_options: Any) -> None:
@@ -105,7 +105,7 @@ class BaseRagAppService:
             self.rag_service.delete_document(self.dataset_id, rag_uploaded_doc.id)
             raise e
 
-    def get_document_metadata_before_sync(self, rag_resource: RagResource) -> Dict[str, str]:
+    def get_document_metadata_before_sync(self, rag_resource: RagResource) -> dict[str, str]:
         """Method than can be overrided that is called before syncing a document.
         The returned metadata are set in the rag document
         """
@@ -128,7 +128,7 @@ class BaseRagAppService:
         """Delete a document from the RAG platform."""
         self.rag_service.delete_document(self.dataset_id, rag_document_id)
 
-    def get_rag_documents_to_delete(self) -> List[RagDocument]:
+    def get_rag_documents_to_delete(self) -> list[RagDocument]:
         """List all RAG documents that are not in the datahub anymore."""
         ragflow_documents = self.rag_service.get_all_documents(self.dataset_id)
 
@@ -142,7 +142,7 @@ class BaseRagAppService:
         return document_to_delete
 
     # Common methods
-    def get_all_resource_to_sync(self) -> List[RagResource]:
+    def get_all_resource_to_sync(self) -> list[RagResource]:
         """Get all resources to sync with the platform."""
         resource_models = self.get_all_resources_to_send_to_rag()
 
@@ -155,7 +155,7 @@ class BaseRagAppService:
 
         return datahub_resources
 
-    def get_all_synced_resources(self) -> List[RagResource]:
+    def get_all_synced_resources(self) -> list[RagResource]:
         """Get all resources synced with the platform."""
         resource_models = self.get_all_resources_to_send_to_rag()
 
@@ -170,10 +170,10 @@ class BaseRagAppService:
     def send_message_stream(
         self,
         query: str,
-        conversation_id: Optional[str] = None,
-        chat_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        chat_id: str | None = None,
         user_id: str | None = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
     ):
         """Send a message stream.
         Override get_chat_default_filters to enable default filtering

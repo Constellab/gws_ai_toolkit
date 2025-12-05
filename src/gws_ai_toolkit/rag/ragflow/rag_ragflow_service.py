@@ -1,4 +1,5 @@
-from typing import Any, Generator, List, Literal, Optional, Union
+from collections.abc import Generator
+from typing import Any, Literal
 
 from gws_core import CredentialsDataOther
 from ragflow_sdk import Chunk, Document
@@ -50,12 +51,12 @@ class RagRagFlowService(BaseRagService):
         """Delete a document from the knowledge base."""
         self._ragflow_service.delete_document(dataset_id, document_id)
 
-    def get_all_documents(self, dataset_id: str) -> List[RagDocument]:
+    def get_all_documents(self, dataset_id: str) -> list[RagDocument]:
         """Get all documents from a knowledge base."""
         sdk_documents = self._ragflow_service.get_all_documents(dataset_id)
         return [self._convert_document_to_rag_document(doc) for doc in sdk_documents]
 
-    def get_document(self, dataset_id: str, document_id: str) -> Optional[RagDocument]:
+    def get_document(self, dataset_id: str, document_id: str) -> RagDocument | None:
         """Get a document from the knowledge base."""
         try:
             sdk_document = self._ragflow_service.get_document(dataset_id, document_id)
@@ -68,9 +69,9 @@ class RagRagFlowService(BaseRagService):
         dataset_id: str,
         query: str,
         top_k: int = 5,
-        document_ids: List[str] | None = None,
+        document_ids: list[str] | None = None,
         **kwargs,
-    ) -> List[RagChunk]:
+    ) -> list[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
         sdk_response = self._ragflow_service.retrieve_chunks(
             dataset_id, query, top_k=top_k, document_ids=document_ids, **kwargs
@@ -91,7 +92,7 @@ class RagRagFlowService(BaseRagService):
         keyword: str | None = None,
         page: int = 1,
         limit: int = 20,
-    ) -> List[RagChunk]:
+    ) -> list[RagChunk]:
         response = self._ragflow_service.get_document_chunks(
             dataset_id, document_id, keyword, page, limit
         )
@@ -100,11 +101,11 @@ class RagRagFlowService(BaseRagService):
     def chat_stream(
         self,
         query: str,
-        conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        chat_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        chat_id: str | None = None,
         **kwargs,
-    ) -> Generator[Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None]:
+    ) -> Generator[RagChatStreamResponse | RagChatEndStreamResponse, None, None]:
         """Send a query and get streaming chat response."""
         # RagFlow requires a chat_id, so we need to handle this differently
         for answer in self._ragflow_service.ask_stream(chat_id, query, conversation_id):

@@ -1,4 +1,3 @@
-from typing import List
 
 import reflex as rx
 from gws_reflex_main import main_component
@@ -7,7 +6,7 @@ from .nav_bar_component import NavBarItem, nav_bar_component
 
 
 def page_component(
-    nav_bar_items: List[NavBarItem], content: rx.Component, disable_padding: bool = False
+    nav_bar_items: list[NavBarItem], content: rx.Component, disable_padding: bool = False
 ) -> rx.Component:
     """Wrap the page content with navigation and layout."""
     return main_component(

@@ -1,4 +1,3 @@
-from typing import List, Optional
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
@@ -27,9 +26,9 @@ class SyncResourceState(rx.State):
     popover_opened: bool = False
     hover_index: int = 0
 
-    _resources: List[ResourceModel] = []
+    _resources: list[ResourceModel] = []
     _selected_resource: RagResource | None = None
-    selected_resource_document: Optional[RagDocument] = None
+    selected_resource_document: RagDocument | None = None
 
     send_to_rag_is_loading: bool = False
     delete_from_rag_is_loading: bool = False
@@ -72,7 +71,7 @@ class SyncResourceState(rx.State):
         self.hover_index = new_index
 
     @rx.var
-    def resources_infos(self) -> List[ResourceDTO]:
+    def resources_infos(self) -> list[ResourceDTO]:
         return [ResourceDTO(id=resource.id, name=resource.name) for resource in self._resources]
 
     @rx.var

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, Type, cast
+from typing import cast
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
@@ -14,12 +14,12 @@ class RagConfigStateConfig(BaseModelDTO):
     chat_app_name: str  # TODO NOT THE BEST. THIS CONFIG MIGHT BE BETTER PLACED ELSEWHERE
     rag_provider: RagProvider
     resource_sync_mode: RagResourceSyncMode
-    rag_dataset_id: Optional[str]
-    rag_dataset_credentials_name: Optional[str]
-    rag_chat_id: Optional[str]
-    rag_chat_credentials_name: Optional[str]
-    resource_tag_key: Optional[str]
-    resource_tag_value: Optional[str]
+    rag_dataset_id: str | None
+    rag_dataset_credentials_name: str | None
+    rag_chat_id: str | None
+    rag_chat_credentials_name: str | None
+    resource_tag_key: str | None
+    resource_tag_value: str | None
 
 
 class RagConfigState(rx.State, mixin=True):
@@ -44,7 +44,7 @@ class RagConfigState(rx.State, mixin=True):
     _rag_config: RagConfigStateConfig
     _credentials: CredentialsDataOther
 
-    __sub_class_type__: Type["RagConfigState"] | None = None
+    __sub_class_type__: type["RagConfigState"] | None = None
 
     @abstractmethod
     async def _get_rag_config_data(self) -> RagConfigStateConfig:
@@ -67,7 +67,7 @@ class RagConfigState(rx.State, mixin=True):
         config = await self.get_rag_config()
         return config.rag_provider
 
-    async def get_dataset_id(self) -> Optional[str]:
+    async def get_dataset_id(self) -> str | None:
         """Get the dataset ID."""
         config = await self.get_rag_config()
         return config.rag_dataset_id
@@ -85,7 +85,7 @@ class RagConfigState(rx.State, mixin=True):
         config = await self.get_rag_config()
         return config.resource_sync_mode
 
-    async def get_dataset_credentials(self) -> Optional[CredentialsDataOther]:
+    async def get_dataset_credentials(self) -> CredentialsDataOther | None:
         """Get the dataset credentials."""
         if not self._credentials:
             config = await self.get_rag_config()
@@ -96,7 +96,7 @@ class RagConfigState(rx.State, mixin=True):
 
         return self._credentials
 
-    async def get_chat_credentials(self) -> Optional[CredentialsDataOther]:
+    async def get_chat_credentials(self) -> CredentialsDataOther | None:
         """Get the chat credentials."""
         if not self._credentials:
             config = await self.get_rag_config()
@@ -111,14 +111,14 @@ class RagConfigState(rx.State, mixin=True):
         """Set the RAG configuration."""
         self._rag_config = config
 
-    async def get_dataset_rag_app_service(self) -> Optional[BaseRagAppService]:
+    async def get_dataset_rag_app_service(self) -> BaseRagAppService | None:
         """Get the DataHub RAG service for dataset operations."""
         credentials = await self.get_dataset_credentials()
         if not credentials:
             return None
         return await self._build_rag_app_service(credentials)
 
-    async def get_chat_rag_app_service(self) -> Optional[BaseRagAppService]:
+    async def get_chat_rag_app_service(self) -> BaseRagAppService | None:
         """Get the DataHub RAG service for chat operations."""
         credentials = await self.get_chat_credentials()
         if not credentials:
@@ -127,7 +127,7 @@ class RagConfigState(rx.State, mixin=True):
 
     async def _build_rag_app_service(
         self, credentials: CredentialsDataOther
-    ) -> Optional[BaseRagAppService]:
+    ) -> BaseRagAppService | None:
         """Build a RAG app service."""
         provider = await self.get_rag_provider()
         if not provider:
@@ -161,7 +161,7 @@ class RagConfigState(rx.State, mixin=True):
         return await state.get_state(RagConfigState.__sub_class_type__)
 
     @staticmethod
-    def set_rag_config_state_class_type(state_type: Type["RagConfigState"]):
+    def set_rag_config_state_class_type(state_type: type["RagConfigState"]):
         """Set the RagConfigState subclass type for the app.
 
         Args:

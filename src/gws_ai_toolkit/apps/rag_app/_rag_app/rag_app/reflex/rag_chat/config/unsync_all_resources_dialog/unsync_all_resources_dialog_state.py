@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import Literal
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
@@ -11,10 +11,10 @@ from ..rag_config_state import RagConfigState
 class UnsyncAllResourcesDialogState(rx.State):
     """State management for the unsync all resources dialog functionality."""
 
-    resources_to_unsync: List[RagResource] = []
+    resources_to_unsync: list[RagResource] = []
     resources_to_unsync_dialog_opened: bool = False
     unsync_resource_progress: int = -1
-    unsync_errors: List[str] = []
+    unsync_errors: list[str] = []
 
     @rx.var
     def count_resources_to_unsync(self) -> int:

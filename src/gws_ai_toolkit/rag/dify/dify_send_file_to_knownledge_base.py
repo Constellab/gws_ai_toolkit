@@ -1,7 +1,4 @@
-from typing import List
 
-from gws_ai_toolkit.rag.dify.dify_class import DifyIndexingTechnique, DifySendDocumentOptions
-from gws_ai_toolkit.rag.dify.dify_service import DifyService
 from gws_core import (
     ConfigParams,
     ConfigSpecs,
@@ -24,6 +21,9 @@ from gws_core import (
     Utils,
     task_decorator,
 )
+
+from gws_ai_toolkit.rag.dify.dify_class import DifyIndexingTechnique, DifySendDocumentOptions
+from gws_ai_toolkit.rag.dify.dify_service import DifyService
 
 
 @task_decorator(
@@ -92,7 +92,7 @@ class DifySendFileToKnownledgeBase(Task):
         credentials: CredentialsDataOther = params.get_value("api_key")
         dify_service = DifyService.from_credentials(credentials)
 
-        file_paths: List[str] = []
+        file_paths: list[str] = []
 
         for fs_node in fs_nodes.get_resources():
             if isinstance(fs_node, File):
@@ -111,7 +111,7 @@ class DifySendFileToKnownledgeBase(Task):
         )
         progress = 0
 
-        error_files: List[str] = []
+        error_files: list[str] = []
         for file_path in file_paths:
             try:
                 dify_service.send_document(file_path, params.get_value("dataset_id"), options)

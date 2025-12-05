@@ -1,36 +1,35 @@
 import json
 import os
-from typing import List, Optional, cast
+from typing import cast
 
 import reflex as rx
-from gws_core import BaseModelDTO, Table, TableUnfolderHelper
-from openai import OpenAI
-from pandas import DataFrame
-from pydantic import BaseModel, Field
-
 from gws_ai_toolkit.stats.ai_table_relation_stats import AiTableRelationStats
 from gws_ai_toolkit.stats.ai_table_stats_base import AiTableStatsBase
 from gws_ai_toolkit.stats.ai_table_stats_class import AiTableStats
 from gws_ai_toolkit.stats.ai_table_stats_type import AiTableStatsResults
+from gws_core import BaseModelDTO, Table, TableUnfolderHelper
+from openai import OpenAI
+from pandas import DataFrame
+from pydantic import BaseModel, Field
 
 from ..ai_table_data_state import AiTableDataState
 
 
 class AiTableStatsRunConfig(BaseModelDTO):
     ai_prompt: str
-    columns: List[str]
+    columns: list[str]
     str_columns: str  # Comma-separated string of columns for display
-    group_input: Optional[str]
+    group_input: str | None
     columns_are_paired: bool
     relation: bool  # True if relation/correlation analysis is needed
-    reference_column: Optional[str]  # Optional reference column for relation analysis
+    reference_column: str | None  # Optional reference column for relation analysis
 
 
 class AiTableFunctionTool(BaseModel):
-    selected_columns: List[str] = Field(
+    selected_columns: list[str] = Field(
         description="List of column names to analyze (exact names from available columns)"
     )
-    group_column: Optional[str] = Field(
+    group_column: str | None = Field(
         description="Optional column name to group by (exact name from available columns). Use null if no grouping needed."
     )
     columns_are_paired: bool = Field(
@@ -39,7 +38,7 @@ class AiTableFunctionTool(BaseModel):
     relation: bool = Field(
         description="True if the user wants correlation/relationship analysis (Pearson and Spearman tests) between 2 or more variables, False for standard statistical tests"
     )
-    reference_column: Optional[str] = Field(
+    reference_column: str | None = Field(
         description="Optional reference column for relation analysis. When specified with 3+ columns, only correlations between this reference column and all other columns are computed. Use null for all pairwise correlations."
     )
 
@@ -51,10 +50,10 @@ class AiTableStatsState(rx.State):
     """State for the AI Table stats component."""
 
     is_processing: bool = False
-    _current_stats_analyzer: Optional[AiTableStatsBase] = None
+    _current_stats_analyzer: AiTableStatsBase | None = None
 
-    last_run_config: Optional[AiTableStatsRunConfig] = None
-    ai_summary_response: Optional[str] = None
+    last_run_config: AiTableStatsRunConfig | None = None
+    ai_summary_response: str | None = None
 
     @rx.event(background=True)  # type: ignore
     async def process_ai_prompt(self, form_data: dict):
@@ -219,11 +218,11 @@ Available columns: {columns_with_types}"""
     async def validate_and_run_analysis(
         self,
         current_df: DataFrame,
-        columns: List[str],
-        group_input: Optional[str],
+        columns: list[str],
+        group_input: str | None,
         columns_are_paired: bool,
         relation: bool,
-        reference_column: Optional[str] = None,
+        reference_column: str | None = None,
     ):
         available_columns = list(current_df.columns)
 
@@ -239,7 +238,7 @@ Available columns: {columns_with_types}"""
                 f"Columns not found in dataframe: '{', '.join(missing_columns)}'. Available columns: '{', '.join(available_columns)}'"
             )
 
-        group_column: Optional[str] = None
+        group_column: str | None = None
         if group_input:
             # Handle group column (optional)
             group_column = group_input.strip()
@@ -372,7 +371,7 @@ Please provide a clear, direct answer to the user's original question based on t
                 self.ai_summary_response = f"Error generating summary: {str(e)}"
 
     def _get_filtered_and_unfolded_dataframe(
-        self, selected_columns: list, group_column: Optional[str], original_df: DataFrame
+        self, selected_columns: list, group_column: str | None, original_df: DataFrame
     ):
         """
         Filter the dataframe to selected columns + group column, then unfold by group column.
@@ -405,14 +404,14 @@ Please provide a clear, direct answer to the user's original question based on t
         return unfolded_table.get_data()
 
     @rx.var
-    def test_history(self) -> List[AiTableStatsResults]:
+    def test_history(self) -> list[AiTableStatsResults]:
         """Get the test history."""
         if self._current_stats_analyzer:
             return self._current_stats_analyzer.get_tests_history().get_results()
         return []
 
     @rx.var
-    def last_test_result(self) -> Optional[AiTableStatsResults]:
+    def last_test_result(self) -> AiTableStatsResults | None:
         """Get the last test result."""
         # Get the last test result if available
         if self.test_history:
@@ -421,7 +420,7 @@ Please provide a clear, direct answer to the user's original question based on t
             return None
 
     @rx.var
-    def suggested_additional_test(self) -> Optional[str]:
+    def suggested_additional_test(self) -> str | None:
         """Get suggested additional test if any."""
         if self._current_stats_analyzer:
             return self._current_stats_analyzer.suggested_additional_tests()
@@ -474,7 +473,7 @@ Please provide a clear, direct answer to the user's original question based on t
                 self.is_processing = False
                 self._current_stats_analyzer = self._current_stats_analyzer  # Trigger state update
 
-    def _get_and_check_reference_column(self, reference_input: str) -> Optional[str]:
+    def _get_and_check_reference_column(self, reference_input: str) -> str | None:
         # Compute actual reference column name based on group_input
 
         if not reference_input or not self.last_run_config or not self._current_stats_analyzer:

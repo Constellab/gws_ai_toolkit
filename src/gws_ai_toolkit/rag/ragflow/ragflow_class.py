@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from gws_core import BaseModelDTO
 
@@ -6,18 +6,18 @@ RagFlowParserMethod = Literal["naive", "manual", "qa", "table", "paper", "book",
 
 
 class RagFlowUpdateDocumentOptions(BaseModelDTO):
-    display_name: Optional[str] = None
-    meta_fields: Optional[Dict[str, Any]] = None
+    display_name: str | None = None
+    meta_fields: dict[str, Any] | None = None
 
 
 class RagFlowCreateDatasetRequest(BaseModelDTO):
     """Request model for creating a dataset."""
 
     name: str
-    avatar: Optional[str] = None
-    description: Optional[str] = None
+    avatar: str | None = None
+    description: str | None = None
     language: str = "English"
-    embedding_model: Optional[str] = None
+    embedding_model: str | None = None
     permission: str = "me"
     document_count: int = 0
     chunk_count: int = 0
@@ -27,33 +27,33 @@ class RagFlowCreateDatasetRequest(BaseModelDTO):
 class RagFlowUpdateDatasetRequest(BaseModelDTO):
     """Request model for updating a dataset."""
 
-    name: Optional[str] = None
-    avatar: Optional[str] = None
-    description: Optional[str] = None
-    language: Optional[str] = None
-    embedding_model: Optional[str] = None
-    permission: Optional[str] = None
-    parse_method: Optional[RagFlowParserMethod] = None
+    name: str | None = None
+    avatar: str | None = None
+    description: str | None = None
+    language: str | None = None
+    embedding_model: str | None = None
+    permission: str | None = None
+    parse_method: RagFlowParserMethod | None = None
 
 
 class RagFlowCreateChatRequest(BaseModelDTO):
     """Request model for creating a chat assistant."""
 
     name: str
-    avatar: Optional[str] = ""
-    knowledgebases: Optional[List[str]] = []
-    llm: Optional[Dict[str, Any]] = None
-    prompt: Optional[Dict[str, Any]] = None
+    avatar: str | None = ""
+    knowledgebases: list[str] | None = []
+    llm: dict[str, Any] | None = None
+    prompt: dict[str, Any] | None = None
 
 
 class RagFlowUpdateChatRequest(BaseModelDTO):
     """Request model for updating a chat assistant."""
 
-    name: Optional[str] = None
-    avatar: Optional[str] = None
-    knowledgebases: Optional[List[str]] = None
-    llm: Optional[Dict[str, Any]] = None
-    prompt: Optional[str] = None
+    name: str | None = None
+    avatar: str | None = None
+    knowledgebases: list[str] | None = None
+    llm: dict[str, Any] | None = None
+    prompt: str | None = None
 
 
 class RagFlowCreateSessionRequest(BaseModelDTO):
@@ -68,5 +68,5 @@ class RagflowAskStreamResponse(BaseModelDTO):
 
     content: str
     role: Literal["user", "assistant"]
-    reference: List[dict] | None = None
+    reference: list[dict] | None = None
     session_id: str

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pandas import DataFrame, api
 
@@ -13,7 +12,7 @@ class AiTableStatsBase:
         self._dataframe = dataframe.dropna()
         self._tests_history = AiTableStatsResultList()
 
-    def suggested_additional_tests(self) -> Optional[str]:
+    def suggested_additional_tests(self) -> str | None:
         """Suggest additional tests based on current data and previous tests.
 
         Returns:

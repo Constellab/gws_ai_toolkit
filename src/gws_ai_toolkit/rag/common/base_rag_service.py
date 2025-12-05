@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generator, List, Optional, Union
+from collections.abc import Generator
+from typing import Any
 
 from gws_core import CredentialsDataOther
 
@@ -47,12 +48,12 @@ class BaseRagService(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_all_documents(self, dataset_id: str) -> List[RagDocument]:
+    def get_all_documents(self, dataset_id: str) -> list[RagDocument]:
         """Get all documents from a knowledge base."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_document(self, dataset_id: str, document_id: str) -> Optional[RagDocument]:
+    def get_document(self, dataset_id: str, document_id: str) -> RagDocument | None:
         """Get a document from the knowledge base."""
         raise NotImplementedError
 
@@ -63,9 +64,9 @@ class BaseRagService(ABC):
         dataset_id: str,
         query: str,
         top_k: int = 5,
-        document_ids: List[str] | None = None,
+        document_ids: list[str] | None = None,
         **kwargs,
-    ) -> List[RagChunk]:
+    ) -> list[RagChunk]:
         """Retrieve relevant chunks from the knowledge base."""
         raise NotImplementedError
 
@@ -75,10 +76,10 @@ class BaseRagService(ABC):
         self,
         dataset_id: str,
         document_id: str,
-        keyword: Optional[str] = None,
+        keyword: str | None = None,
         page: int = 1,
         limit: int = 20,
-    ) -> List[RagChunk]:
+    ) -> list[RagChunk]:
         """Get chunks for a specific document using SDK."""
         raise NotImplementedError
 
@@ -87,11 +88,11 @@ class BaseRagService(ABC):
     def chat_stream(
         self,
         query: str,
-        conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        chat_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        chat_id: str | None = None,
         **kwargs,
-    ) -> Generator[Union[RagChatStreamResponse, RagChatEndStreamResponse], None, None]:
+    ) -> Generator[RagChatStreamResponse | RagChatEndStreamResponse, None, None]:
         """Send a query and get streaming chat response."""
         raise NotImplementedError
 

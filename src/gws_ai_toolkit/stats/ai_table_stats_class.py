@@ -1,4 +1,4 @@
-from typing import List, Optional, cast
+from typing import cast
 
 import pandas as pd
 from gws_core import Logger
@@ -190,63 +190,62 @@ class AiTableStats(AiTableStatsBase):
                     raise ValueError(
                         "Error: More than 2 non-independent quantitative columns not supported"
                     )
-        else:
-            # Fifth step
-            if num_columns == 2:
-                if self._columns_are_independent:
-                    Logger.debug("Running: Mann-Whitney")
-                    result = self._tests.mann_whitney_test(
-                        self._dataframe.iloc[:, 0],
-                        self._dataframe.iloc[:, 1],
-                        self._dataframe.columns[0],
-                        self._dataframe.columns[1],
-                    )
-                    self._record_test(result)
-                    Logger.debug(f"Result: {result}")
-                else:
-                    Logger.debug("Running: Wilcoxon")
-                    result = self._tests.wilcoxon_test(
-                        self._dataframe.iloc[:, 0],
-                        self._dataframe.iloc[:, 1],
-                        self._dataframe.columns[0],
-                        self._dataframe.columns[1],
-                    )
-                    self._record_test(result)
-                    Logger.debug(f"Result: {result}")
-            elif num_columns > 2:
-                if self._columns_are_independent:
-                    Logger.debug("Running: Kruskal-Wallis")
-                    # Pass DataFrame directly to Kruskal-Wallis
-                    result = self._tests.kruskal_wallis_test(self._dataframe)
-                    self._record_test(result)
-                    Logger.debug(f"Result: {result}")
+        # Fifth step
+        elif num_columns == 2:
+            if self._columns_are_independent:
+                Logger.debug("Running: Mann-Whitney")
+                result = self._tests.mann_whitney_test(
+                    self._dataframe.iloc[:, 0],
+                    self._dataframe.iloc[:, 1],
+                    self._dataframe.columns[0],
+                    self._dataframe.columns[1],
+                )
+                self._record_test(result)
+                Logger.debug(f"Result: {result}")
+            else:
+                Logger.debug("Running: Wilcoxon")
+                result = self._tests.wilcoxon_test(
+                    self._dataframe.iloc[:, 0],
+                    self._dataframe.iloc[:, 1],
+                    self._dataframe.columns[0],
+                    self._dataframe.columns[1],
+                )
+                self._record_test(result)
+                Logger.debug(f"Result: {result}")
+        elif num_columns > 2:
+            if self._columns_are_independent:
+                Logger.debug("Running: Kruskal-Wallis")
+                # Pass DataFrame directly to Kruskal-Wallis
+                result = self._tests.kruskal_wallis_test(self._dataframe)
+                self._record_test(result)
+                Logger.debug(f"Result: {result}")
 
-                    # Check if Kruskal-Wallis is significant and run Dunn post-hoc test
-                    if result.p_value < 0.05:
-                        Logger.debug("Running post-hoc: Dunn test (Kruskal-Wallis p < 0.05)")
-                        # Use columns directly for Dunn
-                        dunn_result = self._tests.dunn_test(self._dataframe)
-                        self._record_test(dunn_result)
-                        Logger.debug(f"Dunn Result: {dunn_result}")
-                else:
-                    Logger.debug("Running: Friedman")
-                    # Pass DataFrame directly to Friedman
-                    result = self._tests.friedman_test(self._dataframe)
-                    self._record_test(result)
-                    Logger.debug(f"Result: {result}")
+                # Check if Kruskal-Wallis is significant and run Dunn post-hoc test
+                if result.p_value < 0.05:
+                    Logger.debug("Running post-hoc: Dunn test (Kruskal-Wallis p < 0.05)")
+                    # Use columns directly for Dunn
+                    dunn_result = self._tests.dunn_test(self._dataframe)
+                    self._record_test(dunn_result)
+                    Logger.debug(f"Dunn Result: {dunn_result}")
+            else:
+                Logger.debug("Running: Friedman")
+                # Pass DataFrame directly to Friedman
+                result = self._tests.friedman_test(self._dataframe)
+                self._record_test(result)
+                Logger.debug(f"Result: {result}")
 
-                    # Check if Friedman is significant and run Dunn post-hoc test
-                    if result.p_value < 0.05:
-                        Logger.debug("Running post-hoc: Dunn test (Friedman p < 0.05)")
-                        # Use columns directly for Dunn
-                        dunn_result = self._tests.dunn_test(self._dataframe)
-                        self._record_test(dunn_result)
-                        Logger.debug(f"Dunn Result: {dunn_result}")
+                # Check if Friedman is significant and run Dunn post-hoc test
+                if result.p_value < 0.05:
+                    Logger.debug("Running post-hoc: Dunn test (Friedman p < 0.05)")
+                    # Use columns directly for Dunn
+                    dunn_result = self._tests.dunn_test(self._dataframe)
+                    self._record_test(dunn_result)
+                    Logger.debug(f"Dunn Result: {dunn_result}")
 
     def _test_normality(self, dataframe: DataFrame, num_rows: int) -> bool:
         """Test normality of quantitative columns."""
         all_normal = True
-        result_texts: List[str] = []
+        result_texts: list[str] = []
 
         for col in dataframe.columns:
             column_data = dataframe[col].dropna()
@@ -305,7 +304,7 @@ class AiTableStats(AiTableStatsBase):
         # If p_value > 0.05, variances are homogeneous
         return result.p_value > 0.05
 
-    def suggested_additional_tests(self) -> Optional[str]:
+    def suggested_additional_tests(self) -> str | None:
         """
         Suggest additional tests to perform based on test history.
 
@@ -327,7 +326,7 @@ class AiTableStats(AiTableStatsBase):
         return None
 
     def run_student_independent_pairwise(
-        self, reference_column: Optional[str] = None
+        self, reference_column: str | None = None
     ) -> AiTableStatsResults:
         """
         Run Student t-test (independent paired wise) with appropriate corrections.

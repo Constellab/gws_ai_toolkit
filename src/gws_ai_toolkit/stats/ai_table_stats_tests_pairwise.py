@@ -1,4 +1,3 @@
-from typing import Optional
 
 import pandas as pd
 from scipy.stats import pearsonr, spearmanr
@@ -20,7 +19,7 @@ class AiTableStatsTestsPairWise:
     def _perform_pairwise_analysis(
         self,
         dataframe: pd.DataFrame,
-        reference_column: Optional[str],
+        reference_column: str | None,
         comparison_function,
         test_name: str,
         details_class,
@@ -138,11 +137,10 @@ class AiTableStatsTestsPairWise:
                 result_text = f"Significant correlations found in {significant_count} of {valid_comparisons} pairwise comparisons."
             else:
                 result_text = "No significant pairwise correlations found."
+        elif significant_count > 0:
+            result_text = f"Significant differences found in {significant_count} of {valid_comparisons} pairwise comparisons."
         else:
-            if significant_count > 0:
-                result_text = f"Significant differences found in {significant_count} of {valid_comparisons} pairwise comparisons."
-            else:
-                result_text = "No significant pairwise differences found."
+            result_text = "No significant pairwise differences found."
 
         return AiTableStatsResults(
             test_name=test_name,
@@ -158,7 +156,7 @@ class AiTableStatsTestsPairWise:
         )
 
     def student_independent_pairwise_test(
-        self, dataframe: pd.DataFrame, reference_column: Optional[str] = None
+        self, dataframe: pd.DataFrame, reference_column: str | None = None
     ) -> AiTableStatsResults:
         """Student's t-test for independent pairwise comparisons (post-hoc after ANOVA).
 
@@ -185,7 +183,7 @@ class AiTableStatsTestsPairWise:
         return float(statistic), float(p_value)
 
     def pearson_correlation_pairwise_test(
-        self, dataframe: pd.DataFrame, reference_column: Optional[str] = None
+        self, dataframe: pd.DataFrame, reference_column: str | None = None
     ) -> AiTableStatsResults:
         """Pearson correlation test for pairwise comparisons.
 
@@ -207,7 +205,7 @@ class AiTableStatsTestsPairWise:
         )
 
     def spearman_correlation_pairwise_test(
-        self, dataframe: pd.DataFrame, reference_column: Optional[str] = None
+        self, dataframe: pd.DataFrame, reference_column: str | None = None
     ) -> AiTableStatsResults:
         """Spearman rank correlation test for pairwise comparisons.
 

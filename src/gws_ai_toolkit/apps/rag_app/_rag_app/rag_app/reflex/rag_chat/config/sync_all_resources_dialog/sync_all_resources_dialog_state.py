@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import Literal
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
@@ -11,10 +11,10 @@ from ..rag_config_state import RagConfigState
 class SyncAllResourcesDialogState(rx.State):
     """State management for the sync all resources dialog functionality."""
 
-    resources_to_sync: List[RagResource] = []
+    resources_to_sync: list[RagResource] = []
     resources_to_sync_dialog_opened: bool = False
     sync_resource_progress: int = -1
-    sync_errors: List[str] = []
+    sync_errors: list[str] = []
 
     @rx.var
     def count_resources_to_sync(self) -> int:

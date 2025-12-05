@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 import pandas as pd
 from gws_core import BaseModelDTO
@@ -47,7 +47,7 @@ class NormalityTestDetails(BaseTestDetails):
 class NormalitySummaryTestDetails(BaseTestDetails):
     all_normal: bool
     test_used: str
-    result_texts: List[str]
+    result_texts: list[str]
 
 
 class HomogeneityTestDetails(BaseTestDetails):
@@ -56,13 +56,13 @@ class HomogeneityTestDetails(BaseTestDetails):
 
 class ChiSquaredAdjustmentTestDetails(BaseTestDetails):
     categories: int
-    expected_freq: List[float]
+    expected_freq: list[float]
 
 
 class ChiSquaredIndependenceTestDetails(BaseTestDetails):
     degrees_of_freedom: int
-    expected_frequencies: List[List[float]]
-    raw_data: Optional[List[List[int]]] = None
+    expected_frequencies: list[list[float]]
+    raw_data: list[list[int]] | None = None
 
 
 class McNemarTestDetails(BaseTestDetails):
@@ -71,7 +71,7 @@ class McNemarTestDetails(BaseTestDetails):
 
 class StudentTTestIndependentDetails(BaseTestDetails):
     degrees_of_freedom: float
-    sample_sizes: List[int]
+    sample_sizes: list[int]
 
 
 class StudentTTestPairedDetails(BaseTestDetails):
@@ -98,7 +98,7 @@ class StudentTTestPairwiseDetails(BaseTestDetails):
 
 
 class TwoGroupNonParametricTestDetails(BaseTestDetails):
-    sample_sizes: List[int]
+    sample_sizes: list[int]
 
 
 class PairedNonParametricTestDetails(BaseTestDetails):
@@ -117,21 +117,21 @@ class FriedmanTestDetails(BaseTestDetails):
 
 class TukeyHSDTestDetails(BaseTestDetails):
     summary: str
-    pairwise_comparisons: List[List[Any]]
-    significant_pairs: List[str]
-    raw_data: Optional[Any] = None
+    pairwise_comparisons: list[list[Any]]
+    significant_pairs: list[str]
+    raw_data: Any | None = None
 
 
 class DunnTestDetails(BaseTestDetails):
-    pairwise_matrix: Dict[str, Dict[str, float]]
+    pairwise_matrix: dict[str, dict[str, float]]
     adjustment_method: str
     significant_comparisons: int
-    raw_data: Optional[Any] = None
+    raw_data: Any | None = None
 
 
 class BonferroniTestDetails(BaseTestDetails):
-    original_p_values: List[float]
-    corrected_p_values: List[float]
+    original_p_values: list[float]
+    corrected_p_values: list[float]
     adjustment_method: str
     significant_comparisons: int
     total_comparisons: int
@@ -139,8 +139,8 @@ class BonferroniTestDetails(BaseTestDetails):
 
 
 class ScheffeTestDetails(BaseTestDetails):
-    original_p_values: List[float]
-    corrected_p_values: List[float]
+    original_p_values: list[float]
+    corrected_p_values: list[float]
     adjustment_method: str
     significant_comparisons: int
     total_comparisons: int
@@ -149,8 +149,8 @@ class ScheffeTestDetails(BaseTestDetails):
 
 
 class BenjaminiHochbergTestDetails(BaseTestDetails):
-    original_p_values: List[float]
-    corrected_p_values: List[float]
+    original_p_values: list[float]
+    corrected_p_values: list[float]
     adjustment_method: str
     significant_comparisons: int
     total_comparisons: int
@@ -158,8 +158,8 @@ class BenjaminiHochbergTestDetails(BaseTestDetails):
 
 
 class HolmTestDetails(BaseTestDetails):
-    original_p_values: List[float]
-    corrected_p_values: List[float]
+    original_p_values: list[float]
+    corrected_p_values: list[float]
     adjustment_method: str
     significant_comparisons: int
     total_comparisons: int
@@ -200,13 +200,13 @@ AiTableStatsDetailsType = Union[
 class AiTableStatsResults(BaseModelDTO):
     test_name: AiTableStatsTestName
     result_text: str
-    result_figure: Optional[Figure] = None
-    statistic: Optional[float] = None
-    p_value: Optional[float] = None
-    details: Optional[AiTableStatsDetailsType] = None
+    result_figure: Figure | None = None
+    statistic: float | None = None
+    p_value: float | None = None
+    details: AiTableStatsDetailsType | None = None
 
-    p_value_scientific: Optional[str] = None
-    statistic_scientific: Optional[str] = None
+    p_value_scientific: str | None = None
+    statistic_scientific: str | None = None
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -242,20 +242,20 @@ class AiTableStatsResults(BaseModelDTO):
 
 
 class AiTableStatsResultList:
-    _results: List[AiTableStatsResults]
+    _results: list[AiTableStatsResults]
 
-    def __init__(self, results: Optional[List[AiTableStatsResults]] = None):
+    def __init__(self, results: list[AiTableStatsResults] | None = None):
         self._results = results or []
 
     def add_result(self, result: AiTableStatsResults):
         self._results.append(result)
 
-    def get_last_result(self) -> Optional[AiTableStatsResults]:
+    def get_last_result(self) -> AiTableStatsResults | None:
         if self._results:
             return self._results[-1]
         return None
 
-    def get_results(self) -> List[AiTableStatsResults]:
+    def get_results(self) -> list[AiTableStatsResults]:
         return self._results
 
     def get_ai_text_summary(self) -> str:

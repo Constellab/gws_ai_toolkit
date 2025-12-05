@@ -1,5 +1,4 @@
 import reflex as rx
-
 from gws_ai_toolkit._app.ai_rag import ai_expert_config_component
 
 

@@ -1,5 +1,6 @@
 import json
-from typing import Any, Dict, Generator, List, Literal, Optional, Union
+from collections.abc import Generator
+from typing import Any, Literal
 
 import requests
 from gws_core import CredentialsDataOther, ExternalApiService, FormData, Logger
@@ -105,7 +106,7 @@ class DifyService:
         )
         return DifySendDocumentResponse.from_json(response.json())
 
-    def _get_process_rule(self, options: DifyUpdateDocumentOptions) -> Dict[str, Any]:
+    def _get_process_rule(self, options: DifyUpdateDocumentOptions) -> dict[str, Any]:
         """Get the process rule for document update."""
         return {
             "rules": {
@@ -129,12 +130,12 @@ class DifyService:
             "keyword_search", "semantic_search", "full_text_search", "hybrid_search"
         ] = "semantic_search",
         reranking_enable: bool = False,
-        reranking_provider_name: Optional[str] = None,
-        reranking_model_name: Optional[str] = None,
-        weights: Optional[float] = None,
-        top_k: Optional[int] = 5,
+        reranking_provider_name: str | None = None,
+        reranking_model_name: str | None = None,
+        weights: float | None = None,
+        top_k: int | None = 5,
         score_threshold_enabled: bool = False,
-        score_threshold: Optional[float] = 0,
+        score_threshold: float | None = 0,
     ) -> DifyChunksResponse:
         """Retrieve chunks from a Knowledge Base (dataset).
 
@@ -217,7 +218,7 @@ class DifyService:
         self,
         dataset_id: str,
         document_id: str,
-        keyword: Optional[str] = None,
+        keyword: str | None = None,
         status: str = "completed",
         page: int = 1,
         limit: int = 20,
@@ -336,7 +337,7 @@ class DifyService:
         response.raise_for_status()
         return DifyGetDocumentsResponse.from_json(response.json())
 
-    def get_all_documents(self, dataset_id: str) -> List[DifyDatasetDocument]:
+    def get_all_documents(self, dataset_id: str) -> list[DifyDatasetDocument]:
         """Get all documents in a dataset.
 
         Parameters
@@ -354,7 +355,7 @@ class DifyService:
         requests.exceptions.HTTPError
             If the API request fails
         """
-        documents: List[DifyDatasetDocument] = []
+        documents: list[DifyDatasetDocument] = []
         page = 1
         limit = 100
         while True:
@@ -367,7 +368,7 @@ class DifyService:
             page += 1
         return documents
 
-    def get_document(self, dataset_id: str, document_id: str) -> Optional[DifyDatasetDocument]:
+    def get_document(self, dataset_id: str, document_id: str) -> DifyDatasetDocument | None:
         """Get a single document from a dataset.
 
         Parameters
@@ -433,11 +434,11 @@ class DifyService:
         self,
         query: str,
         user: str,
-        conversation_id: Optional[str] = None,
-        inputs: Optional[Dict[str, Any]] = None,
-        files: Optional[list] = None,
+        conversation_id: str | None = None,
+        inputs: dict[str, Any] | None = None,
+        files: list | None = None,
     ) -> Generator[
-        Union[str, DifySendMessageStreamResponse, DifySendEndMessageStreamResponse], None, None
+        str | DifySendMessageStreamResponse | DifySendEndMessageStreamResponse, None, None
     ]:
         """
         Call the Dify API chat endpoint with streaming response.
@@ -622,7 +623,7 @@ class DifyService:
         return dify_metadata
 
     def update_document_metadata(
-        self, dataset_id: str, body: List[DifyUpdateDocumentsMetadataRequest]
+        self, dataset_id: str, body: list[DifyUpdateDocumentsMetadataRequest]
     ) -> None:
         """Update metadata for a specific document in a dataset.
 
@@ -651,7 +652,7 @@ class DifyService:
 
         response.raise_for_status()
 
-    def _get_http_headers(self, content_type: bool = False) -> Dict[str, str]:
+    def _get_http_headers(self, content_type: bool = False) -> dict[str, str]:
         """Get the HTTP headers for the Dify API requests.
 
         Returns:

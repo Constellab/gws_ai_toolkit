@@ -1,9 +1,10 @@
-from typing import Any, Dict, List
+from typing import Any
+
+from gws_core import DataHubS3ServerService, ResourceModel, ResourceSearchBuilder, SpaceService
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.dify.rag_dify_service import RagDifyService
-from gws_core import DataHubS3ServerService, ResourceModel, ResourceSearchBuilder, SpaceService
 
 from .base_rag_service import BaseRagService
 
@@ -23,7 +24,7 @@ class DatahubRagAppService(BaseRagAppService):
     """
 
     # Use to cache the current user folders
-    _current_user_folders_ids: List[str] = None
+    _current_user_folders_ids: list[str] = None
 
     # Common constants
     ROOT_FOLDER_ID_METADATA_KEY = "root_folder_id"
@@ -33,7 +34,7 @@ class DatahubRagAppService(BaseRagAppService):
     FOLDER_LIMIT = 20
 
     def __init__(
-        self, rag_service: BaseRagService, dataset_id: str, additional_config: Dict[str, Any] = None
+        self, rag_service: BaseRagService, dataset_id: str, additional_config: dict[str, Any] = None
     ) -> None:
         if additional_config is None:
             additional_config = {}
@@ -42,7 +43,7 @@ class DatahubRagAppService(BaseRagAppService):
             raise ValueError("Only Dify Rag is compatible with the DatahubRagAppService")
         super().__init__(rag_service, dataset_id)
 
-    def get_all_resources_to_send_to_rag(self) -> List[ResourceModel]:
+    def get_all_resources_to_send_to_rag(self) -> list[ResourceModel]:
         """
         Get all resources compatible with the RAG platform.
         It return only resources store in folder in datahub.
@@ -56,7 +57,7 @@ class DatahubRagAppService(BaseRagAppService):
 
         return research_search.search_all()
 
-    def get_chat_default_filters(self) -> Dict[str, Any]:
+    def get_chat_default_filters(self) -> dict[str, Any]:
         """Get the default inputs for the chat. This can be used to filter chat response."""
         # Load all the root folders of the current user
         if self._current_user_folders_ids is None:
@@ -77,7 +78,7 @@ class DatahubRagAppService(BaseRagAppService):
 
         return folder_filters
 
-    def get_document_metadata_before_sync(self, rag_resource: RagResource) -> Dict[str, Any]:
+    def get_document_metadata_before_sync(self, rag_resource: RagResource) -> dict[str, Any]:
         metadata = super().get_document_metadata_before_sync(rag_resource)
 
         # Add the root folder of the document as metadata

@@ -2,7 +2,6 @@ from unittest import TestCase
 
 import numpy as np
 import pandas as pd
-
 from gws_ai_toolkit.stats.ai_table_stats_tests import AiTableStatsTests
 from gws_ai_toolkit.stats.ai_table_stats_tests_pairwise import AiTableStatsTestsPairWise
 from gws_ai_toolkit.stats.ai_table_stats_type import (

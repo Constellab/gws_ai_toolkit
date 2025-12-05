@@ -7,7 +7,6 @@ from gws_core import (
     ConfigParams,
     ConfigSpecs,
     File,
-    Folder,
     InputSpec,
     InputSpecs,
     OutputSpec,

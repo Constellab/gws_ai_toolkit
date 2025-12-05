@@ -1,4 +1,3 @@
-from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -98,10 +97,10 @@ class AiTableStatsPlots:
 
     def generate_scatter_plot(
         self,
-        x: Union[np.ndarray, pd.Series, List[float]],
-        y: Union[np.ndarray, pd.Series, List[float]],
-        x_name: Optional[str] = None,
-        y_name: Optional[str] = None,
+        x: np.ndarray | pd.Series | list[float],
+        y: np.ndarray | pd.Series | list[float],
+        x_name: str | None = None,
+        y_name: str | None = None,
         correlation_type: str = "correlation",
     ) -> Figure:
         """Generate a scatter plot for correlation analysis.
@@ -168,7 +167,7 @@ class AiTableStatsPlots:
         return fig
 
     def generate_box_plot(
-        self, groups: List[List[Union[float, int]]], group_names: Optional[List[str]] = None
+        self, groups: list[list[float | int]], group_names: list[str] | None = None
     ) -> Figure:
         """Generate a box plot for multiple groups of data.
 
@@ -209,7 +208,7 @@ class AiTableStatsPlots:
         self,
         dataframe: pd.DataFrame,
         title: str = "Distribution Histogram",
-        bins: Optional[int] = None,
+        bins: int | None = None,
     ) -> Figure:
         """Generate a histogram with multiple series for each dataframe column.
 

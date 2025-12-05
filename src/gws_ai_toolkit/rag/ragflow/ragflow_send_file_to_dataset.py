@@ -1,6 +1,4 @@
-from typing import List
 
-from gws_ai_toolkit.rag.ragflow.ragflow_service import RagFlowService
 from gws_core import (
     ConfigParams,
     ConfigSpecs,
@@ -21,6 +19,8 @@ from gws_core import (
     TypingStyle,
     task_decorator,
 )
+
+from gws_ai_toolkit.rag.ragflow.ragflow_service import RagFlowService
 
 
 @task_decorator(
@@ -67,7 +67,7 @@ class RagFlowSendFileToDataset(Task):
         credentials: CredentialsDataOther = params.get_value("api_key")
         ragflow_service = RagFlowService.from_credentials(credentials)
 
-        file_paths: List[str] = []
+        file_paths: list[str] = []
 
         for fs_node in fs_nodes.get_resources():
             if isinstance(fs_node, File):
@@ -79,7 +79,7 @@ class RagFlowSendFileToDataset(Task):
                 self.log_error_message(f"Resource {fs_node.name} is not a file or a folder")
 
         progress = 0
-        error_files: List[str] = []
+        error_files: list[str] = []
 
         for file_path in file_paths:
             try:

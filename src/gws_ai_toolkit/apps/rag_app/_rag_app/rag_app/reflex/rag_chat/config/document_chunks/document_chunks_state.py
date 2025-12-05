@@ -1,4 +1,3 @@
-from typing import List
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_models import RagChunk
@@ -13,7 +12,7 @@ class DocumentChunksState(rx.State):
 
     # Chunk loading state
     chunks_dialog_open: bool = False
-    chunks: List[RagChunk] = []
+    chunks: list[RagChunk] = []
     chunks_loading: bool = False
     chunks_page: int = 1
     chunks_per_page: int = 10

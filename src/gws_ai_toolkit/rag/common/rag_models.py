@@ -1,4 +1,3 @@
-from typing import List, Optional
 
 from gws_core import BaseModelDTO
 
@@ -10,7 +9,7 @@ class RagDocument(BaseModelDTO):
 
     id: str
     name: str
-    size: Optional[int] = None
+    size: int | None = None
     parsed_status: RagDocumentStatus
 
 
@@ -18,7 +17,7 @@ class RagChunk(BaseModelDTO):
     """Base class for document chunks/segments."""
 
     id: str
-    content: Optional[str]
+    content: str | None
     document_id: str
     document_name: str
     score: float
@@ -27,7 +26,7 @@ class RagChunk(BaseModelDTO):
 class RagChatStreamResponse(BaseModelDTO):
     """Base class for streaming chat responses."""
 
-    id: Optional[str]
+    id: str | None
     answer: str
     # If true, the response is from the beginning of the conversation (should not concatenate)
     # If false, the response is a continuation of the previous messages
@@ -37,7 +36,7 @@ class RagChatStreamResponse(BaseModelDTO):
 
 class RagChatSourceChunk(BaseModelDTO):
     chunk_id: str
-    content: Optional[str] = None
+    content: str | None = None
     score: float
 
 
@@ -45,7 +44,7 @@ class RagChatSource(BaseModelDTO):
     document_id: str
     document_name: str
     score: float = 0
-    chunks: List[RagChatSourceChunk] = []
+    chunks: list[RagChatSourceChunk] = []
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -61,7 +60,7 @@ class RagChatEndStreamResponse(BaseModelDTO):
     """Base class for end-of-stream chat responses."""
 
     session_id: str
-    sources: List[RagChatSource] = []
+    sources: list[RagChatSource] = []
 
     def add_source(
         self,
@@ -69,7 +68,7 @@ class RagChatEndStreamResponse(BaseModelDTO):
         document_name: str,
         chunk_id: str,
         chunk_score: float,
-        chunk_content: Optional[str],
+        chunk_content: str | None,
     ) -> None:
         chat_source = self.get_source_by_document_id(document_id)
         if not chat_source:
@@ -80,7 +79,7 @@ class RagChatEndStreamResponse(BaseModelDTO):
             RagChatSourceChunk(chunk_id=chunk_id, content=chunk_content, score=chunk_score)
         )
 
-    def get_source_by_document_id(self, document_id: str) -> Optional[RagChatSource]:
+    def get_source_by_document_id(self, document_id: str) -> RagChatSource | None:
         for source in self.sources:
             if source.document_id == document_id:
                 return source

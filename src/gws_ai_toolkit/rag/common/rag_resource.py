@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 from gws_core import (
     CurrentUserService,
@@ -163,7 +163,7 @@ class RagResource:
     def unmark_resource_as_sent_to_rag(self) -> None:
         """Remove the platform tags from the resource."""
         resource_tags = self.get_tags()
-        entity_tags: List[EntityTag] = []
+        entity_tags: list[EntityTag] = []
         entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_DOC_TAG_KEY))
         entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_DATASET_ID_TAG_KEY))
         entity_tags.extend(resource_tags.get_tags_by_key(self.RAG_SYNC_TAG_KEY))

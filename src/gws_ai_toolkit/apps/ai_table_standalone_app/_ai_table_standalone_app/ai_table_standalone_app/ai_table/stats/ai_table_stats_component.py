@@ -1,7 +1,6 @@
 import reflex as rx
-from plotly.graph_objects import Figure
-
 from gws_ai_toolkit.stats.ai_table_stats_type import AiTableStatsResults
+from plotly.graph_objects import Figure
 
 from .ai_table_stats_state import AiTableStatsState
 

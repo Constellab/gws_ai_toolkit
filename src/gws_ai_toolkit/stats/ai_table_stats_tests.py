@@ -1,4 +1,3 @@
-from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -43,7 +42,7 @@ class AiTableStatsTests:
 
     # Normality tests
     def shapiro_wilk_test(
-        self, data: Union[np.ndarray, pd.Series, List[float]]
+        self, data: np.ndarray | pd.Series | list[float]
     ) -> AiTableStatsResults:
         """Shapiro-Wilk normality test."""
         statistic, p_value = stats.shapiro(data)
@@ -64,7 +63,7 @@ class AiTableStatsTests:
         )
 
     def kolmogorov_smirnov_test(
-        self, data: Union[np.ndarray, pd.Series, List[float]]
+        self, data: np.ndarray | pd.Series | list[float]
     ) -> AiTableStatsResults:
         """Kolmogorov-Smirnov normality test using Lilliefors from statsmodels."""
         statistic, p_value = lilliefors(data, dist="norm")
@@ -86,7 +85,7 @@ class AiTableStatsTests:
 
     # Homogeneity tests
     def bartlett_test(
-        self, *groups: Union[np.ndarray, pd.Series, List[float]]
+        self, *groups: np.ndarray | pd.Series | list[float]
     ) -> AiTableStatsResults:
         """Bartlett's test for homogeneity of variances."""
         statistic, p_value = stats.bartlett(*groups)
@@ -107,7 +106,7 @@ class AiTableStatsTests:
         )
 
     def levene_test(
-        self, *groups: Union[np.ndarray, pd.Series, List[float]]
+        self, *groups: np.ndarray | pd.Series | list[float]
     ) -> AiTableStatsResults:
         """Levene's test for homogeneity of variances."""
         statistic, p_value = stats.levene(*groups)
@@ -129,7 +128,7 @@ class AiTableStatsTests:
 
     # Qualitative tests
     def chi2_adjustment_test(
-        self, observed_freq: Union[np.ndarray, List[int]]
+        self, observed_freq: np.ndarray | list[int]
     ) -> AiTableStatsResults:
         """Chi-squared goodness of fit test (adjustment test)."""
         # For goodness of fit, we compare observed vs expected uniform distribution
@@ -154,7 +153,7 @@ class AiTableStatsTests:
         )
 
     def chi2_independence_test(
-        self, contingency_table: Union[np.ndarray, List[List[int]]]
+        self, contingency_table: np.ndarray | list[list[int]]
     ) -> AiTableStatsResults:
         """Chi-squared test of independence."""
         chi2_stat, p_value, dof, expected = stats.chi2_contingency(contingency_table)
@@ -178,7 +177,7 @@ class AiTableStatsTests:
             ),
         )
 
-    def mcnemar_test(self, table: Union[np.ndarray, List[List[int]]]) -> AiTableStatsResults:
+    def mcnemar_test(self, table: np.ndarray | list[list[int]]) -> AiTableStatsResults:
         """McNemar's test for paired categorical data."""
         result = mcnemar(table, exact=False, correction=True)
 
@@ -200,10 +199,10 @@ class AiTableStatsTests:
     # Quantitative tests - parametric
     def student_independent_test(
         self,
-        group1: Union[np.ndarray, pd.Series, List[float]],
-        group2: Union[np.ndarray, pd.Series, List[float]],
-        group_name_1: Optional[str] = None,
-        group_name_2: Optional[str] = None,
+        group1: np.ndarray | pd.Series | list[float],
+        group2: np.ndarray | pd.Series | list[float],
+        group_name_1: str | None = None,
+        group_name_2: str | None = None,
     ) -> AiTableStatsResults:
         """Student's t-test for independent samples."""
 
@@ -235,10 +234,10 @@ class AiTableStatsTests:
 
     def student_paired_test(
         self,
-        group1: Union[np.ndarray, pd.Series, List[float]],
-        group2: Union[np.ndarray, pd.Series, List[float]],
-        group_name_1: Optional[str] = None,
-        group_name_2: Optional[str] = None,
+        group1: np.ndarray | pd.Series | list[float],
+        group2: np.ndarray | pd.Series | list[float],
+        group_name_1: str | None = None,
+        group_name_2: str | None = None,
     ) -> AiTableStatsResults:
         """Student's t-test for paired samples."""
         statistic, p_value = stats.ttest_rel(group1, group2)
@@ -299,10 +298,10 @@ class AiTableStatsTests:
 
     def mann_whitney_test(
         self,
-        group1: Union[np.ndarray, pd.Series, List[float]],
-        group2: Union[np.ndarray, pd.Series, List[float]],
-        group_name_1: Optional[str] = None,
-        group_name_2: Optional[str] = None,
+        group1: np.ndarray | pd.Series | list[float],
+        group2: np.ndarray | pd.Series | list[float],
+        group_name_1: str | None = None,
+        group_name_2: str | None = None,
     ) -> AiTableStatsResults:
         """Mann-Whitney test."""
         statistic, p_value = stats.mannwhitneyu(group1, group2, alternative="two-sided")
@@ -331,10 +330,10 @@ class AiTableStatsTests:
 
     def wilcoxon_test(
         self,
-        group1: Union[np.ndarray, pd.Series, List[float]],
-        group2: Union[np.ndarray, pd.Series, List[float]],
-        group_name_1: Optional[str] = None,
-        group_name_2: Optional[str] = None,
+        group1: np.ndarray | pd.Series | list[float],
+        group2: np.ndarray | pd.Series | list[float],
+        group_name_1: str | None = None,
+        group_name_2: str | None = None,
     ) -> AiTableStatsResults:
         """Wilcoxon signed-rank test for paired samples."""
         statistic, p_value = stats.wilcoxon(group1, group2, alternative="two-sided")
@@ -422,10 +421,10 @@ class AiTableStatsTests:
     # Correlation tests
     def pearson_correlation_test(
         self,
-        x: Union[np.ndarray, pd.Series, List[float]],
-        y: Union[np.ndarray, pd.Series, List[float]],
-        x_name: Optional[str] = None,
-        y_name: Optional[str] = None,
+        x: np.ndarray | pd.Series | list[float],
+        y: np.ndarray | pd.Series | list[float],
+        x_name: str | None = None,
+        y_name: str | None = None,
         generate_plot: bool = True,
     ) -> AiTableStatsResults:
         """Pearson correlation test between two variables."""
@@ -463,10 +462,10 @@ class AiTableStatsTests:
 
     def spearman_correlation_test(
         self,
-        x: Union[np.ndarray, pd.Series, List[float]],
-        y: Union[np.ndarray, pd.Series, List[float]],
-        x_name: Optional[str] = None,
-        y_name: Optional[str] = None,
+        x: np.ndarray | pd.Series | list[float],
+        y: np.ndarray | pd.Series | list[float],
+        x_name: str | None = None,
+        y_name: str | None = None,
         generate_plot: bool = True,
     ) -> AiTableStatsResults:
         """Spearman rank correlation test between two variables."""

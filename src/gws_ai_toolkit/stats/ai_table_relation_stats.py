@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import cast
 
 from gws_core import Logger
 from pandas import DataFrame, api
@@ -42,9 +42,9 @@ class AiTableRelationStats(AiTableStatsBase):
     between variables.
     """
 
-    _reference_column: Optional[str]
+    _reference_column: str | None
 
-    def __init__(self, dataframe: DataFrame, reference_column: Optional[str] = None):
+    def __init__(self, dataframe: DataFrame, reference_column: str | None = None):
         super().__init__(dataframe)
 
         self._reference_column = reference_column

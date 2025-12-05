@@ -4,11 +4,10 @@ from unittest.mock import patch
 
 import pandas as pd
 import plotly.graph_objects as go
-from gws_core import Table
-from openai import OpenAI
-
 from gws_ai_toolkit.core.agents.plotly_agent_ai import PlotlyAgentAi
 from gws_ai_toolkit.core.agents.plotly_agent_ai_events import FunctionErrorEvent, PlotGeneratedEvent
+from gws_core import Table
+from openai import OpenAI
 
 
 # test_plotly_agent_ai.py

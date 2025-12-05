@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import Literal
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
@@ -11,10 +11,10 @@ from ..rag_config_state import RagConfigState
 class DeleteExpiredDocumentsDialogState(rx.State):
     """State management for the delete expired documents dialog functionality."""
 
-    documents_to_delete: List[RagDocument] = []
+    documents_to_delete: list[RagDocument] = []
     documents_to_delete_dialog_opened: bool = False
     delete_documents_progress: int = -1
-    delete_errors: List[str] = []
+    delete_errors: list[str] = []
 
     @rx.var
     def count_documents_to_delete(self) -> int:
@@ -25,7 +25,7 @@ class DeleteExpiredDocumentsDialogState(rx.State):
         return self.documents_to_delete is not None
 
     @rx.var
-    def documents_info(self) -> List[str]:
+    def documents_info(self) -> list[str]:
         return [f"{doc.name} ({doc.id})" for doc in self.documents_to_delete]
 
     @rx.var
