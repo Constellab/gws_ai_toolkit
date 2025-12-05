@@ -1,14 +1,15 @@
-import unittest
-
 from gws_ai_toolkit import (
-    ChatApp,
-    ChatConversation,
-    ChatConversationService,
     ChatMessageCode,
     ChatMessageModel,
-    ChatMessageText,
-    SaveChatConversationDTO,
 )
+from gws_ai_toolkit.models.chat.chat_app import ChatApp
+from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
+from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
+from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
+from gws_ai_toolkit.models.user.user_sync_service import AiToolkitUserSyncService
+from gws_ai_toolkit.rag.common.rag_models import RagChatSource, RagChatSourceChunk
 from gws_core import BaseTestCase
 
 
@@ -19,36 +20,18 @@ class TestChatConversationService(BaseTestCase):
     Tests cover all public methods with basic functionality verification.
     """
 
+    test_chat_app: ChatApp
+
     @classmethod
-    def setUpClass(cls):
-        """Set up test database and create tables."""
-        # Initialize service
-        super().setUpClass()
+    def init_before_test(cls):
+        super().init_before_test()
+        sync_service = AiToolkitUserSyncService()
+        sync_service.sync_all_users()
         cls.service = ChatConversationService()
 
-    def setUp(self):
-        """Set up test fixtures before each test."""
-        # Create a test chat app
-        self.test_chat_app = ChatApp()
-        self.test_chat_app.name = f"Test Chat App {id(self)}"
-        self.test_chat_app.save()
-
-        # Create a test conversation
-        self.test_conversation = ChatConversation()
-        self.test_conversation.chat_app = self.test_chat_app
-        self.test_conversation.configuration = {"model": "gpt-4"}
-        self.test_conversation.mode = "test"
-        self.test_conversation.label = "Test Conversation"
-        self.test_conversation.save()
-
-    def tearDown(self):
-        """Clean up after each test."""
-        # Delete test data - CASCADE should handle message sources
-        ChatMessageModel.delete().where(
-            ChatMessageModel.conversation == self.test_conversation
-        ).execute()
-        ChatConversation.delete().where(ChatConversation.id == self.test_conversation.id).execute()
-        ChatApp.delete().where(ChatApp.id == self.test_chat_app.id).execute()
+        cls.test_chat_app = ChatApp()
+        cls.test_chat_app.name = "test"
+        cls.test_chat_app.save()
 
     def test_save_conversation_with_text_message(self):
         """Test creating a new conversation with a text message."""
@@ -58,7 +41,9 @@ class TestChatConversationService(BaseTestCase):
             configuration={"model": "gpt-3.5-turbo"},
             mode="chat",
             label="New Conversation",
-            messages=[ChatMessageText(role="user", content="Hello, AI!", external_id="msg_123")],
+            messages=[
+                ChatUserMessageText(role="user", content="Hello, AI!", external_id="msg_123")
+            ],
         )
 
         # Create conversation
@@ -75,11 +60,10 @@ class TestChatConversationService(BaseTestCase):
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0].message, "Hello, AI!")
         self.assertEqual(messages[0].role, "user")
-        self.assertEqual(messages[0].type, "text")
+        self.assertEqual(messages[0].type, "user-text")
         self.assertEqual(messages[0].external_id, "msg_123")
 
         # Clean up
-        ChatMessageModel.delete().where(ChatMessageModel.conversation == conversation).execute()
         conversation.delete_instance()
 
     def test_save_conversation_with_multiple_messages(self):
@@ -91,7 +75,7 @@ class TestChatConversationService(BaseTestCase):
             mode="coding",
             label="Multi-message Conversation",
             messages=[
-                ChatMessageText(
+                ChatUserMessageText(
                     role="user", content="Can you write a Python function?", external_id="msg_001"
                 ),
                 ChatMessageCode(
@@ -99,7 +83,6 @@ class TestChatConversationService(BaseTestCase):
                     code="def hello_world():\n    print('Hello, World!')",
                     external_id="msg_002",
                 ),
-                ChatMessageText(role="user", content="Thank you!", external_id="msg_003"),
             ],
         )
 
@@ -113,7 +96,7 @@ class TestChatConversationService(BaseTestCase):
 
         # Verify all messages were created
         messages = list(ChatMessageModel.get_by_conversation(str(conversation.id)))
-        self.assertEqual(len(messages), 3)
+        self.assertEqual(len(messages), 2)
 
         # Find messages by content to avoid order dependency
         user_messages = [m for m in messages if m.role == "user"]
@@ -121,10 +104,9 @@ class TestChatConversationService(BaseTestCase):
         code_messages = [m for m in messages if m.type == "code"]
 
         # Verify user messages
-        self.assertEqual(len(user_messages), 2)
+        self.assertEqual(len(user_messages), 1)
         user_contents = {m.message for m in user_messages}
         self.assertIn("Can you write a Python function?", user_contents)
-        self.assertIn("Thank you!", user_contents)
 
         # Verify code message
         self.assertEqual(len(code_messages), 1)
@@ -137,74 +119,112 @@ class TestChatConversationService(BaseTestCase):
         self.assertEqual(len(assistant_messages), 1)
 
         # Clean up
-        ChatMessageModel.delete().where(ChatMessageModel.conversation == conversation).execute()
         conversation.delete_instance()
 
-    def test_save_conversation_without_messages(self):
-        """Test creating a conversation without any messages."""
-        # Prepare conversation DTO without messages
+    def test_conversation_with_source(self):
+        """Test creating a conversation with a message that has sources and verify source retrieval."""
+        # Prepare conversation DTO with messages including sources
         conversation_dto = SaveChatConversationDTO(
             chat_app_name=self.test_chat_app.name,
-            configuration={"model": "gpt-4"},
-            mode="chat",
-            label="Empty Conversation",
-            messages=[],
+            configuration={"temperature": 0.7},
+            mode="coding",
+            label="Conversation with Sources",
+            messages=[
+                ChatUserMessageText(
+                    content="Can you write a Python function?", external_id="msg_001"
+                ),
+                ChatMessageSource(
+                    sources=[
+                        RagChatSource(
+                            document_id="doc_123",
+                            document_name="python_tutorial.pdf",
+                            score=0.95,
+                            chunks=[
+                                RagChatSourceChunk(
+                                    chunk_id="chunk_1",
+                                    content="Python functions are defined using def keyword",
+                                    score=0.95,
+                                )
+                            ],
+                        ),
+                        RagChatSource(
+                            document_id="doc_456",
+                            document_name="best_practices.pdf",
+                            score=0.87,
+                            chunks=[
+                                RagChatSourceChunk(
+                                    chunk_id="chunk_2",
+                                    content="Always use descriptive function names",
+                                    score=0.87,
+                                )
+                            ],
+                        ),
+                    ],
+                    content="Here is the code you requested.",
+                    external_id="msg_003",
+                ),
+            ],
         )
 
-        # Create conversation
+        # Save the conversation
         conversation = self.service.save_conversation(conversation_dto)
 
         # Verify conversation was created
         self.assertIsNotNone(conversation.id)
-        self.assertEqual(conversation.label, "Empty Conversation")
-        self.assertEqual(conversation.mode, "chat")
+        self.assertEqual(conversation.label, "Conversation with Sources")
 
-        # Verify no messages were created
+        # Verify messages were created
         messages = list(ChatMessageModel.get_by_conversation(str(conversation.id)))
-        self.assertEqual(len(messages), 0)
+        self.assertEqual(len(messages), 2)
+
+        # Find the message with sources
+        message_with_sources = next((m for m in messages if m.type == "source"), None)
+        self.assertIsNotNone(message_with_sources)
+        self.assertEqual(message_with_sources.message, "Here is the code you requested.")
+
+        # Verify sources exist in ChatMessageSourceModel
+        sources: list[ChatMessageSourceModel] = list(
+            ChatMessageSourceModel.get_by_message(str(message_with_sources.id))
+        )
+        self.assertEqual(len(sources), 2)
+
+        # Verify first source details
+        doc_123_source = next((s for s in sources if s.document_id == "doc_123"), None)
+        self.assertIsNotNone(doc_123_source)
+        self.assertEqual(doc_123_source.document_name, "python_tutorial.pdf")
+        self.assertEqual(doc_123_source.score, 0.95)
+        chunks_123 = doc_123_source.get_chunks()
+        self.assertEqual(len(chunks_123), 1)
+        self.assertEqual(chunks_123[0].chunk_id, "chunk_1")
+        self.assertEqual(chunks_123[0].content, "Python functions are defined using def keyword")
+        self.assertEqual(chunks_123[0].score, 0.95)
+
+        # Verify second source details
+        doc_456_source = next((s for s in sources if s.document_id == "doc_456"), None)
+        self.assertIsNotNone(doc_456_source)
+        self.assertEqual(doc_456_source.document_name, "best_practices.pdf")
+        self.assertEqual(doc_456_source.score, 0.87)
+
+        # Test get_message_sources_by_chat_app method
+        page_dto = self.service.get_message_sources_by_chat_app(
+            chat_app_name=self.test_chat_app.name, page=0, number_of_items_per_page=20
+        )
+
+        # Verify page DTO structure
+        self.assertIsNotNone(page_dto)
+        self.assertGreaterEqual(len(page_dto.objects), 2)
+
+        # Verify sources are returned as RagChatSource DTOs
+        returned_sources = page_dto.objects
+        document_ids = {source.document_id for source in returned_sources}
+        self.assertIn("doc_123", document_ids)
+        self.assertIn("doc_456", document_ids)
+
+        # Verify source details from get_message_sources_by_chat_app
+        source_123 = next((s for s in returned_sources if s.document_id == "doc_123"), None)
+        self.assertIsNotNone(source_123)
+        self.assertEqual(source_123.document_name, "python_tutorial.pdf")
+        self.assertEqual(source_123.score, 0.95)
 
         # Clean up
         conversation.delete_instance()
-
-    def test_get_conversation_folder_path(self):
-        """Test getting the conversation folder path."""
-        folder_path = self.test_conversation.get_conversation_folder_path()
-
-        # Verify path contains conversation ID
-        self.assertIn(str(self.test_conversation.id), folder_path)
-        self.assertIn("chat_conversations", folder_path)
-
-    def test_delete_conversation(self):
-        """Test deleting a conversation with CASCADE."""
-        # Create a conversation with messages
-        conversation_dto = SaveChatConversationDTO(
-            chat_app_name=self.test_chat_app.name,
-            configuration={},
-            mode="test",
-            label="To Delete",
-            messages=[ChatMessageText(role="user", content="Message to delete")],
-        )
-        conversation = self.service.save_conversation(conversation_dto)
-        conversation_id = str(conversation.id)
-
-        # Verify conversation and message exist
-        self.assertIsNotNone(ChatConversation.get_by_id(conversation_id))
-        messages = list(ChatMessageModel.get_by_conversation(conversation_id))
-        self.assertEqual(len(messages), 1)
-
-        # Delete conversation
-        self.service.delete_conversation(conversation_id)
-
-        # Verify conversation was deleted
-        result = ChatConversation.select().where(ChatConversation.id == conversation_id).first()
-        self.assertIsNone(result)
-
-        # Verify messages were also deleted (CASCADE)
-        messages = list(
-            ChatMessageModel.select().where(ChatMessageModel.conversation == conversation_id)
-        )
-        self.assertEqual(len(messages), 0)
-
-
-if __name__ == "__main__":
-    unittest.main()

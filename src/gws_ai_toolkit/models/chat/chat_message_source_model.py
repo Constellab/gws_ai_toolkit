@@ -1,4 +1,5 @@
 from gws_core import JSONField, Model
+from gws_core.core.model.model_dto import BaseModelDTO
 from peewee import CharField, FloatField, ForeignKeyField, ModelSelect
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
@@ -54,6 +55,9 @@ class ChatMessageSourceModel(Model):
         :rtype: list[RagChatSourceChunk]
         """
         return RagChatSourceChunk.from_json_list(self.chunks)
+
+    def to_dto(self) -> BaseModelDTO:
+        return self.to_rag_dto()
 
     def to_rag_dto(self) -> RagChatSource:
         return RagChatSource(

@@ -1,4 +1,5 @@
-from gws_core import CurrentUserService
+from gws_core import CurrentUserService, Paginator
+from gws_core.core.model.model_dto import PageDTO
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
@@ -35,6 +36,35 @@ class ChatConversationService:
         return list(
             ChatConversation.get_by_chat_app_and_user(chat_app.id, self._get_current_user().id)
         )
+
+    def get_message_sources_by_chat_app(
+        self, chat_app_name: str, page: int = 0, number_of_items_per_page: int = 20
+    ) -> PageDTO[RagChatSource]:
+        """Get all message sources for a specific chat app by performing joins.
+
+        This method joins ChatMessageSourceModel -> ChatMessageModel -> ChatConversation
+        and filters by chat_app_id. Returns distinct sources by document_id.
+
+        :param chat_app_name: The name of the chat app
+        :type chat_app_name: str
+        :return: List of chat message sources distinct by document_id, ordered by creation date (most recent first)
+        :rtype: list[ChatMessageSourceModel]
+        """
+        # Get the chat app first and check if it exists
+        chat_app = ChatAppService().get_by_name_and_check(chat_app_name)
+
+        paginator = Paginator(
+            ChatMessageSourceModel.select()
+            .join(ChatMessageModel)
+            .join(ChatConversation)
+            .where(ChatConversation.chat_app == chat_app.id)
+            .group_by(ChatMessageSourceModel.document_id)
+            .order_by(ChatMessageSourceModel.created_at.desc()),
+            page=page,
+            nb_of_items_per_page=number_of_items_per_page,
+        )
+
+        return paginator.to_dto()
 
     @AiToolkitDbManager.transaction()
     def save_conversation(self, conversation_dto: SaveChatConversationDTO) -> ChatConversation:
@@ -92,7 +122,7 @@ class ChatConversationService:
         message_model.save()
 
         # Create sources if provided (sources should be RagChatSource from the DTO)
-        if isinstance(message, ChatMessageSourceModel) and message.sources:
+        if isinstance(message, ChatMessageSource) and message.sources:
             self._create_sources_for_message(message_model, message.sources)
 
         return message_model.to_chat_message()

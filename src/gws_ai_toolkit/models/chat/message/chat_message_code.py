@@ -28,7 +28,7 @@ class ChatMessageCode(ChatMessageBase):
 
     type: Literal["code"] = "code"
     role: Literal["assistant"] = "assistant"
-    code: str
+    code: str = ""
 
     def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
         """Fill additional fields from the ChatMessageModel.

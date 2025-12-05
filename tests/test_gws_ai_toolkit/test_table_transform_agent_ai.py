@@ -101,7 +101,6 @@ class TestTableTransformAgentAiIntegration(unittest.TestCase):
         This first transformation will fail due to missing 'pd' in globals
         and the agent should recover and produce a valid transformation.
         """
-        return
         # Setup mock to cause initial error
         mock_globals = {
             # 'pd': pd,  # Remove pd to cause an error

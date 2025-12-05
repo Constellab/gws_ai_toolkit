@@ -9,6 +9,8 @@ from .reflex.ai_expert.ai_expert_component import (
     ai_expert_header_default_buttons_component,
 )
 from .reflex.ai_expert.ai_expert_state import AiExpertState
+from .reflex.ai_expert.document_browser_component import document_browser_component
+from .reflex.ai_expert.document_browser_state import DocumentBrowserState
 from .reflex.chat_base.chat_config import ChatConfig
 from .reflex.core.app_config_state import AppConfigState
 from .reflex.core.nav_bar_component import NavBarItem
@@ -27,6 +29,7 @@ app = register_gws_reflex_app(rxe.App())
 
 nav_bar_items: list[NavBarItem] = [
     NavBarItem(text="Chat", icon="message-circle", url="/"),
+    NavBarItem(text="AI Expert", icon="brain", url="/ai-expert"),
     NavBarItem(text="Resources", icon="database", url="/rag-config"),
     NavBarItem(text="Config", icon="settings", url="/config"),
     NavBarItem(text="History", icon="clock", url="/history"),
@@ -58,6 +61,13 @@ def config_page():
 def history():
     """History page for viewing conversation history."""
     return page_component(nav_bar_items, history_component())
+
+
+# AI Expert page - document browser (no document selected)
+@rx.page(route="/ai-expert", on_load=DocumentBrowserState.load_documents)
+def ai_expert_browser():
+    """AI Expert page for selecting a document."""
+    return page_component(nav_bar_items, document_browser_component())
 
 
 # AI Expert page - document-specific chat
