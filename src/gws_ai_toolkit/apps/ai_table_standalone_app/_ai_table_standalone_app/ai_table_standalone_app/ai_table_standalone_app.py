@@ -2,12 +2,11 @@ import reflex as rx
 import reflex_enterprise as rxe
 from gws_ai_toolkit._app.ai_chat import (
     AppConfigState,
-    HistoryState,
     NavBarItem,
-    history_component,
     page_component,
 )
 from gws_reflex_main import register_gws_reflex_app
+from gws_reflex_main.reflex_main_state import ReflexMainState
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState
@@ -22,12 +21,32 @@ AppConfigState.set_config_state_class_type(CustomAppConfigState)
 
 app = register_gws_reflex_app(rxe.App())
 
-nav_bar_items: list[NavBarItem] = [
-    NavBarItem(text="Home", icon="home", url="/"),
-    NavBarItem(text="AI Table", icon="message-circle", url="/ai-table"),
-    NavBarItem(text="Config", icon="settings", url="/config"),
-    NavBarItem(text="History", icon="clock", url="/history"),
-]
+
+class NavBarState(rx.State):
+    @rx.var
+    async def show_config_page(self) -> bool:
+        """Determine if the Config page should be shown in the nav bar."""
+        main_state = await self.get_state(ReflexMainState)
+        show_config_page = await main_state.get_param("show_config_page", False)
+        return show_config_page
+
+    @rx.var
+    async def nav_bar_items(self) -> list[NavBarItem]:
+        nav_bar_items: list[NavBarItem] = [
+            NavBarItem(text="Home", icon="home", url="/"),
+            NavBarItem(text="AI Table", icon="message-circle", url="/ai-table"),
+        ]
+
+        show_config_page = await self.show_config_page
+        if show_config_page:
+            nav_bar_items.append(
+                NavBarItem(text="Config", icon="settings", url="/config"),
+            )
+            nav_bar_items.append(
+                NavBarItem(text="History", icon="clock", url="/history"),
+            )
+
+        return nav_bar_items
 
 
 # Home page route (now at root)
@@ -35,7 +54,7 @@ nav_bar_items: list[NavBarItem] = [
 def index():
     """Home page for file upload"""
     return page_component(
-        nav_bar_items,
+        NavBarState.nav_bar_items,
         home_page(),
     )
 
@@ -49,7 +68,7 @@ def ai_table():
     # The content will be displayed once the state is initialized.
     # If the state is not initialized, show message to go to home page.
     return page_component(
-        nav_bar_items,
+        NavBarState.nav_bar_items,
         rx.cond(
             AiTableDataState.dataframe_loaded,
             ai_table_component(),
@@ -84,16 +103,20 @@ def ai_table():
 @rx.page(route="/config")
 def config_page():
     """Configuration page for AI Expert and AI Table settings."""
-    return page_component(
-        nav_bar_items,
-        ai_table_agent_chat_config_component(),
+    return rx.cond(
+        NavBarState.show_config_page,
+        page_component(
+            NavBarState.nav_bar_items,
+            ai_table_agent_chat_config_component(),
+        ),
+        rx.text("Configuration page is not available.", color="red"),
     )
 
 
 # History page - for conversation history
 
 
-@rx.page(route="/history", on_load=HistoryState.load_conversations)
-def history():
-    """History page for viewing conversation history."""
-    return page_component(nav_bar_items, history_component())
+# @rx.page(route="/history", on_load=HistoryState.load_conversations)
+# def history():
+#     """History page for viewing conversation history."""
+#     return page_component(nav_bar_items, history_component())

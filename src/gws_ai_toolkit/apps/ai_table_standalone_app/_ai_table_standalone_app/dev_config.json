@@ -2,7 +2,8 @@
     "app_dir_path": "",
     "source_ids": [],
     "params": {
-        "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/_data/app_configuration.json"
+        "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/_data/app_configuration.json",
+        "show_config_page": true
     },
     "env_type": "NONE",
     "env_file_path": "",

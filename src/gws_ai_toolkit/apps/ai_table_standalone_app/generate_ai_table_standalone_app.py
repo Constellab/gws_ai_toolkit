@@ -3,6 +3,7 @@ from typing import cast
 from gws_core import (
     AppConfig,
     AppType,
+    BoolParam,
     ConfigParams,
     ConfigSpecs,
     File,
@@ -51,7 +52,15 @@ class GenerateAiTableStandaloneApp(Task):
     )
     output_specs = OutputSpecs({"reflex_app": OutputSpec(ReflexResource)})
 
-    config_specs = ConfigSpecs({})
+    config_specs = ConfigSpecs(
+        {
+            "show_config_page": BoolParam(
+                human_name="Show config page",
+                short_description="Show the config page",
+                default_value=True,
+            ),
+        }
+    )
 
     def run(self, params: ConfigParams, inputs: TaskInputs) -> TaskOutputs:
         """Run the task"""
@@ -65,6 +74,8 @@ class GenerateAiTableStandaloneApp(Task):
         app_config_file: File = cast(File, inputs["app_config"])
         reflex_app.add_resource(app_config_file, create_new_resource=False)
         reflex_app.set_param("configuration_file_path", app_config_file.path)
+
+        reflex_app.set_param("show_config_page", params["show_config_page"])
 
         reflex_app.set_enterprise_app(True)
 

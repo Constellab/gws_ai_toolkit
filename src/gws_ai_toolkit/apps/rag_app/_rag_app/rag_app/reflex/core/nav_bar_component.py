@@ -32,11 +32,6 @@ def _navbar_link(item: NavBarItem) -> rx.Component:
                 rx.color("accent", 11),
                 rx.color("gray", 11),
             ),
-            border_bottom=rx.cond(
-                is_current,
-                f"2px solid {rx.color('accent', 9)}",
-                "2px solid transparent",
-            ),
             transition="all 0.2s ease",
             _hover={
                 "color": rx.color("accent", 10),
