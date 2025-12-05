@@ -1,10 +1,11 @@
 from typing import cast
 
 import reflex as rx
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig
 from gws_core import Logger
 
 from ..core.app_config_state import AppConfigState
-from .ai_expert_config import AiExpertChatMode, AiExpertConfig
+from .ai_expert_config import AiExpertChatMode
 
 
 class AiExpertConfigState(rx.State):
@@ -36,10 +37,10 @@ class AiExpertConfigState(rx.State):
 
     current_form_mode: AiExpertChatMode = "full_file"
 
-    async def get_config(self) -> AiExpertConfig:
+    async def get_config(self) -> AiExpertChatConfig:
         app_config_state = await AppConfigState.get_instance(self)
-        config = await app_config_state.get_config_section("ai_expert_page", AiExpertConfig)
-        return cast(AiExpertConfig, config)
+        config = await app_config_state.get_config_section("ai_expert_page", AiExpertChatConfig)
+        return cast(AiExpertChatConfig, config)
 
     @rx.var
     async def current_mode(self) -> str:
@@ -77,9 +78,15 @@ class AiExpertConfigState(rx.State):
         expert_config = await self.get_config()
         return expert_config.max_chunks
 
+    @rx.var
+    async def placeholder_text(self) -> str:
+        """Get the placeholder text for the AI expert"""
+        expert_config = await self.get_config()
+        return expert_config.placeholder_text
+
     @rx.event
     async def handle_config_form_submit(self, form_data: dict):
-        """Handle the combined configuration form submission (mode, system prompt, model, and temperature)"""
+        """Handle the combined configuration form submission (mode, system prompt, model, temperature, and placeholder)"""
         try:
             # Get the new values from form data
             new_mode = form_data.get("mode", "").strip()
@@ -87,6 +94,7 @@ class AiExpertConfigState(rx.State):
             new_model = form_data.get("model", "").strip()
             new_temperature_str = form_data.get("temperature", "").strip()
             new_max_chunks_str = form_data.get("max_chunks", "").strip()
+            new_placeholder_text = form_data.get("placeholder_text", "").strip()
 
             if not new_system_prompt:
                 return rx.toast.error("System prompt cannot be empty")
@@ -96,6 +104,9 @@ class AiExpertConfigState(rx.State):
 
             if not new_model:
                 return rx.toast.error("Model cannot be empty")
+
+            if not new_placeholder_text:
+                return rx.toast.error("Placeholder text cannot be empty")
 
             # Validate temperature
             try:
@@ -134,13 +145,14 @@ class AiExpertConfigState(rx.State):
                 )
 
             # Create new config with updated values
-            new_config = AiExpertConfig(
+            new_config = AiExpertChatConfig(
                 prompt_file_placeholder=current_config.prompt_file_placeholder,
                 system_prompt=new_system_prompt,
                 mode=new_mode,
                 model=new_model,
                 temperature=new_temperature,
                 max_chunks=new_max_chunks,
+                placeholder_text=new_placeholder_text,
             )
 
             # Update the config in AppConfigState

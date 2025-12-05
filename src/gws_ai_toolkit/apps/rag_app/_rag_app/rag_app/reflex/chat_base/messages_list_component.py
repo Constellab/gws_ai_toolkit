@@ -167,6 +167,7 @@ def _message_component(message: ChatMessage, config: ChatConfig) -> rx.Component
         "plotly": _plotly_content,
         "error": _error_content,
         "hint": _hint_content,
+        "source": lambda msg: message_source(msg, config.state),
     }
 
     # Build match cases: custom renderers take priority, then defaults

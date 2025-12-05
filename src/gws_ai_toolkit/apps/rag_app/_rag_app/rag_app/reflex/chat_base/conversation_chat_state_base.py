@@ -142,6 +142,8 @@ class ConversationChatStateBase(rx.State, mixin=True):
                         async with self:
                             self.current_response_message = None
                             self._chat_messages.append(message.to_front_dto())
+                            # print(f"Added message type : {type(message)}: {message}")
+                            # print(f"Added message: {message.to_front_dto()}")
                         await self._after_message_added(message)
 
         finally:
@@ -198,3 +200,8 @@ class ConversationChatStateBase(rx.State, mixin=True):
     def chat_messages(self) -> list[ChatMessageFront]:
         """Get all chat messages as DTOs for rendering."""
         return cast(list[ChatMessageFront], self._chat_messages)
+
+    @rx.event
+    async def on_mount(self) -> None:
+        """On mount, ensure the conversation is created."""
+        pass

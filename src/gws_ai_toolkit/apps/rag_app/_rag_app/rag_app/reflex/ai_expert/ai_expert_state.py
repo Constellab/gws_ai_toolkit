@@ -1,7 +1,7 @@
 import reflex as rx
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import (
     AiExpertChatConversation,
-    AiExpertConfig,
 )
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
     BaseChatConversation,
@@ -42,7 +42,6 @@ class AiExpertState(ConversationChatStateBase, rx.State):
 
     # UI configuration
     title: str = "AI Expert"
-    placeholder_text: str = "Ask about this document..."
     empty_state_message: str = "Start asking questions about this document"
 
     _rag_resource: RagResource | None = None
@@ -70,7 +69,7 @@ class AiExpertState(ConversationChatStateBase, rx.State):
 
         # Get config
         app_config_state = await self.get_state(AiExpertConfigState)
-        config: AiExpertConfig = await app_config_state.get_config()
+        config: AiExpertChatConfig = await app_config_state.get_config()
 
         main_state = await self.get_state(ReflexMainState)
         user = await main_state.get_current_user()
@@ -87,7 +86,7 @@ class AiExpertState(ConversationChatStateBase, rx.State):
         )
 
     async def load_resource_from_url(self) -> None:
-        """Handle page load - get resource ID from router state"""
+        """Handle page load - get resource ID from router state and load config"""
 
         document_id = self.document_id if hasattr(self, "document_id") else None
 
@@ -106,6 +105,11 @@ class AiExpertState(ConversationChatStateBase, rx.State):
 
         self.subtitle = rag_resource.resource_model.name
         self._rag_resource = rag_resource
+
+        # Load placeholder text from config
+        app_config_state = await self.get_state(AiExpertConfigState)
+        config: AiExpertChatConfig = await app_config_state.get_config()
+        self.placeholder_text = config.placeholder_text
 
     @rx.event
     async def open_current_resource_file(self):

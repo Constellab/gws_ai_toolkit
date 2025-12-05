@@ -2,8 +2,6 @@ import reflex as rx
 
 from ..chat_base.chat_component import chat_component
 from ..chat_base.chat_config import ChatConfig
-from ..chat_base.messages_list_component import message_source
-from ..chat_base.sources_list_component import sources_list_component
 from .rag_chat_state import RagChatState
 
 
@@ -52,11 +50,6 @@ def rag_chat_component(chat_config: ChatConfig | None = None) -> rx.Component:
     if not chat_config:
         chat_config = ChatConfig(
             state=RagChatState,
-            custom_chat_messages={
-                "source": lambda message: message_source(
-                    message, RagChatState, sources_list_component
-                ),
-            },
         )
 
     return chat_component(chat_config)

@@ -3,11 +3,13 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
     BaseChatConversation,
     BaseChatConversationConfig,
 )
+from gws_ai_toolkit.models.chat.conversation.rag_chat_config import RagChatConfig
 from gws_ai_toolkit.models.chat.conversation.rag_chat_conversation import RagChatConversation
 from gws_reflex_main import ReflexMainState
 
 from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from .config.rag_config_state import RagConfigState
+from .rag_chat_config_state import RagChatConfigState
 
 
 class RagChatState(ConversationChatStateBase, rx.State):
@@ -61,3 +63,11 @@ class RagChatState(ConversationChatStateBase, rx.State):
             rag_app_service=rag_app_service,
             rag_chat_id=await rag_app_state.get_chat_id_and_check(),
         )
+
+    @rx.event
+    async def on_mount(self) -> None:
+        """Load configuration and update UI properties."""
+        # Load placeholder text from config
+        app_config_state = await self.get_state(RagChatConfigState)
+        config: RagChatConfig = await app_config_state.get_config()
+        self.placeholder_text = config.placeholder_text

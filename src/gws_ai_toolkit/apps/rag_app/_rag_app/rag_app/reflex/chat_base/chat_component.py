@@ -165,4 +165,5 @@ def chat_component(config: ChatConfig) -> rx.Component:
         flex="1",
         display="flex",
         min_height="0",
+        on_mount=config.state.on_mount,
     )

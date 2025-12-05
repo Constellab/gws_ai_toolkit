@@ -7,6 +7,7 @@ from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversatio
 from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
+from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
 from gws_ai_toolkit.models.user.user import User
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
@@ -122,7 +123,7 @@ class ChatConversationService:
         message_model.save()
 
         # Create sources if provided
-        if isinstance(message, ChatMessageSourceModel) and message.sources:
+        if isinstance(message, ChatMessageSource) and message.sources:
             self._create_sources_for_message(message_model, message.sources)
 
         # Convert back to DTO

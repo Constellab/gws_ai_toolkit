@@ -1,13 +1,13 @@
 import io
 import os
 from collections.abc import Generator
-from typing import Literal
 
-from gws_core import BaseModelDTO, File, Logger
+from gws_core import File, Logger
 from openai import OpenAI
 from openai.types.responses import ResponseCreatedEvent, ResponseOutputTextAnnotationAddedEvent
 from PIL import Image
 
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
@@ -17,31 +17,6 @@ from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
 from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
-
-AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks", "full_file"]
-
-
-class AiExpertConfig(BaseModelDTO):
-    """Configuration class for AI Expert functionality."""
-
-    prompt_file_placeholder: str = "[FILE]"
-
-    system_prompt: str = """You are an AI expert assistant specialized in analyzing and answering questions about the document "[FILE]".
-
-You have access to the full content of this document and can provide detailed, accurate answers based on the information contained within it.
-
-When answering questions:
-- Use only the document content to support your answers
-- Be specific and cite relevant sections when possible
-- If something is not covered in the document, clearly state this
-- Provide thorough, helpful explanations
-
-The user is asking questions specifically about this document, so focus your responses on the document's content and context."""
-
-    mode: AiExpertChatMode = "full_file"
-    max_chunks: int = 5
-    model: str = "gpt-4o"
-    temperature: float = 0.7
 
 
 class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
@@ -70,7 +45,7 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
         openai_file_id: OpenAI file ID after upload (for full_file mode)
     """
 
-    config: AiExpertConfig
+    config: AiExpertChatConfig
     rag_app_service: BaseRagAppService
     rag_resource: RagResource
 
@@ -83,7 +58,7 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
     def __init__(
         self,
         config: BaseChatConversationConfig,
-        chat_config: AiExpertConfig,
+        chat_config: AiExpertChatConfig,
         rag_app_service: BaseRagAppService,
         rag_resource: RagResource,
     ) -> None:
