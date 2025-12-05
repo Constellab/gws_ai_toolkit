@@ -1,9 +1,6 @@
 """Document browser component for selecting documents in AI Expert mode."""
 
 import reflex as rx
-from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_state import (
-    AiExpertState,
-)
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 
 from .document_browser_state import DocumentBrowserState
@@ -85,7 +82,7 @@ def document_browser_component() -> rx.Component:
             rx.vstack(
                 # Header
                 rx.vstack(
-                    rx.heading(AiExpertState.title, size="6"),
+                    rx.heading("AI Expert", size="6"),
                     rx.text(
                         "Select a source document from your chat history to start an in-depth conversation",
                         size="3",

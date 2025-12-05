@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import reflex as rx
 
@@ -12,17 +11,43 @@ class NavBarItem:
 
 
 def _navbar_link(item: NavBarItem) -> rx.Component:
+    # Compare paths, normalizing both to handle '/' correctly
+    current_path = rx.State.router.page.path
+
+    # Match '/' with '/index' or exact match, and handle sub-pages
+    is_current = rx.cond(
+        item.url == "/",
+        (current_path == "/") | (current_path == "/index"),
+        current_path.startswith(item.url),
+    )
+
     return rx.link(
         rx.hstack(
             rx.icon(item.icon, size=16),
             rx.text(item.text, size="4", weight="medium"),
             align_items="center",
+            padding="0.5em 1em",
+            color=rx.cond(
+                is_current,
+                rx.color("accent", 11),
+                rx.color("gray", 11),
+            ),
+            border_bottom=rx.cond(
+                is_current,
+                f"2px solid {rx.color('accent', 9)}",
+                "2px solid transparent",
+            ),
+            transition="all 0.2s ease",
+            _hover={
+                "color": rx.color("accent", 10),
+            },
         ),
         href=item.url,
+        text_decoration="none",
     )
 
 
-def nav_bar_component(items: List[NavBarItem]) -> rx.Component:
+def nav_bar_component(items: list[NavBarItem]) -> rx.Component:
     """Navigation component for switching between pages."""
     return rx.box(
         rx.hstack(
@@ -36,4 +61,5 @@ def nav_bar_component(items: List[NavBarItem]) -> rx.Component:
         bg=rx.color("accent", 3),
         padding="1em",
         width="100%",
+        key="nav-bar",
     )
