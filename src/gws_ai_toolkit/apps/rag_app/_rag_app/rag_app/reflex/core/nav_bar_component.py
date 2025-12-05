@@ -59,7 +59,7 @@ def nav_bar_component(items: list[NavBarItem]) -> rx.Component:
             align_items="center",
         ),
         bg=rx.color("accent", 3),
-        padding="1em",
+        padding="0.5em",
         width="100%",
         key="nav-bar",
     )
