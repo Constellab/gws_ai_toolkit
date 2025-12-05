@@ -31,10 +31,11 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
         # Fixed input at bottom
         rx.box(
             rx.box(
-                chat_input_component(config),
+                chat_input_component(config, hide_border=True),
                 background_color="white",
                 border_radius="48px",
-                padding="12px 28px 12px 24px",
+                padding_left="12px",
+                padding_right="28px",
                 box_shadow="0 2px 8px rgba(0, 0, 0, 0.1)",
                 max_width="90vw",
                 width="100%",
