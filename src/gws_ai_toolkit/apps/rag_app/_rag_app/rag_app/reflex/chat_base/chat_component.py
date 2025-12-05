@@ -32,7 +32,12 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
         rx.box(
             rx.box(
                 chat_input_component(config, hide_border=True),
-                background_color="white",
+                # disabled styling when streaming
+                background_color=rx.cond(
+                    config.state.is_streaming,
+                    "var(--gray-2)",
+                    "white",
+                ),
                 border_radius="48px",
                 padding_left="12px",
                 padding_right="28px",

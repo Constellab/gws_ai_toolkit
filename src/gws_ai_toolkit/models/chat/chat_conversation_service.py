@@ -51,7 +51,9 @@ class ChatConversationService:
         :rtype: list[ChatMessageSourceModel]
         """
         # Get the chat app first and check if it exists
-        chat_app = ChatAppService().get_by_name_and_check(chat_app_name)
+        chat_app = ChatAppService().get_by_name(chat_app_name)
+        if not chat_app:
+            return PageDTO.empty_page()
 
         paginator = Paginator(
             ChatMessageSourceModel.select()

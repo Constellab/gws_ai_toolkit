@@ -50,7 +50,7 @@ def nav_bar_component(items: list[NavBarItem]) -> rx.Component:
                 items,
                 _navbar_link,
             ),
-            spacing="5",
+            spacing="0",
             align_items="center",
         ),
         bg=rx.color("accent", 3),

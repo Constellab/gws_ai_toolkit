@@ -218,8 +218,6 @@ class GenerateDatahubRagFlowApp(Task):
         # For the test, we disable the authentication
         reflex_resource.set_requires_authentication(False)
 
-        reflex_resource.set_enterprise_app(True)
-
         return {"streamlit_app": reflex_resource}
 
     @classmethod
