@@ -72,6 +72,16 @@ def ai_table_agent_chat_config_component() -> rx.Component:
                     step=0.1,
                     width="100%",
                 ),
+                rx.heading("Chat Save", size="4", margin_top="4"),
+                rx.text(
+                    "Enable save functionality to save and replay chat conversations",
+                    color="gray",
+                ),
+                rx.checkbox(
+                    "Enable chat save",
+                    name="enable_chat_save",
+                    default_checked=AiTableAgentChatConfigState.enable_chat_save,
+                ),
                 rx.button(
                     "Update Configuration", type="submit", color_scheme="blue", cursor="pointer"
                 ),

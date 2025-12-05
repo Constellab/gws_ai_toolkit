@@ -53,32 +53,40 @@ class AiTableAgentChatConfigState(rx.State):
         config = await self.get_config()
         return config.temperature
 
-    async def validate_form(self, form_data: dict) -> tuple[str, float, str]:
+    @rx.var
+    async def enable_chat_save(self) -> bool:
+        """Get the enable_chat_save setting for the analysis type"""
+        config = await self.get_config()
+        return config.enable_chat_save
+
+    async def validate_form(self, form_data: dict) -> tuple[str, float, bool, str]:
         """Handle common configuration form validation
 
         Args:
             form_data (dict): Form data from submission
 
         Returns:
-            tuple: (model, temperature, error_message)
+            tuple: (model, temperature, enable_chat_save, error_message)
                    error_message is empty string if validation passes
         """
         # Get the new values from form data
         new_model = form_data.get("model", "").strip()
         new_temperature_str = form_data.get("temperature", "").strip()
+        # Checkbox sends True when checked, but is omitted (not False) when unchecked
+        new_enable_chat_save = bool(form_data.get("enable_chat_save"))
 
         if not new_model:
-            return "", 0.0, "Model cannot be empty"
+            return "", 0.0, False, "Model cannot be empty"
 
         # Validate temperature
         try:
             new_temperature = float(new_temperature_str)
             if new_temperature < 0.0 or new_temperature > 2.0:
-                return "", 0.0, "Temperature must be between 0.0 and 2.0"
+                return "", 0.0, False, "Temperature must be between 0.0 and 2.0"
         except ValueError:
-            return "", 0.0, "Temperature must be a valid number"
+            return "", 0.0, False, "Temperature must be a valid number"
 
-        return new_model, new_temperature, ""
+        return new_model, new_temperature, new_enable_chat_save, ""
 
     async def handle_config_save(self, new_config: AiTableAgentChatConfig):
         """Save the configuration and show appropriate feedback
@@ -99,13 +107,15 @@ class AiTableAgentChatConfigState(rx.State):
     async def handle_config_form_submit(self, form_data: dict):
         """Handle the AI Table Agent configuration form submission"""
         # Use common validation from base class
-        new_model, new_temperature, error = await self.validate_form(form_data)
+        new_model, new_temperature, new_enable_chat_save, error = await self.validate_form(form_data)
 
         if error:
             return rx.toast.error(error)
 
         # Create new config with updated values
-        new_config = AiTableAgentChatConfig(model=new_model, temperature=new_temperature)
+        new_config = AiTableAgentChatConfig(
+            model=new_model, temperature=new_temperature, enable_chat_save=new_enable_chat_save
+        )
 
         # Save using base class method
         return await self.handle_config_save(new_config)
