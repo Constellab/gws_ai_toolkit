@@ -15,6 +15,9 @@ from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.config.rag_config_state im
     RagConfigStateFromParams,
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.rag_chat_component import rag_chat_component
+from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.rag_chat_config_component import (
+    rag_chat_config_component,
+)
 from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.rag_chat_state import RagChatState
 
 __all__ = [
@@ -29,4 +32,6 @@ __all__ = [
     "RagConfigState",
     "RagConfigStateConfig",
     "RagConfigStateFromParams",
+    # Functions
+    "rag_chat_config_component",
 ]

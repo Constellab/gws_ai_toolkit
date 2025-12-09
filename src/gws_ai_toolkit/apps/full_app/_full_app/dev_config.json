@@ -16,5 +16,6 @@
     },
     "env_type": "NONE",
     "env_file_path": "",
-    "requires_authentication": true
+    "requires_authentication": true,
+    "is_reflex_enterprise": true
 }

@@ -4,7 +4,7 @@ from typing import Literal
 import pandas as pd
 import reflex as rx
 from gws_ai_toolkit.core.excel_file import ExcelFile, ExcelFileDTO, ExcelSheetDTO
-from gws_core import File, Table, Utils
+from gws_core import File, ResourceModel, Table, Utils
 
 RightPanelState = Literal["closed", "chat", "stats"]
 ColumnSizeMode = Literal["default", "dense"]
@@ -284,6 +284,17 @@ class AiTableDataState(rx.State):
         self.current_table_id = excel_file.id
         return excel_file.get_table_dto()
 
+    def add_resource_model(self, resource_model_id: str):
+        resource_model = ResourceModel.get_by_id(resource_model_id)
+        if not resource_model:
+            raise ValueError(f"Resource with id {resource_model_id} not found")
+
+        resource = resource_model.get_resource()
+        if not isinstance(resource, Table):
+            raise ValueError(f"Resource with id {resource_model_id} is not a Table resource")
+
+        self.add_table(resource)
+
     def count_tables(self) -> int:
         """Count the number of tables currently loaded"""
         return len(self._excel_files)
@@ -302,3 +313,13 @@ class AiTableDataState(rx.State):
         if table_item:
             return table_item.get_table_dto(sheet_name)
         return None
+
+    def load_from_resource_id_url_param(self) -> None:
+        """Load resource from URL parameter"""
+        # Get the dynamic route parameter
+        resource_id = self.resource_id if hasattr(self, "resource_id") else None
+
+        if not resource_id:
+            return None
+
+        self.add_resource_model(resource_id)

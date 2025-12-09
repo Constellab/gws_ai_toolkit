@@ -17,5 +17,5 @@
     "env_type": "NONE",
     "env_file_path": "",
     "requires_authentication": true,
-    "is_reflex_enterprise": true
+    "is_reflex_enterprise": false
 }

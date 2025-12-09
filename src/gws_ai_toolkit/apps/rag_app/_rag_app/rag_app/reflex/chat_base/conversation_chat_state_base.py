@@ -124,13 +124,12 @@ class ConversationChatStateBase(rx.State, mixin=True):
             main_state = await self.get_state(ReflexMainState)
 
             with await main_state.authenticate_user():
-                conversation.create_conversation(user_message)
+                conversation.create_conversation(user_message[:60])
                 self._chat_messages = [msg.to_front_dto() for msg in conversation.chat_messages]
 
         await sleep(0.1)  # Allow UI to update before starting streaming
 
         user_query = await self.build_user_message(user_message)
-
         try:
             with await main_state.authenticate_user():
                 # Call conversation and process the AI chat stream

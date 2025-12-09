@@ -22,7 +22,10 @@ from gws_ai_toolkit._app.ai_rag import (
     rag_chat_component,
     rag_config_component,
 )
-from gws_ai_toolkit._app.ai_table import AiTableState, ai_table_component
+from gws_ai_toolkit._app.ai_table import (
+    AiTableDataState,
+    ai_table_component,
+)
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 from gws_reflex_main import register_gws_reflex_app
 
@@ -125,7 +128,7 @@ def ai_expert():
 # AI Table page - Excel/CSV-specific data analysis
 # ça ne marche pas car dans l'app table, on Import the AppConfigState depuis gws_toolkit_ai ...
 # Ce qui fait que c'est une autre instance que celle customisée ici
-@rx.page(route="/ai-table/[resource_id]", on_load=AiTableState.load_resource_from_id)
+@rx.page(route="/ai-table/[resource_id]", on_load=AiTableDataState.load_from_resource_id_url_param)
 def ai_table():
     """AI Table page for Excel/CSV data analysis."""
     return page_component(nav_bar_items, ai_table_component(), disable_padding=True)

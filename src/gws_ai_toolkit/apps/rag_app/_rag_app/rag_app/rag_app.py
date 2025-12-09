@@ -1,5 +1,4 @@
 import reflex as rx
-import reflex_enterprise as rxe
 from gws_reflex_main import register_gws_reflex_app
 from gws_reflex_main.reflex_main_state import ReflexMainState
 
@@ -26,7 +25,7 @@ AppConfigState.set_config_state_class_type(CustomAppConfigState)
 RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
 
-app = register_gws_reflex_app(rxe.App())
+app = register_gws_reflex_app(rx.App())
 
 
 class NavBarState(rx.State):

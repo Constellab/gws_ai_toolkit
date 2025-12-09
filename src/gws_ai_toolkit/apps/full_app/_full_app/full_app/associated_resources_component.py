@@ -40,10 +40,10 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
                     ),
                 ),
                 rx.cond(
-                    resource.is_excel,
+                    resource.is_table,
                     rx.menu.item(
                         rx.icon("table", size=16),
-                        "Open Excel AI Table",
+                        "Open Constellab Analytics",
                         on_click=lambda: AssociatedResourcesState.open_ai_table_from_resource(
                             resource.id
                         ),

@@ -1,5 +1,6 @@
 import reflex as rx
-from gws_ai_toolkit._app.ai_rag import ai_expert_config_component
+from gws_ai_toolkit._app.ai_rag import ai_expert_config_component, rag_chat_config_component
+from gws_ai_toolkit._app.ai_table import ai_table_agent_chat_config_component
 
 
 def combined_config_page() -> rx.Component:
@@ -7,6 +8,11 @@ def combined_config_page() -> rx.Component:
     return rx.vstack(
         rx.tabs.root(
             rx.tabs.list(
+                rx.tabs.trigger(
+                    "RAG Chat",
+                    value="rag_chat",
+                    cursor="pointer",
+                ),
                 rx.tabs.trigger(
                     "AI Expert",
                     value="ai_expert",
@@ -20,6 +26,16 @@ def combined_config_page() -> rx.Component:
             ),
             rx.tabs.content(
                 rx.vstack(
+                    rag_chat_config_component(),
+                    spacing="4",
+                    width="100%",
+                ),
+                value="rag_chat",
+                padding_top="1em",
+                padding_bottom="1em",
+            ),
+            rx.tabs.content(
+                rx.vstack(
                     ai_expert_config_component(),
                     spacing="4",
                     width="100%",
@@ -28,16 +44,16 @@ def combined_config_page() -> rx.Component:
                 padding_top="1em",
                 padding_bottom="1em",
             ),
-            # rx.tabs.content(
-            #     rx.vstack(
-            #         ai_table_chat_config_component(),
-            #         spacing="4",
-            #         width="100%",
-            #     ),
-            #     value="ai_table",
-            #     padding_top="1em",
-            #     padding_bottom="1em",
-            # ),
+            rx.tabs.content(
+                rx.vstack(
+                    ai_table_agent_chat_config_component(),
+                    spacing="4",
+                    width="100%",
+                ),
+                value="ai_table",
+                padding_top="1em",
+                padding_bottom="1em",
+            ),
             default_value="ai_expert",
             width="100%",
         ),

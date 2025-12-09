@@ -66,6 +66,8 @@ class BaseChatConversation(ABC, Generic[U]):
         if not self._conversation_id:
             raise ValueError("Conversation has not been created yet.")
 
+        self.save_message(user_message)
+
         for message in self.call_ai_chat(user_message):
             if isinstance(message, ChatMessageStreaming):
                 self.current_response_message = message
@@ -81,7 +83,7 @@ class BaseChatConversation(ABC, Generic[U]):
             user_message (str): The message from the user
         """
 
-    def create_conversation(self, user_message: str) -> None:
+    def create_conversation(self, label: str) -> None:
         """Create a new conversation in the database."""
 
         if self._conversation_id is None:
@@ -89,7 +91,7 @@ class BaseChatConversation(ABC, Generic[U]):
                 chat_app_name=self.conv_config.chat_app_name,
                 configuration=self.chat_configuration,
                 mode=self.mode,
-                label=user_message[:60],
+                label=label,
                 messages=[],
             )
 
