@@ -9,8 +9,8 @@ from gws_ai_toolkit._app.ai_chat import (
     custom_sources_list_component,
     get_default_source_menu_items,
     history_component,
-    message_source,
     page_component,
+    source_message_component,
 )
 from gws_ai_toolkit._app.ai_rag import (
     AiExpertState,
@@ -73,7 +73,7 @@ def index():
     chat_config = ChatConfig(
         state=RagChatState,
         custom_chat_messages={
-            "source": lambda message: message_source(
+            "source": lambda message: source_message_component(
                 message, RagChatState, sources_component_builder
             ),
         },

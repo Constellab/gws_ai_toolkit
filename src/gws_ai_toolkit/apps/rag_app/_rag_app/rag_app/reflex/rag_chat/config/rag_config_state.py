@@ -3,6 +3,7 @@ from typing import cast
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
+from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import RagAppServiceFactory
 from gws_ai_toolkit.rag.common.rag_enums import RagProvider, RagResourceSyncMode
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
@@ -125,14 +126,21 @@ class RagConfigState(rx.State, mixin=True):
             return None
         return await self._build_rag_app_service(credentials)
 
+    async def get_chat_rag_service(self) -> BaseRagService | None:
+        """Get the DataHub RAG service for chat operations."""
+        credentials = await self.get_chat_credentials()
+        if not credentials:
+            return None
+        return await self._build_rag_service(credentials)
+
     async def _build_rag_app_service(
         self, credentials: CredentialsDataOther
     ) -> BaseRagAppService | None:
         """Build a RAG app service."""
-        provider = await self.get_rag_provider()
-        if not provider:
+        rag_service = await self._build_rag_service(credentials)
+
+        if not rag_service:
             return None
-        rag_service = RagServiceFactory.create_service(provider, credentials)
 
         dataset_id = await self.get_dataset_id()
         config = await self.get_rag_config()
@@ -146,6 +154,13 @@ class RagConfigState(rx.State, mixin=True):
         return RagAppServiceFactory.create_service(
             await self.get_resource_sync_mode(), rag_service, dataset_id or "", additional_config
         )
+
+    async def _build_rag_service(self, credentials: CredentialsDataOther) -> BaseRagService | None:
+        """Build a RAG app service."""
+        provider = await self.get_rag_provider()
+        if not provider:
+            return None
+        return RagServiceFactory.create_service(provider, credentials)
 
     @staticmethod
     async def get_instance(state: rx.State) -> "RagConfigState":

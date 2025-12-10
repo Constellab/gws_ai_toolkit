@@ -78,7 +78,9 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
             raise ValueError("OpenAI API key is not set")
         return OpenAI(api_key=api_key)
 
-    def call_ai_chat(self, user_message: ChatUserMessageText) -> Generator[ChatMessage, None, None]:
+    def _call_ai_chat(
+        self, user_message: ChatUserMessageText
+    ) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Supports multiple processing modes:

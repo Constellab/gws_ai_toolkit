@@ -48,7 +48,8 @@ class ReadOnlyChatState(ConversationChatStateBase, rx.State):
 
         if conversation:
             # Load messages for this conversation
-            self._chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
+            chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
+            self._chat_messages = [msg.to_front_dto() for msg in chat_messages]
 
             # Update title with conversation info
             mode_display = conversation.mode.replace("_", " ").title()

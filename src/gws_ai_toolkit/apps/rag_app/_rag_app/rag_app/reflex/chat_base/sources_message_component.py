@@ -1,17 +1,35 @@
 from collections.abc import Callable
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+from gws_ai_toolkit.models.chat.message.chat_message_source import (
+    ChatMessageSourceFront,
+    RagChatSourceFront,
+)
 
 from .conversation_chat_state_base import ConversationChatStateBase
+from .source.source_detail_state import SourceDetailState
+from .source.source_menu_component import CustomSourceMenuButtons
 
 SourcesComponentBuilder = Callable[
-    [list[RagChatSource] | None, ConversationChatStateBase], rx.Component
+    [list[RagChatSourceFront], ConversationChatStateBase], rx.Component
 ]
+
+# JavaScript to handle clicks on source placeholders
+source_click_script = """
+{
+    if(event && event.target && event.target.classList && event.target.classList.contains('source-placeholder')) {
+        const sourceId = event.target.getAttribute('data-source-id');
+        if(sourceId) {
+            return sourceId;
+        }
+    }
+    return null;
+}
+"""
 
 
 def get_default_source_menu_items(
-    source: RagChatSource, state: ConversationChatStateBase
+    source: RagChatSourceFront, state: ConversationChatStateBase
 ) -> list[rx.Component]:
     """Get the default menu items for source actions.
 
@@ -33,24 +51,23 @@ def get_default_source_menu_items(
 
 
 def _source_item(
-    source: RagChatSource,
+    source: RagChatSourceFront,
     state: ConversationChatStateBase,
-    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]]
-    | None = None,
+    custom_menu_items: CustomSourceMenuButtons | None = None,
 ) -> rx.Component:
     """Individual source item with document info and action menu.
 
-    Renders a single source citation with document name, relevance score,
+    Renders a single source citation with document name,
     and dropdown menu for actions like opening in AI Expert or viewing
     the original document.
 
     Args:
-        source (RagChatSource): Source citation with document metadata
+        source (RagChatSourceFront): Source citation with document metadata
         state (ConversationChatStateBase): Chat state for handling actions
         custom_menu_items: Optional callable that returns custom menu items for the source
 
     Returns:
-        rx.Component: Formatted source item with name, score, and actions menu
+        rx.Component: Formatted source item with name, and actions menu
     """
 
     # Get menu items based on custom_menu_items parameter
@@ -70,10 +87,6 @@ def _source_item(
             size="1",
         ),
         rx.spacer(),
-        rx.text(
-            f"Score: {source.score:.2f}",
-            size="1",
-        ),
     ]
 
     # Only add menu if there are menu items
@@ -97,10 +110,9 @@ def _source_item(
 
 
 def sources_list_component(
-    sources: list[RagChatSource] | None,
+    sources: list[RagChatSourceFront],
     state: ConversationChatStateBase,
-    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]]
-    | None = None,
+    custom_menu_items: CustomSourceMenuButtons | None = None,
 ) -> rx.Component:
     """Expandable sources panel for RAG chat responses.
 
@@ -116,7 +128,7 @@ def sources_list_component(
         - Conditional display (only shows when sources exist)
 
     Args:
-        sources (List[RagChatSource]): List of source citations from RAG response
+        sources (List[RagChatSourceFront]): List of source citations from RAG response
         state (ConversationChatStateBase): Chat state for handling source interactions
 
     Returns:
@@ -147,11 +159,14 @@ def sources_list_component(
             width="100%",
             variant="soft",
         ),
+        rx.box(),
     )
 
 
 def custom_sources_list_component(
-    custom_menu_items: Callable[[RagChatSource, ConversationChatStateBase], list[rx.Component]],
+    custom_menu_items: Callable[
+        [RagChatSourceFront, ConversationChatStateBase], list[rx.Component]
+    ],
 ) -> SourcesComponentBuilder:
     """Wrapper for sources_list_component with custom menu items.
 
@@ -162,7 +177,53 @@ def custom_sources_list_component(
         custom_menu_items: Callable that returns custom menu items for each source
 
     Returns:
-        Callable[[List[RagChatSource], ConversationChatStateBase], rx.Component]: A function that takes
+        Callable[[List[RagChatSourceFront], ConversationChatStateBase], rx.Component]: A function that takes
         a list of sources and a chat state, and returns a sources list component.
     """
     return lambda sources, state: sources_list_component(sources, state, custom_menu_items)
+
+
+def source_message_component(
+    message: ChatMessageSourceFront,
+    state: ConversationChatStateBase,
+    custom_sources_component_builder: SourcesComponentBuilder | None = None,
+) -> rx.Component:
+    """Render ChatMessageSourceFront with clickable source buttons.
+
+    Args:
+        message: Frontend message with markdown content containing source placeholders
+        state: Chat state for handling source button clicks
+
+    Returns:
+        rx.Component: Message with markdown text and clickable source buttons
+    """
+    return rx.box(
+        rx.markdown(message.content, font_size="14px"),
+        custom_sources_component_builder()
+        if custom_sources_component_builder
+        else sources_list_component(message.sources, state),
+        style={
+            "& .source-placeholder": {
+                "display": "inline-flex",
+                "align-items": "center",
+                "justify-content": "center",
+                "background-color": "var(--accent-2)",
+                "border": "2px solid var(--accent-10)",
+                "color": "var(--accent-10)",
+                "border-radius": "50%",
+                "min-width": "18px",
+                "height": "18px",
+                "font-size": "12px",
+                "font-weight": "bold",
+                "cursor": "pointer",
+                "margin-inline": "5px",
+            },
+            "& .source-placeholder:hover": {
+                "opacity": "0.8",
+            },
+        },
+        on_click=rx.run_script(
+            source_click_script.strip().replace("\n", "").replace("    ", ""),
+            callback=SourceDetailState.open_source_dialog,
+        ),
+    )

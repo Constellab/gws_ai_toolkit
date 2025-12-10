@@ -48,7 +48,7 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
         self.table_agent = table_agent
         self._current_external_response_id = None
 
-    def call_ai_chat(
+    def _call_ai_chat(
         self, user_message: ChatUserMessageTable
     ) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service using TableAgentAi.

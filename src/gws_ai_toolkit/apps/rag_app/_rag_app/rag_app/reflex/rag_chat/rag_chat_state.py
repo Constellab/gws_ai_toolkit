@@ -45,8 +45,8 @@ class RagChatState(ConversationChatStateBase, rx.State):
         """
         rag_app_state = await RagConfigState.get_instance(self)
 
-        rag_app_service = await rag_app_state.get_chat_rag_app_service()
-        if not rag_app_service:
+        rag_service = await rag_app_state.get_chat_rag_service()
+        if not rag_service:
             raise ValueError("RAG chat service not available")
 
         chat_app_name = await rag_app_state.get_chat_app_name()
@@ -60,7 +60,7 @@ class RagChatState(ConversationChatStateBase, rx.State):
 
         return RagChatConversation(
             config=conv_config,
-            rag_app_service=rag_app_service,
+            rag_service=rag_service,
             rag_chat_id=await rag_app_state.get_chat_id_and_check(),
         )
 

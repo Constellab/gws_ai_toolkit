@@ -100,7 +100,7 @@ class ChatMessageTable(ChatMessageBase):
         message.filename = filename
 
     def to_front_dto(self) -> ChatMessageBase:
-        return ChatMessageDataTableFront(
+        return ChatMessageTableFront(
             id=self.id,
             content=self.content if self.content else "",
             table_id=self.table.uid if self.table else "",
@@ -108,7 +108,7 @@ class ChatMessageTable(ChatMessageBase):
         )
 
 
-class ChatMessageDataTableFront(ChatMessageBase):
+class ChatMessageTableFront(ChatMessageBase):
     type: Literal["table"] = "table"
     role: Literal["assistant"] = "assistant"
     content: str

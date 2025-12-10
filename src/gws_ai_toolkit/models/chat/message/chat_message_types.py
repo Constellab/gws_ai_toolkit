@@ -13,11 +13,14 @@ from gws_ai_toolkit.models.chat.message.chat_message_plotly import (
     ChatMessagePlotly,
     ChatMessagePlotlyFront,
 )
-from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
+from gws_ai_toolkit.models.chat.message.chat_message_source import (
+    ChatMessageSource,
+    ChatMessageSourceFront,
+)
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_table import (
-    ChatMessageDataTableFront,
     ChatMessageTable,
+    ChatMessageTableFront,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_text import (
     ChatMessageText,
@@ -68,9 +71,9 @@ ChatMessageFront = (
     | ChatMessageCode
     | ChatMessageImage
     | ChatMessagePlotlyFront
-    | ChatMessageDataTableFront
+    | ChatMessageTableFront
     | ChatMessageError
     | ChatMessageHint
-    | ChatMessageSource
+    | ChatMessageSourceFront
     | ChatMessageStreaming
 )

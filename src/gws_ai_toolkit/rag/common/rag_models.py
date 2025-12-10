@@ -1,3 +1,4 @@
+from uuid import uuid4
 
 from gws_core import BaseModelDTO
 
@@ -41,19 +42,11 @@ class RagChatSourceChunk(BaseModelDTO):
 
 
 class RagChatSource(BaseModelDTO):
+    id: str
     document_id: str
     document_name: str
     score: float = 0
-    chunks: list[RagChatSourceChunk] = []
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        if self.chunks:
-            self.score = max(chunk.score for chunk in self.chunks)
-
-    def add_chunk(self, chunk: RagChatSourceChunk) -> None:
-        self.chunks.append(chunk)
-        self.score = max(self.score, chunk.score)
+    chunk: RagChatSourceChunk | None = None
 
 
 class RagChatEndStreamResponse(BaseModelDTO):
@@ -70,20 +63,16 @@ class RagChatEndStreamResponse(BaseModelDTO):
         chunk_score: float,
         chunk_content: str | None,
     ) -> None:
-        chat_source = self.get_source_by_document_id(document_id)
-        if not chat_source:
-            chat_source = RagChatSource(document_id=document_id, document_name=document_name)
-            self.sources.append(chat_source)
-
-        chat_source.add_chunk(
-            RagChatSourceChunk(chunk_id=chunk_id, content=chunk_content, score=chunk_score)
+        # Create a separate source for each chunk
+        chunk = RagChatSourceChunk(chunk_id=chunk_id, content=chunk_content, score=chunk_score)
+        chat_source = RagChatSource(
+            id=str(uuid4()),
+            document_id=document_id,
+            document_name=document_name,
+            score=chunk_score,
+            chunk=chunk,
         )
-
-    def get_source_by_document_id(self, document_id: str) -> RagChatSource | None:
-        for source in self.sources:
-            if source.document_id == document_id:
-                return source
-        return None
+        self.sources.append(chat_source)
 
 
 class RagCredentials(BaseModelDTO):

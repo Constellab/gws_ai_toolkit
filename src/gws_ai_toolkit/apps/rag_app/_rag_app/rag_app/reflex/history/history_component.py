@@ -1,11 +1,11 @@
 import reflex as rx
-from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex.chat_base.messages_list_component import (
-    message_source,
-)
 from gws_ai_toolkit.models.chat.chat_conversation_dto import ChatConversationDTO
 
 from ..chat_base.chat_config import ChatConfig
-from ..chat_base.sources_list_component import SourcesComponentBuilder
+from ..chat_base.messages_list_component import (
+    source_message_component,
+)
+from ..chat_base.source.source_message_component import SourcesComponentBuilder
 from ..read_only_chat.read_only_chat_interface import read_only_chat_component
 from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
 from .history_config_dialog import history_config_dialog
@@ -237,11 +237,10 @@ def history_component(
         header_buttons=_header_buttons,
     )
 
+    # TODO TO FIX
     if sources_component_builder:
         config.custom_chat_messages = {
-            "source": lambda message: message_source(
-                message, ReadOnlyChatState, sources_component_builder
-            ),
+            "source": lambda message: source_message_component(message, ReadOnlyChatState),
         }
 
     return rx.hstack(

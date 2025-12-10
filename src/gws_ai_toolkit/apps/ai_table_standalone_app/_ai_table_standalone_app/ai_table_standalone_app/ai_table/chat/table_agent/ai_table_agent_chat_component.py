@@ -6,7 +6,7 @@ from gws_ai_toolkit._app.ai_chat import (
     header_clear_chat_button_component,
     user_message_base,
 )
-from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageDataTableFront
+from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageTableFront
 from gws_ai_toolkit.models.chat.message.chat_user_message_table import (
     ChatUserMessageTableFront,
     ChatUserTable,
@@ -17,7 +17,7 @@ from .ai_table_agent_chat_state import AiTableAgentChatState, SelectedTableDTO
 from .table_selection_menu import table_selection_menu
 
 
-def _dataframe_message_content(message: ChatMessageDataTableFront) -> rx.Component:
+def _dataframe_message_content(message: ChatMessageTableFront) -> rx.Component:
     """Render content for dataframe chat messages.
 
     Displays an optional text message followed by an interactive button/card

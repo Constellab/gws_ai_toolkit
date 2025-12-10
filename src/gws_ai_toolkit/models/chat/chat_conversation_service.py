@@ -210,7 +210,7 @@ class ChatConversationService:
             source_record.document_id = source.document_id
             source_record.document_name = source.document_name
             source_record.score = source.score
-            source_record.set_chunks(source.chunks)
+            source_record.set_chunk(source.chunk)
 
             db_sources.append(source_record.save())
         return db_sources
@@ -232,6 +232,17 @@ class ChatConversationService:
             conversation.save()
 
         return conversation
+
+    def get_source_by_id_and_check(self, source_id: str) -> ChatMessageSourceModel:
+        """Get a ChatMessageSourceModel by ID and check if it exists.
+
+        :param source_id: The ID of the source
+        :type source_id: str
+        :return: The ChatMessageSourceModel instance
+        :rtype: ChatMessageSourceModel
+        :raises NotFoundException: If the source is not found
+        """
+        return ChatMessageSourceModel.get_by_id_and_check(source_id)
 
     def _get_current_user(self) -> User:
         current_user = CurrentUserService.get_and_check_current_user()

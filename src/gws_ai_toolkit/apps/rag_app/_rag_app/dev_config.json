@@ -11,7 +11,7 @@
         "resource_sync_mode": "tag",
         "resource_tag_key": "send_to_rag",
         "resource_tag_value": "true",
-        "show_config_page": false,
+        "show_config_page": true,
         "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/_data/app_configuration.json"
     },
     "env_type": "NONE",

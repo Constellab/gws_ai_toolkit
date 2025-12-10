@@ -15,10 +15,10 @@ from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.conversation_chat_state_b
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.messages_list_component import (
     chat_messages_list_component,
-    message_source,
+    source_message_component,
     user_message_base,
 )
-from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.sources_list_component import (
+from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.source.source_message_component import (
     SourcesComponentBuilder,
     custom_sources_list_component,
     get_default_source_menu_items,
@@ -50,7 +50,7 @@ __all__ = [
     "chat_input_component",
     "chat_messages_list_component",
     "user_message_base",
-    "message_source",
+    "source_message_component",
     "header_clear_chat_button_component",
     "sources_list_component",
     "get_default_source_menu_items",

@@ -15,13 +15,14 @@ class ChatMessageSourceModel(Model):
         document_id: ID of the source document
         document_name: Name of the source document
         score: Relevance score for the source
+        chunk: Single chunk data (optional)
     """
 
     message = ForeignKeyField(ChatMessageModel, backref="sources", on_delete="CASCADE")
     document_id: str = CharField(max_length=100)
     document_name: str = CharField(max_length=100)
     score: float = FloatField(default=0)
-    chunks: list = JSONField()
+    chunk: dict | None = JSONField(null=True)
 
     class Meta:
         table_name = "gws_ai_toolkit_chat_message_source"
@@ -40,29 +41,30 @@ class ChatMessageSourceModel(Model):
         """
         return cls.select().where(cls.message == message_id)
 
-    def set_chunks(self, chunks: list[RagChatSourceChunk]) -> None:
-        """Set the chunks for this source.
+    def set_chunk(self, chunk: RagChatSourceChunk | None) -> None:
+        """Set the chunk for this source.
 
-        :param chunks: List of RagChatSourceChunk
-        :type chunks: list[RagChatSourceChunk]
+        :param chunk: RagChatSourceChunk or None
+        :type chunk: RagChatSourceChunk | None
         """
-        self.chunks = [chunk.to_json_dict() for chunk in chunks]
+        self.chunk = chunk.to_json_dict() if chunk else None
 
-    def get_chunks(self) -> list[RagChatSourceChunk]:
-        """Get the chunks for this source.
+    def get_chunk(self) -> RagChatSourceChunk | None:
+        """Get the chunk for this source.
 
-        :return: List of RagChatSourceChunk
-        :rtype: list[RagChatSourceChunk]
+        :return: RagChatSourceChunk or None
+        :rtype: RagChatSourceChunk | None
         """
-        return RagChatSourceChunk.from_json_list(self.chunks)
+        return RagChatSourceChunk.from_json(self.chunk) if self.chunk else None
 
     def to_dto(self) -> BaseModelDTO:
         return self.to_rag_dto()
 
     def to_rag_dto(self) -> RagChatSource:
         return RagChatSource(
+            id=str(self.id),
             document_id=self.document_id,
             document_name=self.document_name,
             score=self.score,
-            chunks=self.get_chunks(),
+            chunk=self.get_chunk(),
         )

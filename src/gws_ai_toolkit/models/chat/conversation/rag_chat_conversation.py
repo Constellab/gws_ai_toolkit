@@ -2,7 +2,7 @@ from collections.abc import Generator
 
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
-from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
+from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_models import (
     RagChatEndStreamResponse,
     RagChatSource,
@@ -19,21 +19,23 @@ class RagChatConversation(BaseChatConversation[ChatUserMessageText]):
     storing messages during streaming and persisting them once the stream completes.
     """
 
-    rag_app_service: BaseRagAppService
+    rag_service: BaseRagService
 
     rag_chat_id: str
 
     def __init__(
         self,
         config: BaseChatConversationConfig,
-        rag_app_service: BaseRagAppService,
+        rag_service: BaseRagService,
         rag_chat_id: str,
     ) -> None:
         super().__init__(config, "RAG")
-        self.rag_app_service = rag_app_service
+        self.rag_service = rag_service
         self.rag_chat_id = rag_chat_id
 
-    def call_ai_chat(self, user_message: ChatUserMessageText) -> Generator[ChatMessage, None, None]:
+    def _call_ai_chat(
+        self, user_message: ChatUserMessageText
+    ) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Calls the RAG app service to get a streaming response and processes it.
@@ -50,7 +52,7 @@ class RagChatConversation(BaseChatConversation[ChatUserMessageText]):
 
         yield user_message
 
-        stream = self.rag_app_service.send_message_stream(
+        stream = self.rag_service.chat_stream(
             query=user_message.content,
             conversation_id=self._external_conversation_id,
             chat_id=self.rag_chat_id,

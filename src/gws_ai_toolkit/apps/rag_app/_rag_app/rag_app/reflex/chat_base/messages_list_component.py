@@ -1,15 +1,10 @@
 import plotly.graph_objects as go
 import reflex as rx
-from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex.chat_base.sources_list_component import (
-    SourcesComponentBuilder,
-    sources_list_component,
-)
 from gws_ai_toolkit.models.chat.message.chat_message_code import ChatMessageCode
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_hint import ChatMessageHint
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
 from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotlyFront
-from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
@@ -21,6 +16,8 @@ from gws_reflex_main import user_profile_picture
 
 from .chat_config import ChatConfig
 from .conversation_chat_state_base import ConversationChatStateBase
+from .source.source_detail_component import source_detail_dialog
+from .source.source_message_component import source_message_component
 
 
 def _message_bubble(message: ChatMessage, config: ChatConfig) -> rx.Component:
@@ -138,6 +135,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
                 width="100%",
             ),
         ),
+        source_detail_dialog(config.state),
         width="100%",
         padding="1em",
         flex="1",
@@ -167,7 +165,7 @@ def _message_component(message: ChatMessage, config: ChatConfig) -> rx.Component
         "plotly": _plotly_content,
         "error": _error_content,
         "hint": _hint_content,
-        "source": lambda msg: message_source(msg, config.state),
+        "source": lambda msg: source_message_component(msg, config.state),
     }
 
     # Build match cases: custom renderers take priority, then defaults
@@ -247,24 +245,6 @@ def user_message_base(message: ChatUserMessageBase) -> rx.Component:
         align_items="flex-start",
         justify="end",
         width="100%",
-    )
-
-
-def message_source(
-    message: ChatMessageSource,
-    state: ConversationChatStateBase,
-    sources_component: SourcesComponentBuilder | None = None,
-) -> rx.Component:
-    return rx.box(
-        _message_content(message.content),
-        rx.cond(
-            message.sources,
-            rx.box(
-                sources_component(message.sources, state)
-                if sources_component
-                else sources_list_component(message.sources, state)
-            ),
-        ),
     )
 
 

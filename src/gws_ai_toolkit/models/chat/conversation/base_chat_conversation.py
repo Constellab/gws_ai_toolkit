@@ -68,7 +68,7 @@ class BaseChatConversation(ABC, Generic[U]):
 
         self.save_message(user_message)
 
-        for message in self.call_ai_chat(user_message):
+        for message in self._call_ai_chat(user_message):
             if isinstance(message, ChatMessageStreaming):
                 self.current_response_message = message
             else:
@@ -76,7 +76,7 @@ class BaseChatConversation(ABC, Generic[U]):
             yield message
 
     @abstractmethod
-    def call_ai_chat(self, user_message: U) -> Generator[ChatMessage, None, None]:
+    def _call_ai_chat(self, user_message: U) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.
 
         Args:
@@ -112,7 +112,7 @@ class BaseChatConversation(ABC, Generic[U]):
 
         chat_message: ChatMessageBase
         if sources:
-            chat_message = ChatMessageSource(
+            chat_message = ChatMessageSource.create_with_updated_source_ids(
                 content=self.current_response_message.content,
                 external_id=external_id or self.current_response_message.external_id,
                 sources=sources,

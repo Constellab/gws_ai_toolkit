@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from gws_ai_toolkit import (
     ChatMessageCode,
     ChatMessageModel,
@@ -136,28 +138,26 @@ class TestChatConversationService(BaseTestCase):
                 ChatMessageSource(
                     sources=[
                         RagChatSource(
+                            id=str(uuid4()),
                             document_id="doc_123",
                             document_name="python_tutorial.pdf",
                             score=0.95,
-                            chunks=[
-                                RagChatSourceChunk(
-                                    chunk_id="chunk_1",
-                                    content="Python functions are defined using def keyword",
-                                    score=0.95,
-                                )
-                            ],
+                            chunk=RagChatSourceChunk(
+                                chunk_id="chunk_1",
+                                content="Python functions are defined using def keyword",
+                                score=0.95,
+                            ),
                         ),
                         RagChatSource(
+                            id=str(uuid4()),
                             document_id="doc_456",
                             document_name="best_practices.pdf",
                             score=0.87,
-                            chunks=[
-                                RagChatSourceChunk(
-                                    chunk_id="chunk_2",
-                                    content="Always use descriptive function names",
-                                    score=0.87,
-                                )
-                            ],
+                            chunk=RagChatSourceChunk(
+                                chunk_id="chunk_2",
+                                content="Always use descriptive function names",
+                                score=0.87,
+                            ),
                         ),
                     ],
                     content="Here is the code you requested.",
@@ -193,17 +193,22 @@ class TestChatConversationService(BaseTestCase):
         self.assertIsNotNone(doc_123_source)
         self.assertEqual(doc_123_source.document_name, "python_tutorial.pdf")
         self.assertEqual(doc_123_source.score, 0.95)
-        chunks_123 = doc_123_source.get_chunks()
-        self.assertEqual(len(chunks_123), 1)
-        self.assertEqual(chunks_123[0].chunk_id, "chunk_1")
-        self.assertEqual(chunks_123[0].content, "Python functions are defined using def keyword")
-        self.assertEqual(chunks_123[0].score, 0.95)
+        chunk_123 = doc_123_source.get_chunk()
+        self.assertIsNotNone(chunk_123)
+        self.assertEqual(chunk_123.chunk_id, "chunk_1")
+        self.assertEqual(chunk_123.content, "Python functions are defined using def keyword")
+        self.assertEqual(chunk_123.score, 0.95)
 
         # Verify second source details
         doc_456_source = next((s for s in sources if s.document_id == "doc_456"), None)
         self.assertIsNotNone(doc_456_source)
         self.assertEqual(doc_456_source.document_name, "best_practices.pdf")
         self.assertEqual(doc_456_source.score, 0.87)
+        chunk_456 = doc_456_source.get_chunk()
+        self.assertIsNotNone(chunk_456)
+        self.assertEqual(chunk_456.chunk_id, "chunk_2")
+        self.assertEqual(chunk_456.content, "Always use descriptive function names")
+        self.assertEqual(chunk_456.score, 0.87)
 
         # Test get_message_sources_by_chat_app method
         page_dto = self.service.get_message_sources_by_chat_app(

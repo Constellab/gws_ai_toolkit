@@ -136,40 +136,42 @@ def chat_component(config: ChatConfig) -> rx.Component:
         chat_ui = chat_component(config)
     """
 
-    return rx.auto_scroll(
-        rx.hstack(
-            rx.box(
-                config.left_section(config.state) if config.left_section else None,
-                flex="1",
-                height="100%",
-            ),
-            rx.box(
-                rx.cond(
-                    # When there are messages, show normal layout with fixed input
-                    config.state.show_empty_chat,
-                    # When no messages, center the input vertically
-                    _empty_chat(config),
-                    # Layout with messages - fixed input at bottom
-                    _chat_with_messages(config),
+    return rx.fragment(
+        rx.auto_scroll(
+            rx.hstack(
+                rx.box(
+                    config.left_section(config.state) if config.left_section else None,
+                    flex="1",
+                    height="100%",
                 ),
+                rx.box(
+                    rx.cond(
+                        # When there are messages, show normal layout with fixed input
+                        config.state.show_empty_chat,
+                        # When no messages, center the input vertically
+                        _empty_chat(config),
+                        # Layout with messages - fixed input at bottom
+                        _chat_with_messages(config),
+                    ),
+                    width="100%",
+                    max_width="800px",
+                    position="relative",
+                    display="flex",
+                    flex_direction="column",
+                ),
+                rx.box(
+                    config.right_section(config.state) if config.right_section else None,
+                    flex="1",
+                    height="100%",
+                ),
+                align_items="stretch",
+                justify_content="stretch",
                 width="100%",
-                max_width="800px",
-                position="relative",
-                display="flex",
-                flex_direction="column",
             ),
-            rx.box(
-                config.right_section(config.state) if config.right_section else None,
-                flex="1",
-                height="100%",
-            ),
-            align_items="stretch",
-            justify_content="stretch",
             width="100%",
+            flex="1",
+            display="flex",
+            min_height="0",
+            on_mount=config.state.on_mount,
         ),
-        width="100%",
-        flex="1",
-        display="flex",
-        min_height="0",
-        on_mount=config.state.on_mount,
     )
