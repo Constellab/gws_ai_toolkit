@@ -150,9 +150,7 @@ def sources_list_component(
 
 
 def custom_sources_list_component(
-    custom_menu_items: Callable[
-        [RagChatSourceFront, ConversationChatStateBase], list[rx.Component]
-    ],
+    custom_menu_items: CustomSourceMenuButtons,
 ) -> SourcesComponentBuilder:
     """Wrapper for sources_list_component with custom menu items.
 
@@ -185,7 +183,7 @@ def source_message_component(
     """
     return rx.box(
         rx.markdown(message.content, font_size="14px"),
-        custom_sources_component_builder()
+        custom_sources_component_builder(message.sources, state)
         if custom_sources_component_builder
         else sources_list_component(message.sources, state),
         style={

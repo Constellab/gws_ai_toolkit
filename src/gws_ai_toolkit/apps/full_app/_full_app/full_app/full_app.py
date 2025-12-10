@@ -26,7 +26,7 @@ from gws_ai_toolkit._app.ai_table import (
     AiTableDataState,
     ai_table_component,
 )
-from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+from gws_ai_toolkit.models.chat.message.chat_message_source import RagChatSourceFront
 from gws_reflex_main import register_gws_reflex_app
 
 from .associated_resources_component import (
@@ -50,7 +50,7 @@ nav_bar_items: list[NavBarItem] = [
 ]
 
 
-def custom_source_menu_items(source: RagChatSource, state: ConversationChatStateBase):
+def custom_source_menu_items(source: RagChatSourceFront, state: ConversationChatStateBase):
     items = get_default_source_menu_items(source, state)
     items.append(
         rx.menu.item(

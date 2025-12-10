@@ -237,10 +237,11 @@ def history_component(
         header_buttons=_header_buttons,
     )
 
-    # TODO TO FIX
     if sources_component_builder:
         config.custom_chat_messages = {
-            "source": lambda message: source_message_component(message, ReadOnlyChatState),
+            "source": lambda message: source_message_component(
+                message, ReadOnlyChatState, sources_component_builder
+            ),
         }
 
     return rx.hstack(

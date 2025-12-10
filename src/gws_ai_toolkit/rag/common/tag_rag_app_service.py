@@ -4,6 +4,7 @@ from gws_core import ResourceModel, ResourceSearchBuilder, Tag
 
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
 
 class TagRagAppService(BaseRagAppService):
@@ -17,8 +18,12 @@ class TagRagAppService(BaseRagAppService):
     tag_value: str
 
     def __init__(
-        self, rag_service: BaseRagService, dataset_id: str, additional_config: dict[str, Any] = None
+        self,
+        rag_service: BaseRagService,
+        dataset_id: str,
+        additional_config: dict[str, Any] | None = None,
     ) -> None:
+        super().__init__(rag_service, dataset_id)
         if additional_config is None:
             additional_config = {}
 
@@ -29,8 +34,6 @@ class TagRagAppService(BaseRagAppService):
 
         self.tag_key = additional_config["tag_key"]
         self.tag_value = additional_config["tag_value"]
-
-        super().__init__(rag_service, dataset_id)
 
     def get_sync_to_rag_tag(self) -> Tag:
         return Tag(self.tag_key, self.tag_value)
@@ -57,3 +60,18 @@ class TagRagAppService(BaseRagAppService):
         text += f"\n- Have the tag '{self.get_sync_to_rag_tag()}'"
         text += "\n- Not be archived"
         return text
+
+    def count_synced_resources(self) -> int:
+        """
+        Count the number of resources that were synced to the RAG.
+        This includes all resources that match the RAG criteria (tag, fs_node, not archived)
+        and have been successfully synced to the RAG platform.
+
+        Returns:
+            int: The count of synced resources
+        """
+        research_search = ResourceSearchBuilder()
+        research_search.add_tag_filter(self.get_sync_to_rag_tag())
+        research_search.add_tag_key_filter(RagResource.RAG_SYNC_TAG_KEY)
+
+        return research_search.build_search().count()

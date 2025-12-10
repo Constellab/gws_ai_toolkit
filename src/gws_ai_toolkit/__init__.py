@@ -48,6 +48,11 @@ from .models.chat.message.chat_message_hint import (
 )
 from .models.chat.message.chat_message_image import ChatMessageImage
 from .models.chat.message.chat_message_plotly import ChatMessagePlotly
+from .models.chat.message.chat_message_source import (
+    ChatMessageSource,
+    ChatMessageSourceFront,
+    RagChatSourceFront,
+)
 from .models.chat.message.chat_message_streaming import ChatMessageStreaming
 from .models.chat.message.chat_message_table import ChatMessageTable
 from .models.chat.message.chat_message_text import (
@@ -270,6 +275,9 @@ __all__ = [
     "ChatMessageTable",
     "ChatMessageStreaming",
     "ChatMessageFront",
+    "ChatMessageSource",
+    "ChatMessageSourceFront",
+    "RagChatSourceFront",
     # Stats
     "AiTableStatsBase",
     "AiTableStats",
