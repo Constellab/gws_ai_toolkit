@@ -1,6 +1,6 @@
-import pandas as pd
 import reflex as rx
-from gws_core import Logger, Table
+from gws_ai_toolkit.tasks.table_subtable_selector import TableSubtableSelector
+from gws_core import Logger
 
 from ..ai_table_data_state import AiTableDataState
 
@@ -40,7 +40,7 @@ class AiTableSelectionState(rx.State):
 
     @rx.event
     async def extract_selection(self):
-        """Extract the selected data and create a new subtable"""
+        """Extract the selected data and create a new subtable using TableSubtableSelector task"""
 
         if not self.current_selection or len(self.current_selection) != 1:
             return
@@ -50,50 +50,43 @@ class AiTableSelectionState(rx.State):
         # Get data state to access current dataframe and add new table
         data_state = await self.get_state(AiTableDataState)
 
-        # Get the source dataframe from current table
-        source_df = data_state.get_current_dataframe()
-        table_item = data_state._excel_files.get(data_state.current_table_id)
-        source_name = table_item.name if table_item else "table"
-
-        if source_df is None or source_df.empty:
-            Logger.error("No valid dataframe available for extraction")
+        # Get the source table
+        excel_file = data_state._excel_files.get(data_state.current_table_id)
+        if not excel_file:
+            Logger.error("No valid table available for extraction")
             return
 
-        # Extract row and column ranges
+        source_table = excel_file.get_table(data_state.current_sheet_name)
+        source_name = excel_file.name
+
+        # Extract row and column ranges from selection
         start_row = selection.get("startRow", 0)
         end_row = selection.get("endRow", 0)
-        columns = selection.get("columns", [])
+        columns = list(selection.get("columns", []))
 
-        # Handle inverted selection (when user selects from bottom to top)
-        if start_row > end_row:
-            start_row, end_row = end_row, start_row
+        # Use TableSubtableSelector task to extract the subtable
+        try:
+            subtable = TableSubtableSelector.select_subtable(
+                source_table=source_table,
+                start_row=start_row,
+                end_row=end_row,
+                columns=columns if columns else None,
+                use_first_row_as_header=self.use_first_row_as_header,
+            )
 
-        # Extract the subset of data
-        selected_data: pd.DataFrame
-        if columns:
-            # Select specific columns and rows using iloc for row indexing and column names
-            selected_data = source_df.iloc[start_row : end_row + 1][columns]
-        else:
-            # Select all columns for the row range
-            selected_data = source_df.iloc[start_row : end_row + 1]
+            # Set the subtable name
+            subtable_name = f"{source_name}_subtable"
+            subtable.name = subtable_name
 
-        # Handle header option
-        if self.use_first_row_as_header and not selected_data.empty:
-            # Use first row as header
-            new_columns = selected_data.iloc[0].values
-            selected_data = selected_data.iloc[1:]
-            selected_data.columns = new_columns
+            # Add new subtable via data state
+            data_state.add_table(subtable)
 
-        # Create subtable filename
-        subtable_name = f"{source_name}_subtable"
+            # Close the dialog
+            self.close_extract_dialog()
 
-        # Add new subtable via data state
-        new_table = Table(selected_data)
-        new_table.name = subtable_name
-        data_state.add_table(new_table)
-
-        # Close the dialog
-        self.close_extract_dialog()
+        except Exception as e:
+            Logger.error(f"Failed to extract subtable: {e}")
+            return
 
     @rx.var
     def can_extract(self) -> bool:

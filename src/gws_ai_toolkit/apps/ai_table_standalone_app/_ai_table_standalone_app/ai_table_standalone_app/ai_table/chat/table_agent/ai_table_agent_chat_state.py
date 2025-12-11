@@ -129,9 +129,6 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
 
         for table_dto in self._selected_tables:
             tables[table_dto.get_unique_name()] = table_dto.table
-            print(
-                f"Added table to user message: {table_dto.get_unique_name()} with id {table_dto.table.get_model_id()}"
-            )
 
         return ChatUserMessageTable(tables=tables, content=user_query)
 

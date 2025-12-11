@@ -143,8 +143,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
                         async with self:
                             self.current_response_message = None
                             self._chat_messages.append(message.to_front_dto())
-                            # print(f"Added message type : {type(message)}: {message}")
-                            # print(f"Added message: {message.to_front_dto()}")
                         await self._after_message_added(message)
 
         finally:
@@ -206,20 +204,3 @@ class ConversationChatStateBase(rx.State, mixin=True):
     async def on_mount(self) -> None:
         """On mount, ensure the conversation is created."""
         pass
-
-    @rx.event
-    async def handle_text_area_key_down(self, key: str):
-        """Handle key down event in text area.
-
-        If Enter is pressed without Shift, submit the form.
-
-        Args:
-            key: The key that was pressed
-            shift: Whether the Shift key was held
-            form_data: The form data
-        """
-        if key == "Enter" and self._previous_key != "Shift":
-            print("Submitting form on Enter key press")
-        self._previous_key = key
-        # if key == "Enter" and not shift:
-        #     await self.submit_input_form(form_data)
