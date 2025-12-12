@@ -66,7 +66,7 @@ class SourceDetailState(rx.State):
             with await main_state.authenticate_user():
                 # Load the source from database
                 chat_service = ChatConversationService()
-                source_model = chat_service.get_source_by_id_and_check(source_id + "jh")
+                source_model = chat_service.get_source_by_id_and_check(source_id)
 
                 # Convert to DTO
                 source_dto = source_model.to_rag_dto()
