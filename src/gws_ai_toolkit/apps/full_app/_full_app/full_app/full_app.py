@@ -14,11 +14,13 @@ from gws_ai_toolkit._app.ai_chat import (
 )
 from gws_ai_toolkit._app.ai_rag import (
     AiExpertState,
+    DocumentBrowserState,
     RagChatState,
     RagConfigState,
     RagConfigStateFromParams,
     ai_expert_component,
     ai_expert_header_default_buttons_component,
+    document_browser_component,
     rag_chat_component,
     rag_config_component,
 )
@@ -44,6 +46,7 @@ app = register_gws_reflex_app(rxe.App())
 
 nav_bar_items: list[NavBarItem] = [
     NavBarItem(text="Chat", icon="message-circle", url="/"),
+    NavBarItem(text="AI Expert", icon="brain", url="/ai-expert"),
     NavBarItem(text="Resources", icon="database", url="/rag-config"),
     NavBarItem(text="Config", icon="settings", url="/config"),
     NavBarItem(text="History", icon="clock", url="/history"),
@@ -108,6 +111,13 @@ def history():
             associated_resources_dialog(),
         ),
     )
+
+
+# AI Expert page - document browser (no document selected)
+@rx.page(route="/ai-expert", on_load=DocumentBrowserState.load_documents)
+def ai_expert_browser():
+    """AI Expert page for selecting a document."""
+    return page_component(NavBarState.nav_bar_items, document_browser_component())
 
 
 # AI Expert page - document-specific chat

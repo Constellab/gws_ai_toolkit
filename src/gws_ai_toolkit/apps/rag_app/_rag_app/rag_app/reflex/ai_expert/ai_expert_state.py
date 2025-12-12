@@ -8,6 +8,7 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
     BaseChatConversationConfig,
 )
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_core.resource.resource_model import ResourceModel
 from gws_reflex_main import ReflexMainState
 
 from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
@@ -116,4 +117,10 @@ class AiExpertState(ConversationChatStateBase, rx.State):
         """Open the current resource file."""
         if self._rag_resource:
             return await self.open_document_from_resource(self._rag_resource.get_id())
+        return None
+
+    async def get_current_resource_model(self) -> ResourceModel | None:
+        """Get the current RAG resource model."""
+        if self._rag_resource:
+            return self._rag_resource.resource_model
         return None

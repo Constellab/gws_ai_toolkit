@@ -16,11 +16,13 @@ class SourceDetailState(rx.State):
         is_dialog_open (bool): Whether the dialog is currently open
         source (RagChatSource | None): The loaded source data as DTO
         is_loading (bool): Whether the source is currently being loaded
+        error_message (str | None): Error message if source loading fails
     """
 
     is_dialog_open: bool = False
     source: RagChatSource | None = None
     is_loading: bool = False
+    error_message: str | None = None
 
     @rx.event(background=True)
     async def open_source_dialog(self, source_id: str | None):
@@ -40,6 +42,7 @@ class SourceDetailState(rx.State):
         """Close the dialog and clear the source data."""
         self.is_dialog_open = False
         self.source = None
+        self.error_message = None
 
     async def load_source(self, source_id: str):
         """Load the source by ID from the database.
@@ -54,6 +57,7 @@ class SourceDetailState(rx.State):
         async with self:
             self.is_loading = True
             self.source = None
+            self.error_message = None
             main_state: ReflexMainState = await self.get_state(ReflexMainState)
 
         try:
@@ -62,7 +66,7 @@ class SourceDetailState(rx.State):
             with await main_state.authenticate_user():
                 # Load the source from database
                 chat_service = ChatConversationService()
-                source_model = chat_service.get_source_by_id_and_check(source_id)
+                source_model = chat_service.get_source_by_id_and_check(source_id + "jh")
 
                 # Convert to DTO
                 source_dto = source_model.to_rag_dto()
@@ -70,9 +74,10 @@ class SourceDetailState(rx.State):
             async with self:
                 self.source = source_dto
                 self.is_loading = False
-        except:
+        except Exception as e:
             async with self:
-                self.is_dialog_open = False
+                self.error_message = f"Failed to load source: {str(e)}"
+                self.is_loading = False
 
         finally:
             async with self:

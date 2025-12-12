@@ -206,6 +206,9 @@ class ChatConversationService:
 
         for source in sources:
             source_record = ChatMessageSourceModel()
+            # use the ID from the DTO object because it is preset to
+            # be referenced in the message content
+            source_record.id = source.id
             source_record.message = message  # type: ignore
             source_record.document_id = source.document_id
             source_record.document_name = source.document_name

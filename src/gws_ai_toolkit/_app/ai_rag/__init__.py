@@ -6,6 +6,12 @@ from ...apps.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_config_componen
     ai_expert_config_component,
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_state import AiExpertState
+from ...apps.rag_app._rag_app.rag_app.reflex.ai_expert.document_browser_component import (
+    document_browser_component,
+)
+from ...apps.rag_app._rag_app.rag_app.reflex.ai_expert.document_browser_state import (
+    DocumentBrowserState,
+)
 from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.config.rag_config_component import (
     rag_config_component,
 )
@@ -34,4 +40,7 @@ __all__ = [
     "RagConfigStateFromParams",
     # Functions
     "rag_chat_config_component",
+    "document_browser_component",
+    # States
+    "DocumentBrowserState",
 ]

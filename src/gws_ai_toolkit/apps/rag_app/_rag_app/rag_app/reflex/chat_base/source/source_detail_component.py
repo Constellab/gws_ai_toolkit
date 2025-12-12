@@ -36,42 +36,59 @@ def source_detail_dialog(
                 ),
                 # Loaded state
                 rx.cond(
-                    SourceDetailState.source,
-                    # Source loaded successfully
+                    SourceDetailState.error_message,
+                    # Error state
                     rx.vstack(
-                        dialog_header(
-                            "Source: " + SourceDetailState.source.document_name,
-                            close=SourceDetailState.close_dialog,
-                            additional_actions=source_menu_button(
-                                SourceDetailState.source_front,
-                                state,
-                                custom_menu_items,
-                            ),
-                        ),
+                        dialog_header("Error", close=SourceDetailState.close_dialog),
                         rx.box(
-                            rx.cond(
-                                SourceDetailState.source.chunk,
+                            rx.callout(
+                                SourceDetailState.error_message,
+                                icon="triangle_alert",
+                                color_scheme="red",
+                            ),
+                            padding="4",
+                        ),
+                        spacing="2",
+                        width="100%",
+                    ),
+                    # Source loaded successfully
+                    rx.cond(
+                        SourceDetailState.source,
+                        rx.vstack(
+                            dialog_header(
+                                "Source: " + SourceDetailState.source.document_name,
+                                close=SourceDetailState.close_dialog,
+                                additional_actions=source_menu_button(
+                                    SourceDetailState.source_front,
+                                    state,
+                                    custom_menu_items,
+                                ),
+                            ),
+                            rx.box(
                                 rx.cond(
-                                    SourceDetailState.source.chunk.content,
-                                    rx.markdown(SourceDetailState.source.chunk.content),
+                                    SourceDetailState.source.chunk,
+                                    rx.cond(
+                                        SourceDetailState.source.chunk.content,
+                                        rx.markdown(SourceDetailState.source.chunk.content),
+                                        rx.text(
+                                            "No content available for this source.",
+                                            color="gray",
+                                            font_style="italic",
+                                        ),
+                                    ),
                                     rx.text(
-                                        "No content available for this source.",
+                                        "No chunk data available for this source.",
                                         color="gray",
                                         font_style="italic",
                                     ),
                                 ),
-                                rx.text(
-                                    "No chunk data available for this source.",
-                                    color="gray",
-                                    font_style="italic",
-                                ),
+                                padding="4",
+                                max_height="60vh",
+                                overflow_y="auto",
                             ),
-                            padding="4",
-                            max_height="60vh",
-                            overflow_y="auto",
+                            spacing="2",
+                            width="100%",
                         ),
-                        spacing="2",
-                        width="100%",
                     ),
                 ),
             ),
