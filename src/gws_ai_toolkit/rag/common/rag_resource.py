@@ -216,7 +216,7 @@ class RagResource:
     @classmethod
     def get_chunk_separator(cls, file_path: str) -> str:
         """Get the chunk separator for the resource."""
-        extension = FileHelper.get_extension(file_path)
+        extension = FileHelper.get_normalized_extension(file_path)
         # for markdown
         if extension == "md":
             return "## "
