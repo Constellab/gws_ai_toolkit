@@ -196,7 +196,9 @@ class AiTableDataState(rx.State):
         """Switch to a specific table based on ID"""
         if excel_file_id in self._excel_files:
             self.current_table_id = excel_file_id
-            self.current_sheet_name = ""
+            self.current_sheet_name = (
+                self._excel_files[excel_file_id].get_default_sheet_name() or ""
+            )
 
     @rx.event
     def select_table(self, table_id: str):
@@ -281,7 +283,7 @@ class AiTableDataState(rx.State):
             table_item (TableItem): TableItem to add
         """
         self._excel_files[excel_file.id] = excel_file
-        self.current_table_id = excel_file.id
+        self.select_excel_file(excel_file.id)
         return excel_file.get_table_dto()
 
     def add_resource_model(self, resource_model_id: str):
@@ -290,6 +292,14 @@ class AiTableDataState(rx.State):
             raise ValueError(f"Resource with id {resource_model_id} not found")
 
         resource = resource_model.get_resource()
+
+        if isinstance(resource, File):
+            if not resource.is_csv_or_excel():
+                raise ValueError(f"Resource with id {resource_model_id} is not a CSV or Excel file")
+
+            self.add_file(resource, resource_model.name, resource_model_id)
+            return
+
         if not isinstance(resource, Table):
             raise ValueError(f"Resource with id {resource_model_id} is not a Table resource")
 

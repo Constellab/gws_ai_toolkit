@@ -47,6 +47,13 @@ class ExcelFile:
         """Get list of sheet names for Excel files, or empty list for CSV"""
         return list(self._tables.keys())
 
+    def get_default_sheet_name(self) -> str | None:
+        """Get the default sheet name (first sheet) or None if no sheets"""
+        if not self.has_multiple_sheets():
+            return None
+        sheet_names = self.get_sheet_names()
+        return sheet_names[0]
+
     def has_multiple_sheets(self) -> bool:
         """Check if the file has multiple sheets"""
         return len(self.get_sheet_names()) > 1
