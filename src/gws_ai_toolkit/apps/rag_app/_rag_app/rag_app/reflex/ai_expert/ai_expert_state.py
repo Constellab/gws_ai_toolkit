@@ -8,7 +8,7 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
     BaseChatConversationConfig,
 )
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_core.resource.resource_model import ResourceModel
+from gws_core import ResourceModel
 from gws_reflex_main import ReflexMainState
 
 from ..chat_base.conversation_chat_state_base import ConversationChatStateBase

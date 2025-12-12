@@ -1,5 +1,4 @@
-from gws_core import CurrentUserService, Paginator
-from gws_core.core.model.model_dto import PageDTO
+from gws_core import CurrentUserService, PageDTO, Paginator
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
@@ -55,11 +54,16 @@ class ChatConversationService:
         if not chat_app:
             return PageDTO.empty_page()
 
+        current_user = self._get_current_user()
+
         paginator = Paginator(
             ChatMessageSourceModel.select()
             .join(ChatMessageModel)
             .join(ChatConversation)
-            .where(ChatConversation.chat_app == chat_app.id)
+            .where(
+                (ChatConversation.chat_app == chat_app.id)
+                & (ChatConversation.user == current_user.id)
+            )
             .group_by(ChatMessageSourceModel.document_id)
             .order_by(ChatMessageSourceModel.created_at.desc()),
             page=page,

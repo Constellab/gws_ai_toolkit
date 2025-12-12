@@ -3,6 +3,7 @@
 import reflex as rx
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
 
@@ -30,28 +31,38 @@ class DocumentBrowserState(rx.State):
         """
         return len(self.documents) > 0
 
+    @rx.event(background=True)
     async def load_documents(self) -> None:
         """Load available documents from chat history.
 
         Retrieves the first 20 documents that have been referenced in chat
         conversations for the current chat app.
         """
-        self.is_loading = True
+
+        main_state: ReflexMainState
+        app_config_state: AppConfigState
+
+        async with self:
+            self.is_loading = True
+            main_state = await self.get_state(ReflexMainState)
+            app_config_state = await AppConfigState.get_instance(self)
 
         try:
             # Get chat app name from config
-            app_config_state = await AppConfigState.get_instance(self)
             chat_app_name = await app_config_state.get_chat_app_name()
 
             # Get documents from chat history
             service = ChatConversationService()
-            page_dto = service.get_message_sources_by_chat_app(
-                chat_app_name=chat_app_name,
-                page=0,
-                number_of_items_per_page=20,
-            )
+            with await main_state.authenticate_user():
+                page_dto = service.get_message_sources_by_chat_app(
+                    chat_app_name=chat_app_name,
+                    page=0,
+                    number_of_items_per_page=20,
+                )
 
-            # Convert to RagChatSource objects
-            self.documents = page_dto.objects
+            async with self:
+                # Convert to RagChatSource objects
+                self.documents = page_dto.objects
         finally:
-            self.is_loading = False
+            async with self:
+                self.is_loading = False

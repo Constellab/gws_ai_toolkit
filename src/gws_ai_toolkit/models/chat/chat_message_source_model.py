@@ -1,5 +1,4 @@
-from gws_core import JSONField, Model
-from gws_core.core.model.model_dto import BaseModelDTO
+from gws_core import BaseModelDTO, JSONField, Model
 from peewee import CharField, FloatField, ForeignKeyField, ModelSelect
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager

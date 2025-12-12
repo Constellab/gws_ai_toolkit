@@ -18,6 +18,7 @@ from gws_core import (
     FloatParam,
     InputSpec,
     InputSpecs,
+    JsonCodeParam,
     OutputSpec,
     OutputSpecs,
     Resource,
@@ -30,7 +31,6 @@ from gws_core import (
     TaskOutputs,
     task_decorator,
 )
-from gws_core.config.param.code_param.json_code_param import JsonCodeParam
 from pydantic import TypeAdapter
 
 from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
