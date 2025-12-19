@@ -1,3 +1,4 @@
+import traceback
 from collections.abc import Generator
 
 import numpy as np
@@ -6,6 +7,7 @@ from gws_core import BaseModelDTO, Table
 from pydantic import Field
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent
+from gws_ai_toolkit.core.agents.code_execution_error import CodeExecutionError
 from gws_ai_toolkit.core.agents.table.table_agent_ai_events import UserQueryMultiTablesEvent
 
 from ..base_function_agent_ai import BaseFunctionAgentAi, FunctionErrorEvent
@@ -93,6 +95,17 @@ class MultiTableAgentAi(
             # The success response will be handled in the main loop
             return
 
+        except CodeExecutionError as exec_error:
+            # Extract stack trace from CodeExecutionError
+            yield FunctionErrorEvent(
+                message=exec_error.message,
+                stack_trace=exec_error.stack_trace,
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
+            # Return after error - the main loop will handle retry logic
+            return
         except Exception as exec_error:
             yield FunctionErrorEvent(
                 message=str(exec_error),
@@ -115,7 +128,7 @@ class MultiTableAgentAi(
 
         Raises:
             ValueError: If code is invalid or doesn't produce expected output
-            RuntimeError: If code execution fails
+            CodeExecutionError: If code execution fails (includes stack trace)
         """
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
@@ -132,7 +145,10 @@ class MultiTableAgentAi(
         try:
             exec(code, execution_globals)
         except Exception as exec_error:
-            raise RuntimeError(f"Error executing generated code: {exec_error}")
+            # Include stack trace in the exception for AI context
+            error_msg = f"Error executing generated code: {exec_error}"
+            stack_trace = traceback.format_exc()
+            raise CodeExecutionError(error_msg, stack_trace) from exec_error
 
         # Validate result_tables dictionary was created
         if "result_tables" not in execution_globals:

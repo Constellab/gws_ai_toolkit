@@ -50,6 +50,7 @@ class FunctionErrorEvent(FunctionEventBase):
 
     type: Literal["function_error"] = "function_error"
     message: str
+    stack_trace: str | None = None  # Optional stack trace for AI context, not shown to user
 
 
 class ErrorEvent(BaseModelDTO):

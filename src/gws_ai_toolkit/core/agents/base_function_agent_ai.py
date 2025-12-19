@@ -149,11 +149,17 @@ class BaseFunctionAgentAi(ABC, Generic[T, U]):
                 if not error_event.call_id:
                     # If no call_id, we cannot proceed with function call output
                     break
+                # Include stack trace in AI context if available
+                error_output = error_event.message
+                if error_event.stack_trace:
+                    error_output = (
+                        f"{error_event.message}\n\nStack trace:\n{error_event.stack_trace}"
+                    )
                 messages = [
                     {
                         "type": "function_call_output",
                         "call_id": error_event.call_id,
-                        "output": json.dumps({"Result": error_event.message}),
+                        "output": json.dumps({"Result": error_output}),
                     },
                     {
                         "role": "user",

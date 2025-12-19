@@ -1,3 +1,4 @@
+import traceback
 from collections.abc import Generator
 
 import pandas as pd
@@ -10,6 +11,7 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
     FunctionCallEvent,
     FunctionErrorEvent,
 )
+from gws_ai_toolkit.core.agents.code_execution_error import CodeExecutionError
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent
 
 from ..base_function_agent_ai import BaseFunctionAgentAi
@@ -111,6 +113,17 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
             # The success response will be handled in the main loop
             return
 
+        except CodeExecutionError as exec_error:
+            # Extract stack trace from CodeExecutionError
+            yield FunctionErrorEvent(
+                message=exec_error.message,
+                stack_trace=exec_error.stack_trace,
+                call_id=call_id,
+                response_id=response_id,
+                agent_id=self.id,
+            )
+            # Return after error - the main loop will handle retry logic
+            return
         except Exception as exec_error:
             yield FunctionErrorEvent(
                 message=str(exec_error),
@@ -144,7 +157,10 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
         try:
             exec(code, execution_globals)
         except Exception as exec_error:
-            raise RuntimeError(f"Error executing generated code: {exec_error}")
+            # Include stack trace in the exception for AI context
+            error_msg = f"Error executing generated code: {exec_error}"
+            stack_trace = traceback.format_exc()
+            raise CodeExecutionError(error_msg, stack_trace) from exec_error
 
         # Validate figure was created
         if "fig" not in execution_globals:
