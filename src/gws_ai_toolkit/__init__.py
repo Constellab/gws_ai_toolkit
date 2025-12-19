@@ -17,7 +17,7 @@ from .core.agents.base_function_agent_events import (
     UserQueryEventBase,
     UserQueryTextEvent,
 )
-from .core.agents.env_agent_ai import EnvAgentAi, EnvConfig
+from .core.agents.env_agent_ai import EnvAgentAi
 from .core.agents.env_agent_ai_events import (
     EnvFileGeneratedEvent,
     EnvInstallationStartedEvent,

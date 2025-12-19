@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 from collections.abc import Generator
 from typing import Any, Literal
@@ -27,11 +28,25 @@ from .env_agent_ai_events import (
 )
 
 
-class EnvConfig(BaseModelDTO):
-    """Configuration for conda/mamba/pipenv environment file generation"""
+class CondaMambaEnvConfig(BaseModelDTO):
+    """Configuration for conda/mamba environment file generation"""
 
     env_file_content: str = Field(
-        description="Complete environment file content. For conda/mamba: environment.yml with proper YAML formatting including 'name', 'channels', and 'dependencies' sections. For pipenv: Pipfile with proper TOML formatting including '[[source]]', '[packages]', and '[requires]' sections.",
+        description="Complete environment.yml file content with proper YAML formatting including 'name', 'channels', and 'dependencies' sections. Must be valid YAML that can be used with 'conda env create' or 'mamba env create'.",
+    )
+
+    class Config:
+        extra = "forbid"  # Prevent additional properties
+
+
+class PipenvEnvConfig(BaseModelDTO):
+    """Configuration for pipenv environment file generation"""
+
+    env_file_content: str = Field(
+        description="Complete Pipfile content with proper TOML formatting including '[[source]]', '[packages]', and '[requires]' sections. Must be valid TOML that can be used with 'pipenv install'. The [requires] section MUST specify the python_version.",
+    )
+    python_version: str = Field(
+        description="Python version to use in the [requires] section (e.g., '3.11', '3.10'). This MUST match the version specified in env_file_content.",
     )
 
     class Config:
@@ -77,16 +92,22 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
     def _get_tools(self) -> list[dict]:
         """Get tools configuration for OpenAI"""
         if self._env_type == "pipenv":
-            description = f"Generate a valid Pipfile for {self._env_type}. The file must be properly formatted TOML with '[[source]]', '[packages]', and '[requires]' sections."
+            function_name = "generate_pipenv_file"
+            # Get current Python version
+            current_python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+            description = f"Generate a valid Pipfile for {self._env_type}. The file must be properly formatted TOML with '[[source]]', '[packages]', and '[requires]' sections. The python_version in [requires] MUST be '{current_python_version}' to match the current Python environment."
+            schema = PipenvEnvConfig.model_json_schema()
         else:
+            function_name = "generate_conda_env_file"
             description = f"Generate a valid {self._env_type} environment.yml file. The file must be properly formatted YAML with 'name', 'channels', and 'dependencies' sections."
+            schema = CondaMambaEnvConfig.model_json_schema()
 
         return [
             {
                 "type": "function",
-                "name": "generate_conda_env_file",
+                "name": function_name,
                 "description": description,
-                "parameters": EnvConfig.model_json_schema(),
+                "parameters": schema,
             }
         ]
 
@@ -200,31 +221,25 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
                 )
 
             # Install the environment
-            result = shell_proxy.install_env()
+            env_installed = shell_proxy.install_env()
 
-            if result:
-                # Get the path to the installed environment
-                env_path = shell_proxy.get_venv_dir_path()
+            # Get the path to the installed environment
+            env_path = shell_proxy.get_env_dir_path()
+            success_message = (
+                f"{self._env_type} environment installed successfully at {env_path}."
+                if env_installed
+                else f"The environment was already installed: {env_path}."
+            )
 
-                yield EnvInstallationSuccessEvent(
-                    env_path=env_path,
-                    env_file_content=env_file_content,
-                    message=f"Successfully installed {self._env_type}",
-                    call_id=call_id,
-                    response_id=current_response_id,
-                    function_response="Environment installed successfully",
-                    agent_id=self.id,
-                )
-            else:
-                yield EnvInstallationSuccessEvent(
-                    env_path=env_path,
-                    env_file_content=env_file_content,
-                    message=f"The environment was already installed: {self._env_type}",
-                    call_id=call_id,
-                    response_id=current_response_id,
-                    function_response="Environment installed successfully",
-                    agent_id=self.id,
-                )
+            yield EnvInstallationSuccessEvent(
+                env_path=env_path,
+                env_file_content=env_file_content,
+                message=success_message,
+                call_id=call_id,
+                response_id=current_response_id,
+                function_response="Environment installed successfully",
+                agent_id=self.id,
+            )
 
         except Exception as install_error:
             error_message = str(install_error)
@@ -294,12 +309,23 @@ requests = "~=2.28.0"
 pytest = "*"
 
 [requires]
-python_version = "3.9"
+python_version = "{sys.version_info.major}.{sys.version_info.minor}"
 ```
+
+## CRITICAL Requirements:
+- The [requires] section MUST specify python_version as "{sys.version_info.major}.{sys.version_info.minor}" (the current Python version)
+- This is NON-NEGOTIABLE - always use "{sys.version_info.major}.{sys.version_info.minor}" for python_version
+
+## Python Version Compatibility Check:
+BEFORE generating the Pipfile, check if the requested packages are compatible with Python {sys.version_info.major}.{sys.version_info.minor}:
+- If any requested package version is INCOMPATIBLE with Python {sys.version_info.major}.{sys.version_info.minor}, DO NOT generate the Pipfile
+- Instead, explain the incompatibility issue clearly (which package, which version, why it's incompatible)
+- Recommend using conda or mamba environments instead, as they can install different Python versions
+- Example: "Package X version Y requires Python 3.8 or lower, but the current environment is Python {sys.version_info.major}.{sys.version_info.minor}. Please use conda or mamba environment generators which allow specifying different Python versions."
 
 ## Common issues to avoid:
 - Don't use package version constraints that are too strict (can cause conflicts)
-- Specify python_version in [requires] section
+- ALWAYS specify python_version as "{sys.version_info.major}.{sys.version_info.minor}" in [requires] section
 - Use appropriate version specifiers (==, >=, ~=, *)
 - Consider platform compatibility
 - Separate development dependencies from production dependencies
@@ -310,6 +336,7 @@ When generating the Pipfile:
 - Ensure the file is complete and ready to use with 'pipenv install'
 - Do NOT include any markdown code block markers in the TOML content
 - Provide ONLY the raw TOML content
+- Set python_version field to "{sys.version_info.major}.{sys.version_info.minor}"
 
 Call the function only once per user request for a Pipfile.
 """
