@@ -112,7 +112,7 @@ class ExcelFile:
         if not file.is_csv_or_excel():
             raise ValueError(f"Unsupported file extension: {extension} !")
 
-        if extension == "csv":
+        if extension in {"csv", "tsv"}:
             # set format_header_names to True to ensure consistent naming because aggrid
             # component has some problem with column names with special caracter (like dot or ")
             table = cast(Table, TableImporter.call(file, {"format_header_names": True}))

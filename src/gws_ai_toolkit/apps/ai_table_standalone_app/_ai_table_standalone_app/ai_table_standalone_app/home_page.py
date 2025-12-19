@@ -90,7 +90,7 @@ def upload_section():
                             spacing="1",
                         ),
                         rx.text(
-                            "CSV, Excel files (.csv, .xls, .xlsx) - Multiple files supported",
+                            "CSV, TSV, Excel files (.csv, .tsv, .xls, .xlsx) - Multiple files supported",
                             style={
                                 "font_size": "0.875rem",
                                 "color": "var(--gray-10)",
@@ -112,6 +112,7 @@ def upload_section():
                 id="upload",
                 accept={
                     "text/csv": [".csv"],
+                    "text/tab-separated-values": [".tsv"],
                     "application/vnd.ms-excel": [".xls"],
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
                 },
