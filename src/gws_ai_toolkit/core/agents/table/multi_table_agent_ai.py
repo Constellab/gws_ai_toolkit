@@ -120,9 +120,13 @@ class MultiTableAgentAi(
         # Create safe execution environment
         execution_globals = self._get_code_execution_globals()
 
-        # Add all input tables to the execution environment
+        # Add all tables to a dictionary for access by name
+        tables_dict = {}
         for table_name, table in tables.items():
-            execution_globals[table_name] = table.get_data()
+            tables_dict[table_name] = table.get_data()
+
+        # Make tables accessible via the 'tables' dictionary
+        execution_globals["tables"] = tables_dict
 
         # Execute the code
         try:
@@ -207,6 +211,12 @@ You can assume the following imports are available:
 - pandas as pd
 - numpy as np
 
+# Accessing Tables in Code
+All tables are available via the `tables` dictionary. Access them using their original names:
+- `tables['4_Order']` - for a table named '4_Order'
+- `tables['metadata']` - for a table named 'metadata'
+- etc.
+
 Common multi-table operations you can perform:
 - Data merging and joining (inner, outer, left, right joins)
 - Data concatenation (row-wise or column-wise)
@@ -229,32 +239,22 @@ Call the function only once per user request for a transformation.
 
 Example code structure for the available tables:
 ```python
-# Work with multiple input DataFrames (use the actual table names from above)
-# The table names are already loaded as DataFrames in the environment
+# Access tables via the tables dictionary using their exact names from the 'Available Tables' section
+# Example with two tables:
+order_data = tables['4_Order']
+meta_data = tables['metadata']
 
-# Example: Join two tables (replace with actual table names from 'Available Tables' section)
-# If you have tables named 'sales' and 'products', use those names directly:
-# merged_data = pd.merge(sales, products, on='product_id', how='inner')
+# Perform operations (e.g., merge/join)
+merged_data = pd.merge(order_data, meta_data, left_on='index', right_on='sample-id', how='left')
 
-# Generic example showing the pattern:
-table_names = list(user_query.tables.keys())
-if len(table_names) >= 2:
-    # Access tables by their names from the environment
-    merged_data = pd.merge(
-        eval(table_names[0]),  # First table
-        eval(table_names[1]),  # Second table
-        on='common_column',
-        how='inner'
-    )
-else:
-    # For single table operations
-    merged_data = eval(table_names[0])
-
-# Create multiple result tables
+# Always assign results to result_tables dictionary
 result_tables = {{
     'merged_table': merged_data,
     'summary_table': merged_data.groupby('category').sum()
 }}
 ```
 
-Remember: Use the actual table names shown in the 'Available Tables' section above, not generic placeholders."""
+Remember:
+- Always access tables via `tables['table_name']` using the exact names from 'Available Tables' section
+- Assign final results to the `result_tables` dictionary
+- Use descriptive keys for the result tables"""
