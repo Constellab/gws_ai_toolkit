@@ -64,7 +64,8 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
             ChatMessageDTO: The current message being streamed with updated content
         """
 
-        self.save_message(message=user_message)
+        # Note: user_message is already saved by call_conversation() in the base class
+        # so we don't need to save it again here
         yield user_message
 
         user_query = UserQueryMultiTablesEvent(
