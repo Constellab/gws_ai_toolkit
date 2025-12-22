@@ -29,7 +29,10 @@ class FullAppAppConfig(AppConfig):
 
 
 @task_decorator(
-    "GenerateFullApp", human_name="Generate FullApp app", style=ReflexResource.copy_style()
+    "GenerateFullApp",
+    human_name="Generate Constellab search with Analytics",
+    short_description="Generate the Constellab Search app using Ragflow with the Analytics plugin",
+    style=ReflexResource.copy_style(),
 )
 class GenerateFullApp(Task):
     """
@@ -74,5 +77,7 @@ class GenerateFullApp(Task):
         reflex_resource.set_requires_authentication(False)
 
         reflex_resource.set_enterprise_app(True)
+
+        reflex_resource.name = "Constellab Search with Analytics"
 
         return {"streamlit_app": reflex_resource}

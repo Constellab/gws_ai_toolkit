@@ -34,7 +34,8 @@ class AiTableStandaloneAppAppConfig(AppConfig):
 
 @task_decorator(
     "GenerateAiTableStandaloneApp",
-    human_name="Generate AiTableStandaloneApp app",
+    human_name="Generate Constellab Analytics app",
+    short_description="Generate the Constellab Analytics standalone app",
     style=ReflexResource.copy_style(),
 )
 class GenerateAiTableStandaloneApp(Task):
@@ -81,5 +82,7 @@ class GenerateAiTableStandaloneApp(Task):
         # TODO to remove
         # For the test, we disable the authentication
         reflex_app.set_requires_authentication(False)
+
+        reflex_app.name = "Constellab Analytics"
 
         return {"reflex_app": reflex_app}

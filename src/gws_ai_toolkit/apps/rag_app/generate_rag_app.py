@@ -35,7 +35,8 @@ class RagAppAppConfig(AppConfig):
 
 @task_decorator(
     "GenerateDatahubRagDifyApp",
-    human_name="Generate Datahub Dify app",
+    human_name="Generate Constellab search Dify",
+    short_description="Generate the Constellab search app using Dify RAG",
     style=ReflexResource.copy_style(),
 )
 class GenerateDatahubRagDifyApp(Task):
@@ -140,12 +141,15 @@ class GenerateDatahubRagDifyApp(Task):
 
         reflex_resource.set_enterprise_app(True)
 
+        reflex_resource.name = "Constellab Search"
+
         return {"streamlit_app": reflex_resource}
 
 
 @task_decorator(
     "GenerateDatahubRagFlowApp",
-    human_name="Generate Datahub Ragflow app",
+    human_name="Generate Constellab Search Ragflow",
+    short_description="Generate the Constellab search app using Ragflow RAG",
     style=ReflexResource.copy_style(),
 )
 class GenerateDatahubRagFlowApp(Task):
@@ -217,6 +221,8 @@ class GenerateDatahubRagFlowApp(Task):
 
         # For the test, we disable the authentication
         reflex_resource.set_requires_authentication(False)
+
+        reflex_resource.name = "Constellab Search"
 
         return {"streamlit_app": reflex_resource}
 
