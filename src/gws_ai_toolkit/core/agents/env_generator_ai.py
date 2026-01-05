@@ -143,8 +143,6 @@ class CondaEnvGeneratorAi(Task):
     - The generated file can be used with `conda env create -f environment.yml` or `mamba env create -f environment.yml`
     """
 
-    input_specs = {}
-
     output_specs = OutputSpecs(
         {
             "env_file": OutputSpec(
@@ -238,8 +236,6 @@ class PipEnvGeneratorAi(Task):
     - If you provide an existing file with errors, the AI will attempt to fix those issues
     - The generated file can be used with `pipenv install`
     """
-
-    input_specs = {}
 
     output_specs = OutputSpecs(
         {
