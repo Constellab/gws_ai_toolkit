@@ -1,10 +1,8 @@
-import plotly.graph_objects as go
 import reflex as rx
 from gws_ai_toolkit.models.chat.message.chat_message_code import ChatMessageCode
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_hint import ChatMessageHint
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
-from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotlyFront
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
@@ -16,6 +14,7 @@ from gws_reflex_main import user_profile_picture
 
 from .chat_config import ChatConfig
 from .conversation_chat_state_base import ConversationChatStateBase
+from .plotly_message_component import plotly_fullscreen_dialog, plotly_message_component
 from .source.source_detail_component import source_detail_dialog
 from .source.source_message_component import source_message_component
 
@@ -136,6 +135,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
             ),
         ),
         source_detail_dialog(config.state),
+        plotly_fullscreen_dialog(),
         width="100%",
         padding="1em",
         flex="1",
@@ -162,7 +162,7 @@ def _message_component(message: ChatMessage, config: ChatConfig) -> rx.Component
         "user-text": user_message_base,
         "image": _image_content,
         "code": _code_content,
-        "plotly": _plotly_content,
+        "plotly": plotly_message_component,
         "error": _error_content,
         "hint": _hint_content,
         "source": lambda msg: source_message_component(msg, config.state),
@@ -275,41 +275,6 @@ def _code_content(message: ChatMessageCode) -> rx.Component:
         language="python",
         border_radius="8px",
         padding="1em",
-    )
-
-
-def _plotly_content(message: ChatMessagePlotlyFront) -> rx.Component:
-    """Renders plotly figure content.
-
-    Args:
-        message (ChatMessagePlotlyFront): Plotly message to render
-
-    Returns:
-        rx.Component: Plotly figure display with optional plot name
-    """
-    return rx.cond(
-        message.figure,
-        rx.vstack(
-            rx.plotly(
-                # rx.cond used to avoid warning
-                data=rx.cond(message.figure, message.figure, go.Figure()),
-                width="100%",
-            ),
-            # rx.cond(
-            #     message.plot_name,
-            #     rx.text(
-            #         message.plot_name,
-            #         font_weight="500",
-            #         font_size="14px",
-            #         color="var(--gray-11)",
-            #         margin_top="8px",
-            #         text_align="center",
-            #     ),
-            # ),
-            spacing="2",
-            align_items="center",
-            width="100%",
-        ),
     )
 
 
