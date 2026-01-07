@@ -42,9 +42,9 @@ class NavBarState(rx.State):
             nav_bar_items.append(
                 NavBarItem(text="Config", icon="settings", url="/config"),
             )
-            nav_bar_items.append(
-                NavBarItem(text="History", icon="clock", url="/history"),
-            )
+            # nav_bar_items.append(
+            #     NavBarItem(text="History", icon="clock", url="/history"),
+            # )
 
         return nav_bar_items
 
