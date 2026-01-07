@@ -93,6 +93,12 @@ def table_section():
                 disabled=~AiTableSelectionState.can_extract,
                 variant="outline",
             ),
+            rx.button(
+                "Download Table",
+                on_click=AiTableDataState.download_current_table,
+                disabled=~AiTableDataState.dataframe_loaded,
+                variant="outline",
+            ),
             spacing="4",
             align="center",
             padding="0.5em 1em",

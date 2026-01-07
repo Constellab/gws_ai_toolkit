@@ -1,10 +1,10 @@
 import uuid
-from typing import Literal
+from typing import Literal, cast
 
 import pandas as pd
 import reflex as rx
 from gws_ai_toolkit.core.excel_file import ExcelFile, ExcelFileDTO, ExcelSheetDTO
-from gws_core import File, ResourceModel, Table, Utils
+from gws_core import File, ResourceModel, Table, TableExporter, Utils
 
 RightPanelState = Literal["closed", "chat", "stats"]
 ColumnSizeMode = Literal["default", "dense"]
@@ -153,6 +153,7 @@ class AiTableDataState(rx.State):
             # Add width or autoSize based on mode
             if self.column_size_mode == "default":
                 # Default mode: use autoSize on each column
+                # Default mode: use autoSize on each column
                 col_def["autoSize"] = True
             elif self.column_size_mode == "dense":
                 # Dense mode: set initial width so ag_grid_auto_size_strategy applies to all columns
@@ -243,6 +244,31 @@ class AiTableDataState(rx.State):
         for table_item in self._excel_files.values():
             table_dtos.append(table_item.to_dto())
         return table_dtos
+
+    @rx.event
+    def download_current_table(self):
+        """Get the current table as a downloadable File (CSV format)"""
+        table_item = self.get_current_dataframe_item()
+        if not table_item:
+            raise ValueError("No table is currently loaded")
+
+        table = table_item.get_table(self.current_sheet_name)
+
+        # Export table to file using TableExporter
+        file: File = cast(File, TableExporter.call(table))
+
+        # Read the file content as bytes
+        with open(file.path, 'rb') as f:
+            file_content = f.read()
+
+        # Trigger download using Reflex's download function
+        # Use the table name and sheet name for the filename
+        filename = (
+            f"{table_item.name}_{self.current_sheet_name}.csv"
+            if self.current_sheet_name
+            else f"{table_item.name}.csv"
+        )
+        return rx.download(filename=filename, data=file_content)
 
     def add_file(self, file: File, name: str | None = None, resource_model_id: str | None = None):
         """Set the resource file to load data from
