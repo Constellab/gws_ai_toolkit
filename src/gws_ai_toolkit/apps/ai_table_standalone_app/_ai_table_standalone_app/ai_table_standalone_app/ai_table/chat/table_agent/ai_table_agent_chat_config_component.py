@@ -72,15 +72,21 @@ def ai_table_agent_chat_config_component() -> rx.Component:
                     step=0.1,
                     width="100%",
                 ),
-                rx.heading("Chat Save", size="4", margin_top="4"),
-                rx.text(
-                    "Enable save functionality to save and replay chat conversations",
-                    color="gray",
-                ),
+                rx.heading("App Options", size="4", margin_top="4"),
                 rx.checkbox(
                     "Enable chat save",
                     name="enable_chat_save",
                     default_checked=AiTableAgentChatConfigState.enable_chat_save,
+                ),
+                rx.checkbox(
+                    "Enable file upload",
+                    name="enable_file_upload",
+                    default_checked=AiTableAgentChatConfigState.enable_file_upload,
+                ),
+                rx.checkbox(
+                    "Enable resource selection (select resources from the lab)",
+                    name="enable_resource_selection",
+                    default_checked=AiTableAgentChatConfigState.enable_resource_selection,
                 ),
                 rx.button(
                     "Update Configuration", type="submit", color_scheme="blue", cursor="pointer"

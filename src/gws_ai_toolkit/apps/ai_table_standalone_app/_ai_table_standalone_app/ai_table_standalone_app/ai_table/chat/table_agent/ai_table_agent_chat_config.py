@@ -34,3 +34,11 @@ class AiTableAgentChatConfig(BaseModelDTO):
     # Enable save functionality for the chat conversation
     # When True, displays a save button allowing users to save the chat and replay it
     enable_chat_save: bool = False
+
+    # Enable file upload functionality
+    # When True, allows users to upload files
+    enable_file_upload: bool = True
+
+    # Enable resource selection from the lab
+    # When True, allows users to select resources from the lab
+    enable_resource_selection: bool = True

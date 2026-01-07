@@ -20,9 +20,6 @@ class MainState(rx.State):
             if not files:
                 return
 
-            data_state: AiTableDataState = await self.get_state(AiTableDataState)
-            tables_before_upload = data_state.count_tables()
-
             # Process all uploaded files
             for file in files:
                 if not file.name:
@@ -38,12 +35,11 @@ class MainState(rx.State):
 
                 # Pass the original filename (without extension) to preserve correct naming
                 original_name = os.path.splitext(file.name)[0] if file.name else "untitled"
+                data_state: AiTableDataState = await self.get_state(AiTableDataState)
                 data_state.add_file(File(temp_file_path), original_name)
 
             self.is_uploading = False
-            # If this was the first upload (no tables before), redirect to AI Table page
-            if tables_before_upload == 0 and data_state.count_tables() > 0:
-                return rx.redirect("/ai-table")
+            await self.after_new_table()
         finally:
             self.is_uploading = False
 
@@ -51,3 +47,15 @@ class MainState(rx.State):
     def handle_upload_progress(self, progress: dict):
         if progress["progress"] < 1:
             self.is_uploading = True
+
+    async def after_new_table(
+        self,
+    ):
+        """Handle resource selection from resource select dialog.
+
+        Called by ResourceSelectionState when a resource is selected.
+        """
+        # If this was the first table
+        data_state: AiTableDataState = await self.get_state(AiTableDataState)
+        if data_state.count_tables() == 1:
+            return rx.redirect("/ai-table")
