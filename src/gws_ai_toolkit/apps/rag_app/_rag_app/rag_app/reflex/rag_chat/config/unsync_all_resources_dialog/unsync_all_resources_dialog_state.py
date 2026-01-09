@@ -2,7 +2,7 @@ from typing import Literal
 
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_core import AuthenticateUser, Logger, User
+from gws_core import Logger
 from gws_reflex_main import ReflexMainState
 
 from ..rag_config_state import RagConfigState
@@ -71,19 +71,17 @@ class UnsyncAllResourcesDialogState(rx.State):
     @rx.event(background=True)
     async def unsync_resources_from_rag(self):
         config_state: RagConfigState
-        user: User
         async with self:
             self.unsync_resource_progress = 0
             self.unsync_errors = []
             config_state = await RagConfigState.get_instance(self)
             main_state = await self.get_state(ReflexMainState)
-            user = await main_state.get_and_check_current_user()
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
         for resource in self.resources_to_unsync:
             try:
-                with AuthenticateUser(user):
+                with await main_state.authenticate_user():
                     rag_service.delete_resource_from_rag(resource)
 
             except Exception as e:

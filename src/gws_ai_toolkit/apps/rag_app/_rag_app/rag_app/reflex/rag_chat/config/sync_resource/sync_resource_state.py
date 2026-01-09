@@ -1,14 +1,11 @@
-
 import reflex as rx
 from gws_ai_toolkit.rag.common.rag_models import RagDocument
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_core import (
-    AuthenticateUser,
     BaseModelDTO,
     Logger,
     ResourceModel,
     ResourceSearchBuilder,
-    User,
 )
 from gws_reflex_main import ReflexMainState
 
@@ -151,17 +148,15 @@ class SyncResourceState(rx.State):
             return
 
         config_state: RagConfigState
-        user: User
         async with self:
             self.send_to_rag_is_loading = True
             config_state = await RagConfigState.get_instance(self)
             main_state = await self.get_state(ReflexMainState)
-            user = await main_state.get_and_check_current_user()
 
         try:
             rag_service = await config_state.get_dataset_rag_app_service()
             if rag_service:
-                with AuthenticateUser(user):
+                with await main_state.authenticate_user():
                     rag_service.send_resource_to_rag(self._selected_resource, upload_options=None)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
@@ -181,17 +176,15 @@ class SyncResourceState(rx.State):
             return
 
         config_state: RagConfigState
-        user: User
         async with self:
             self.delete_from_rag_is_loading = True
             config_state = await RagConfigState.get_instance(self)
             main_state = await self.get_state(ReflexMainState)
-            user = await main_state.get_and_check_current_user()
 
         try:
             rag_service = await config_state.get_dataset_rag_app_service()
             if rag_service:
-                with AuthenticateUser(user):
+                with await main_state.authenticate_user():
                     rag_service.delete_resource_from_rag(self._selected_resource)
         except Exception as e:
             Logger.log_exception_stack_trace(e)
@@ -211,12 +204,10 @@ class SyncResourceState(rx.State):
             return
 
         config_state: RagConfigState
-        user: User
         async with self:
             self.parse_document_is_loading = True
             config_state = await RagConfigState.get_instance(self)
             main_state = await self.get_state(ReflexMainState)
-            user = await main_state.get_and_check_current_user()
 
         try:
             dataset_id = self.selected_resource_dataset_id
@@ -224,7 +215,7 @@ class SyncResourceState(rx.State):
 
             rag_app_service = await config_state.get_dataset_rag_app_service()
             if dataset_id and document_id and rag_app_service:
-                with AuthenticateUser(user):
+                with await main_state.authenticate_user():
                     rag_service = rag_app_service.get_rag_service()
                     parsed_document = rag_service.parse_document(dataset_id, document_id)
                     async with self:

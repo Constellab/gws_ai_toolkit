@@ -39,7 +39,7 @@ class MainState(rx.State):
                 data_state.add_file(File(temp_file_path), original_name)
 
             self.is_uploading = False
-            await self.after_new_table()
+            return await self.after_new_table()
         finally:
             self.is_uploading = False
 
