@@ -35,6 +35,7 @@ from .core.agents.table.table_agent_ai import (
 from .core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent, UserQueryTableEvent
 from .core.agents.table.table_transform_agent_ai import TableTransformAgentAi, TableTransformConfig
 from .core.agents.table.table_transform_agent_ai_events import TableTransformEvent
+from .core.community_dto import BrickDocumentationDTO
 from .core.excel_file import ExcelFile
 from .core.utils import Utils
 from .models.chat.chat_message_model import ChatMessageModel
@@ -161,11 +162,16 @@ from .stats.ai_table_stats_type import (
     TukeyHSDTestDetails,
     TwoGroupNonParametricTestDetails,
 )
+from .tasks.download_brick_documentation import DownloadBrickDocumentation
+from .tasks.download_brick_technical_documentation import DownloadBrickTechnicalDocumentation
+from .tasks.download_community_stories import DownloadCommunityStories
+from .tasks.table_subtable_selector import TableSubtableSelector
 
 __all__ = [
     # Core utilities
     "ExcelFile",
     "Utils",
+    "BrickDocumentationDTO",
     # Apps
     "GenerateDatahubRagFlowApp",
     # Rag
@@ -310,4 +316,9 @@ __all__ = [
     "HolmTestDetails",
     "CorrelationPairwiseDetails",
     "PairwiseComparisonResult",
+    # Tasks
+    "DownloadBrickDocumentation",
+    "DownloadBrickTechnicalDocumentation",
+    "DownloadCommunityStories",
+    "TableSubtableSelector",
 ]
