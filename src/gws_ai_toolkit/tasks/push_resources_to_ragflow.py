@@ -5,6 +5,8 @@ from gws_core import (
     CredentialsParam,
     CredentialsType,
     EntityTagList,
+    InputSpec,
+    InputSpecs,
     IntParam,
     JSONDict,
     OutputSpec,
@@ -27,8 +29,7 @@ from gws_ai_toolkit.rag.ragflow.ragflow_service import RagFlowService
 @task_decorator(
     "PushResourcesToRagFlow",
     human_name="Push Resources to RagFlow",
-    short_description="Push resources to RagFlow Dataset using tags",
-    style=TypingStyle.community_image("ragflow", "#4A90E2"),
+    short_description="Push resources to RagFlow Dataset using tags"
 )
 class PushResourcesToRagFlow(Task):
     """
@@ -52,6 +53,15 @@ class PushResourcesToRagFlow(Task):
     - RagFlow dataset ID where documents will be uploaded
     - Resources must be tagged with the specified tag_key and tag_value
     """
+
+    input_specs = InputSpecs({
+        "download_result": InputSpec(
+            JSONDict,
+            human_name="Download result",
+            short_description="Optional input to indicate that download task is finished",
+            optional=True,
+        ),
+    })
 
     output_specs = OutputSpecs({
         "upload_report": OutputSpec(

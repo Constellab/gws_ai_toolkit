@@ -6,6 +6,9 @@ from gws_core import (
     EntityTagList,
     File,
     IntParam,
+    JSONDict,
+    OutputSpec,
+    OutputSpecs,
     ResourceModel,
     Scenario,
     Tag,
@@ -68,6 +71,14 @@ class DownloadCommunityStories(Task):
         ),
     })
 
+    output_specs = OutputSpecs({
+        "result": OutputSpec(
+            JSONDict,
+            human_name="Download result",
+            short_description="Result of the download operation",
+        ),
+    })
+
     def run(self, params: ConfigParams, inputs: TaskInputs) -> TaskOutputs:
         """
         Fetch and download markdown files for all Community stories.
@@ -101,7 +112,7 @@ class DownloadCommunityStories(Task):
             CommunityDownloadService.handle_no_documentation_case(
                 existing_resources, "Community", "stories", self
             )
-            return {}
+            return {"result": JSONDict({"is_finished": True})}
 
         self.log_info_message(f"Found {len(stories)} story/stories")
 
@@ -224,7 +235,7 @@ class DownloadCommunityStories(Task):
 
         self.log_success_message(summary_msg)
 
-        return {}
+        return {"result": JSONDict({"is_finished": True})}
 
     def _fetch_all_stories(self, page_size: int) -> list[CommunityStoryDTO]:
         """

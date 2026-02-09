@@ -162,8 +162,7 @@ from .stats.ai_table_stats_type import (
     TukeyHSDTestDetails,
     TwoGroupNonParametricTestDetails,
 )
-from .tasks.download_brick_documentation import DownloadBrickDocumentation
-from .tasks.download_brick_technical_documentation import DownloadBrickTechnicalDocumentation
+from .tasks.download_bricks_documentation import DownloadBricksDocumentation
 from .tasks.download_community_stories import DownloadCommunityStories
 from .tasks.table_subtable_selector import TableSubtableSelector
 
@@ -248,7 +247,6 @@ __all__ = [
     "UserQueryEventBase",
     "UserQueryTextEvent",
     "EnvAgentAi",
-    "EnvConfig",
     "EnvFileGeneratedEvent",
     "EnvInstallationStartedEvent",
     "EnvInstallationSuccessEvent",
@@ -317,8 +315,7 @@ __all__ = [
     "CorrelationPairwiseDetails",
     "PairwiseComparisonResult",
     # Tasks
-    "DownloadBrickDocumentation",
-    "DownloadBrickTechnicalDocumentation",
+    "DownloadBricksDocumentation",
     "DownloadCommunityStories",
     "TableSubtableSelector",
 ]
