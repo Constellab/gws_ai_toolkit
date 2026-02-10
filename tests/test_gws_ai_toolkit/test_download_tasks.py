@@ -8,6 +8,9 @@ from gws_ai_toolkit.core.community_dto import (
     BrickTechnicalDocumentationDTO,
     CommunityStoryDTO,
 )
+from gws_ai_toolkit.services.community_resource_files_manager_service import (
+    CommunityResourceFilesManagerService,
+)
 from gws_ai_toolkit.tasks.download_community_stories import DownloadCommunityStories
 from gws_ai_toolkit.tasks.push_resources_to_ragflow import PushResourcesToRagFlow
 from gws_core import BaseTestCase, File, JSONDict, Tag
@@ -48,31 +51,31 @@ class TestDownloadBricksDocumentation(BaseTestCase):
             file_resource.name = doc.title
 
             # Add tags as done in the task
-            file_resource.tags.add_tag(Tag("send_to_rag", "CommunityDocumentations"))
-            file_resource.tags.add_tag(Tag("community_brick_name", "gws_core"))
-            file_resource.tags.add_tag(Tag("community_documentation_id", doc.id))
-            file_resource.tags.add_tag(Tag("community_last_modificated_at", doc.last_modified_at))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityDocumentations"))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, "gws_core"))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_DOCUMENTATION_ID_TAG_KEY, doc.id))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, doc.last_modified_at))
 
             # Verify the File has the correct tags
             self.assertEqual(file_resource.name, "Getting Started")
 
             # Check send_to_rag tag
-            send_to_rag_tag = file_resource.tags.get_tag("send_to_rag", "CommunityDocumentations")
+            send_to_rag_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityDocumentations")
             self.assertIsNotNone(send_to_rag_tag)
             self.assertEqual(send_to_rag_tag.value, "CommunityDocumentations")
 
             # Check community_brick_name tag
-            brick_name_tag = file_resource.tags.get_tag("community_brick_name", "gws_core")
+            brick_name_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, "gws_core")
             self.assertIsNotNone(brick_name_tag)
             self.assertEqual(brick_name_tag.value, "gws_core")
 
             # Check community_documentation_id tag
-            doc_id_tag = file_resource.tags.get_tag("community_documentation_id", doc.id)
+            doc_id_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_DOCUMENTATION_ID_TAG_KEY, doc.id)
             self.assertIsNotNone(doc_id_tag)
             self.assertEqual(doc_id_tag.value, doc.id)
 
             # Check community_last_modificated_at tag
-            last_mod_tag = file_resource.tags.get_tag("community_last_modificated_at", doc.last_modified_at)
+            last_mod_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, doc.last_modified_at)
             self.assertIsNotNone(last_mod_tag)
             self.assertEqual(last_mod_tag.value, doc.last_modified_at)
 
@@ -108,37 +111,37 @@ class TestDownloadBricksDocumentation(BaseTestCase):
             file_resource.name = tech_doc.human_name
 
             # Add tags as done in the task
-            file_resource.tags.add_tag(Tag("send_to_rag", "CommunityTechnicalDocumentations"))
-            file_resource.tags.add_tag(Tag("community_brick_name", "gws_core"))
-            file_resource.tags.add_tag(Tag("community_technical_documentation_id", tech_doc.id))
-            file_resource.tags.add_tag(Tag("community_tech_doc_type", tech_doc.tech_doc_type))
-            file_resource.tags.add_tag(Tag("community_last_modificated_at", tech_doc.last_modified_at))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityTechnicalDocumentations"))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, "gws_core"))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_TECHNICAL_DOCUMENTATION_ID_TAG_KEY, tech_doc.id))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_TECH_DOC_TYPE_TAG_KEY, tech_doc.tech_doc_type))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, tech_doc.last_modified_at))
 
             # Verify the File has the correct tags
             self.assertEqual(file_resource.name, "My Resource")
 
             # Check send_to_rag tag
-            send_to_rag_tag = file_resource.tags.get_tag("send_to_rag", "CommunityTechnicalDocumentations")
+            send_to_rag_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityTechnicalDocumentations")
             self.assertIsNotNone(send_to_rag_tag)
             self.assertEqual(send_to_rag_tag.value, "CommunityTechnicalDocumentations")
 
             # Check community_brick_name tag
-            brick_name_tag = file_resource.tags.get_tag("community_brick_name", "gws_core")
+            brick_name_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, "gws_core")
             self.assertIsNotNone(brick_name_tag)
             self.assertEqual(brick_name_tag.value, "gws_core")
 
             # Check community_technical_documentation_id tag
-            tech_doc_id_tag = file_resource.tags.get_tag("community_technical_documentation_id", tech_doc.id)
+            tech_doc_id_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_TECHNICAL_DOCUMENTATION_ID_TAG_KEY, tech_doc.id)
             self.assertIsNotNone(tech_doc_id_tag)
             self.assertEqual(tech_doc_id_tag.value, tech_doc.id)
 
             # Check community_tech_doc_type tag
-            tech_doc_type_tag = file_resource.tags.get_tag("community_tech_doc_type", tech_doc.tech_doc_type)
+            tech_doc_type_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_TECH_DOC_TYPE_TAG_KEY, tech_doc.tech_doc_type)
             self.assertIsNotNone(tech_doc_type_tag)
             self.assertEqual(tech_doc_type_tag.value, tech_doc.tech_doc_type)
 
             # Check community_last_modificated_at tag
-            last_mod_tag = file_resource.tags.get_tag("community_last_modificated_at", tech_doc.last_modified_at)
+            last_mod_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, tech_doc.last_modified_at)
             self.assertIsNotNone(last_mod_tag)
             self.assertEqual(last_mod_tag.value, tech_doc.last_modified_at)
 
@@ -184,12 +187,12 @@ class TestDownloadBricksDocumentation(BaseTestCase):
                 file_resource.name = doc.title
 
                 # Add tags
-                file_resource.tags.add_tag(Tag("send_to_rag", "CommunityDocumentations"))
-                file_resource.tags.add_tag(Tag("community_brick_name", brick_name))
-                file_resource.tags.add_tag(Tag("community_documentation_id", doc.id))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityDocumentations"))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, brick_name))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_DOCUMENTATION_ID_TAG_KEY, doc.id))
 
                 # Verify correct brick name tag
-                brick_name_tag = file_resource.tags.get_tag("community_brick_name", brick_name)
+                brick_name_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, brick_name)
                 self.assertIsNotNone(brick_name_tag)
                 self.assertEqual(brick_name_tag.value, brick_name)
 
@@ -230,25 +233,25 @@ class TestDownloadCommunityStories(BaseTestCase):
             file_resource.name = story.title
 
             # Add tags as done in the task
-            file_resource.tags.add_tag(Tag("send_to_rag", "CommunityStories"))
-            file_resource.tags.add_tag(Tag("community_story_id", story.id))
-            file_resource.tags.add_tag(Tag("community_last_modificated_at", story.last_modified_at))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityStories"))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_STORY_ID_TAG_KEY, story.id))
+            file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, story.last_modified_at))
 
             # Verify the File has the correct tags
             self.assertEqual(file_resource.name, "My First Story")
 
             # Check send_to_rag tag
-            send_to_rag_tag = file_resource.tags.get_tag("send_to_rag", "CommunityStories")
+            send_to_rag_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityStories")
             self.assertIsNotNone(send_to_rag_tag)
             self.assertEqual(send_to_rag_tag.value, "CommunityStories")
 
             # Check community_story_id tag
-            story_id_tag = file_resource.tags.get_tag("community_story_id", story.id)
+            story_id_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_STORY_ID_TAG_KEY, story.id)
             self.assertIsNotNone(story_id_tag)
             self.assertEqual(story_id_tag.value, story.id)
 
             # Check community_last_modificated_at tag
-            last_mod_tag = file_resource.tags.get_tag("community_last_modificated_at", story.last_modified_at)
+            last_mod_tag = file_resource.tags.get_tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, story.last_modified_at)
             self.assertIsNotNone(last_mod_tag)
             self.assertEqual(last_mod_tag.value, story.last_modified_at)
 

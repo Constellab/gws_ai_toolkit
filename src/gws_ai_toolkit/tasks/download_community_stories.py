@@ -24,7 +24,7 @@ from gws_core.core.exception.exceptions.base_http_exception import BaseHTTPExcep
 from gws_core.core.service.external_api_service import ExternalApiService
 
 from ..core.community_dto import CommunityStoryDTO
-from ..services.community_download_service import CommunityDownloadService
+from ..services.community_resource_files_manager_service import CommunityResourceFilesManagerService
 
 
 @task_decorator(
@@ -91,14 +91,7 @@ class DownloadCommunityStories(Task):
         page_size = params.get_value("page_size")
         self.log_info_message(f"Fetching Community stories (page size: {page_size})...")
 
-        # Ensure tag keys exist
-        tag_keys = [
-            ("send_to_rag", "Send to RAG"),
-            ("community_story_id", "Community Story ID"),
-            ("community_last_modificated_at", "Community Last Modified At"),
-            ("delete_in_next_sync", "Delete in Next Sync"),
-        ]
-        CommunityDownloadService.ensure_tag_keys_exist(tag_keys, self)
+        CommunityResourceFilesManagerService.ensure_tag_keys_exist(self)
 
         # Step 1: Fetch all stories (with pagination)
         stories = self._fetch_all_stories(page_size)
@@ -109,7 +102,7 @@ class DownloadCommunityStories(Task):
 
         # If no stories in Community but we have existing resources, mark them all for deletion
         if not stories:
-            CommunityDownloadService.handle_no_documentation_case(
+            CommunityResourceFilesManagerService.handle_no_documentation_case(
                 existing_resources, "Community", "stories", self
             )
             return {"result": JSONDict({"is_finished": True})}
@@ -140,7 +133,7 @@ class DownloadCommunityStories(Task):
 
             try:
                 # Check if a File with this story ID already exists
-                existing_resource = CommunityDownloadService.find_existing_resource_by_tag(
+                existing_resource = CommunityResourceFilesManagerService.find_existing_resource_by_tag(
                     "community_story_id", story_id
                 )
 
@@ -149,7 +142,7 @@ class DownloadCommunityStories(Task):
                     resource_checked[existing_resource.id] = True
 
                 # Check if we need to update based on last_modified_at
-                should_download, rag_tags_to_copy = CommunityDownloadService.should_update_resource(
+                should_download, rag_tags_to_copy = CommunityResourceFilesManagerService.should_update_resource(
                     existing_resource, story.last_modified_at, self
                 )
 
@@ -182,10 +175,10 @@ class DownloadCommunityStories(Task):
                 file_resource.name = story_title  # Set a readable name
 
                 # Add Community story tags to the resource's tag list
-                file_resource.tags.add_tag(Tag("send_to_rag", "CommunityStories"))
-                file_resource.tags.add_tag(Tag("community_story_id", story.id))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityStories"))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_STORY_ID_TAG_KEY, story.id))
                 if story.last_modified_at:
-                    file_resource.tags.add_tag(Tag("community_last_modificated_at", story.last_modified_at))
+                    file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, story.last_modified_at))
 
                 # Add copied RAG tags if updating an existing resource
                 if rag_tags_to_copy:
@@ -193,7 +186,7 @@ class DownloadCommunityStories(Task):
                         file_resource.tags.add_tag(tag)
 
                 # Save the File resource
-                file_model = CommunityDownloadService.save_resource_with_context(
+                file_model = CommunityResourceFilesManagerService.save_resource_with_context(
                     file_resource, scenario, task_model
                 )
 
@@ -220,7 +213,7 @@ class DownloadCommunityStories(Task):
 
         # Step 3: Mark resources that no longer exist in Community for deletion
         unchecked_resource_ids = [rid for rid, checked in resource_checked.items() if not checked]
-        deleted_count = CommunityDownloadService.mark_resources_for_deletion(
+        deleted_count = CommunityResourceFilesManagerService.mark_resources_for_deletion(
             unchecked_resource_ids, self
         )
 
@@ -326,7 +319,7 @@ class DownloadCommunityStories(Task):
         from gws_core import ResourceSearchBuilder
 
         search_builder = ResourceSearchBuilder()
-        search_builder.add_tag_filter(Tag("send_to_rag", "CommunityStories"))
+        search_builder.add_tag_filter(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityStories"))
         search_builder.add_is_archived_filter(False)
 
         return search_builder.search_all()

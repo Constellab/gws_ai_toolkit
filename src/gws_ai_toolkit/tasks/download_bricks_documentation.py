@@ -21,7 +21,7 @@ from gws_core.core.exception.exceptions.base_http_exception import BaseHTTPExcep
 from gws_core.core.service.external_api_service import ExternalApiService
 
 from ..core.community_dto import BrickDocumentationDTO, BrickTechnicalDocumentationDTO
-from ..services.community_download_service import CommunityDownloadService
+from ..services.community_resource_files_manager_service import CommunityResourceFilesManagerService
 
 
 @task_decorator(
@@ -99,17 +99,7 @@ class DownloadBricksDocumentation(Task):
         brick_names = params.get_value("brick_names")
         self.log_info_message(f"Processing documentation for {len(brick_names)} brick(s): {brick_names}")
 
-        # Ensure tag keys exist
-        tag_keys = [
-            ("send_to_rag", "Send to RAG"),
-            ("community_brick_name", "Community Brick Name"),
-            ("community_documentation_id", "Community Documentation ID"),
-            ("community_technical_documentation_id", "Community Technical Documentation ID"),
-            ("community_tech_doc_type", "Community Tech Doc Type"),
-            ("community_last_modificated_at", "Community Last Modified At"),
-            ("delete_in_next_sync", "Delete in Next Sync"),
-        ]
-        CommunityDownloadService.ensure_tag_keys_exist(tag_keys, self)
+        CommunityResourceFilesManagerService.ensure_tag_keys_exist(self)
 
         # Get scenario and task model from the task context
         scenario_id = self.get_scenario_id()
@@ -182,14 +172,14 @@ class DownloadBricksDocumentation(Task):
         documentations = self._fetch_brick_documentations(brick_name)
 
         # Get all existing Files for this brick to detect deletions
-        existing_resources = CommunityDownloadService.get_existing_brick_files(
+        existing_resources = CommunityResourceFilesManagerService.get_existing_brick_files(
             brick_name, "CommunityDocumentations"
         )
         self.log_info_message(f"Found {len(existing_resources)} existing documentation file(s) for brick '{brick_name}'")
 
         # If no docs in Community but we have existing resources, mark them all for deletion
         if not documentations:
-            CommunityDownloadService.handle_no_documentation_case(
+            CommunityResourceFilesManagerService.handle_no_documentation_case(
                 existing_resources, brick_name, "documentation", self
             )
             return {'downloaded': 0, 'updated': 0, 'skipped': 0, 'failed': 0}
@@ -211,7 +201,7 @@ class DownloadBricksDocumentation(Task):
 
             try:
                 # Check if a File with this documentation ID already exists
-                existing_resource = CommunityDownloadService.find_existing_resource_by_tag(
+                existing_resource = CommunityResourceFilesManagerService.find_existing_resource_by_tag(
                     "community_documentation_id", doc_id
                 )
 
@@ -220,7 +210,7 @@ class DownloadBricksDocumentation(Task):
                     resource_checked[existing_resource.id] = True
 
                 # Check if we need to update based on last_modified_at
-                should_download, rag_tags_to_copy = CommunityDownloadService.should_update_resource(
+                should_download, rag_tags_to_copy = CommunityResourceFilesManagerService.should_update_resource(
                     existing_resource, doc.last_modified_at, self
                 )
 
@@ -253,11 +243,11 @@ class DownloadBricksDocumentation(Task):
                 file_resource.name = doc_title  # Set a readable name
 
                 # Add Community documentation tags to the resource's tag list
-                file_resource.tags.add_tag(Tag("send_to_rag", "CommunityDocumentations"))
-                file_resource.tags.add_tag(Tag("community_brick_name", brick_name))
-                file_resource.tags.add_tag(Tag("community_documentation_id", doc.id))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityDocumentations"))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, brick_name))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_DOCUMENTATION_ID_TAG_KEY, doc.id))
                 if doc.last_modified_at:
-                    file_resource.tags.add_tag(Tag("community_last_modificated_at", doc.last_modified_at))
+                    file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, doc.last_modified_at))
 
                 # Add copied RAG tags if updating an existing resource
                 if rag_tags_to_copy:
@@ -265,7 +255,7 @@ class DownloadBricksDocumentation(Task):
                         file_resource.tags.add_tag(tag)
 
                 # Save the File resource
-                file_model = CommunityDownloadService.save_resource_with_context(
+                file_model = CommunityResourceFilesManagerService.save_resource_with_context(
                     file_resource, scenario, task_model
                 )
 
@@ -292,7 +282,7 @@ class DownloadBricksDocumentation(Task):
 
         # Mark resources that no longer exist in Community for deletion
         unchecked_resource_ids = [rid for rid, checked in resource_checked.items() if not checked]
-        deleted_count = CommunityDownloadService.mark_resources_for_deletion(
+        deleted_count = CommunityResourceFilesManagerService.mark_resources_for_deletion(
             unchecked_resource_ids, self
         )
 
@@ -334,14 +324,14 @@ class DownloadBricksDocumentation(Task):
         tech_docs_by_type = self._fetch_brick_technical_documentations(brick_name)
 
         # Get all existing Files for this brick to detect deletions
-        existing_resources = CommunityDownloadService.get_existing_brick_files(
+        existing_resources = CommunityResourceFilesManagerService.get_existing_brick_files(
             brick_name, "CommunityTechnicalDocumentations"
         )
         self.log_info_message(f"Found {len(existing_resources)} existing technical documentation file(s) for brick '{brick_name}'")
 
         # If no technical docs in Community but we have existing resources, mark them all for deletion
         if not tech_docs_by_type:
-            CommunityDownloadService.handle_no_documentation_case(
+            CommunityResourceFilesManagerService.handle_no_documentation_case(
                 existing_resources, brick_name, "technical documentation", self
             )
             return {'downloaded': 0, 'updated': 0, 'skipped': 0, 'failed': 0}
@@ -369,7 +359,7 @@ class DownloadBricksDocumentation(Task):
 
             try:
                 # Check if a File with this technical documentation ID already exists
-                existing_resource = CommunityDownloadService.find_existing_resource_by_tag(
+                existing_resource = CommunityResourceFilesManagerService.find_existing_resource_by_tag(
                     "community_technical_documentation_id", tech_doc_id
                 )
 
@@ -378,7 +368,7 @@ class DownloadBricksDocumentation(Task):
                     resource_checked[existing_resource.id] = True
 
                 # Check if we need to update based on last_modified_at
-                should_download, rag_tags_to_copy = CommunityDownloadService.should_update_resource(
+                should_download, rag_tags_to_copy = CommunityResourceFilesManagerService.should_update_resource(
                     existing_resource, tech_doc.last_modified_at, self
                 )
 
@@ -418,12 +408,12 @@ class DownloadBricksDocumentation(Task):
                 file_resource.name = tech_doc_name  # Set a readable name
 
                 # Add Community technical documentation tags to the resource's tag list
-                file_resource.tags.add_tag(Tag("send_to_rag", "CommunityTechnicalDocumentations"))
-                file_resource.tags.add_tag(Tag("community_brick_name", brick_name))
-                file_resource.tags.add_tag(Tag("community_technical_documentation_id", tech_doc.id))
-                file_resource.tags.add_tag(Tag("community_tech_doc_type", tech_doc_type))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, "CommunityTechnicalDocumentations"))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, brick_name))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_TECHNICAL_DOCUMENTATION_ID_TAG_KEY, tech_doc.id))
+                file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_TECH_DOC_TYPE_TAG_KEY, tech_doc_type))
                 if tech_doc.last_modified_at:
-                    file_resource.tags.add_tag(Tag("community_last_modificated_at", tech_doc.last_modified_at))
+                    file_resource.tags.add_tag(Tag(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, tech_doc.last_modified_at))
 
                 # Add copied RAG tags if updating an existing resource
                 if rag_tags_to_copy:
@@ -431,7 +421,7 @@ class DownloadBricksDocumentation(Task):
                         file_resource.tags.add_tag(tag)
 
                 # Save the File resource
-                file_model = CommunityDownloadService.save_resource_with_context(
+                file_model = CommunityResourceFilesManagerService.save_resource_with_context(
                     file_resource, scenario, task_model
                 )
 
@@ -458,7 +448,7 @@ class DownloadBricksDocumentation(Task):
 
         # Mark resources that no longer exist in Community for deletion
         unchecked_resource_ids = [rid for rid, checked in resource_checked.items() if not checked]
-        deleted_count = CommunityDownloadService.mark_resources_for_deletion(
+        deleted_count = CommunityResourceFilesManagerService.mark_resources_for_deletion(
             unchecked_resource_ids, self
         )
 

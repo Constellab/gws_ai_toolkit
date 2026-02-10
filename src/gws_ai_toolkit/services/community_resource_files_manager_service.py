@@ -1,5 +1,6 @@
 """Service for common operations when downloading Community files."""
 
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_core import (
     EntityTagList,
     ResourceModel,
@@ -13,22 +14,40 @@ from gws_core import (
 )
 from gws_core.tag.tag import TagOrigins
 
-from ..rag.common.rag_resource import RagResource
 
-
-class CommunityDownloadService:
+class CommunityResourceFilesManagerService:
     """Service providing common operations for downloading and managing Community files."""
 
+    SEND_TO_RAG_TAG_KEY = "send_to_rag"
+    COMMUNITY_BRICK_NAME_TAG_KEY = "community_brick_name"
+    COMMUNITY_DOCUMENTATION_ID_TAG_KEY = "community_documentation_id"
+    COMMUNITY_TECHNICAL_DOCUMENTATION_ID_TAG_KEY = "community_technical_documentation_id"
+    COMMUNITY_TECH_DOC_TYPE_TAG_KEY = "community_tech_doc_type"
+    COMMUNITY_STORY_ID_TAG_KEY = "community_story_id"
+    COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY = "community_last_modificated_at"
+    DELETE_IN_NEXT_SYNC_TAG_KEY = "delete_in_next_sync"
+    DELETE_IN_NEXT_SYNC_TAG_VALUE = "True"
+
+    TAG_KEYS = [
+            (SEND_TO_RAG_TAG_KEY, "Send to RAG"),
+            (COMMUNITY_BRICK_NAME_TAG_KEY, "Community Brick Name"),
+            (COMMUNITY_DOCUMENTATION_ID_TAG_KEY, "Community Documentation ID"),
+            (COMMUNITY_TECHNICAL_DOCUMENTATION_ID_TAG_KEY, "Community Technical Documentation ID"),
+            (COMMUNITY_TECH_DOC_TYPE_TAG_KEY, "Community Tech Doc Type"),
+            (COMMUNITY_STORY_ID_TAG_KEY, "Community Story ID"),
+            (COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY, "Community Last Modified At"),
+            (DELETE_IN_NEXT_SYNC_TAG_KEY, "Delete in Next Sync"),
+        ]
+
     @staticmethod
-    def ensure_tag_keys_exist(tag_keys: list[tuple[str, str]], logger=None) -> None:
+    def ensure_tag_keys_exist(logger=None) -> None:
         """
         Ensure that the required tag keys exist.
         Creates them if they don't exist.
 
-        :param tag_keys: List of tuples (key, label) for tags to create.
         :param logger: Optional logger with log_info_message method.
         """
-        for key, label in tag_keys:
+        for key, label in CommunityResourceFilesManagerService.TAG_KEYS:
             existing_key = TagService.get_by_key(key)
             if not existing_key:
                 TagService.create_tag_key(key, label)
@@ -65,14 +84,14 @@ class CommunityDownloadService:
         :return: List of ResourceModel instances.
         """
         search_builder = ResourceSearchBuilder()
-        search_builder.add_tag_filter(Tag("send_to_rag", send_to_rag_value))
-        search_builder.add_tag_filter(Tag("community_brick_name", brick_name))
+        search_builder.add_tag_filter(Tag(CommunityResourceFilesManagerService.SEND_TO_RAG_TAG_KEY, send_to_rag_value))
+        search_builder.add_tag_filter(Tag(CommunityResourceFilesManagerService.COMMUNITY_BRICK_NAME_TAG_KEY, brick_name))
         search_builder.add_is_archived_filter(False)
 
         return search_builder.search_all()
 
     @staticmethod
-    def copy_rag_tags(entity_tags: EntityTagList) -> list[Tag]:
+    def _copy_rag_tags(entity_tags: EntityTagList) -> list[Tag]:
         """
         Copy RAG-related tags from an existing resource.
 
@@ -94,16 +113,6 @@ class CommunityDownloadService:
 
         return rag_tags
 
-    @staticmethod
-    def copy_rag_tags_from_resource_id(resource_id: str) -> list[Tag]:
-        """
-        Copy RAG-related tags from an existing resource by its ID.
-
-        :param resource_id: ID of the resource to copy tags from.
-        :return: List of RAG tags to copy.
-        """
-        entity_tags = EntityTagList.find_by_entity(TagEntityType.RESOURCE, resource_id)
-        return CommunityDownloadService.copy_rag_tags(entity_tags)
 
     @staticmethod
     def should_update_resource(
@@ -124,7 +133,7 @@ class CommunityDownloadService:
 
         # Get the existing last_modified_at tag
         existing_tags = EntityTagList.find_by_entity(TagEntityType.RESOURCE, existing_resource.id)
-        existing_modified_tag = existing_tags.get_first_tag_by_key("community_last_modificated_at")
+        existing_modified_tag = existing_tags.get_first_tag_by_key(CommunityResourceFilesManagerService.COMMUNITY_LAST_MODIFICATED_AT_TAG_KEY)
 
         if existing_modified_tag and new_last_modified_at:
             existing_date = existing_modified_tag.get_tag_value()
@@ -133,11 +142,11 @@ class CommunityDownloadService:
                 return False, None
             else:
                 # Changed, need to update
-                rag_tags = CommunityDownloadService.copy_rag_tags(existing_tags)
+                rag_tags = CommunityResourceFilesManagerService._copy_rag_tags(existing_tags)
                 return True, rag_tags
         else:
             # No date info, update to be safe
-            rag_tags = CommunityDownloadService.copy_rag_tags(existing_tags)
+            rag_tags = CommunityResourceFilesManagerService._copy_rag_tags(existing_tags)
             return True, rag_tags
 
     @staticmethod
@@ -173,7 +182,7 @@ class CommunityDownloadService:
         logger=None
     ) -> int:
         """
-        Mark resources for deletion by adding the 'delete_in_next_sync' tag.
+        Mark resources for deletion by adding the DELETE_IN_NEXT_SYNC_TAG_KEY tag.
 
         :param resource_ids: List of resource IDs to mark.
         :param logger: Optional logger with log_warning_message and log_error_message methods.
@@ -185,9 +194,10 @@ class CommunityDownloadService:
                 resource = ResourceModel.get_by_id_and_check(resource_id)
                 resource_name = resource.get_resource().name if resource else resource_id
 
-                # Add 'delete_in_next_sync' tag
+                # Add DELETE_IN_NEXT_SYNC_TAG_KEY tag
                 entity_tags = EntityTagList.find_by_entity(TagEntityType.RESOURCE, resource_id)
-                tag = Tag("delete_in_next_sync", "True", origins=TagOrigins.system_origins())
+                tag = Tag(CommunityResourceFilesManagerService.DELETE_IN_NEXT_SYNC_TAG_KEY,
+                           CommunityResourceFilesManagerService.DELETE_IN_NEXT_SYNC_TAG_VALUE, origins=TagOrigins.system_origins())
                 entity_tags.add_tag(tag)
 
                 deleted_count += 1
@@ -228,7 +238,7 @@ class CommunityDownloadService:
                 )
 
             resource_ids = [r.id for r in existing_resources]
-            deleted_count = CommunityDownloadService.mark_resources_for_deletion(
+            deleted_count = CommunityResourceFilesManagerService.mark_resources_for_deletion(
                 resource_ids, logger
             )
 
