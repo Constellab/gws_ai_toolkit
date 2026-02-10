@@ -10,6 +10,7 @@ from gws_core import (
     DockerService,
     InputSpecs,
     OutputSpecs,
+    RegisterComposeOptionsRequestDTO,
     Task,
     TaskInputs,
     TaskOutputs,
@@ -91,8 +92,11 @@ class RagflowStartDockerCompose(Task):
             brick_name="gws_ai_toolkit",
             unique_name="ragflow",
             folder_path=docker_folder_path,
-            description="RagFlow docker compose services",
-            env={"PASSWORD": credentials_data.password},
+            options=RegisterComposeOptionsRequestDTO(
+                description="RagFlow docker compose services",
+                auto_start=True,
+                environment_variables={"PASSWORD": credentials_data.password},
+            ),
         )
 
         self.log_info_message("Docker Compose started, waiting for ready status...")
