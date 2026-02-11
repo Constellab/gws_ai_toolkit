@@ -80,6 +80,12 @@ services:
       interval: 10s
       timeout: 10s
       retries: 120
+    # exclude the .minio.sys directory which is used by minio to store metadata, and we don't want to back it up.
+    # it can cause issue when backup because those files change frequently
+    x-gws-config:
+      - backupExclude:
+          pattern: '.minio.sys/**'
+          volume: /data
 
 
   redis:
