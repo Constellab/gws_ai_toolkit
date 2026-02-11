@@ -1,9 +1,11 @@
 import os
 
 from gws_core import (
+    BaseHTTPException,
+    CommunityService,
     ConfigParams,
     ConfigSpecs,
-    EntityTagList,
+    ExternalApiService,
     File,
     IntParam,
     JSONDict,
@@ -12,16 +14,12 @@ from gws_core import (
     ResourceModel,
     Scenario,
     Tag,
-    TagEntityType,
     Task,
     TaskInputs,
     TaskModel,
     TaskOutputs,
     task_decorator,
 )
-from gws_core.community.community_service import CommunityService
-from gws_core.core.exception.exceptions.base_http_exception import BaseHTTPException
-from gws_core.core.service.external_api_service import ExternalApiService
 
 from ..core.community_dto import CommunityStoryDTO
 from ..services.community_resource_files_manager_service import CommunityResourceFilesManagerService

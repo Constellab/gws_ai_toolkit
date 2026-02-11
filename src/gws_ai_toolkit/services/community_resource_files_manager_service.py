@@ -9,10 +9,10 @@ from gws_core import (
     Scenario,
     Tag,
     TagEntityType,
+    TagOrigins,
     TagService,
     TaskModel,
 )
-from gws_core.tag.tag import TagOrigins
 
 
 class CommunityResourceFilesManagerService:
