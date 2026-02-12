@@ -1,6 +1,6 @@
 from typing import Optional
 
-from gws_core import LazyAbstractDbManager
+from gws_core.core.db.lazy_abstract_db_manager import LazyAbstractDbManager
 from peewee import DatabaseProxy
 
 
