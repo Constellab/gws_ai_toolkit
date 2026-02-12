@@ -489,10 +489,26 @@ class DownloadBricksDocumentation(Task):
         # Parse the response and convert to DTOs
         response_data = response.json()
 
-        documentations = [
-            BrickDocumentationDTO.from_community_json_response(doc)
-            for doc in response_data
-        ]
+        # Check if this is an error response
+        if isinstance(response_data, dict) and 'status' in response_data and 'code' in response_data:
+            self.log_error_message(f"API returned an error response: {response_data}")
+            return []
+
+        # Validate response is a list
+        if not isinstance(response_data, list):
+            self.log_error_message(
+                f"Unexpected response format for brick '{brick_name}': expected list, got {type(response_data).__name__}"
+            )
+            return []
+
+        documentations = []
+        for doc in response_data:
+            if not isinstance(doc, dict):
+                self.log_warning_message(
+                    f"Skipping invalid documentation entry for brick '{brick_name}': expected dict, got {type(doc).__name__}"
+                )
+                continue
+            documentations.append(BrickDocumentationDTO.from_community_json_response(doc))
 
         self.log_success_message(
             f"Successfully fetched {len(documentations)} documentation page(s) for brick '{brick_name}'"
@@ -516,7 +532,8 @@ class DownloadBricksDocumentation(Task):
             raise_exception_if_error=True,
         )
 
-        return response.text
+        # Explicitly decode as UTF-8 to preserve special characters and emojis
+        return response.content.decode('utf-8')
 
     def _fetch_brick_technical_documentations(self, brick_name: str) -> dict[str, list[BrickTechnicalDocumentationDTO]]:
         """
@@ -578,7 +595,8 @@ class DownloadBricksDocumentation(Task):
                 raise_exception_if_error=True,
             )
 
-            return response.text
+            # Explicitly decode as UTF-8 to preserve special characters and emojis
+            return response.content.decode('utf-8')
 
         except BaseHTTPException as e:
             self.log_error_message(f"HTTP error downloading '{tech_doc_name}': {e.status_code} - {e.detail}")

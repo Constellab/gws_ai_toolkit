@@ -306,7 +306,8 @@ class DownloadCommunityStories(Task):
             raise_exception_if_error=True,
         )
 
-        return response.text
+        # Explicitly decode as UTF-8 to preserve special characters and emojis
+        return response.content.decode('utf-8')
 
     def _get_existing_story_files(self) -> list[ResourceModel]:
         """
