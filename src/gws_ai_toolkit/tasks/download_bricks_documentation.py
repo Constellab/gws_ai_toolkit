@@ -215,21 +215,11 @@ class DownloadBricksDocumentation(Task):
                 )
 
                 if existing_resource:
-                    if should_download:
-                        self.log_info_message(
-                            f"Updating '{doc_title}' - modified on {doc.last_modified_at}"
-                        )
-                    else:
-                        self.log_info_message(
-                            f"Skipping '{doc_title}' - already up-to-date (last modified: {doc.last_modified_at})"
-                        )
+                    if not should_download:
                         skipped_count += 1
 
                 if not should_download:
                     continue
-
-                # Download the markdown file for this documentation
-                self.log_info_message(f"Downloading '{doc_title}'...")
                 markdown_content = self._download_documentation_markdown(doc_id)
 
                 # Create a temporary file to store the markdown content
@@ -261,17 +251,10 @@ class DownloadBricksDocumentation(Task):
 
                 # Delete the old resource if we were updating
                 if existing_resource:
-                    self.log_info_message(f"Deleting old version of '{doc_title}' (ID: {existing_resource.id})")
                     existing_resource.delete_instance()
                     updated_count += 1
-                    self.log_success_message(
-                        f"Updated '{doc_title}' (new ID: {file_model.id}) ({downloaded_count + updated_count}/{len(documentations)})"
-                    )
                 else:
                     downloaded_count += 1
-                    self.log_success_message(
-                        f"Downloaded and saved '{doc_title}' (ID: {file_model.id}) ({downloaded_count + updated_count}/{len(documentations)})"
-                    )
 
             except BaseHTTPException as e:
                 self.log_error_message(f"Failed to download '{doc_title}': HTTP {e.status_code} - {e.detail}")
@@ -373,27 +356,16 @@ class DownloadBricksDocumentation(Task):
                 )
 
                 if existing_resource:
-                    if should_download:
-                        self.log_info_message(
-                            f"Updating '{tech_doc_name}' - modified on {tech_doc.last_modified_at}"
-                        )
-                    else:
-                        self.log_info_message(
-                            f"Skipping '{tech_doc_name}' - already up-to-date (last modified: {tech_doc.last_modified_at})"
-                        )
+                    if not should_download:
                         skipped_count += 1
 
                 if not should_download:
                     continue
-
-                # Download the markdown file for this technical documentation
-                self.log_info_message(f"Downloading '{tech_doc_name}' (type: {tech_doc_type})...")
                 markdown_content = self._download_technical_documentation_markdown(
                     tech_doc_type, tech_doc_id, tech_doc_name
                 )
 
                 if not markdown_content:
-                    self.log_error_message(f"Failed to download '{tech_doc_name}': no content returned")
                     failed_count += 1
                     continue
 
@@ -427,17 +399,10 @@ class DownloadBricksDocumentation(Task):
 
                 # Delete the old resource if we were updating
                 if existing_resource:
-                    self.log_info_message(f"Deleting old version of '{tech_doc_name}' (ID: {existing_resource.id})")
                     existing_resource.delete_instance()
                     updated_count += 1
-                    self.log_success_message(
-                        f"Updated '{tech_doc_name}' (new ID: {file_model.id}) ({downloaded_count + updated_count}/{len(all_tech_docs)})"
-                    )
                 else:
                     downloaded_count += 1
-                    self.log_success_message(
-                        f"Downloaded and saved '{tech_doc_name}' (ID: {file_model.id}) ({downloaded_count + updated_count}/{len(all_tech_docs)})"
-                    )
 
             except BaseHTTPException as e:
                 self.log_error_message(f"Failed to download '{tech_doc_name}': HTTP {e.status_code} - {e.detail}")
@@ -586,21 +551,58 @@ class DownloadBricksDocumentation(Task):
         :return: The markdown content as a string, or None if download failed.
         """
         route = f"/documentation/download-tech-doc-markdown/{tech_doc_type}/{tech_doc_id}"
+        full_url = f"{CommunityService.get_community_api_url()}{route}"
 
         try:
-            # Call the Community API to download the markdown
+            # Call the Community API to download the markdown (don't raise exception to inspect response)
             response = ExternalApiService.get(
-                url=f"{CommunityService.get_community_api_url()}{route}",
+                url=full_url,
                 headers=CommunityService._get_request_header(),
-                raise_exception_if_error=True,
+                raise_exception_if_error=False,
             )
 
+            # Log detailed info about the response
+            status_code = response.status_code
+            if status_code < 200 or status_code >= 300:
+                # Try to get the response body for debugging
+                try:
+                    response_body = response.text
+                except Exception:
+                    response_body = "<could not read response body>"
+
+                self.log_error_message(
+                    f"HTTP error downloading '{tech_doc_name}' (type: {tech_doc_type}, id: {tech_doc_id}):\n"
+                    f"  URL: {full_url}\n"
+                    f"  Status code: {status_code}\n"
+                    f"  Response body: {response_body}"
+                )
+                return None
+
             # Explicitly decode as UTF-8 to preserve special characters and emojis
-            return response.content.decode('utf-8')
+            content = response.content.decode('utf-8')
+
+            if not content:
+                self.log_error_message(
+                    f"Empty content for '{tech_doc_name}' (type: {tech_doc_type}, id: {tech_doc_id}):\n"
+                    f"  URL: {full_url}\n"
+                    f"  Status code: {status_code}"
+                )
+                return None
+
+            return content
 
         except BaseHTTPException as e:
-            self.log_error_message(f"HTTP error downloading '{tech_doc_name}': {e.status_code} - {e.detail}")
+            self.log_error_message(
+                f"HTTP exception downloading '{tech_doc_name}' (type: {tech_doc_type}, id: {tech_doc_id}):\n"
+                f"  URL: {full_url}\n"
+                f"  Status code: {e.status_code}\n"
+                f"  Detail: {e.detail}"
+            )
             return None
         except Exception as e:
-            self.log_error_message(f"Error downloading '{tech_doc_name}': {str(e)}")
+            self.log_error_message(
+                f"Unexpected error downloading '{tech_doc_name}' (type: {tech_doc_type}, id: {tech_doc_id}):\n"
+                f"  URL: {full_url}\n"
+                f"  Error: {str(e)}"
+            )
             return None

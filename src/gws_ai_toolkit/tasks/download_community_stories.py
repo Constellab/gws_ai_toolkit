@@ -145,21 +145,11 @@ class DownloadCommunityStories(Task):
                 )
 
                 if existing_resource:
-                    if should_download:
-                        self.log_info_message(
-                            f"Updating '{story_title}' - modified on {story.last_modified_at}"
-                        )
-                    else:
-                        self.log_info_message(
-                            f"Skipping '{story_title}' - already up-to-date (last modified: {story.last_modified_at})"
-                        )
+                    if not should_download:
                         skipped_count += 1
 
                 if not should_download:
                     continue
-
-                # Download the markdown file for this story
-                self.log_info_message(f"Downloading '{story_title}'...")
                 markdown_content = self._download_story_markdown(story_id)
 
                 # Create a temporary file to store the markdown content
@@ -190,17 +180,10 @@ class DownloadCommunityStories(Task):
 
                 # Delete the old resource if we were updating
                 if existing_resource:
-                    self.log_info_message(f"Deleting old version of '{story_title}' (ID: {existing_resource.id})")
                     existing_resource.delete_instance()
                     updated_count += 1
-                    self.log_success_message(
-                        f"Updated '{story_title}' (new ID: {file_model.id}) ({downloaded_count + updated_count}/{len(stories)})"
-                    )
                 else:
                     downloaded_count += 1
-                    self.log_success_message(
-                        f"Downloaded and saved '{story_title}' (ID: {file_model.id}) ({downloaded_count + updated_count}/{len(stories)})"
-                    )
 
             except BaseHTTPException as e:
                 self.log_error_message(f"Failed to download '{story_title}': HTTP {e.status_code} - {e.detail}")
@@ -240,8 +223,6 @@ class DownloadCommunityStories(Task):
         has_more = True
 
         while has_more:
-            self.log_info_message(f"Fetching page {page} (size: {page_size})...")
-
             route = f"/story/filter?page={page}&size={page_size}"
             body = {
                 "filters": {"title": None},
@@ -255,27 +236,12 @@ class DownloadCommunityStories(Task):
                 CommunityService._get_request_header(),
             )
 
-            self.log_info_message(f"Response status code: {response.status_code}")
-
             # Parse the response
             response_data = response.json()
 
-            self.log_info_message(f"Full response data: {response_data}")
-            self.log_info_message(f"Response keys: {list(response_data.keys())}")
-
             # Get the paginated results
             objects = response_data.get("objects", [])
-            total_elements = response_data.get("totalElements", 0)
-            page_size_returned = response_data.get("pageSize", page_size)
             is_last = response_data.get("last", True)
-
-            self.log_info_message(f"Total elements: {total_elements}, Page size: {page_size_returned}, Is last: {is_last}")
-            self.log_info_message(f"Objects type: {type(objects)}, Objects length: {len(objects)}")
-
-            if len(objects) > 0:
-                self.log_info_message(f"First item sample: {objects[0]}")
-
-            self.log_info_message(f"Received {len(objects)} story/stories from page {page}")
 
             # Convert to DTOs
             for story_data in objects:
