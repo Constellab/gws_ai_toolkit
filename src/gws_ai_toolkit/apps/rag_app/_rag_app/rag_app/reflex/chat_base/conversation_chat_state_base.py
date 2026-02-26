@@ -4,6 +4,7 @@ from typing import cast
 import reflex as rx
 from anyio import sleep
 from gws_ai_toolkit.core.utils import Utils
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
@@ -150,6 +151,50 @@ class ConversationChatStateBase(rx.State, mixin=True):
             async with self:
                 self.current_response_message = None
                 self.is_streaming = False
+            post_update_event = await self._after_conversation_updated()
+            if post_update_event:
+                yield post_update_event
+
+    async def _after_conversation_updated(self) -> rx.event.EventSpec | None:
+        """Hook called after a conversation is created or updated.
+
+        Subclasses can override to refresh UI elements like sidebar lists.
+        May return an EventSpec (e.g., rx.call_script) to be yielded
+        by the calling background event.
+        """
+        return None
+
+    @rx.event
+    async def load_conversation(self, conversation_id: str) -> None:
+        """Load an existing conversation by ID into the chat state.
+
+        Loads messages from the database and sets up the state so the user
+        can continue the conversation.
+
+        Args:
+            conversation_id: The ID of the conversation to load.
+        """
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            conversation_service = ChatConversationService()
+            chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
+
+        self._chat_messages = [msg.to_front_dto() for msg in chat_messages]
+        self.current_response_message = None
+        self.is_streaming = False
+        self._conversation = None
+        await self._restore_conversation(conversation_id)
+
+    async def _restore_conversation(self, conversation_id: str) -> None:
+        """Hook for subclasses to restore a conversation object for continued chatting.
+
+        Called after load_conversation loads the messages. Subclasses should
+        override this to create the appropriate conversation object that can
+        accept new messages.
+
+        Args:
+            conversation_id: The ID of the loaded conversation.
+        """
 
     @rx.event
     def clear_chat(self) -> None:

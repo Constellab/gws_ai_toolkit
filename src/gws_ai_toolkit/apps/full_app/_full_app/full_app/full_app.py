@@ -29,7 +29,7 @@ from gws_ai_toolkit._app.ai_table import (
     ai_table_component,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_source import RagChatSourceFront
-from gws_reflex_main import register_gws_reflex_app
+from gws_reflex_main import get_theme, register_gws_reflex_app
 from gws_reflex_main.reflex_main_state import ReflexMainState
 
 from .associated_resources_component import (
@@ -43,7 +43,7 @@ from .custom_states import CustomAppConfigState
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
-app = register_gws_reflex_app(rxe.App())
+app = register_gws_reflex_app(rxe.App(theme=get_theme()))
 
 
 class NavBarState(rx.State):
@@ -103,7 +103,8 @@ def index():
         },
     )
     return page_component(
-        NavBarState.nav_bar_items, rx.fragment(rag_chat_component(chat_config), associated_resources_dialog())
+        NavBarState.nav_bar_items,
+        rx.fragment(rag_chat_component(chat_config), associated_resources_dialog()),
     )
 
 

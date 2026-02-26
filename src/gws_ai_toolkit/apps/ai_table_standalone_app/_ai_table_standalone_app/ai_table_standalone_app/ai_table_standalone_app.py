@@ -5,7 +5,7 @@ from gws_ai_toolkit._app.ai_chat import (
     NavBarItem,
     page_component,
 )
-from gws_reflex_main import register_gws_reflex_app
+from gws_reflex_main import get_theme, register_gws_reflex_app
 from gws_reflex_main.reflex_main_state import ReflexMainState
 
 from .ai_table.ai_table_component import ai_table_component
@@ -19,7 +19,7 @@ from .home_page import home_page
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 
 
-app = register_gws_reflex_app(rxe.App())
+app = register_gws_reflex_app(rxe.App(theme=get_theme()))
 
 
 class NavBarState(rx.State):

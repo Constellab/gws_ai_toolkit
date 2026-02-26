@@ -23,7 +23,7 @@ def header_clear_chat_button_component(state: ConversationChatStateBase) -> rx.C
         # Creates button with refresh icon and "Clear Chat" text
     """
     return rx.button(
-        rx.icon("refresh-cw", size=16),
+        rx.icon("plus", size=16),
         state.clear_button_text,
         on_click=state.clear_chat,
         variant="outline",
@@ -61,10 +61,7 @@ def chat_header_component(config: ChatConfig) -> rx.Component:
     """
 
     header_buttons: list[rx.Component] = []
-    if config.header_buttons is None:
-        # default value
-        header_buttons = [header_clear_chat_button_component(config.state)]
-    else:
+    if config.header_buttons is not None:
         header_buttons = config.header_buttons(config.state)
 
     return rx.vstack(
