@@ -1,4 +1,6 @@
 import reflex as rx
+from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
     BaseChatConversation,
     BaseChatConversationConfig,
@@ -10,6 +12,7 @@ from gws_ai_toolkit.rag.common.tag_rag_app_service import TagRagAppService
 from gws_reflex_main import ReflexMainState
 
 from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
+from ..history.history_state import HistoryState
 from .config.rag_config_state import RagConfigState
 from .rag_chat_config_state import RagChatConfigState
 
@@ -66,6 +69,79 @@ class RagChatState(ConversationChatStateBase, rx.State):
             rag_chat_id=await rag_config_state.get_chat_id_and_check(),
         )
 
+    async def _restore_conversation(self, conversation_id: str) -> None:
+        """Restore a RagChatConversation for an existing conversation.
+
+        Creates the RagChatConversation, sets its internal IDs, and loads
+        the existing messages so it can continue the conversation.
+        """
+        conversation = await self._create_conversation()
+
+        # Restore the conversation's internal state from the database
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            db_conversation: ChatConversation = ChatConversation.get_by_id_and_check(conversation_id)
+            conversation._conversation_id = conversation_id
+            conversation._external_conversation_id = db_conversation.external_conversation_id
+
+            # Load existing messages into the conversation object
+            conversation_service = ChatConversationService()
+            conversation.chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
+
+        self._conversation = conversation
+
+    async def _after_conversation_updated(self) -> rx.event.EventSpec | None:
+        """Refresh the sidebar conversation list and update URL after a message is sent."""
+        async with self:
+            history_state = await self.get_state(HistoryState)
+            await history_state.load_conversations()
+
+            # Update the active conversation ID in the sidebar
+            if self._conversation and self._conversation._conversation_id:
+                from .chat_history_sidebar_state import ChatHistorySidebarState
+
+                sidebar_state = await self.get_state(ChatHistorySidebarState)
+                sidebar_state.active_conversation_id = self._conversation._conversation_id
+
+        # Silently update the browser URL to include the conversation ID
+        # (uses replaceState to avoid a full page reload)
+        if self._conversation and self._conversation._conversation_id:
+            conversation_id = self._conversation._conversation_id
+            return rx.call_script(
+                f'window.history.replaceState({{}}, "", "/chat/{conversation_id}")'
+            )
+        return None
+
+    @rx.event
+    async def load_conversation_from_url(self) -> None:
+        """Handle page load for /chat/[conversation_id] route.
+
+        Reads conversation_id from the URL parameter and loads the
+        conversation into the chat state. Follows the same pattern as
+        AiExpertState.load_resource_from_url.
+        """
+        conversation_id = self.conversation_id if hasattr(self, "conversation_id") else None
+
+        if not conversation_id:
+            return
+
+        # Avoid reloading if already viewing this conversation
+        if self._conversation and self._conversation._conversation_id == conversation_id:
+            return
+
+        try:
+            await self.load_conversation(conversation_id)
+        except Exception:
+            # Conversation not found or access denied — redirect to new chat
+            self.clear_chat()
+            return rx.redirect("/")
+
+        # Sync the sidebar's active conversation ID
+        from .chat_history_sidebar_state import ChatHistorySidebarState
+
+        sidebar_state = await self.get_state(ChatHistorySidebarState)
+        sidebar_state.active_conversation_id = conversation_id
+
     @rx.event(background=True)
     async def on_mount(self) -> None:
         """Load configuration and update UI properties."""
@@ -83,3 +159,8 @@ class RagChatState(ConversationChatStateBase, rx.State):
             count_resources = rag_app_service.count_synced_resources()
             async with self:
                 self.subtitle = f"{count_resources} files in the database"
+
+        # Load sidebar conversations
+        async with self:
+            history_state = await self.get_state(HistoryState)
+            await history_state.load_conversations()

@@ -59,3 +59,8 @@ class ChatConfig:
     right_section: Callable[[ConversationChatStateBase], rx.Component] | None = None
 
     custom_chat_messages: dict[str, Callable[[ChatMessageBase], rx.Component]] | None = None
+
+    # Optional custom component to display when the chat is empty (no messages).
+    # Takes the ChatConfig as parameter and returns a Reflex component.
+    # When not provided, the default empty chat layout is used.
+    empty_chat_component: Callable[["ChatConfig"], rx.Component] | None = None

@@ -1,4 +1,3 @@
-
 import reflex as rx
 from gws_reflex_main import main_component
 
@@ -11,7 +10,7 @@ def page_component(
     """Wrap the page content with navigation and layout."""
     return main_component(
         rx.vstack(
-            nav_bar_component(nav_bar_items),
+            # nav_bar_component(nav_bar_items),
             rx.box(
                 content,
                 display="flex",

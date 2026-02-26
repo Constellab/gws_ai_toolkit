@@ -136,37 +136,55 @@ def chat_component(config: ChatConfig) -> rx.Component:
         chat_ui = chat_component(config)
     """
 
+    # Build children list: optional left section, center chat, optional right section
+    children = []
+
+    if config.left_section:
+        children.append(
+            rx.box(
+                config.left_section(config.state),
+                flex="none",
+                height="100%",
+            )
+        )
+
+    empty_chat_view = config.empty_chat_component(config) if config.empty_chat_component else _empty_chat(config)
+
+    children.append(
+        rx.box(
+            rx.cond(
+                # When there are messages, show normal layout with fixed input
+                config.state.show_empty_chat,
+                # When no messages, center the input vertically
+                empty_chat_view,
+                # Layout with messages - fixed input at bottom
+                _chat_with_messages(config),
+            ),
+            width="100%",
+            max_width="800px",
+            margin="0 auto",
+            position="relative",
+            display="flex",
+            flex_direction="column",
+        )
+    )
+
+    if config.right_section:
+        children.append(
+            rx.box(
+                config.right_section(config.state),
+                flex="none",
+                height="100%",
+            )
+        )
+
     return rx.fragment(
         rx.auto_scroll(
             rx.hstack(
-                rx.box(
-                    config.left_section(config.state) if config.left_section else None,
-                    flex="1",
-                    height="100%",
-                ),
-                rx.box(
-                    rx.cond(
-                        # When there are messages, show normal layout with fixed input
-                        config.state.show_empty_chat,
-                        # When no messages, center the input vertically
-                        _empty_chat(config),
-                        # Layout with messages - fixed input at bottom
-                        _chat_with_messages(config),
-                    ),
-                    width="100%",
-                    max_width="800px",
-                    position="relative",
-                    display="flex",
-                    flex_direction="column",
-                ),
-                rx.box(
-                    config.right_section(config.state) if config.right_section else None,
-                    flex="1",
-                    height="100%",
-                ),
+                *children,
                 align_items="stretch",
-                justify_content="stretch",
                 width="100%",
+                flex="1",
             ),
             width="100%",
             flex="1",

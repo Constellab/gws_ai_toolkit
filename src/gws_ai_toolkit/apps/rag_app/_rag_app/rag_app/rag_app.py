@@ -1,5 +1,10 @@
 import reflex as rx
-from gws_reflex_main import register_gws_reflex_app
+from gws_reflex_main import (
+    get_theme,
+    page_sidebar_component,
+    register_gws_reflex_app,
+    sidebar_header_component,
+)
 from gws_reflex_main.reflex_main_state import ReflexMainState
 
 from .config_page import combined_config_page
@@ -17,15 +22,19 @@ from .reflex.core.nav_bar_component import NavBarItem
 from .reflex.core.page_component import page_component
 from .reflex.history.history_component import history_component
 from .reflex.history.history_state import HistoryState
+from .reflex.rag_chat.chat_history_sidebar_component import chat_history_sidebar_list
+from .reflex.rag_chat.chat_history_sidebar_state import ChatHistorySidebarState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
 from .reflex.rag_chat.config.rag_config_state import RagConfigState, RagConfigStateFromParams
 from .reflex.rag_chat.rag_chat_component import rag_chat_component
+from .reflex.rag_chat.rag_chat_state import RagChatState
+from .reflex.rag_chat.rag_empty_chat_component import rag_empty_chat_component
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
 
-app = register_gws_reflex_app(rx.App())
+app = register_gws_reflex_app(rx.App(theme=get_theme()))
 
 
 class NavBarState(rx.State):
@@ -57,10 +66,69 @@ class NavBarState(rx.State):
         return nav_bar_items
 
 
+def _chat_sidebar_content() -> rx.Component:
+    """Sidebar content for the main chat page.
+
+    Contains app branding, New Chat button, and conversation history list.
+    """
+    return rx.vstack(
+        # App branding
+        sidebar_header_component(
+            title="Search",
+            subtitle="By Constellab",
+            logo_src="/constellab-logo.svg",
+        ),
+        # New Chat button
+        rx.box(
+            rx.button(
+                rx.icon("plus", size=16),
+                "New Chat",
+                on_click=ChatHistorySidebarState.start_new_chat,
+                width="100%",
+                size="2",
+            ),
+            padding="0 1rem 1rem 1rem",
+            width="100%",
+        ),
+        # Conversation history list (takes remaining space)
+        rx.box(
+            chat_history_sidebar_list(),
+            flex="1",
+            min_height="0",
+            overflow_y="auto",
+            width="100%",
+            padding_inline="1rem",
+        ),
+        width="100%",
+        height="100%",
+        spacing="0",
+    )
+
+
+_rag_chat_config = ChatConfig(
+    state=RagChatState,
+    empty_chat_component=rag_empty_chat_component,
+)
+
+
 @rx.page(route="/")
 def index():
-    """Main chat page."""
-    return page_component(NavBarState.nav_bar_items, rag_chat_component())
+    """Main chat page with sidebar (new conversation)."""
+    return page_sidebar_component(
+        sidebar_content=_chat_sidebar_content(),
+        content=rag_chat_component(_rag_chat_config),
+        sidebar_width="300px",
+    )
+
+
+@rx.page(route="/chat/[conversation_id]", on_load=RagChatState.load_conversation_from_url)
+def chat_with_conversation():
+    """Chat page for an existing conversation loaded from URL."""
+    return page_sidebar_component(
+        sidebar_content=_chat_sidebar_content(),
+        content=rag_chat_component(_rag_chat_config),
+        sidebar_width="300px",
+    )
 
 
 # Resource page - for resource and sync management
