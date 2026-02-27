@@ -28,29 +28,20 @@ def table_section():
                 }
             </style>
         """),
-        # Table info and extract button
+        # Toolbar: actions on the left, row/column count on the right
         rx.hstack(
-            rx.text(f"Rows: {AiTableDataState.nb_rows}", font_weight="bold", color="blue.600"),
-            rx.text(
-                f"Columns: {AiTableDataState.nb_columns}", font_weight="bold", color="blue.600"
-            ),
-            rx.text(
-                f"Table: {AiTableDataState.current_table_name}",
-                font_weight="bold",
-                color="green.600",
-            ),
-            rx.spacer(),
             # Column width controls
             rx.menu.root(
                 rx.menu.trigger(
                     rx.button(
+                        rx.icon("eye", size=14),
                         rx.cond(
                             AiTableDataState.column_size_mode == "default",
-                            "View: Default",
-                            "View: Dense",
+                            "Default",
+                            "Dense",
                         ),
                         size="2",
-                        variant="soft",
+                        variant="ghost",
                     ),
                 ),
                 rx.menu.content(
@@ -64,13 +55,14 @@ def table_section():
                     ),
                 ),
             ),
+            rx.separator(orientation="vertical", size="1"),
             # Zoom controls
             rx.hstack(
                 rx.button(
-                    "-",
+                    rx.icon("minus", size=14),
                     on_click=AiTableDataState.zoom_out,
                     size="2",
-                    variant="soft",
+                    variant="ghost",
                 ),
                 rx.text(
                     f"{AiTableDataState.zoom_level * 100:.0f}%",
@@ -79,29 +71,45 @@ def table_section():
                     text_align="center",
                 ),
                 rx.button(
-                    "+",
+                    rx.icon("plus", size=14),
                     on_click=AiTableDataState.zoom_in,
                     size="2",
-                    variant="soft",
+                    variant="ghost",
                 ),
                 spacing="2",
                 align="center",
             ),
+            rx.separator(orientation="vertical", size="1"),
             rx.button(
+                rx.icon("square-dashed-mouse-pointer", size=14),
                 "Extract Selection",
                 on_click=AiTableSelectionState.open_extract_dialog,
                 disabled=~AiTableSelectionState.can_extract,
-                variant="outline",
+                variant="ghost",
+                size="2",
             ),
             rx.button(
+                rx.icon("download", size=14),
                 "Download Table",
                 on_click=AiTableDataState.download_current_table,
                 disabled=~AiTableDataState.dataframe_loaded,
-                variant="outline",
+                variant="ghost",
+                size="2",
+            ),
+            rx.spacer(),
+            # Row and column count on the right
+            rx.text(
+                f"{AiTableDataState.nb_rows} rows × {AiTableDataState.nb_columns} columns",
+                font_size="12px",
+                color="var(--gray-9)",
+                font_weight="500",
+                white_space="nowrap",
             ),
             spacing="4",
             align="center",
+            width="100%",
             padding="0.5em 1em",
+            border_bottom="1px solid var(--gray-4)",
         ),
         # AG Grid with selection enabled
         rx.box(

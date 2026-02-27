@@ -4,7 +4,6 @@ from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversatio
 from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
-from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
 
 
 class HistoryState(rx.State):
@@ -36,6 +35,16 @@ class HistoryState(rx.State):
     # Loading state
     is_loading: bool = False
 
+    # Whether conversations have been loaded at least once
+    _conversations_loaded: bool = False
+
+    @rx.event
+    async def load_conversations_if_needed(self):
+        """Load conversations only if they haven't been loaded yet."""
+        if self._conversations_loaded:
+            return
+        await self.load_conversations()
+
     @rx.event
     async def load_conversations(self):
         """Load all conversations from the database."""
@@ -57,24 +66,9 @@ class HistoryState(rx.State):
 
                 # Convert ChatConversation models to ChatConversationDTOs
                 self.conversations = [conv.to_dto() for conv in conversations]
+                self._conversations_loaded = True
         finally:
             self.is_loading = False
-
-    @rx.event
-    async def select_conversation(self, conversation_id: str):
-        """Select a conversation to display."""
-        self.selected_conversation_id = conversation_id
-
-        # Initialize read-only chat state
-        read_only_state: ReadOnlyChatState = await self.get_state(ReadOnlyChatState)
-        await read_only_state.initialize_with_conversation_id(conversation_id)
-
-    @rx.var
-    def selected_conversation(self) -> ChatConversationDTO | None:
-        """Get the currently selected conversation."""
-        if not self.selected_conversation_id:
-            return None
-        return next((c for c in self.conversations if c.id == self.selected_conversation_id), None)
 
     @rx.var
     def has_conversations(self) -> bool:

@@ -65,8 +65,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
 
     _conversation: BaseChatConversation | None = None
 
-    _previous_key: str | None = None
-
     @abstractmethod
     async def _create_conversation(self) -> BaseChatConversation:
         """Create the conversation object that manages messages and state.

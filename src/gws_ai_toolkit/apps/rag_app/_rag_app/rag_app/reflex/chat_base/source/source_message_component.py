@@ -5,10 +5,11 @@ from gws_ai_toolkit.models.chat.message.chat_message_source import (
     ChatMessageSourceFront,
     RagChatSourceFront,
 )
+from gws_reflex_main import extension_badge_component
 
 from ..conversation_chat_state_base import ConversationChatStateBase
 from .source_detail_state import SourceDetailState
-from .source_menu_component import CustomSourceMenuButtons, source_menu_button
+from .source_menu_component import CustomSourceMenuButtons, resolve_source_menu_items
 
 SourcesComponentBuilder = Callable[
     [list[RagChatSourceFront], ConversationChatStateBase], rx.Component
@@ -28,38 +29,16 @@ source_click_script = """
 """
 
 
-def get_default_source_menu_items(
-    source: RagChatSourceFront, state: ConversationChatStateBase
-) -> list[rx.Component]:
-    """Get the default menu items for source actions.
-
-    Returns:
-        List[rx.Component]: List of default menu items for source actions.
-    """
-    return [
-        rx.menu.item(
-            rx.icon("bot", size=16),
-            "Open AI Expert",
-            on_click=lambda: state.open_ai_expert(source.document_id),
-        ),
-        rx.menu.item(
-            rx.icon("external-link", size=16),
-            "Open document",
-            on_click=lambda: state.open_document(source.document_id),
-        ),
-    ]
-
-
 def _source_item(
     source: RagChatSourceFront,
     state: ConversationChatStateBase,
     custom_menu_items: CustomSourceMenuButtons | None = None,
 ) -> rx.Component:
-    """Individual source item with document info and action menu.
+    """Individual source item styled as an inline pill badge with extension badge.
 
-    Renders a single source citation with document name,
-    and dropdown menu for actions like opening in AI Expert or viewing
-    the original document.
+    Renders a single source citation with a colored file-extension badge
+    and the document name, styled similarly to the SectionRef component
+    in the JSX reference design.
 
     Args:
         source (RagChatSourceFront): Source citation with document metadata
@@ -67,32 +46,41 @@ def _source_item(
         custom_menu_items: Optional callable that returns custom menu items for the source
 
     Returns:
-        rx.Component: Formatted source item with name, and actions menu
+        rx.Component: Formatted source pill with extension badge and document name
     """
 
-    # Build the base hstack items
-    hstack_items = [
-        rx.icon("file-text", size=16),
-        rx.text(
-            source.document_name,
-            size="1",
-        ),
-        rx.spacer(),
-    ]
-
-    button_buttom = source_menu_button(source, state, custom_menu_items)
-
-    # Only add menu if there are menu items
-    if button_buttom:
-        hstack_items.append(button_buttom)
-
-    return rx.box(
+    pill = rx.box(
         rx.hstack(
-            *hstack_items,
+            extension_badge_component(source.document_extension),
+            rx.text(
+                source.document_name,
+                size="1",
+                weight="medium",
+                trim="both",
+            ),
             align_items="center",
+            spacing="2",
         ),
-        padding="2",
+        padding_x="10px",
+        padding_y="6px",
+        background="var(--accent-2)",
+        border="1px solid var(--accent-6)",
+        border_radius="var(--radius-2)",
+        cursor="pointer",
+        _hover={
+            "background": "var(--accent-3)",
+            "border_color": "var(--accent-7)",
+        },
     )
+
+    menu_items = resolve_source_menu_items(source, state, custom_menu_items)
+    if menu_items:
+        return rx.menu.root(
+            rx.menu.trigger(pill),
+            rx.menu.content(*menu_items),
+        )
+
+    return pill
 
 
 def sources_list_component(
@@ -100,50 +88,33 @@ def sources_list_component(
     state: ConversationChatStateBase,
     custom_menu_items: CustomSourceMenuButtons | None = None,
 ) -> rx.Component:
-    """Expandable sources panel for RAG chat responses.
+    """Inline source badges for RAG chat responses.
 
-    This component displays source documents and citations for RAG-enhanced
-    chat responses, providing users with transparency about the information
-    sources and enabling navigation to source documents or AI Expert analysis.
+    Displays source documents as inline pill badges with colored file-extension
+    icons, styled after the SectionRef pattern in the JSX reference design.
 
     Features:
-        - Expandable accordion interface for space efficiency
-        - Source document names and relevance scores
+        - Inline pill badges with file-extension color coding
         - Action menu for each source (AI Expert, Open Document)
-        - Professional styling with icons and proper spacing
+        - Horizontal flex-wrap layout
         - Conditional display (only shows when sources exist)
 
     Args:
         sources (List[RagChatSourceFront]): List of source citations from RAG response
         state (ConversationChatStateBase): Chat state for handling source interactions
+        custom_menu_items: Optional callable that returns custom menu items for each source
 
     Returns:
-        rx.Component: Conditional accordion component displaying sources with
-            action menus, or empty component if no sources provided.
-
-    Example:
-        sources_panel = sources_list_component(rag_sources, chat_state)
-        # Shows expandable "Sources" section with clickable source items
+        rx.Component: Flex-wrap container of source pill badges,
+            or empty component if no sources provided.
     """
     return rx.cond(
         sources,
-        rx.accordion.root(
-            rx.accordion.item(
-                header="Sources",
-                content=rx.accordion.content(
-                    rx.vstack(
-                        rx.foreach(
-                            sources, lambda source: _source_item(source, state, custom_menu_items)
-                        ),
-                        spacing="2",
-                        align="stretch",
-                    ),
-                ),
-                value="sources",
-            ),
-            collapsible=True,
-            width="100%",
-            variant="soft",
+        rx.flex(
+            rx.foreach(sources, lambda source: _source_item(source, state, custom_menu_items)),
+            wrap="wrap",
+            gap="2",
+            margin_top="10px",
         ),
         rx.box(),
     )

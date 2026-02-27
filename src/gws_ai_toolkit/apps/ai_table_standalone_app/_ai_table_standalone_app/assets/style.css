@@ -1,6 +1,6 @@
 /* Temporary hide build with reflex */
 a[href="https://reflex.dev"] {
-  display: none !important;
+  display: none;
 }
 
 @font-face {
@@ -170,8 +170,45 @@ a[href="https://reflex.dev"] {
 }
 
 
+
 /* CUSTOM FOR PROJECT APP */
 .rt-Badge {
   border-radius: 50px;
   /* Full pill shape */
+}
+
+/* Toggle button - secondary (purple/violet) */
+.toggle-btn-secondary {
+  background: var(--secondary-2);
+  color: var(--secondary-11);
+  border: 1px solid var(--secondary-6);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn-secondary:hover {
+  background: var(--secondary-3);
+}
+
+.toggle-btn-secondary.active {
+  background: var(--secondary-11);
+  color: white;
+}
+
+/* Toggle button - accent (teal/green) */
+.toggle-btn-accent {
+  background: var(--accent-2);
+  color: var(--accent-9);
+  border: 1px solid var(--accent-5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn-accent:hover {
+  background: var(--accent-3);
+}
+
+.toggle-btn-accent.active {
+  background: var(--accent-9);
+  color: white;
 }

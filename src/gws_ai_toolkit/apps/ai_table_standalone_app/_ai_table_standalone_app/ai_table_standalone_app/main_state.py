@@ -51,11 +51,12 @@ class MainState(rx.State):
     async def after_new_table(
         self,
     ):
-        """Handle resource selection from resource select dialog.
+        """Handle post-upload actions.
 
-        Called by ResourceSelectionState when a resource is selected.
+        Called after a new table is added (from upload or resource selection).
+        Closes the import dialog and redirects to AI Table if it was the first table.
         """
-        # If this was the first table
         data_state: AiTableDataState = await self.get_state(AiTableDataState)
+        data_state.import_dialog_open = False
         if data_state.count_tables() == 1:
             return rx.redirect("/ai-table")

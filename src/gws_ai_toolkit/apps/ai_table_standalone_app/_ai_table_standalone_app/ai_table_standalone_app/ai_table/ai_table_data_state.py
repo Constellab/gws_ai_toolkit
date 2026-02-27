@@ -5,6 +5,7 @@ import pandas as pd
 import reflex as rx
 from gws_ai_toolkit.core.excel_file import ExcelFile, ExcelFileDTO, ExcelSheetDTO
 from gws_core import File, ResourceModel, Table, TableExporter, Utils
+from gws_reflex_main import ReflexMainState
 
 RightPanelState = Literal["closed", "chat", "stats"]
 ColumnSizeMode = Literal["default", "dense"]
@@ -22,6 +23,7 @@ class AiTableDataState(rx.State):
     right_panel_state: RightPanelState = "closed"
     zoom_level: float = 1.0  # 1.0 = 100%, 0.3 = 30%, etc.
     column_size_mode: ColumnSizeMode = "default"  # default = autoSize on columns, dense = ag_grid_auto_size_strategy, fixed = fixed widths
+    import_dialog_open: bool = False
 
     # Table
     _excel_files: dict[str, ExcelFile] = {}
@@ -55,6 +57,11 @@ class AiTableDataState(rx.State):
         df_item = self.get_current_dataframe_item()
         if df_item and sheet_name in df_item.get_sheet_names():
             self.current_sheet_name = sheet_name
+
+    @rx.event
+    def set_import_dialog_open(self, open_: bool):
+        """Open or close the import dialog"""
+        self.import_dialog_open = open_
 
     @rx.event
     def toggle_right_panel_state(self, state: RightPanelState):
@@ -93,6 +100,12 @@ class AiTableDataState(rx.State):
     def right_panel_opened(self) -> bool:
         """Check if right panel is open"""
         return self.right_panel_state != "closed"
+
+    @rx.var
+    async def show_config_page(self) -> bool:
+        """Determine if the Config page should be shown."""
+        main_state = await self.get_state(ReflexMainState)
+        return await main_state.get_param("show_config_page", False)
 
     @rx.var
     def get_sheet_names(self) -> list[str]:
