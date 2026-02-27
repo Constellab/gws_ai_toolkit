@@ -1,6 +1,7 @@
 from gws_core import BrickMigration, SqlMigrator, Version, brick_migration
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
+from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
 
 
@@ -53,3 +54,22 @@ class Migration012(BrickMigration):
                 # Empty list, set to None
                 source.chunk = None
                 source.save()
+
+
+@brick_migration(
+    "0.2.0",
+    short_description="Migrate chat conversation mode values",
+    db_manager=AiToolkitDbManager.get_instance(),
+)
+class Migration020(BrickMigration):
+    @classmethod
+    def migrate(cls, sql_migrator: SqlMigrator, from_version: Version, to_version: Version) -> None:
+        """Migrate chat conversation mode values: RAG -> rag, ai_table_unified -> ai_table."""
+
+        ChatConversation.update(mode="rag").where(ChatConversation.mode == "RAG").execute()
+        ChatConversation.update(mode="ai_expert").where(
+            ChatConversation.mode == "Ai Expert"
+        ).execute()
+        ChatConversation.update(mode="ai_table").where(
+            ChatConversation.mode == "ai_table_unified"
+        ).execute()

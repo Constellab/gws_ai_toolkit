@@ -2,44 +2,7 @@ import reflex as rx
 
 from ..chat_base.chat_component import chat_component
 from ..chat_base.chat_config import ChatConfig
-from ..chat_base.chat_header_component import header_clear_chat_button_component
-from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from .ai_expert_state import AiExpertState
-
-
-def ai_expert_header_default_buttons_component(
-    state: ConversationChatStateBase,
-) -> list[rx.Component]:
-    """Default header buttons for the AI Expert chat interface.
-
-    Provides standard action buttons for the AI Expert page including document viewing
-    and chat clearing functionality. These buttons are displayed in the chat header
-    and provide quick access to common actions.
-
-    Features:
-        - View document button: Opens the current document being analyzed
-        - Clear chat button: Clears the current conversation history
-
-    Args:
-        state (ConversationChatStateBase): The current chat state instance for accessing state methods
-
-    Returns:
-        list[rx.Component]: List of Reflex button components ready for header display
-
-    Example:
-        buttons = ai_expert_header_default_buttons_component(ai_expert_state)
-        # Returns: [view_document_button, clear_chat_button]
-    """
-    return [
-        rx.button(
-            rx.icon("file", size=16),
-            "View document",
-            on_click=lambda: AiExpertState.open_current_resource_file,
-            variant="outline",
-            size="2",
-        ),
-        header_clear_chat_button_component(state),
-    ]
 
 
 def ai_expert_component(chat_config: ChatConfig | None = None) -> rx.Component:
@@ -56,7 +19,6 @@ def ai_expert_component(chat_config: ChatConfig | None = None) -> rx.Component:
         - Configurable AI models and parameters
         - Document viewing and navigation capabilities
         - Persistent conversation history for the specific document
-        - Custom header buttons for document-specific actions
 
     The component uses AiExpertState for state management, which handles:
         - Document loading and processing
@@ -66,27 +28,22 @@ def ai_expert_component(chat_config: ChatConfig | None = None) -> rx.Component:
 
     Args:
         chat_config (ChatConfig | None, optional): Custom ChatConfig to override the defaults.
-            If None, creates a default configuration with AiExpertState and default header buttons.
+            If None, creates a default configuration with AiExpertState.
             Allows customization of state class and UI components.
 
     Returns:
         rx.Component: Complete AI Expert chat interface with document-specific features,
-            header buttons, message display, and input functionality.
+            message display, and input functionality.
 
     Example:
         # Use with default configuration
         component = ai_expert_component()
 
         # Use with custom configuration
-        custom_config = ChatConfig(
-            state=AiExpertState,
-            header_buttons=custom_header_buttons
-        )
+        custom_config = ChatConfig(state=AiExpertState)
         component = ai_expert_component(custom_config)
     """
     if not chat_config:
-        chat_config = ChatConfig(
-            state=AiExpertState, header_buttons=ai_expert_header_default_buttons_component
-        )
+        chat_config = ChatConfig(state=AiExpertState)
 
     return chat_component(chat_config)

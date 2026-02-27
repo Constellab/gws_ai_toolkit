@@ -1,29 +1,28 @@
 import reflex as rx
 from gws_reflex_main import (
     get_theme,
-    page_sidebar_component,
     register_gws_reflex_app,
-    sidebar_header_component,
 )
 from gws_reflex_main.reflex_main_state import ReflexMainState
 
 from .config_page import combined_config_page
 from .custom_states import CustomAppConfigState
-from .reflex.ai_expert.ai_expert_component import (
-    ai_expert_component,
-    ai_expert_header_default_buttons_component,
-)
+from .reflex.ai_expert.ai_expert_component import ai_expert_component
 from .reflex.ai_expert.ai_expert_state import AiExpertState
 from .reflex.ai_expert.document_browser_component import document_browser_component
 from .reflex.ai_expert.document_browser_state import DocumentBrowserState
 from .reflex.chat_base.chat_config import ChatConfig
 from .reflex.core.app_config_state import AppConfigState
+from .reflex.core.conversation_mode_chip_component import conversation_mode_chip_reactive
 from .reflex.core.nav_bar_component import NavBarItem
 from .reflex.core.page_component import page_component
+from .reflex.core.page_layout_component import (
+    ai_expert_header_component,
+    page_layout_component,
+    rag_header_component,
+)
 from .reflex.history.history_component import history_component
 from .reflex.history.history_state import HistoryState
-from .reflex.rag_chat.chat_history_sidebar_component import chat_history_sidebar_list
-from .reflex.rag_chat.chat_history_sidebar_state import ChatHistorySidebarState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
 from .reflex.rag_chat.config.rag_config_state import RagConfigState, RagConfigStateFromParams
 from .reflex.rag_chat.rag_chat_component import rag_chat_component
@@ -66,68 +65,26 @@ class NavBarState(rx.State):
         return nav_bar_items
 
 
-def _chat_sidebar_content() -> rx.Component:
-    """Sidebar content for the main chat page.
-
-    Contains app branding, New Chat button, and conversation history list.
-    """
-    return rx.vstack(
-        # App branding
-        sidebar_header_component(
-            title="Search",
-            subtitle="By Constellab",
-            logo_src="/constellab-logo.svg",
-        ),
-        # New Chat button
-        rx.box(
-            rx.button(
-                rx.icon("plus", size=16),
-                "New Chat",
-                on_click=ChatHistorySidebarState.start_new_chat,
-                width="100%",
-                size="2",
-            ),
-            padding="0 1rem 1rem 1rem",
-            width="100%",
-        ),
-        # Conversation history list (takes remaining space)
-        rx.box(
-            chat_history_sidebar_list(),
-            flex="1",
-            min_height="0",
-            overflow_y="auto",
-            width="100%",
-            padding_inline="1rem",
-        ),
-        width="100%",
-        height="100%",
-        spacing="0",
-    )
-
-
 _rag_chat_config = ChatConfig(
     state=RagChatState,
     empty_chat_component=rag_empty_chat_component,
+    header=rag_header_component(RagChatState.subtitle),
 )
 
 
 @rx.page(route="/")
 def index():
     """Main chat page with sidebar (new conversation)."""
-    return page_sidebar_component(
-        sidebar_content=_chat_sidebar_content(),
+    return page_layout_component(
         content=rag_chat_component(_rag_chat_config),
-        sidebar_width="300px",
     )
 
 
 @rx.page(route="/chat/[conversation_id]", on_load=RagChatState.load_conversation_from_url)
 def chat_with_conversation():
     """Chat page for an existing conversation loaded from URL."""
-    return page_sidebar_component(
-        sidebar_content=_chat_sidebar_content(),
+    return page_layout_component(
         content=rag_chat_component(_rag_chat_config),
-        sidebar_width="300px",
     )
 
 
@@ -153,26 +110,47 @@ def config_page():
     )
 
 
-# History page - for conversation history
-@rx.page(route="/history", on_load=HistoryState.load_conversations)
-def history():
-    """History page for viewing conversation history."""
-    return page_component(NavBarState.nav_bar_items, history_component())
-
-
 # AI Expert page - document browser (no document selected)
-@rx.page(route="/ai-expert", on_load=DocumentBrowserState.load_documents)
+@rx.page(
+    route="/ai-expert",
+    on_load=[DocumentBrowserState.load_documents, HistoryState.load_conversations],
+)
 def ai_expert_browser():
     """AI Expert page for selecting a document."""
-    return page_component(NavBarState.nav_bar_items, document_browser_component())
+    return page_layout_component(
+        content=document_browser_component(),
+    )
 
 
-# AI Expert page - document-specific chat
-@rx.page(route="/ai-expert/[document_id]", on_load=AiExpertState.load_resource_from_url)
+# AI Expert page - existing conversation loaded from URL
+@rx.page(
+    route="/ai-expert/chat/[conversation_id]",
+    on_load=[AiExpertState.load_conversation_from_url, HistoryState.load_conversations],
+)
+def ai_expert_with_conversation():
+    """AI Expert page for an existing conversation loaded from URL."""
+    _header = ai_expert_header_component(
+        AiExpertState.subtitle,
+        AiExpertState.open_current_resource_file,
+    )
+    config = ChatConfig(state=AiExpertState, header=_header)
+    return page_layout_component(
+        content=ai_expert_component(config),
+    )
+
+
+# AI Expert page - document-specific chat (new conversation)
+@rx.page(
+    route="/ai-expert/[document_id]",
+    on_load=[AiExpertState.load_resource_from_url, HistoryState.load_conversations],
+)
 def ai_expert():
     """AI Expert page for document-specific chat."""
-    config = ChatConfig(
-        state=AiExpertState,
-        header_buttons=ai_expert_header_default_buttons_component,
+    _header = ai_expert_header_component(
+        AiExpertState.subtitle,
+        AiExpertState.open_current_resource_file,
     )
-    return page_component(NavBarState.nav_bar_items, ai_expert_component(config))
+    config = ChatConfig(state=AiExpertState, header=_header)
+    return page_layout_component(
+        content=ai_expert_component(config),
+    )

@@ -16,7 +16,11 @@ from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessage
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 
-from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
+from .base_chat_conversation import (
+    BaseChatConversation,
+    BaseChatConversationConfig,
+    ChatConversationMode,
+)
 
 
 class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
@@ -55,6 +59,8 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
     _previous_external_response_id: str | None = None
     _current_external_response_id: str | None = None
 
+    RESOURCE_ID_CONFIG_KEY = "resource_id"
+
     def __init__(
         self,
         config: BaseChatConversationConfig,
@@ -62,7 +68,12 @@ class AiExpertChatConversation(BaseChatConversation[ChatUserMessageText]):
         rag_app_service: BaseRagAppService,
         rag_resource: RagResource,
     ) -> None:
-        super().__init__(config, mode="ai_expert", chat_configuration=chat_config.to_json_dict())
+        chat_configuration = chat_config.to_json_dict()
+        # Store the resource ID so the conversation can be restored later
+        chat_configuration[self.RESOURCE_ID_CONFIG_KEY] = rag_resource.get_id()
+        super().__init__(
+            config, mode=ChatConversationMode.AI_EXPERT.value, chat_configuration=chat_configuration
+        )
         self.config = chat_config
         self.rag_app_service = rag_app_service
         self.rag_resource = rag_resource

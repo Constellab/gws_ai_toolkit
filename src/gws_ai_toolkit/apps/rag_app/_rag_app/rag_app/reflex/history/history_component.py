@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import reflex as rx
 from gws_ai_toolkit.models.chat.chat_conversation_dto import ChatConversationDTO
 
@@ -11,81 +13,92 @@ from ..read_only_chat.read_only_chat_state import ReadOnlyChatState
 from .history_config_dialog import history_config_dialog
 from .history_state import HistoryState
 
+ModeBadgeBuilder = Callable[[rx.Var[str]], rx.Component]
 
-def _conversation_item(conversation: ChatConversationDTO) -> rx.Component:
-    """Individual conversation item in the history sidebar.
 
-    Renders a single conversation entry with truncated title, metadata,
-    and click functionality for selection.
+def _default_mode_badge(mode: rx.Var[str]) -> rx.Component:
+    """Default mode badge using a plain Radix badge.
 
-    Args:
-        conversation (ChatConversationDTO): Conversation data to display
+    :param mode: Reactive var with the conversation mode string.
+    :return: A soft badge displaying the mode label.
+    """
+    mode_display = mode.replace("_", " ").title()
+    return rx.badge(mode_display, size="1", variant="soft")
 
-    Returns:
-        rx.Component: Clickable conversation item with title and metadata
+
+def _make_conversation_item(
+    mode_badge_builder: ModeBadgeBuilder,
+) -> Callable[[ChatConversationDTO], rx.Component]:
+    """Create a conversation item renderer with a custom mode badge builder.
+
+    :param mode_badge_builder: Function that receives the mode var and returns a badge component.
+    :return: A function suitable for use with ``rx.foreach``.
     """
 
-    # Format mode display
-    mode_display = conversation.mode.replace("_", " ").title()
-
-    return rx.box(
-        rx.vstack(
-            rx.hstack(
-                rx.heading(
-                    rx.cond(
-                        conversation.label.length() > 60,
-                        conversation.label[:60] + "...",
-                        conversation.label,
+    def _conversation_item(conversation: ChatConversationDTO) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.hstack(
+                    rx.heading(
+                        rx.cond(
+                            conversation.label.length() > 60,
+                            conversation.label[:60] + "...",
+                            conversation.label,
+                        ),
+                        size="3",
+                        margin_bottom="4px",
+                        font_weight="600",
                     ),
-                    size="3",
-                    margin_bottom="4px",
-                    font_weight="600",
+                    rx.spacer(),
+                    width="100%",
                 ),
-                rx.spacer(),
+                rx.hstack(
+                    mode_badge_builder(conversation.mode),
+                    rx.spacer(),
+                    rx.text(
+                        rx.moment(conversation.last_modified_at, format="MMM D, YYYY h:mm"),
+                        size="2",
+                        color=rx.color("gray", 11),
+                    ),
+                    spacing="2",
+                    align_items="center",
+                    width="100%",
+                ),
+                spacing="1",
+                align_items="start",
                 width="100%",
             ),
-            rx.hstack(
-                rx.badge(mode_display, size="1", variant="soft"),
-                rx.spacer(),
-                rx.text(
-                    rx.moment(conversation.last_modified_at, format="MMM D, YYYY h:mm"),
-                    size="2",
-                    color=rx.color("gray", 11),
-                ),
-                spacing="2",
-                align_items="center",
-                width="100%",
-            ),
-            spacing="1",
-            align_items="start",
-            width="100%",
-        ),
-        padding="12px 16px",
-        border_radius="8px",
-        cursor="pointer",
-        border=rx.cond(
-            HistoryState.selected_conversation_id == conversation.id,
-            f"2px solid {rx.color('accent', 8)}",
-            f"1px solid {rx.color('gray', 6)}",
-        ),
-        background_color=rx.cond(
-            HistoryState.selected_conversation_id == conversation.id, rx.color("accent", 3), "white"
-        ),
-        _hover={
-            "background_color": rx.cond(
+            padding="12px 16px",
+            border_radius="8px",
+            cursor="pointer",
+            border=rx.cond(
                 HistoryState.selected_conversation_id == conversation.id,
-                rx.color("accent", 4),
-                rx.color("gray", 2),
+                f"2px solid {rx.color('accent', 8)}",
+                f"1px solid {rx.color('gray', 6)}",
             ),
-        },
-        on_click=lambda: HistoryState.select_conversation(conversation.id),
-        margin_bottom="8px",
-        width="100%",
-    )
+            background_color=rx.cond(
+                HistoryState.selected_conversation_id == conversation.id, rx.color("accent", 3), "white"
+            ),
+            _hover={
+                "background_color": rx.cond(
+                    HistoryState.selected_conversation_id == conversation.id,
+                    rx.color("accent", 4),
+                    rx.color("gray", 2),
+                ),
+            },
+            on_click=lambda: HistoryState.select_conversation(conversation.id),
+            margin_bottom="8px",
+            width="100%",
+        )
+
+    return _conversation_item
 
 
-def _conversations_sidebar() -> rx.Component:
-    """Left sidebar with conversation list."""
+def _conversations_sidebar(mode_badge_builder: ModeBadgeBuilder) -> rx.Component:
+    """Left sidebar with conversation list.
+
+    :param mode_badge_builder: Function that receives the mode var and returns a badge component.
+    """
     return rx.box(
         rx.vstack(
             rx.hstack(
@@ -116,7 +129,10 @@ def _conversations_sidebar() -> rx.Component:
                     HistoryState.has_conversations,
                     # Show conversations list
                     rx.vstack(
-                        rx.foreach(HistoryState.conversations, _conversation_item),
+                        rx.foreach(
+                            HistoryState.conversations,
+                            _make_conversation_item(mode_badge_builder),
+                        ),
                         spacing="0",
                         width="100%",
                         padding_inline="1em",
@@ -159,18 +175,6 @@ def _conversations_sidebar() -> rx.Component:
     )
 
 
-def _header_buttons(state: ReadOnlyChatState) -> list[rx.Component]:
-    return [
-        rx.button(
-            rx.icon("settings", size=16),
-            "Configuration",
-            variant="outline",
-            size="2",
-            on_click=state.open_config_dialog,
-        )
-    ]
-
-
 def _conversation_display(config: ChatConfig) -> rx.Component:
     """Right side conversation display."""
 
@@ -210,6 +214,7 @@ def _conversation_display(config: ChatConfig) -> rx.Component:
 
 def history_component(
     sources_component_builder: SourcesComponentBuilder | None = None,
+    mode_badge_builder: ModeBadgeBuilder | None = None,
 ) -> rx.Component:
     """Complete conversation history interface with sidebar and display panel.
 
@@ -224,17 +229,17 @@ def history_component(
         - Configuration dialog for conversation settings
         - Loading states and refresh functionality
 
-    Returns:
-        rx.Component: Complete history interface with sidebar and conversation display
-
-    Example:
-        history_ui = history_component()
-        # Renders two-panel history interface
+    :param sources_component_builder: Optional builder for source citation components.
+    :param mode_badge_builder: Optional callable that receives a conversation mode
+        ``rx.Var[str]`` and returns a badge ``rx.Component``.  Falls back to a
+        plain Radix badge when *None*.
+    :return: Complete history interface with sidebar and conversation display.
     """
+
+    badge_builder = mode_badge_builder or _default_mode_badge
 
     config = ChatConfig(
         state=ReadOnlyChatState,
-        header_buttons=_header_buttons,
     )
 
     if sources_component_builder:
@@ -245,7 +250,7 @@ def history_component(
         }
 
     return rx.hstack(
-        _conversations_sidebar(),
+        _conversations_sidebar(badge_builder),
         _conversation_display(config),
         spacing="0",
         width="100%",

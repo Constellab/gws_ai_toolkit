@@ -4,7 +4,6 @@ from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.base_analysis_config impo
 from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.chat_component import chat_component
 from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.chat_config import ChatConfig
 from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.chat_header_component import (
-    chat_header_component,
     header_clear_chat_button_component,
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.chat_input_component import (
@@ -46,7 +45,6 @@ __all__ = [
     "ConversationChatStateBase",
     # Component functions
     "chat_component",
-    "chat_header_component",
     "chat_input_component",
     "chat_messages_list_component",
     "user_message_base",

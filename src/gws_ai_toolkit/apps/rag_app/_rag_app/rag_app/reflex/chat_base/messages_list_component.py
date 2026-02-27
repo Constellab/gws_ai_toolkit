@@ -137,7 +137,6 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
         source_detail_dialog(config.state),
         plotly_fullscreen_dialog(),
         width="100%",
-        padding="1em",
         flex="1",
     )
 
