@@ -9,7 +9,11 @@ from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageTab
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable
 
-from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
+from .base_chat_conversation import (
+    BaseChatConversation,
+    BaseChatConversationConfig,
+    ChatConversationMode,
+)
 
 
 class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
@@ -39,7 +43,7 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
     def __init__(self, config: BaseChatConversationConfig, table_agent: TableAgentAi) -> None:
         super().__init__(
             config,
-            mode="ai_table_unified",
+            mode=ChatConversationMode.AI_TABLE.value,
             chat_configuration={
                 "model": table_agent.get_model(),
                 "temperature": table_agent.get_temperature(),

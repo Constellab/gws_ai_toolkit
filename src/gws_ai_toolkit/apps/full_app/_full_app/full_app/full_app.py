@@ -19,7 +19,6 @@ from gws_ai_toolkit._app.ai_rag import (
     RagConfigState,
     RagConfigStateFromParams,
     ai_expert_component,
-    ai_expert_header_default_buttons_component,
     document_browser_component,
     rag_chat_component,
     rag_config_component,
@@ -159,7 +158,6 @@ def ai_expert():
     """AI Expert page for document-specific chat."""
     config = ChatConfig(
         state=AiExpertState,
-        header_buttons=ai_expert_header_default_buttons_component,
         left_section=associated_resources_section,
     )
     return page_component(NavBarState.nav_bar_items, ai_expert_component(config))

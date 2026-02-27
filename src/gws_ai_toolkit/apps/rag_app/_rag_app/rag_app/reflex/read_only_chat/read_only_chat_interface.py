@@ -1,7 +1,6 @@
 import reflex as rx
 
 from ..chat_base.chat_config import ChatConfig
-from ..chat_base.chat_header_component import chat_header_component
 from ..chat_base.messages_list_component import chat_messages_list_component
 
 
@@ -9,7 +8,6 @@ def _read_only_chat_with_messages(config: ChatConfig) -> rx.Component:
     """Read-only chat interface with messages - fixed input at bottom (disabled)"""
     return rx.box(
         rx.vstack(
-            chat_header_component(config),
             chat_messages_list_component(config),
             width="100%",
             max_width="800px",
@@ -27,7 +25,6 @@ def _read_only_chat_with_messages(config: ChatConfig) -> rx.Component:
 def _read_only_empty_chat(config: ChatConfig) -> rx.Component:
     """Read-only chat interface when there are no messages"""
     return rx.vstack(
-        chat_header_component(config),
         rx.box(flex="1"),  # Spacer to push content to center
         rx.heading(
             config.state.empty_state_message,

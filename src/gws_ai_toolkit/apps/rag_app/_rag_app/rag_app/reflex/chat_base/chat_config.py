@@ -18,17 +18,12 @@ class ChatConfig:
 
     The configuration supports:
         - Custom state management for different chat types
-        - Configurable header buttons for chat-specific actions
         - Optional sources display component
         - Flexible left/right section layout
 
     Attributes:
-        state (ChatStatConversationChatStateBaseeBase): The state management class for the chat.
+        state (ConversationChatStateBase): The state management class for the chat.
             Must extend ConversationChatStateBase and provide chat functionality.
-
-        header_buttons (Callable[[ConversationChatStateBase], list[rx.Component]] | None):
-            Optional function that returns custom header buttons. Takes the chat
-            state as parameter and returns list of Reflex components.
 
         sources_component (SourcesComponentBuilder | None):
             Optional component function for displaying source references.
@@ -41,7 +36,6 @@ class ChatConfig:
     Example:
         config = ChatConfig(
             state=MyCustomChatState,
-            header_buttons=lambda state: [custom_button],
             sources_component=sources_display_component,
             left_section=sidebar_component
         )
@@ -50,8 +44,8 @@ class ChatConfig:
     # State configuration - this is the only customizable part
     state: type[ConversationChatStateBase]
 
-    # Add custom button on top right of the header
-    header_buttons: Callable[[ConversationChatStateBase], list[rx.Component]] | None = None
+    # Optional header component rendered at the top of the chat area.
+    header: rx.Component | None = None
 
     # Optional left and right sections to display alongside the chat
     left_section: Callable[[ConversationChatStateBase], rx.Component] | None = None
