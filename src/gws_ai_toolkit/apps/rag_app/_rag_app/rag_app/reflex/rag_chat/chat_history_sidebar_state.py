@@ -1,16 +1,20 @@
 import reflex as rx
+from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 
 from .rag_chat_state import RagChatState
 
 # Maps conversation mode to the URL pattern for loading that conversation.
 # The placeholder {id} is replaced with the actual conversation ID.
 DEFAULT_MODE_ROUTE_MAP: dict[str, str] = {
-    "RAG": "/chat/{id}",
-    "Ai expert": "/ai-expert/chat/{id}",
+    ChatConversationMode.RAG.value: "/chat/{id}",
+    ChatConversationMode.AI_EXPERT.value: "/ai-expert/chat/{id}",
 }
 
 # Default route used when the conversation mode is not in the map
 DEFAULT_CONVERSATION_ROUTE = "/chat/{id}"
+
+# Route prefix for AI Expert pages
+AI_EXPERT_ROUTE_PREFIX = "/ai-expert"
 
 
 class ChatHistorySidebarState(rx.State):
@@ -56,8 +60,27 @@ class ChatHistorySidebarState(rx.State):
 
     @rx.event
     async def start_new_chat(self):
-        """Clear the chat and navigate to the base chat URL."""
+        """Start a new chat based on the current page context.
+
+        - On AI Expert pages with a document selected: creates a new AI Expert
+          conversation for the same document.
+        - On AI Expert pages without a document: does nothing.
+        - On RAG chat pages: clears chat and navigates to /.
+        """
+        current_path = self.router.url.path
         self.active_conversation_id = None
+
+        if current_path.startswith(AI_EXPERT_ROUTE_PREFIX):
+            from ..ai_expert.ai_expert_state import AiExpertState
+
+            ai_expert_state: AiExpertState = await self.get_state(AiExpertState)
+            resource = ai_expert_state._rag_resource
+            if not resource:
+                return
+
+            ai_expert_state.clear_chat()
+            resource_id = resource.get_id()
+            return rx.redirect(f"/ai-expert/{resource_id}")
 
         rag_chat_state: RagChatState = await self.get_state(RagChatState)
         rag_chat_state.clear_chat()

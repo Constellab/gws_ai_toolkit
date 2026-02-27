@@ -3,9 +3,26 @@
 import reflex as rx
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+from gws_core import BaseModelDTO
 from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
+
+
+def _get_extension_label(filename: str) -> str:
+    """Extract uppercase 3-letter extension label from a filename."""
+    ext = ""
+    if "." in filename:
+        ext = filename.rsplit(".", 1)[-1].lower()
+    return ext[:3].upper() if ext else "FILE"
+
+
+class DocumentBrowserInfo(BaseModelDTO):
+    """Frontend DTO for document browser items."""
+
+    document_id: str
+    document_name: str
+    extension: str
 
 
 class DocumentBrowserState(rx.State):
@@ -19,7 +36,7 @@ class DocumentBrowserState(rx.State):
         is_loading: Whether documents are currently being loaded
     """
 
-    documents: list[RagChatSource] = []
+    documents: list[DocumentBrowserInfo] = []
     is_loading: bool = False
 
     @rx.var
@@ -30,6 +47,15 @@ class DocumentBrowserState(rx.State):
             bool: True if documents list is not empty
         """
         return len(self.documents) > 0
+
+    @staticmethod
+    def _to_browser_info(source: RagChatSource) -> DocumentBrowserInfo:
+        """Convert a RagChatSource to a DocumentBrowserInfo."""
+        return DocumentBrowserInfo(
+            document_id=source.document_id,
+            document_name=source.document_name,
+            extension=_get_extension_label(source.document_name),
+        )
 
     @rx.event(background=True)
     async def load_documents(self) -> None:
@@ -61,8 +87,9 @@ class DocumentBrowserState(rx.State):
                 )
 
             async with self:
-                # Convert to RagChatSource objects
-                self.documents = page_dto.objects
+                self.documents = [
+                    self._to_browser_info(source) for source in page_dto.objects
+                ]
         finally:
             async with self:
                 self.is_loading = False

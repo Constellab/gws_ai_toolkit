@@ -100,5 +100,4 @@ def load_chunks_button(dataset_id: str, document_id: str):
             DocumentChunksState.load_chunks(),
         ],
         variant="outline",
-        color_scheme="blue",
     )
