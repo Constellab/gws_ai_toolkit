@@ -9,7 +9,10 @@ from gws_reflex_main.reflex_main_state import ReflexMainState
 
 from ..rag_chat.chat_history_sidebar_component import chat_history_sidebar_list
 from ..rag_chat.chat_history_sidebar_state import ChatHistorySidebarState
-from .conversation_mode_chip_component import conversation_mode_chip_reactive, conversation_mode_chip_switchable
+from .conversation_mode_chip_component import (
+    conversation_mode_chip_reactive,
+    conversation_mode_chip_switchable,
+)
 
 
 class HeaderSettingsState(rx.State):
@@ -208,6 +211,7 @@ def _sidebar_content() -> rx.Component:
             title="Search",
             subtitle="By Constellab",
             logo_src="/constellab-logo.svg",
+            margin_bottom="1rem",
         ),
         # New Chat button
         rx.box(

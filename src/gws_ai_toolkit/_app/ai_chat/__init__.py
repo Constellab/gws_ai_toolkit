@@ -17,10 +17,12 @@ from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.messages_list_component i
     source_message_component,
     user_message_base,
 )
+from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.source.source_menu_component import (
+    get_default_source_menu_items,
+)
 from ...apps.rag_app._rag_app.rag_app.reflex.chat_base.source.source_message_component import (
     SourcesComponentBuilder,
     custom_sources_list_component,
-    get_default_source_menu_items,
     sources_list_component,
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.core.app_config_state import (
@@ -32,11 +34,20 @@ from ...apps.rag_app._rag_app.rag_app.reflex.core.nav_bar_component import (
     nav_bar_component,
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.core.page_component import page_component
-from ...apps.rag_app._rag_app.rag_app.reflex.history.history_component import history_component
-from ...apps.rag_app._rag_app.rag_app.reflex.history.history_config_dialog import (
-    history_config_dialog,
+from ...apps.rag_app._rag_app.rag_app.reflex.core.page_layout_component import (
+    HeaderSettingsState,
+    ai_expert_browser_header_component,
+    ai_expert_header_component,
+    page_layout_component,
+    rag_header_component,
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.history.history_state import HistoryState
+from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.chat_history_sidebar_state import (
+    ChatHistorySidebarState,
+)
+from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.rag_empty_chat_component import (
+    rag_empty_chat_component,
+)
 
 __all__ = [
     # Classes
@@ -56,12 +67,18 @@ __all__ = [
     "SourcesComponentBuilder",
     # Classes - State Management
     "HistoryState",
+    "ChatHistorySidebarState",
     # Component functions
-    "history_component",
-    "history_config_dialog",
     "AppConfigState",
     "AppConfigStateConfig",
     "NavBarItem",
     "nav_bar_component",
     "page_component",
+    # Page layout
+    "page_layout_component",
+    "HeaderSettingsState",
+    "rag_header_component",
+    "ai_expert_header_component",
+    "ai_expert_browser_header_component",
+    "rag_empty_chat_component",
 ]

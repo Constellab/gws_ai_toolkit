@@ -18,7 +18,6 @@ from .reflex.core.page_layout_component import (
     page_layout_component,
     rag_header_component,
 )
-from .reflex.history.history_state import HistoryState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
 from .reflex.rag_chat.config.rag_config_state import RagConfigState, RagConfigStateFromParams
 from .reflex.rag_chat.rag_chat_component import rag_chat_component
@@ -92,7 +91,7 @@ def config_ai_expert_page():
 # AI Expert page - document browser (no document selected)
 @rx.page(
     route="/ai-expert",
-    on_load=[DocumentBrowserState.load_documents, HistoryState.load_conversations],
+    on_load=DocumentBrowserState.load_documents,
 )
 def ai_expert_browser():
     """AI Expert page for selecting a document."""
@@ -104,7 +103,7 @@ def ai_expert_browser():
 # AI Expert page - existing conversation loaded from URL
 @rx.page(
     route="/ai-expert/chat/[conversation_id]",
-    on_load=[AiExpertState.load_conversation_from_url, HistoryState.load_conversations],
+    on_load=AiExpertState.load_conversation_from_url,
 )
 def ai_expert_with_conversation():
     """AI Expert page for an existing conversation loaded from URL."""
@@ -121,7 +120,7 @@ def ai_expert_with_conversation():
 # AI Expert page - document-specific chat (new conversation)
 @rx.page(
     route="/ai-expert/[document_id]",
-    on_load=[AiExpertState.load_resource_from_url, HistoryState.load_conversations],
+    on_load=AiExpertState.load_resource_from_url,
 )
 def ai_expert():
     """AI Expert page for document-specific chat."""

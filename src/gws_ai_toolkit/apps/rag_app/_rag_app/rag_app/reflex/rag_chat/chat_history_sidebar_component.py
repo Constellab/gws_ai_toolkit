@@ -96,34 +96,38 @@ def chat_history_sidebar_list(
     :return: The conversation list component.
     """
     badge_builder = mode_badge_builder or _default_mode_badge
-    return rx.cond(
-        HistoryState.is_loading,
-        rx.center(rx.spinner(size="3"), padding="20px"),
+    return rx.box(
         rx.cond(
-            HistoryState.has_conversations,
-            rx.vstack(
-                rx.foreach(
-                    HistoryState.conversations,
-                    _make_sidebar_conversation_item(badge_builder),
-                ),
-                spacing="1",
-                width="100%",
-                flex="1",
-                min_height="0",
-                overflow_y="auto",
-            ),
-            rx.center(
+            HistoryState.is_loading,
+            rx.center(rx.spinner(size="3"), padding="20px"),
+            rx.cond(
+                HistoryState.has_conversations,
                 rx.vstack(
-                    rx.icon("message-circle", size=32, color=rx.color("gray", 6)),
-                    rx.text(
-                        "No conversations yet",
-                        size="2",
-                        color=rx.color("gray", 9),
+                    rx.foreach(
+                        HistoryState.conversations,
+                        _make_sidebar_conversation_item(badge_builder),
                     ),
-                    align="center",
-                    spacing="2",
+                    spacing="1",
+                    width="100%",
+                    flex="1",
+                    min_height="0",
+                    overflow_y="auto",
                 ),
-                padding="40px 20px",
+                rx.center(
+                    rx.vstack(
+                        rx.icon("message-circle", size=32, color=rx.color("gray", 6)),
+                        rx.text(
+                            "No conversations yet",
+                            size="2",
+                            color=rx.color("gray", 9),
+                        ),
+                        align="center",
+                        spacing="2",
+                    ),
+                    padding="40px 20px",
+                ),
             ),
         ),
+        on_mount=HistoryState.load_conversations_if_needed,
+        width="100%",
     )

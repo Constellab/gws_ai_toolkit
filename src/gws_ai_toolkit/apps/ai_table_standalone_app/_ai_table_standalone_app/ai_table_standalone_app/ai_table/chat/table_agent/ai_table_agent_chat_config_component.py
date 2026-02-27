@@ -88,9 +88,7 @@ def ai_table_agent_chat_config_component() -> rx.Component:
                     name="enable_resource_selection",
                     default_checked=AiTableAgentChatConfigState.enable_resource_selection,
                 ),
-                rx.button(
-                    "Update Configuration", type="submit", color_scheme="blue", cursor="pointer"
-                ),
+                rx.button("Update Configuration", type="submit", cursor="pointer"),
                 spacing="3",
                 width="100%",
             ),
