@@ -24,7 +24,6 @@ def bulk_action_buttons() -> rx.Component:
                 rx.button(
                     rx.icon("refresh-cw", size=16),
                     "Sync All Resources",
-                    color_scheme="blue",
                     on_click=SyncAllResourcesDialogState.open_dialog,
                 )
             ),

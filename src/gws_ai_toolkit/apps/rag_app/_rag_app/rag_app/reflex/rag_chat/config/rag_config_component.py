@@ -27,7 +27,20 @@ def rag_config_component() -> rx.Component:
         # Renders complete resource management page
     """
     return rx.vstack(
-        rx.heading("Resource Management", size="8", mb="4"),
+        rx.hstack(
+            rx.heading("Resource Management", size="8"),
+            rx.spacer(),
+            rx.button(
+                rx.icon("x", size=16),
+                variant="ghost",
+                size="2",
+                cursor="pointer",
+                color="var(--gray-11)",
+                on_click=rx.redirect("/"),
+            ),
+            align="center",
+            width="100%",
+        ),
         rag_config_file_bulk(),
         rx.divider(),
         search_resource(),

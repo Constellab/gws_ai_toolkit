@@ -1,16 +1,17 @@
 """Document browser component for selecting documents in AI Expert mode."""
 
 import reflex as rx
-from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+from gws_reflex_main import extension_badge_component
 
-from .document_browser_state import DocumentBrowserState
+from ..core.page_layout_component import ai_expert_browser_header_component
+from .document_browser_state import DocumentBrowserInfo, DocumentBrowserState
 
 
-def document_row(source: RagChatSource) -> rx.Component:
+def document_row(doc: DocumentBrowserInfo) -> rx.Component:
     """Display a single document as a table row.
 
     Args:
-        source: The RagChatSource containing document information
+        doc: The DocumentBrowserInfo containing document information
 
     Returns:
         rx.Component: A table row displaying the document with an open button
@@ -18,23 +19,30 @@ def document_row(source: RagChatSource) -> rx.Component:
     return rx.table.row(
         rx.table.cell(
             rx.hstack(
-                rx.icon("file-text", size=18, color="var(--accent-9)"),
+                extension_badge_component(doc.extension),
                 rx.text(
-                    source.document_name,
+                    doc.document_name,
                     size="3",
+                    white_space="nowrap",
+                    overflow="hidden",
+                    text_overflow="ellipsis",
                 ),
-                spacing="2",
+                spacing="3",
                 align="center",
+                overflow="hidden",
             ),
+            max_width="0",
+            width="100%",
         ),
         rx.table.cell(
             rx.button(
                 "Open",
-                on_click=lambda: rx.redirect(f"/ai-expert/{source.document_id}"),
+                on_click=lambda: rx.redirect(f"/ai-expert/{doc.document_id}"),
                 variant="soft",
                 size="2",
             ),
             text_align="right",
+            white_space="nowrap",
         ),
     )
 
@@ -80,17 +88,12 @@ def document_browser_component() -> rx.Component:
         rx.box(flex="1"),  # Left spacer
         rx.box(
             rx.vstack(
-                # Header
-                rx.vstack(
-                    rx.heading("AI Expert", size="6"),
-                    rx.text(
-                        "Select a source document from your chat history to start an in-depth conversation",
-                        size="3",
-                        color="var(--gray-11)",
-                    ),
-                    spacing="2",
-                    align="start",
-                    width="100%",
+                # Header with switchable chip
+                ai_expert_browser_header_component(),
+                rx.text(
+                    "Select a source document from your chat history to start an in-depth conversation",
+                    size="3",
+                    color="var(--gray-11)",
                 ),
                 # Documents list or empty state
                 rx.cond(
@@ -119,6 +122,7 @@ def document_browser_component() -> rx.Component:
                             ),
                             width="100%",
                             variant="surface",
+                            table_layout="fixed",
                         ),
                         # Empty state
                         empty_state_component(),

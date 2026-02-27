@@ -35,7 +35,20 @@ def ai_expert_config_component() -> rx.Component:
         # Renders a full configuration form with all AI Expert settings
     """
     return rx.vstack(
-        rx.heading("AI Expert Configuration"),
+        rx.hstack(
+            rx.heading("AI Expert Configuration"),
+            rx.spacer(),
+            rx.button(
+                rx.icon("x", size=16),
+                variant="ghost",
+                size="2",
+                cursor="pointer",
+                color="var(--gray-11)",
+                on_click=rx.redirect("/ai-expert"),
+            ),
+            align="center",
+            width="100%",
+        ),
         # Configuration modification form
         rx.vstack(
             rx.form(
@@ -132,7 +145,7 @@ def ai_expert_config_component() -> rx.Component:
                         default_value=AiExpertConfigState.placeholder_text,
                         width="100%",
                     ),
-                    rx.button("Update Configuration", type="submit", color_scheme="blue"),
+                    rx.button("Update Configuration", type="submit"),
                     spacing="3",
                     width="100%",
                 ),
