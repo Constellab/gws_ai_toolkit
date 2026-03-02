@@ -10,11 +10,12 @@ from gws_ai_toolkit.models.chat.message.chat_user_message import (
     ChatUserMessageBase,
     ChatUserMessageText,
 )
+from gws_reflex_base import plotly_fullscreen_dialog
 from gws_reflex_main import user_profile_picture
 
 from .chat_config import ChatConfig
 from .conversation_chat_state_base import ConversationChatStateBase
-from .plotly_message_component import plotly_fullscreen_dialog, plotly_message_component
+from .plotly_message_component import plotly_message_component
 from .source.source_detail_component import source_detail_dialog
 from .source.source_message_component import source_message_component
 

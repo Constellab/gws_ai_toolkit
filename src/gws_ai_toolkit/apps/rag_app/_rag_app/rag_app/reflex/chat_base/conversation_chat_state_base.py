@@ -40,7 +40,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
         subtitle (Optional[str]): Optional subtitle text
         placeholder_text (str): Input field placeholder
         empty_state_message (str): Message shown when chat is empty
-        clear_button_text (str): Text for clear chat button
         show_chat_code_block (bool): Whether to display code blocks
 
     Abstract Methods:
@@ -56,12 +55,10 @@ class ConversationChatStateBase(rx.State, mixin=True):
     _chat_messages: list[ChatMessageBase] = []
 
     # UI Configuration
-    title: str = "AI Chat"
+    title: str = "Chat"
     subtitle: str | None = None
     placeholder_text: str = "Ask something..."
     empty_state_message: str = "Start talking to the AI"
-    clear_button_text: str = "New chat"
-    show_chat_code_block: bool = False
 
     _conversation: BaseChatConversation | None = None
 
@@ -101,7 +98,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
         return self._conversation
 
     @rx.event(background=True)  # type: ignore
-    async def submit_input_form(self, form_data: dict) -> None:
+    async def submit_input_form(self, form_data: dict):
         """On chat input form submit, check message and call AI chat
 
         Args:

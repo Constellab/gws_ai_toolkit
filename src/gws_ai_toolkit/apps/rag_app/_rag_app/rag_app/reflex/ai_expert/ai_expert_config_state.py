@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Literal, cast
 
 import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig

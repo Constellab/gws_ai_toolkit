@@ -31,27 +31,29 @@ def table_section():
         # Toolbar: actions on the left, row/column count on the right
         rx.hstack(
             # Column width controls
-            rx.menu.root(
-                rx.menu.trigger(
-                    rx.button(
-                        rx.icon("eye", size=14),
-                        rx.cond(
-                            AiTableDataState.column_size_mode == "default",
-                            "Default",
-                            "Dense",
+            rx.box(
+                rx.menu.root(
+                    rx.menu.trigger(
+                        rx.button(
+                            rx.icon("eye", size=14),
+                            rx.cond(
+                                AiTableDataState.column_size_mode == "default",
+                                "Default",
+                                "Dense",
+                            ),
+                            size="2",
+                            variant="ghost",
                         ),
-                        size="2",
-                        variant="ghost",
                     ),
-                ),
-                rx.menu.content(
-                    rx.menu.item(
-                        "Default",
-                        on_click=AiTableDataState.set_column_size_default,
-                    ),
-                    rx.menu.item(
-                        "Dense",
-                        on_click=AiTableDataState.set_column_size_dense,
+                    rx.menu.content(
+                        rx.menu.item(
+                            "Default",
+                            on_click=AiTableDataState.set_column_size_default,
+                        ),
+                        rx.menu.item(
+                            "Dense",
+                            on_click=AiTableDataState.set_column_size_dense,
+                        ),
                     ),
                 ),
             ),
@@ -109,7 +111,6 @@ def table_section():
             align="center",
             width="100%",
             padding="0.5em 1em",
-            border_bottom="1px solid var(--gray-4)",
         ),
         # AG Grid with selection enabled
         rx.box(

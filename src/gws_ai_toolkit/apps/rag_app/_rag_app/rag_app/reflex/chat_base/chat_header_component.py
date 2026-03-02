@@ -1,10 +1,11 @@
+from collections.abc import Callable
+
 import reflex as rx
 
 from .chat_config import ChatConfig
-from .conversation_chat_state_base import ConversationChatStateBase
 
 
-def header_clear_chat_button_component(state: ConversationChatStateBase) -> rx.Component:
+def header_clear_chat_button_component(clear_chat: Callable[[], None], text: str) -> rx.Component:
     """Standard clear chat button component for chat headers.
 
     Provides a consistent clear chat button that can be used in any chat header.
@@ -12,20 +13,20 @@ def header_clear_chat_button_component(state: ConversationChatStateBase) -> rx.C
     chat clearing functionality from the provided state.
 
     Args:
-        state (ConversationChatStateBase): Chat state instance providing clear_chat method
-            and clear_button_text property.
+        clear_chat (Callable[[], None]): Function to clear the chat.
+        text (str): Text to display on the button.
 
     Returns:
         rx.Component: Button component with refresh icon and clear functionality.
 
     Example:
-        clear_btn = header_clear_chat_button_component(chat_state)
+        clear_btn = header_clear_chat_button_component(lambda: chat_state.clear_chat(), "Clear Chat")
         # Creates button with refresh icon and "Clear Chat" text
     """
     return rx.button(
         rx.icon("plus", size=16),
-        state.clear_button_text,
-        on_click=state.clear_chat,
+        text,
+        on_click=clear_chat,
         variant="outline",
         size="2",
     )
