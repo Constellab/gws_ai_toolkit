@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import cast
+from typing import Any, cast
 
 import reflex as rx
 from anyio import sleep
@@ -98,7 +98,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
         return self._conversation
 
     @rx.event(background=True)  # type: ignore
-    async def submit_input_form(self, form_data: dict):
+    async def submit_input_form(self, form_data: dict) -> Any:
         """On chat input form submit, check message and call AI chat
 
         Args:
@@ -190,6 +190,9 @@ class ConversationChatStateBase(rx.State, mixin=True):
         Args:
             conversation_id: The ID of the loaded conversation.
         """
+        raise NotImplementedError(
+            "Subclasses must implement _restore_conversation to restore conversation state"
+        )
 
     @rx.event
     def clear_chat(self) -> None:

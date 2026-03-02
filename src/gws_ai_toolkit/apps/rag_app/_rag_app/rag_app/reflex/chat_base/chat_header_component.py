@@ -50,7 +50,6 @@ def chat_header_component(config: ChatConfig) -> rx.Component:
     Args:
         config (ChatConfig): Chat configuration containing:
             - state: Provides title, subtitle, and state methods
-            - header_buttons: Optional custom buttons function
 
     Returns:
         rx.Component: Complete header with title, subtitle, and action buttons
@@ -60,10 +59,6 @@ def chat_header_component(config: ChatConfig) -> rx.Component:
         header = chat_header_component(chat_config)
         # Displays title, subtitle (if present), and configured buttons
     """
-
-    header_buttons: list[rx.Component] = []
-    if config.header_buttons is not None:
-        header_buttons = config.header_buttons(config.state)
 
     return rx.vstack(
         rx.hstack(
@@ -76,7 +71,6 @@ def chat_header_component(config: ChatConfig) -> rx.Component:
                 spacing="0",
             ),
             rx.spacer(),
-            *header_buttons,
             width="100%",
             align="center",
         ),
