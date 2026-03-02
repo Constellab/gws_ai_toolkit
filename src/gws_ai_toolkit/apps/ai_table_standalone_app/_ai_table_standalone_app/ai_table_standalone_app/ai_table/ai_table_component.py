@@ -304,6 +304,8 @@ def _import_dialog():
             ),
             max_width="1000px",
             width="90vw",
+            on_interact_outside=AiTableDataState.set_import_dialog_open(False),
+            on_escape_key_down=AiTableDataState.set_import_dialog_open(False),
         ),
         open=AiTableDataState.import_dialog_open,
         on_open_change=AiTableDataState.set_import_dialog_open,
