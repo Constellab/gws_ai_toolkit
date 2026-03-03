@@ -1,5 +1,6 @@
 import json
 import os
+from asyncio import sleep
 from typing import cast
 
 import reflex as rx
@@ -54,6 +55,7 @@ class AiTableStatsState(rx.State):
 
     last_run_config: AiTableStatsRunConfig | None = None
     ai_summary_response: str | None = None
+    submitted_prompt: str = ""
 
     @rx.event(background=True)  # type: ignore
     async def process_ai_prompt(self, form_data: dict):
@@ -66,11 +68,14 @@ class AiTableStatsState(rx.State):
 
         async with self:
             self.is_processing = True
+            self.submitted_prompt = prompt
+
+        await sleep(0.1)  # Allow UI to update before starting streaming
 
         try:
             current_df: DataFrame | None
             async with self:
-                self.clear_test_results()
+                self._clear_results()
 
                 # Get current dataframe to extract column names
                 ai_table_state = await self.get_state(AiTableDataState)
@@ -431,12 +436,17 @@ Please provide a clear, direct answer to the user's original question based on t
         """Check if there's a suggested additional test."""
         return self.suggested_additional_test is not None
 
-    @rx.event
-    def clear_test_results(self):
-        """Clear test history and last test results."""
+    def _clear_results(self):
+        """Clear analysis results but keep the submitted prompt."""
         self._current_stats_analyzer = None
         self.last_run_config = None
         self.ai_summary_response = None
+
+    @rx.event
+    def clear_test_results(self):
+        """Clear test history, last test results, and submitted prompt."""
+        self._clear_results()
+        self.submitted_prompt = ""
 
     @rx.event(background=True)  # type: ignore
     async def run_additional_test_with_reference_column(self, form_data: dict):

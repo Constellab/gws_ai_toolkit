@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator
+from enum import Enum
 from typing import Generic, TypeVar, cast
 from uuid import uuid4
 
@@ -15,6 +16,12 @@ from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
+
+
+class ChatConversationMode(Enum):
+    RAG = "rag"
+    AI_EXPERT = "ai_expert"
+    AI_TABLE = "ai_table"
 
 
 @dataclass

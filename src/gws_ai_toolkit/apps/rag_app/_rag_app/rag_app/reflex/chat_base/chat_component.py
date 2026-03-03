@@ -1,7 +1,6 @@
 import reflex as rx
 
 from .chat_config import ChatConfig
-from .chat_header_component import chat_header_component
 from .chat_input_component import chat_input_component
 from .messages_list_component import chat_messages_list_component
 
@@ -21,10 +20,9 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
     """
     return rx.box(
         rx.vstack(
-            chat_header_component(config),
             chat_messages_list_component(config),
             width="100%",
-            padding="1em 1em 5em 1em",
+            padding_bottom="5em",  # Space for fixed input
             flex="1",
             overflow_y="auto",
         ),
@@ -47,7 +45,7 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
                 margin="auto",
             ),
             position="absolute",
-            bottom="20px",
+            bottom="5px",
             left="50%",
             transform="translateX(-50%)",
             z_index="1000",
@@ -76,7 +74,6 @@ def _empty_chat(config: ChatConfig) -> rx.Component:
         rx.Component: Centered layout with empty state message and input
     """
     return rx.vstack(
-        chat_header_component(config),
         rx.box(flex="1"),  # Spacer to push input to center
         rx.heading(
             config.state.empty_state_message,
@@ -110,7 +107,6 @@ def chat_component(config: ChatConfig) -> rx.Component:
         - Adaptive layout (centered input when empty, fixed input when messages exist)
         - Three-column layout with customizable left/right sections
         - Auto-scrolling message area
-        - Configurable header with custom buttons
         - Responsive design with mobile-friendly input
         - Empty state messaging
         - Message list display with proper spacing
@@ -124,49 +120,76 @@ def chat_component(config: ChatConfig) -> rx.Component:
         config (ChatConfig): Configuration object
 
     Returns:
-        rx.Component: Complete chat interface with header, messages, input, and
+        rx.Component: Complete chat interface with messages, input, and
             optional side sections, ready for use in any chat application.
 
     Example:
         config = ChatConfig(
             state=MyChatState,
-            header_buttons=custom_buttons,
             sources_component=sources_panel
         )
         chat_ui = chat_component(config)
     """
 
+    # Build children list: optional left section, center chat, optional right section
+    children = []
+
+    if config.left_section:
+        children.append(
+            rx.box(
+                config.left_section(config.state),
+                flex="none",
+                height="100%",
+            )
+        )
+
+    empty_chat_view = (
+        config.empty_chat_component(config) if config.empty_chat_component else _empty_chat(config)
+    )
+
+    center_children: list[rx.Component] = []
+    if config.header:
+        center_children.append(rx.box(config.header, padding_bottom="1em"))
+
+    center_children.append(
+        rx.cond(
+            # When there are messages, show normal layout with fixed input
+            config.state.show_empty_chat,
+            # When no messages, center the input vertically
+            empty_chat_view,
+            # Layout with messages - fixed input at bottom
+            _chat_with_messages(config),
+        ),
+    )
+
+    children.append(
+        rx.box(
+            *center_children,
+            width="100%",
+            max_width="800px",
+            margin="0 auto",
+            position="relative",
+            display="flex",
+            flex_direction="column",
+        )
+    )
+
+    if config.right_section:
+        children.append(
+            rx.box(
+                config.right_section(config.state),
+                flex="none",
+                height="100%",
+            )
+        )
+
     return rx.fragment(
         rx.auto_scroll(
             rx.hstack(
-                rx.box(
-                    config.left_section(config.state) if config.left_section else None,
-                    flex="1",
-                    height="100%",
-                ),
-                rx.box(
-                    rx.cond(
-                        # When there are messages, show normal layout with fixed input
-                        config.state.show_empty_chat,
-                        # When no messages, center the input vertically
-                        _empty_chat(config),
-                        # Layout with messages - fixed input at bottom
-                        _chat_with_messages(config),
-                    ),
-                    width="100%",
-                    max_width="800px",
-                    position="relative",
-                    display="flex",
-                    flex_direction="column",
-                ),
-                rx.box(
-                    config.right_section(config.state) if config.right_section else None,
-                    flex="1",
-                    height="100%",
-                ),
+                *children,
                 align_items="stretch",
-                justify_content="stretch",
                 width="100%",
+                flex="1",
             ),
             width="100%",
             flex="1",

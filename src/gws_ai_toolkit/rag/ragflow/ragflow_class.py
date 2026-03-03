@@ -22,6 +22,8 @@ class RagFlowCreateDatasetRequest(BaseModelDTO):
     document_count: int = 0
     chunk_count: int = 0
     parse_method: RagFlowParserMethod = "naive"
+    chunk_token_num: int | None = None
+    delimiter: str | None = None
 
 
 class RagFlowUpdateDatasetRequest(BaseModelDTO):
@@ -34,6 +36,8 @@ class RagFlowUpdateDatasetRequest(BaseModelDTO):
     embedding_model: str | None = None
     permission: str | None = None
     parse_method: RagFlowParserMethod | None = None
+    chunk_token_num: int | None = None
+    delimiter: str | None = None
 
 
 class RagFlowCreateChatRequest(BaseModelDTO):

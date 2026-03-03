@@ -34,6 +34,26 @@ def get_default_source_menu_items(
     ]
 
 
+def resolve_source_menu_items(
+    source: RagChatSourceFront,
+    state: ConversationChatStateBase,
+    custom_menu_items: CustomSourceMenuButtons | None = None,
+) -> list[rx.Component]:
+    """Resolve the menu items for a source, using custom or default items.
+
+    Args:
+        source (RagChatSourceFront): The source data.
+        state (ConversationChatStateBase): The chat state.
+        custom_menu_items (Callable, optional): Function to get custom menu items.
+
+    Returns:
+        list[rx.Component]: Resolved list of menu item components.
+    """
+    if custom_menu_items is not None:
+        return custom_menu_items(source, state)
+    return get_default_source_menu_items(source, state)
+
+
 def source_menu_button(
     source: RagChatSourceFront,
     state: ConversationChatStateBase,
@@ -51,16 +71,8 @@ def source_menu_button(
     Returns:
         rx.Component: Menu button component with actions.
     """
-    # Get menu items based on custom_menu_items parameter
-    menu_items: list[rx.Component] = []
-    if custom_menu_items is None:
-        # Use default menu items
-        menu_items = get_default_source_menu_items(source, state)
-    elif custom_menu_items is not None:
-        # Call the custom menu items function
-        menu_items = custom_menu_items(source, state)
+    menu_items = resolve_source_menu_items(source, state, custom_menu_items)
 
-    # Only add menu if there are menu items
     if menu_items and len(menu_items) > 0:
         return rx.menu.root(
             rx.menu.trigger(

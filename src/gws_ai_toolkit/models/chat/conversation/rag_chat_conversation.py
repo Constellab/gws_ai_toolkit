@@ -9,7 +9,11 @@ from gws_ai_toolkit.rag.common.rag_models import (
     RagChatStreamResponse,
 )
 
-from .base_chat_conversation import BaseChatConversation, BaseChatConversationConfig
+from .base_chat_conversation import (
+    BaseChatConversation,
+    BaseChatConversationConfig,
+    ChatConversationMode,
+)
 
 
 class RagChatConversation(BaseChatConversation[ChatUserMessageText]):
@@ -29,7 +33,7 @@ class RagChatConversation(BaseChatConversation[ChatUserMessageText]):
         rag_service: BaseRagService,
         rag_chat_id: str,
     ) -> None:
-        super().__init__(config, "RAG")
+        super().__init__(config, ChatConversationMode.RAG.value)
         self.rag_service = rag_service
         self.rag_chat_id = rag_chat_id
 

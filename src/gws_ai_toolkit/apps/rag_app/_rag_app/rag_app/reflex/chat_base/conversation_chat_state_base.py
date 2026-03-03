@@ -1,9 +1,10 @@
 from abc import abstractmethod
-from typing import cast
+from typing import Any, cast
 
 import reflex as rx
 from anyio import sleep
 from gws_ai_toolkit.core.utils import Utils
+from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
@@ -39,7 +40,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
         subtitle (Optional[str]): Optional subtitle text
         placeholder_text (str): Input field placeholder
         empty_state_message (str): Message shown when chat is empty
-        clear_button_text (str): Text for clear chat button
         show_chat_code_block (bool): Whether to display code blocks
 
     Abstract Methods:
@@ -55,16 +55,12 @@ class ConversationChatStateBase(rx.State, mixin=True):
     _chat_messages: list[ChatMessageBase] = []
 
     # UI Configuration
-    title: str = "AI Chat"
+    title: str = "Chat"
     subtitle: str | None = None
     placeholder_text: str = "Ask something..."
     empty_state_message: str = "Start talking to the AI"
-    clear_button_text: str = "New chat"
-    show_chat_code_block: bool = False
 
     _conversation: BaseChatConversation | None = None
-
-    _previous_key: str | None = None
 
     @abstractmethod
     async def _create_conversation(self) -> BaseChatConversation:
@@ -102,7 +98,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
         return self._conversation
 
     @rx.event(background=True)  # type: ignore
-    async def submit_input_form(self, form_data: dict) -> None:
+    async def submit_input_form(self, form_data: dict) -> Any:
         """On chat input form submit, check message and call AI chat
 
         Args:
@@ -150,6 +146,53 @@ class ConversationChatStateBase(rx.State, mixin=True):
             async with self:
                 self.current_response_message = None
                 self.is_streaming = False
+            post_update_event = await self._after_conversation_updated()
+            if post_update_event:
+                yield post_update_event
+
+    async def _after_conversation_updated(self) -> rx.event.EventSpec | None:
+        """Hook called after a conversation is created or updated.
+
+        Subclasses can override to refresh UI elements like sidebar lists.
+        May return an EventSpec (e.g., rx.call_script) to be yielded
+        by the calling background event.
+        """
+        return None
+
+    @rx.event
+    async def load_conversation(self, conversation_id: str) -> None:
+        """Load an existing conversation by ID into the chat state.
+
+        Loads messages from the database and sets up the state so the user
+        can continue the conversation.
+
+        Args:
+            conversation_id: The ID of the conversation to load.
+        """
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            conversation_service = ChatConversationService()
+            chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
+
+        self._chat_messages = [msg.to_front_dto() for msg in chat_messages]
+        self.current_response_message = None
+        self.is_streaming = False
+        self._conversation = None
+        await self._restore_conversation(conversation_id)
+
+    async def _restore_conversation(self, conversation_id: str) -> None:
+        """Hook for subclasses to restore a conversation object for continued chatting.
+
+        Called after load_conversation loads the messages. Subclasses should
+        override this to create the appropriate conversation object that can
+        accept new messages.
+
+        Args:
+            conversation_id: The ID of the loaded conversation.
+        """
+        raise NotImplementedError(
+            "Subclasses must implement _restore_conversation to restore conversation state"
+        )
 
     @rx.event
     def clear_chat(self) -> None:

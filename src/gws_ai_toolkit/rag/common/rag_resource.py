@@ -33,8 +33,8 @@ class RagResource:
     """
 
     resource_model: ResourceModel
-    _entity_tag_list: EntityTagList = None
-    _tmp_dir: str = None
+    _entity_tag_list: EntityTagList | None = None
+    _tmp_dir: str | None = None
 
     # Common constants
     SUPPORTED_FILE_EXTENSIONS = RAG_COMMON_SUPPORTED_EXTENSIONS
@@ -70,10 +70,7 @@ class RagResource:
                 raise Exception(f"Error decoding JSON: {e}") from e
 
         # Check file size
-        if resource.get_size() > self.MAX_FILE_SIZE_MB * 1024 * 1024:
-            return False
-
-        return True
+        return not resource.get_size() > self.MAX_FILE_SIZE_MB * 1024 * 1024
 
     def get_document_id(self) -> str | None:
         """Get the document id from the resource tags."""
@@ -129,7 +126,7 @@ class RagResource:
         # For rich text, we convert it to a markdown file
         file = self.get_raw_file()
         if file.extension == "json":
-            rich_text: RichText = None
+            rich_text: RichText | None = None
             dict_ = json.loads(file.read())
 
             if RichText.is_rich_text_json(dict_):

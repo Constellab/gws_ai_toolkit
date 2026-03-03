@@ -1,11 +1,12 @@
-from typing import cast
+from typing import Literal, cast
 
 import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig
 from gws_core import Logger
 
 from ..core.app_config_state import AppConfigState
-from .ai_expert_config import AiExpertChatMode
+
+AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks", "full_file"]
 
 
 class AiExpertConfigState(rx.State):

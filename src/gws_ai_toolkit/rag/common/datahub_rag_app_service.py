@@ -24,7 +24,7 @@ class DatahubRagAppService(BaseRagAppService):
     """
 
     # Use to cache the current user folders
-    _current_user_folders_ids: list[str] = None
+    _current_user_folders_ids: list[str] | None = None
 
     # Common constants
     ROOT_FOLDER_ID_METADATA_KEY = "root_folder_id"
@@ -34,7 +34,7 @@ class DatahubRagAppService(BaseRagAppService):
     FOLDER_LIMIT = 20
 
     def __init__(
-        self, rag_service: BaseRagService, dataset_id: str, additional_config: dict[str, Any] = None
+        self, rag_service: BaseRagService, dataset_id: str, additional_config: dict[str, Any] | None = None
     ) -> None:
         if additional_config is None:
             additional_config = {}

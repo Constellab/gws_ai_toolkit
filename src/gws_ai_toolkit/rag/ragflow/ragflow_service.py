@@ -55,11 +55,24 @@ class RagFlowService:
         client = self._get_client()
 
         try:
-            sdk_dataset = client.create_dataset(
-                name=dataset.name,
-                chunk_method=dataset.parse_method if hasattr(dataset, "parse_method") else "naive",
-                permission=dataset.permission if hasattr(dataset, "permission") else "me",
-            )
+            params: dict = {
+                "name": dataset.name,
+                "chunk_method": dataset.parse_method if hasattr(dataset, "parse_method") else "naive",
+                "permission": dataset.permission if hasattr(dataset, "permission") else "me",
+            }
+
+            # Build parser_config if chunk_token_num or delimiter are provided
+            parser_config_dict: dict = {}
+            if dataset.chunk_token_num is not None:
+                parser_config_dict["chunk_token_num"] = dataset.chunk_token_num
+            if dataset.delimiter is not None:
+                parser_config_dict["delimiter"] = dataset.delimiter
+
+            if parser_config_dict:
+                parser_config = DataSet.ParserConfig(client, parser_config_dict)
+                params["parser_config"] = parser_config
+
+            sdk_dataset = client.create_dataset(**params)
 
             return sdk_dataset
         except Exception as e:
@@ -91,9 +104,50 @@ class RagFlowService:
             raise RuntimeError(f"Error listing datasets: {str(e)}") from e
 
     def update_dataset(self, dataset_id: str, updates: RagFlowUpdateDatasetRequest) -> DataSet:
-        """Update a dataset (limited support in SDK)."""
-        # Note: SDK may have limited update support, this is a placeholder
-        raise NotImplementedError("Dataset updates not fully supported in SDK")
+        """Update a dataset using SDK.
+
+        Parameters
+        ----------
+        dataset_id : str
+            ID of the dataset to update
+        updates : RagFlowUpdateDatasetRequest
+            Fields to update (only non-None fields are sent)
+
+        Returns
+        -------
+        DataSet
+            Updated dataset object from SDK
+        """
+        dataset = self.get_dataset(dataset_id)
+
+        update_dict: dict = {}
+        if updates.name is not None:
+            update_dict["name"] = updates.name
+        if updates.avatar is not None:
+            update_dict["avatar"] = updates.avatar
+        if updates.description is not None:
+            update_dict["description"] = updates.description
+        if updates.language is not None:
+            update_dict["language"] = updates.language
+        if updates.embedding_model is not None:
+            update_dict["embedding_model"] = updates.embedding_model
+        if updates.permission is not None:
+            update_dict["permission"] = updates.permission
+        if updates.parse_method is not None:
+            update_dict["chunk_method"] = updates.parse_method
+
+        parser_config: dict = {}
+        if updates.chunk_token_num is not None:
+            parser_config["chunk_token_num"] = updates.chunk_token_num
+        if updates.delimiter is not None:
+            parser_config["delimiter"] = updates.delimiter
+        if parser_config:
+            update_dict["parser_config"] = parser_config
+
+        if not update_dict:
+            return dataset
+
+        return dataset.update(update_dict)
 
     def delete_datasets(self, dataset_ids: list[str]) -> None:
         """Delete multiple datasets using SDK."""
@@ -314,10 +368,16 @@ class RagFlowService:
                 params["dataset_ids"] = chat.knowledgebases
 
             if chat.llm is not None:
-                params["llm"] = chat.llm
+                if isinstance(chat.llm, dict):
+                    params["llm"] = Chat.LLM(client, chat.llm)
+                else:
+                    params["llm"] = chat.llm
 
             if chat.prompt is not None:
-                params["prompt"] = chat.prompt
+                if isinstance(chat.prompt, dict):
+                    params["prompt"] = Chat.Prompt(client, chat.prompt)
+                else:
+                    params["prompt"] = chat.prompt
 
             sdk_chat = client.create_chat(**params)
 
@@ -343,8 +403,39 @@ class RagFlowService:
             raise RuntimeError(f"Error listing chats: {str(e)}") from e
 
     def update_chat(self, chat_id: str, updates: RagFlowUpdateChatRequest) -> Chat:
-        """Update chat (limited support in SDK)."""
-        raise NotImplementedError("Chat updates not supported in current SDK version")
+        """Update a chat assistant using SDK.
+
+        Parameters
+        ----------
+        chat_id : str
+            ID of the chat to update
+        updates : RagFlowUpdateChatRequest
+            Fields to update (only non-None fields are sent)
+
+        Returns
+        -------
+        Chat
+            Updated chat object from SDK
+        """
+        chat = self.get_chat(chat_id)
+
+        update_dict: dict = {}
+        if updates.name is not None:
+            update_dict["name"] = updates.name
+        if updates.avatar is not None:
+            update_dict["avatar"] = updates.avatar
+        if updates.knowledgebases is not None:
+            update_dict["dataset_ids"] = updates.knowledgebases
+        if updates.llm is not None:
+            update_dict["llm"] = updates.llm
+        if updates.prompt is not None:
+            update_dict["prompt"] = updates.prompt
+
+        if not update_dict:
+            return chat
+
+        chat.update(update_dict)
+        return chat
 
     def delete_chats(self, chat_ids: list[str]) -> None:
         """Delete chats using SDK."""

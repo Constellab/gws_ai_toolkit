@@ -20,14 +20,14 @@ class BaseRagService(ABC):
     # Document Management
     @abstractmethod
     def upload_document_and_parse(
-        self, doc_path: str, dataset_id: str, options: Any, filename: str = None
+        self, doc_path: str, dataset_id: str, options: Any, filename: str | None = None
     ) -> RagDocument:
         """Upload a document to the knowledge base."""
         raise NotImplementedError
 
     @abstractmethod
     def update_document_and_parse(
-        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str = None
+        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str | None = None
     ) -> RagDocument:
         """Update an existing document in the knowledge base."""
         raise NotImplementedError

@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from gws_core import CredentialsDataOther
 from ragflow_sdk import Chunk, Document
@@ -25,7 +25,7 @@ class RagRagFlowService(BaseRagService):
 
     # Implement BaseRagService abstract methods
     def upload_document_and_parse(
-        self, doc_path: str, dataset_id: str, options: Any, filename: str = None
+        self, doc_path: str, dataset_id: str, options: Any, filename: str | None = None
     ) -> RagDocument:
         """Upload a document to the knowledge base."""
         sdk_doc = self._ragflow_service.upload_document(doc_path, dataset_id, filename)
@@ -33,7 +33,7 @@ class RagRagFlowService(BaseRagService):
         return self._convert_document_to_rag_document(sdk_doc)
 
     def update_document_and_parse(
-        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str = None
+        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str | None = None
     ) -> RagDocument:
         """Update an existing document in the knowledge base."""
         self.delete_document(dataset_id, document_id)
@@ -153,7 +153,7 @@ class RagRagFlowService(BaseRagService):
     def _convert_document_to_rag_document(self, document: Document) -> RagDocument:
         """Convert SDK Document directly to RagDocument."""
 
-        parsed_status: Literal["DONE", "PENDING", "RUNNING", "ERROR"] = None
+        parsed_status: Optional[Literal["DONE", "PENDING", "RUNNING", "ERROR"]] = None
         if document.run == "UNSTART":
             parsed_status = "PENDING"
         elif document.run == "DONE":

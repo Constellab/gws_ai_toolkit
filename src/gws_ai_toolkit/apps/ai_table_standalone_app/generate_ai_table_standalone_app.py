@@ -79,7 +79,6 @@ class GenerateAiTableStandaloneApp(Task):
 
         reflex_app.set_enterprise_app(True)
 
-        # TODO to remove
         # For the test, we disable the authentication
         reflex_app.set_requires_authentication(False)
 

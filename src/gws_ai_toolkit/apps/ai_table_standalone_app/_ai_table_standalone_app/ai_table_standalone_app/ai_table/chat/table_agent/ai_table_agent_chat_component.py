@@ -289,7 +289,7 @@ def ai_table_agent_chat_component():
             rx.heading("💬 Chat", size="3"),
             rx.spacer(),
             _save_button(),
-            header_clear_chat_button_component(chat_config.state),  # type: ignore
+            header_clear_chat_button_component(chat_config.state.clear_chat, text="New chat"),  # type: ignore
             align_items="center",
         ),
         chat_messages_list_component(chat_config),

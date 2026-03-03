@@ -37,7 +37,7 @@ class DifyService:
         self.api_key = api_key
 
     def send_document(
-        self, doc_path: str, dataset_id: str, options: DifySendDocumentOptions, filename: str = None
+        self, doc_path: str, dataset_id: str, options: DifySendDocumentOptions, filename: str | None = None
     ) -> DifySendDocumentResponse:
         route = f"{self.route}/datasets/{dataset_id}/document/create-by-file"
 
@@ -67,7 +67,7 @@ class DifyService:
         dataset_id: str,
         document_id: str,
         options: DifySendDocumentOptions,
-        filename: str = None,
+        filename: str | None = None,
     ) -> DifySendDocumentResponse:
         """Update a document in a dataset.
         Parameters
