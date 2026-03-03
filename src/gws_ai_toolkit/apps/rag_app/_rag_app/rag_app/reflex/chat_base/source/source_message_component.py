@@ -113,7 +113,7 @@ def sources_list_component(
         rx.flex(
             rx.foreach(sources, lambda source: _source_item(source, state, custom_menu_items)),
             wrap="wrap",
-            gap="2",
+            gap="10px",
             margin_top="10px",
         ),
         rx.box(),

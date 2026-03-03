@@ -32,7 +32,7 @@ from gws_ai_toolkit._app.ai_table import (
     ai_table_component,
 )
 from gws_ai_toolkit.models.chat.message.chat_message_source import RagChatSourceFront
-from gws_reflex_main import get_theme, register_gws_reflex_app
+from gws_reflex_main import get_theme, main_component, register_gws_reflex_app
 
 from .associated_resources_component import (
     associated_resources_dialog,
@@ -205,4 +205,6 @@ def ai_table():
         ),
         content="Back to main page",
     )
-    return rx.box(ai_table_component(header_left_component=back_button), height="100vh")
+    return main_component(
+        rx.box(ai_table_component(header_left_component=back_button), height="100vh")
+    )

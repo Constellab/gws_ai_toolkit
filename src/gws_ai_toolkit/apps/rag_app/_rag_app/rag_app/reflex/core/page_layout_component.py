@@ -2,6 +2,7 @@ import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 from gws_reflex_main import (
     left_sidebar_open_button,
+    main_component,
     page_sidebar_component,
     sidebar_header_component,
 )
@@ -37,10 +38,12 @@ def page_layout_component(
     :param sidebar_width: Width of the sidebar.
     :return: The page layout component.
     """
-    return page_sidebar_component(
-        sidebar_content=_sidebar_content(),
-        content=content,
-        sidebar_width=sidebar_width,
+    return main_component(
+        page_sidebar_component(
+            sidebar_content=_sidebar_content(),
+            content=content,
+            sidebar_width=sidebar_width,
+        )
     )
 
 
