@@ -62,7 +62,7 @@ class RagDifyService(BaseRagService):
 
     # Implement BaseRagService abstract methods
     def upload_document_and_parse(
-        self, doc_path: str, dataset_id: str, options: Any, filename: str = None
+        self, doc_path: str, dataset_id: str, options: Any, filename: str | None = None
     ) -> RagDocument:
         """Upload a document to the knowledge base."""
         if not isinstance(options, DifySendDocumentOptions):
@@ -71,7 +71,7 @@ class RagDifyService(BaseRagService):
         return self._convert_to_rag_document(response.document)
 
     def update_document_and_parse(
-        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str = None
+        self, doc_path: str, dataset_id: str, document_id: str, options: Any, filename: str | None = None
     ) -> RagDocument:
         """Update an existing document in the knowledge base."""
         if not isinstance(options, DifyUpdateDocumentOptions):
