@@ -143,7 +143,7 @@ def _show_test_result(test_result: AiTableStatsResults) -> rx.Component:
         ),
         rx.text(f"Test: {test_result.test_name}", font_size="0.8em", color="var(--gray-9)"),
         rx.cond(
-            (test_result.statistic is not None) & (test_result.p_value is not None),
+            (test_result.statistic != None) & (test_result.p_value != None),
             rx.hstack(
                 rx.text(
                     f"Statistic: {test_result.statistic_scientific}",
