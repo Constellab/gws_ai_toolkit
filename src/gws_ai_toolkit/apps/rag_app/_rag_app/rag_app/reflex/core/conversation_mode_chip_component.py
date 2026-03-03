@@ -10,7 +10,7 @@ def conversation_mode_chip_reactive(mode: rx.Var[str], size: ChipSize = "normal"
     """A reactive version of :func:`conversation_mode_chip` for use with ``rx.foreach``.
 
     Uses ``rx.match`` to dispatch on the reactive *mode* var.
-    Recognised values: ``"rag_chat"`` / ``"rag"`` (tertiary) and
+    Recognised values: ``"rag"`` (tertiary) and
     ``"ai_expert"`` (secondary).  Unknown values fall back to a plain badge.
 
     :param mode: Reactive var containing the conversation mode string.

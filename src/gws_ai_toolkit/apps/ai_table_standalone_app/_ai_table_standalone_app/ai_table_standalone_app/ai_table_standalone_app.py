@@ -2,9 +2,8 @@ import reflex as rx
 import reflex_enterprise as rxe
 from gws_ai_toolkit._app.ai_chat import (
     AppConfigState,
-    page_component,
 )
-from gws_reflex_main import get_theme, register_gws_reflex_app
+from gws_reflex_main import get_theme, main_component, register_gws_reflex_app
 
 from .ai_table.ai_table_component import ai_table_component
 from .ai_table.ai_table_data_state import AiTableDataState
@@ -18,6 +17,20 @@ AppConfigState.set_config_state_class_type(CustomAppConfigState)
 
 
 app = register_gws_reflex_app(rxe.App(theme=get_theme()))
+
+
+def page_component(content: rx.Component, disable_padding: bool = False) -> rx.Component:
+    """Wrap the page content with navigation and layout."""
+    return main_component(
+        rx.box(
+            content,
+            display="flex",
+            width="100%",
+            flex="1",
+            padding="1em" if not disable_padding else "0",
+            height="100vh",
+        )
+    )
 
 
 # Home page route (now at root)

@@ -29,11 +29,6 @@ from ...apps.rag_app._rag_app.rag_app.reflex.core.app_config_state import (
     AppConfigState,
     AppConfigStateConfig,
 )
-from ...apps.rag_app._rag_app.rag_app.reflex.core.nav_bar_component import (
-    NavBarItem,
-    nav_bar_component,
-)
-from ...apps.rag_app._rag_app.rag_app.reflex.core.page_component import page_component
 from ...apps.rag_app._rag_app.rag_app.reflex.core.page_layout_component import (
     HeaderSettingsState,
     ai_expert_browser_header_component,
@@ -71,9 +66,6 @@ __all__ = [
     # Component functions
     "AppConfigState",
     "AppConfigStateConfig",
-    "NavBarItem",
-    "nav_bar_component",
-    "page_component",
     # Page layout
     "page_layout_component",
     "HeaderSettingsState",
