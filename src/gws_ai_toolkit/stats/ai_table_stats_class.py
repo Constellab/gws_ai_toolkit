@@ -141,6 +141,11 @@ class AiTableStats(AiTableStatsBase):
         num_rows = len(self._dataframe)
         num_columns = len(self._dataframe.columns)
 
+        if num_columns < 2:
+            raise ValueError(
+                "Statistical analysis requires at least 2 quantitative columns to compare."
+            )
+
         # Step 1: Normality test
         all_normal = self._test_normality(self._dataframe, num_rows)
 

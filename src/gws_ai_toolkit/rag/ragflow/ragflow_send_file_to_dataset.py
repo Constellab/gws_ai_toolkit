@@ -83,15 +83,13 @@ class RagFlowSendFileToDataset(Task):
 
         for file_path in file_paths:
             try:
-                response = ragflow_service.upload_documents(
+                documents = ragflow_service.upload_documents(
                     [file_path], params.get_value("dataset_id")
                 )
-                if response.code != 0:
-                    raise Exception(f"RagFlow API error: {response.message}")
 
                 # Start parsing the document if upload was successful
-                if response.data:
-                    documents_ids = [x.id for x in response.data]
+                if documents:
+                    documents_ids = [x.id for x in documents]
                     ragflow_service.parse_documents(params.get_value("dataset_id"), documents_ids)
 
             except Exception as e:

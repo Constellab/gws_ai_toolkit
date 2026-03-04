@@ -239,9 +239,12 @@ Available columns: {columns_with_types}"""
 
         # Show validation results for main columns
         if missing_columns:
-            return rx.toast.error(
-                f"Columns not found in dataframe: '{', '.join(missing_columns)}'. Available columns: '{', '.join(available_columns)}'"
-            )
+            async with self:
+                self.ai_summary_response = (
+                    f"Columns not found in dataframe: '{', '.join(missing_columns)}'. "
+                    f"Available columns: '{', '.join(available_columns)}'"
+                )
+            return
 
         group_column: str | None = None
         if group_input:
@@ -255,15 +258,21 @@ Available columns: {columns_with_types}"""
 
             # Validate group column if provided
             if group_column not in available_columns:
-                return rx.toast.error(
-                    f"Group column '{group_column}' not found in dataframe. Available columns: '{', '.join(available_columns)}'"
-                )
+                async with self:
+                    self.ai_summary_response = (
+                        f"Group column '{group_column}' not found in dataframe. "
+                        f"Available columns: '{', '.join(available_columns)}'"
+                    )
+                return
 
             # If group column is provided, only allow 1 selected column
             if len(columns) > 1:
-                return rx.toast.error(
-                    f"When a group column is provided, only 1 column can be selected. You selected {len(columns)} columns: {', '.join(columns)}"
-                )
+                async with self:
+                    self.ai_summary_response = (
+                        f"When a group column is provided, only 1 column can be selected. "
+                        f"You selected {len(columns)} columns: {', '.join(columns)}"
+                    )
+                return
 
         # Check that all selected columns have the same number of non-null rows
         # row_counts = {}
@@ -277,6 +286,16 @@ Available columns: {columns_with_types}"""
         # if len(unique_row_counts) > 1:
         #     count_details = ', '.join([f"{col}: {count} rows" for col, count in row_counts.items()])
         #     return rx.toast.error(f"Selected columns have different numbers of non-null rows: {count_details}")
+
+        # Need at least 2 columns or a group column to compare
+        if len(columns) < 2 and not group_column:
+            async with self:
+                self.ai_summary_response = (
+                    "Statistical analysis requires at least 2 columns to compare, "
+                    "or 1 column with a group column. "
+                    "Please select more columns or specify a group column."
+                )
+            return
 
         # Filter and unfold the dataframe if group column is provided
         processed_df = self._get_filtered_and_unfolded_dataframe(

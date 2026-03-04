@@ -115,13 +115,17 @@ class ConversationChatStateBase(rx.State, mixin=True):
         async with self:
             self.is_streaming = True
 
-        async with self:
-            conversation = await self.get_or_create_conversation()
-            main_state = await self.get_state(ReflexMainState)
-
-            with await main_state.authenticate_user():
-                conversation.create_conversation(user_message[:60])
-                self._chat_messages = [msg.to_front_dto() for msg in conversation.chat_messages]
+        try:
+            async with self:
+                conversation = await self.get_or_create_conversation()
+                main_state = await self.get_state(ReflexMainState)
+                with await main_state.authenticate_user():
+                    conversation.create_conversation(user_message[:60])
+                    self._chat_messages = [msg.to_front_dto() for msg in conversation.chat_messages]
+        finally:
+            async with self:
+                self.is_streaming = False
+                self.current_response_message = None
 
         await sleep(0.1)  # Allow UI to update before starting streaming
 
