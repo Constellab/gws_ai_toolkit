@@ -116,12 +116,6 @@ class AiExpertState(ConversationChatStateBase, rx.State):
             history_state = await self.get_state(HistoryState)
             await history_state.load_conversations()
 
-            if self._conversation and self._conversation._conversation_id:
-                from ..rag_chat.chat_history_sidebar_state import ChatHistorySidebarState
-
-                sidebar_state = await self.get_state(ChatHistorySidebarState)
-                sidebar_state.active_conversation_id = self._conversation._conversation_id
-
         if self._conversation and self._conversation._conversation_id:
             conversation_id = self._conversation._conversation_id
             return rx.call_script(
@@ -201,11 +195,6 @@ class AiExpertState(ConversationChatStateBase, rx.State):
         except Exception:
             self.clear_chat()
             return rx.redirect("/ai-expert")
-
-        from ..rag_chat.chat_history_sidebar_state import ChatHistorySidebarState
-
-        sidebar_state = await self.get_state(ChatHistorySidebarState)
-        sidebar_state.active_conversation_id = conversation_id
 
     @rx.event
     async def open_current_resource_file(self):

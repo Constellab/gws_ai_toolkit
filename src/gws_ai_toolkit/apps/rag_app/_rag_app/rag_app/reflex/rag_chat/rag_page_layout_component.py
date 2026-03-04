@@ -8,12 +8,13 @@ from gws_reflex_main import (
 )
 from gws_reflex_main.reflex_main_state import ReflexMainState
 
-from ..rag_chat.chat_history_sidebar_component import chat_history_sidebar_list
-from ..rag_chat.chat_history_sidebar_state import ChatHistorySidebarState
-from .conversation_mode_chip_component import (
+from ..core.conversation_mode_chip_component import (
     conversation_mode_chip_reactive,
     conversation_mode_chip_switchable,
 )
+from ..history.chat_history_sidebar_component import chat_history_sidebar_list
+from ..history.history_state import SidebarHistoryListState
+from .rag_history_state import RagHistoryState
 
 
 class HeaderSettingsState(rx.State):
@@ -25,8 +26,9 @@ class HeaderSettingsState(rx.State):
         return await main_state.get_param("show_config_page", False)
 
 
-def page_layout_component(
+def rag_page_layout_component(
     content: rx.Component,
+    state: type[SidebarHistoryListState] | None = None,
     sidebar_width: str = "300px",
 ) -> rx.Component:
     """Standard page layout with sidebar for the RAG app.
@@ -35,12 +37,13 @@ def page_layout_component(
     app branding, New Chat button, and conversation history.
 
     :param content: The main page content component.
+    :param state: The SidebarHistoryListState subclass providing start_new_chat and select_conversation.
     :param sidebar_width: Width of the sidebar.
     :return: The page layout component.
     """
     return main_component(
         page_sidebar_component(
-            sidebar_content=_sidebar_content(),
+            sidebar_content=_sidebar_content(state) if state else rx.fragment(),
             content=content,
             sidebar_width=sidebar_width,
         )
@@ -207,6 +210,8 @@ def _sidebar_content() -> rx.Component:
     """Sidebar content for the RAG app pages.
 
     Contains app branding, New Chat button, and conversation history list.
+
+    :param state: The SidebarHistoryListState subclass providing start_new_chat and select_conversation.
     """
     return rx.vstack(
         # App branding
@@ -221,7 +226,7 @@ def _sidebar_content() -> rx.Component:
             rx.button(
                 rx.icon("plus", size=16),
                 "New Chat",
-                on_click=ChatHistorySidebarState.start_new_chat,
+                on_click=RagHistoryState.start_new_chat,
                 width="100%",
                 size="2",
             ),
@@ -230,7 +235,9 @@ def _sidebar_content() -> rx.Component:
         ),
         # Conversation history list (takes remaining space)
         rx.box(
-            chat_history_sidebar_list(mode_badge_builder=conversation_mode_chip_reactive),
+            chat_history_sidebar_list(
+                state=RagHistoryState, mode_badge_builder=conversation_mode_chip_reactive
+            ),
             flex="1",
             min_height="0",
             overflow_y="auto",

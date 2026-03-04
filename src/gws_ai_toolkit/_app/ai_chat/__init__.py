@@ -29,16 +29,12 @@ from ...apps.rag_app._rag_app.rag_app.reflex.core.app_config_state import (
     AppConfigState,
     AppConfigStateConfig,
 )
-from ...apps.rag_app._rag_app.rag_app.reflex.core.page_layout_component import (
-    HeaderSettingsState,
-    ai_expert_browser_header_component,
-    ai_expert_header_component,
-    page_layout_component,
-    rag_header_component,
+from ...apps.rag_app._rag_app.rag_app.reflex.history.chat_history_sidebar_component import (
+    chat_history_sidebar_list,
 )
-from ...apps.rag_app._rag_app.rag_app.reflex.history.history_state import HistoryState
-from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.chat_history_sidebar_state import (
-    ChatHistorySidebarState,
+from ...apps.rag_app._rag_app.rag_app.reflex.history.history_state import (
+    HistoryState,
+    SidebarHistoryListState,
 )
 from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.rag_empty_chat_component import (
     rag_empty_chat_component,
@@ -60,17 +56,12 @@ __all__ = [
     "get_default_source_menu_items",
     "custom_sources_list_component",
     "SourcesComponentBuilder",
+    "chat_history_sidebar_list",
     # Classes - State Management
     "HistoryState",
-    "ChatHistorySidebarState",
+    "SidebarHistoryListState",
     # Component functions
     "AppConfigState",
     "AppConfigStateConfig",
-    # Page layout
-    "page_layout_component",
-    "HeaderSettingsState",
-    "rag_header_component",
-    "ai_expert_header_component",
-    "ai_expert_browser_header_component",
     "rag_empty_chat_component",
 ]

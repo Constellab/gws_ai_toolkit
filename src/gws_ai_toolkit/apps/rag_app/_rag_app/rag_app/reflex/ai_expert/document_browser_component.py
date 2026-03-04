@@ -3,7 +3,7 @@
 import reflex as rx
 from gws_reflex_main import extension_badge_component
 
-from ..core.page_layout_component import ai_expert_browser_header_component
+from ..core.rag_page_layout_component import ai_expert_browser_header_component
 from .document_browser_state import DocumentBrowserInfo, DocumentBrowserState
 
 

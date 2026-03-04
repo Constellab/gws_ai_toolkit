@@ -6,6 +6,11 @@ from gws_core import Logger
 
 from ..core.app_config_state import AppConfigState
 
+import traceback
+print("=== IMPORT STACK TRACE for rag_chat_config_state.py ===")
+traceback.print_stack()
+print("=== END STACK TRACE ===")
+
 
 class RagChatConfigState(rx.State):
     """State management for RAG Chat configuration interface.

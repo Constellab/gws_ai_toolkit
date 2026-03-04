@@ -3,8 +3,7 @@ from collections.abc import Callable
 import reflex as rx
 from gws_ai_toolkit.models.chat.chat_conversation_dto import ChatConversationDTO
 
-from ..history.history_state import HistoryState
-from .chat_history_sidebar_state import ChatHistorySidebarState
+from .history_state import HistoryState, SidebarHistoryListState
 
 ModeBadgeBuilder = Callable[[rx.Var[str]], rx.Component]
 
@@ -19,10 +18,12 @@ def _default_mode_badge(mode: rx.Var[str]) -> rx.Component:
 
 
 def _make_sidebar_conversation_item(
+    state: type[SidebarHistoryListState],
     mode_badge_builder: ModeBadgeBuilder,
 ) -> Callable[[ChatConversationDTO], rx.Component]:
     """Create a sidebar conversation item renderer with a custom mode badge builder.
 
+    :param state: The SidebarHistoryListState subclass providing select_conversation.
     :param mode_badge_builder: Function that receives the mode var and returns a badge component.
     :return: A function suitable for use with ``rx.foreach``.
     """
@@ -58,23 +59,23 @@ def _make_sidebar_conversation_item(
             border_radius="8px",
             cursor="pointer",
             background_color=rx.cond(
-                ChatHistorySidebarState.active_conversation_id == conversation.id,
+                state.active_conversation_id == conversation.id,
                 rx.color("accent", 3),
                 "transparent",
             ),
             border_left=rx.cond(
-                ChatHistorySidebarState.active_conversation_id == conversation.id,
+                state.active_conversation_id == conversation.id,
                 f"3px solid {rx.color('accent', 8)}",
                 "3px solid transparent",
             ),
             _hover={
                 "background_color": rx.cond(
-                    ChatHistorySidebarState.active_conversation_id == conversation.id,
+                    state.active_conversation_id == conversation.id,
                     rx.color("accent", 4),
                     rx.color("gray", 3),
                 ),
             },
-            on_click=ChatHistorySidebarState.select_conversation(conversation.id, conversation.mode),
+            on_click=state.select_conversation(conversation.id, conversation.mode),
             width="100%",
         )
 
@@ -82,6 +83,7 @@ def _make_sidebar_conversation_item(
 
 
 def chat_history_sidebar_list(
+    state: type[SidebarHistoryListState],
     mode_badge_builder: ModeBadgeBuilder | None = None,
 ) -> rx.Component:
     """Conversation history list component for use inside a sidebar.
@@ -90,6 +92,7 @@ def chat_history_sidebar_list(
     Does not include app branding or "New Chat" button — those should be
     added by the parent sidebar layout.
 
+    :param state: The SidebarHistoryListState subclass providing select_conversation.
     :param mode_badge_builder: Optional callable that receives a conversation mode
         ``rx.Var[str]`` and returns a badge ``rx.Component``.  Falls back to a
         plain Radix badge when *None*.
@@ -105,7 +108,7 @@ def chat_history_sidebar_list(
                 rx.vstack(
                     rx.foreach(
                         HistoryState.conversations,
-                        _make_sidebar_conversation_item(badge_builder),
+                        _make_sidebar_conversation_item(state, badge_builder),
                     ),
                     spacing="1",
                     width="100%",

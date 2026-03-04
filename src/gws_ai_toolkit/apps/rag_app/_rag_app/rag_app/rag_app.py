@@ -12,11 +12,11 @@ from .reflex.ai_expert.document_browser_component import document_browser_compon
 from .reflex.ai_expert.document_browser_state import DocumentBrowserState
 from .reflex.chat_base.chat_config import ChatConfig
 from .reflex.core.app_config_state import AppConfigState
-from .reflex.core.page_layout_component import (
+from .reflex.core.rag_page_layout_component import (
     HeaderSettingsState,
     ai_expert_header_component,
-    page_layout_component,
     rag_header_component,
+    rag_page_layout_component,
 )
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
 from .reflex.rag_chat.config.rag_config_state import RagConfigState, RagConfigStateFromParams
@@ -42,7 +42,7 @@ _rag_chat_config = ChatConfig(
 @rx.page(route="/")
 def index():
     """Main chat page with sidebar (new conversation)."""
-    return page_layout_component(
+    return rag_page_layout_component(
         content=rag_chat_component(_rag_chat_config),
     )
 
@@ -50,7 +50,7 @@ def index():
 @rx.page(route="/chat/[conversation_id]", on_load=RagChatState.load_conversation_from_url)
 def chat_with_conversation():
     """Chat page for an existing conversation loaded from URL."""
-    return page_layout_component(
+    return rag_page_layout_component(
         content=rag_chat_component(_rag_chat_config),
     )
 
@@ -61,7 +61,7 @@ def rag_config():
     """Resource page for managing RAG resources and sync."""
     return rx.cond(
         HeaderSettingsState.show_settings_menu,
-        page_layout_component(content=rag_config_component()),
+        rag_page_layout_component(content=rag_config_component()),
         rx.text("RAG Config page is not available.", color="red"),
     )
 
@@ -72,7 +72,7 @@ def config_rag_page():
     """Configuration page for RAG Chat settings."""
     return rx.cond(
         HeaderSettingsState.show_settings_menu,
-        page_layout_component(content=rag_chat_config_component()),
+        rag_page_layout_component(content=rag_chat_config_component()),
         rx.text("Configuration page is not available.", color="red"),
     )
 
@@ -83,7 +83,7 @@ def config_ai_expert_page():
     """Configuration page for AI Expert settings."""
     return rx.cond(
         HeaderSettingsState.show_settings_menu,
-        page_layout_component(content=ai_expert_config_component()),
+        rag_page_layout_component(content=ai_expert_config_component()),
         rx.text("Configuration page is not available.", color="red"),
     )
 
@@ -95,7 +95,7 @@ def config_ai_expert_page():
 )
 def ai_expert_browser():
     """AI Expert page for selecting a document."""
-    return page_layout_component(
+    return rag_page_layout_component(
         content=document_browser_component(),
     )
 
@@ -112,7 +112,7 @@ def ai_expert_with_conversation():
         AiExpertState.open_current_resource_file,
     )
     config = ChatConfig(state=AiExpertState, header=_header)
-    return page_layout_component(
+    return rag_page_layout_component(
         content=ai_expert_component(config),
     )
 
@@ -129,6 +129,6 @@ def ai_expert():
         AiExpertState.open_current_resource_file,
     )
     config = ChatConfig(state=AiExpertState, header=_header)
-    return page_layout_component(
+    return rag_page_layout_component(
         content=ai_expert_component(config),
     )

@@ -38,6 +38,8 @@ from .core.agents.table.table_transform_agent_ai_events import TableTransformEve
 from .core.community_dto import BrickDocumentationDTO
 from .core.excel_file import ExcelFile
 from .core.utils import Utils
+from .models.chat.chat_conversation import ChatConversation
+from .models.chat.chat_conversation_service import ChatConversationService
 from .models.chat.chat_message_model import ChatMessageModel
 from .models.chat.message.chat_message_base import ChatMessageBase
 from .models.chat.message.chat_message_code import ChatMessageCode
@@ -60,10 +62,15 @@ from .models.chat.message.chat_message_text import (
     ChatMessageText,
 )
 from .models.chat.message.chat_message_types import (
+    ChatMessage,
     ChatMessageFront,
 )
 from .models.chat.message.chat_user_message import (
     ChatUserMessageText,
+)
+from .models.chat.conversation.base_chat_conversation import (
+    BaseChatConversation,
+    BaseChatConversationConfig,
 )
 from .rag.common.base_rag_app_service import BaseRagAppService
 from .rag.common.base_rag_service import BaseRagService
@@ -267,7 +274,13 @@ __all__ = [
     "TableTransformEvent",
     # Models
     "ChatMessageModel",
+    "ChatConversationService",
+    "ChatConversation",
+    # Models > chat conversation
+    "BaseChatConversation",
+    "BaseChatConversationConfig",
     # Models > chat messages
+    "ChatMessage",
     "ChatMessageBase",
     "ChatMessageText",
     "ChatMessageError",

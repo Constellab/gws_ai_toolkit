@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 import reflex as rx
 from gws_ai_toolkit.models.chat.chat_conversation_dto import ChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
@@ -7,30 +9,19 @@ from ..core.app_config_state import AppConfigState
 
 
 class HistoryState(rx.State):
-    """State management for conversation history browsing interface.
+    """Concrete state for conversation history data.
 
-    This state class manages the history page functionality, handling conversation
-    loading, selection, and display. It coordinates between the conversation list
-    sidebar and the read-only conversation display panel.
-
-    Key Features:
-        - Conversation list loading and management
-        - Conversation selection and highlighting
-        - Integration with read-only chat display
-        - Loading state management
-        - Error handling for history operations
+    Manages the conversation list and loading state.
+    This is a normal rx.State (not a mixin) so it can be accessed directly
+    via ``self.get_state(HistoryState)`` from any state.
 
     State Attributes:
-        conversations (List[ChatConversationDTO]): All available conversations
-        selected_conversation_id (Optional[str]): Currently selected conversation
-        is_loading (bool): Loading state for conversation fetching
+        conversations: All available conversations.
+        is_loading: Loading state for conversation fetching.
     """
 
     # List of conversations to display in the left panel
     conversations: list[ChatConversationDTO] = []
-
-    # Currently selected conversation
-    selected_conversation_id: str | None = None
 
     # Loading state
     is_loading: bool = False
@@ -74,3 +65,36 @@ class HistoryState(rx.State):
     def has_conversations(self) -> bool:
         """Check if there are any conversations."""
         return len(self.conversations) > 0
+
+
+class SidebarHistoryListState(rx.State, mixin=True):
+    """Abstract mixin state for sidebar navigation behavior.
+
+    Provides abstract methods for ``select_conversation``, ``start_new_chat``,
+    and ``get_active_conversation_id`` that concrete subclasses must implement.
+    Each app defines its own subclass with the appropriate navigation logic.
+    """
+
+    @rx.var
+    def active_conversation_id(self) -> str | None:
+        """Reactive variable to track the active conversation ID."""
+        return self.get_active_conversation_id()
+
+    @abstractmethod
+    def get_active_conversation_id(self) -> str | None:
+        """Return the active conversation ID derived from the current URL.
+
+        Concrete subclasses must implement this to extract the conversation ID
+        from the URL based on the app's routing conventions.
+        """
+
+    @abstractmethod
+    async def select_conversation(self, conversation_id: str, mode: str):
+        """Handle selecting a conversation from the sidebar.
+
+        Concrete subclasses must implement this to navigate to the
+        appropriate page for the given conversation.
+
+        :param conversation_id: The ID of the conversation to select.
+        :param mode: The conversation mode string.
+        """

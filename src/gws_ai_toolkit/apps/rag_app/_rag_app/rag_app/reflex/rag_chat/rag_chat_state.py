@@ -96,13 +96,6 @@ class RagChatState(ConversationChatStateBase, rx.State):
             history_state = await self.get_state(HistoryState)
             await history_state.load_conversations()
 
-            # Update the active conversation ID in the sidebar
-            if self._conversation and self._conversation._conversation_id:
-                from .chat_history_sidebar_state import ChatHistorySidebarState
-
-                sidebar_state = await self.get_state(ChatHistorySidebarState)
-                sidebar_state.active_conversation_id = self._conversation._conversation_id
-
         # Silently update the browser URL to include the conversation ID
         # (uses replaceState to avoid a full page reload)
         if self._conversation and self._conversation._conversation_id:
@@ -135,12 +128,6 @@ class RagChatState(ConversationChatStateBase, rx.State):
             # Conversation not found or access denied — redirect to new chat
             self.clear_chat()
             return rx.redirect("/")
-
-        # Sync the sidebar's active conversation ID
-        from .chat_history_sidebar_state import ChatHistorySidebarState
-
-        sidebar_state = await self.get_state(ChatHistorySidebarState)
-        sidebar_state.active_conversation_id = conversation_id
 
     @rx.event(background=True)
     async def on_mount(self) -> None:

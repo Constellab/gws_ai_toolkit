@@ -122,10 +122,11 @@ class ConversationChatStateBase(rx.State, mixin=True):
                 with await main_state.authenticate_user():
                     conversation.create_conversation(user_message[:60])
                     self._chat_messages = [msg.to_front_dto() for msg in conversation.chat_messages]
-        finally:
+        except Exception:
             async with self:
                 self.is_streaming = False
                 self.current_response_message = None
+            raise
 
         await sleep(0.1)  # Allow UI to update before starting streaming
 
