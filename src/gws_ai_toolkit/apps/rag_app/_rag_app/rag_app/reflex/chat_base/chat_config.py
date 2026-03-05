@@ -6,6 +6,10 @@ from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 from .conversation_chat_state_base import ConversationChatStateBase
 
+# A custom renderer entry: either a plain callable (uses ChatMessageBase as type),
+# or a (target_type, callable) tuple to cast the message with .to(target_type) first.
+ChatMessageRenderer = tuple[type[ChatMessageBase], Callable[..., rx.Component]]
+
 
 @dataclass
 class ChatConfig:
@@ -52,4 +56,4 @@ class ChatConfig:
 
     right_section: Callable[[ConversationChatStateBase], rx.Component] | None = None
 
-    custom_chat_messages: dict[str, Callable[[ChatMessageBase], rx.Component]] | None = None
+    custom_chat_messages: dict[str, ChatMessageRenderer] | None = None

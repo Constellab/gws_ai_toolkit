@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from gws_core import BaseModelDTO, Table
 
@@ -16,6 +16,7 @@ class ChatUserTable(BaseModelDTO):
     resource_model_id: str | None = None
 
 
+@ChatMessageBase.register_message_type
 class ChatUserMessageTable(ChatUserMessageBase):
     """Chat message containing text content from user.
 
@@ -35,7 +36,7 @@ class ChatUserMessageTable(ChatUserMessageBase):
         )
     """
 
-    type: Literal["user-table"] = "user-table"
+    message_type: str = "user-table"
 
     tables: dict[str, Table]
 
@@ -60,7 +61,7 @@ class ChatUserMessageTable(ChatUserMessageBase):
         return ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content=self.content,
             external_id=self.external_id,
             # TODO TO define
@@ -90,6 +91,6 @@ class ChatUserMessageTable(ChatUserMessageBase):
 
 
 class ChatUserMessageTableFront(ChatUserMessageBase):
-    type: Literal["user-table-front"] = "user-table-front"
+    message_type: str = "user-table-front"
 
     tables: list[ChatUserTable]

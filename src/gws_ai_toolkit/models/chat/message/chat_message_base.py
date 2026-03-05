@@ -17,7 +17,7 @@ class ChatMessageBase(BaseModelDTO):
 
     Attributes:
         role (Literal['user', 'assistant']): Message sender - either user or AI assistant
-        type (Literal["text", "image", "code"]): Content type for proper rendering
+        message_type (str): Content type for proper rendering
         content (Any): Message content - varies by message type
         id (str): Unique identifier for the message
         external_id (Optional[str]): Optional external system ID (from openai, dify, ragflow...) for the message
@@ -33,7 +33,7 @@ class ChatMessageBase(BaseModelDTO):
     Example:
         message = ChatMessage(
             role="assistant",
-            type="text",
+            message_type="text",
             content="Hello, how can I help?",
             id="msg_123",
             sources=[source1, source2]
@@ -41,6 +41,7 @@ class ChatMessageBase(BaseModelDTO):
     """
 
     id: str | None = None
+    message_type: str
     role: Literal["user", "assistant"] = "assistant"
     external_id: str | None = None
     user: UserDTO | None = None
@@ -56,16 +57,17 @@ class ChatMessageBase(BaseModelDTO):
         """
         return self.role == "user"
 
-    @classmethod
-    def register_type(cls, message_type: str, message_class: type["ChatMessageBase"]) -> None:
-        """Register a message class for a specific message type.
+    @staticmethod
+    def register_message_type(message_class: type["ChatMessageBase"]) -> type["ChatMessageBase"]:
+        """Class decorator to auto-register a ChatMessageBase subclass.
 
-        :param message_type: The type identifier (e.g., 'text', 'image')
-        :type message_type: str
-        :param message_class: The class to use for this message type
-        :type message_class: type[ChatMessageBase]
+        Reads the default value of the ``message_type`` field and registers the class
+        in the type registry so it can be resolved by
+        ``from_chat_message_model``.
         """
-        cls._type_registry[message_type] = message_class
+        message_type = message_class.model_fields["message_type"].default
+        ChatMessageBase._type_registry[message_type] = message_class
+        return message_class
 
     @classmethod
     def from_chat_message_model(cls, chat_message: "ChatMessageModel") -> "ChatMessageBase":
@@ -84,7 +86,10 @@ class ChatMessageBase(BaseModelDTO):
         message_class = cls._type_registry.get(chat_message.type)
 
         if not message_class:
-            raise ValueError(f"Unsupported chat message type: {chat_message.type}")
+            raise ValueError(
+                f"Unsupported chat message type: '{chat_message.type}. "
+                f"Did you forget to add @ChatMessageBase.register_message_type on the class?"
+            )
 
         # create the object with basic fields
         message = message_class(

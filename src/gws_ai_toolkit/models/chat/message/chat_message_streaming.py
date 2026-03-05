@@ -1,8 +1,10 @@
+
 from typing import Literal
 
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 
+@ChatMessageBase.register_message_type
 class ChatMessageStreaming(ChatMessageBase):
     """Streaming chat message response from assistant.
 
@@ -24,6 +26,6 @@ class ChatMessageStreaming(ChatMessageBase):
         )
     """
 
-    type: Literal["streaming-text"] = "streaming-text"
+    message_type: str = "streaming-text"
     role: Literal["assistant"] = "assistant"
     content: str

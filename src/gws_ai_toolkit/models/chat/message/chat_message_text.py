@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
+@ChatMessageBase.register_message_type
 class ChatMessageText(ChatMessageBase):
     """Chat message containing text content from assistant.
 
@@ -26,7 +27,7 @@ class ChatMessageText(ChatMessageBase):
         )
     """
 
-    type: Literal["text"] = "text"
+    message_type: str = "text"
     role: Literal["assistant"] = "assistant"
     content: str = ""
 
@@ -51,7 +52,7 @@ class ChatMessageText(ChatMessageBase):
         return ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content=self.content,
             external_id=self.external_id,
         )

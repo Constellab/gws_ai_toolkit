@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, cast
+from typing import Any
 
 import reflex as rx
 from anyio import sleep
@@ -14,6 +14,7 @@ from gws_ai_toolkit.models.chat.message.chat_user_message import (
     ChatUserMessageText,
 )
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_core.core.model.model_dto import BaseModelDTO
 from gws_reflex_main import ReflexMainState
 
 
@@ -234,9 +235,9 @@ class ConversationChatStateBase(rx.State, mixin=True):
         )
 
     @rx.var
-    def chat_messages(self) -> list[ChatMessageFront]:
+    def chat_messages(self) -> list[ChatMessageBase]:
         """Get all chat messages as DTOs for rendering."""
-        return cast(list[ChatMessageFront], self._chat_messages)
+        return self._chat_messages
 
     @rx.event
     async def on_mount(self) -> None:

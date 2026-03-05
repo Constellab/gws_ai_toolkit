@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
+@ChatMessageBase.register_message_type
 class ChatMessageCode(ChatMessageBase):
     """Chat message containing code content.
 
@@ -26,7 +27,7 @@ class ChatMessageCode(ChatMessageBase):
         )
     """
 
-    type: Literal["code"] = "code"
+    message_type: str = "code"
     role: Literal["assistant"] = "assistant"
     code: str = ""
 
@@ -49,7 +50,7 @@ class ChatMessageCode(ChatMessageBase):
         return ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content="",
             external_id=self.external_id,
             data={"code": self.code},

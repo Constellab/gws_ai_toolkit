@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
+@ChatMessageBase.register_message_type
 class ChatMessageImage(ChatMessageBase):
     """Chat message containing image content.
 
@@ -28,7 +29,7 @@ class ChatMessageImage(ChatMessageBase):
         )
     """
 
-    type: Literal["image"] = "image"
+    message_type: str = "image"
     role: Literal["assistant"] = "assistant"
 
     image: Image.Image | None = None
@@ -86,7 +87,7 @@ class ChatMessageImage(ChatMessageBase):
         message = ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content="",
             external_id=self.external_id,
         )

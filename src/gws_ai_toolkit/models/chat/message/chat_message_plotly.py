@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
+@ChatMessageBase.register_message_type
 class ChatMessagePlotly(ChatMessageBase):
     """Chat message containing Plotly figure content.
 
@@ -30,7 +31,7 @@ class ChatMessagePlotly(ChatMessageBase):
         )
     """
 
-    type: Literal["plotly"] = "plotly"
+    message_type: str = "plotly"
     role: Literal["assistant"] = "assistant"
     plot: PlotlyResource | None = None
 
@@ -87,7 +88,7 @@ class ChatMessagePlotly(ChatMessageBase):
         message = ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content="",
             external_id=self.external_id,
         )
@@ -102,14 +103,14 @@ class ChatMessagePlotly(ChatMessageBase):
         return ChatMessagePlotlyFront(
             id=self.id,
             role=self.role,
-            type=self.type,
+            message_type=self.message_type,
             figure=self.plot.figure if self.plot else None,
             plot_name=self.plot.name if self.plot else None,
         )
 
 
 class ChatMessagePlotlyFront(ChatMessageBase):
-    type: Literal["plotly"] = "plotly"
+    message_type: str = "plotly"
     role: Literal["assistant"] = "assistant"
     figure: go.Figure | None = None
     plot_name: str | None = None

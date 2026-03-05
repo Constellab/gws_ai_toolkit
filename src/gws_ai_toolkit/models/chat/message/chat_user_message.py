@@ -36,6 +36,7 @@ class ChatUserMessageBase(ChatMessageBase):
         self.content = chat_message.message or ""
 
 
+@ChatMessageBase.register_message_type
 class ChatUserMessageText(ChatUserMessageBase):
     """Chat message containing text content from user.
 
@@ -55,7 +56,7 @@ class ChatUserMessageText(ChatUserMessageBase):
         )
     """
 
-    type: Literal["user-text"] = "user-text"
+    message_type: str = "user-text"
 
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.
@@ -70,7 +71,7 @@ class ChatUserMessageText(ChatUserMessageBase):
         return ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content=self.content,
             external_id=self.external_id,
         )

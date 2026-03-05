@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
+@ChatMessageBase.register_message_type
 class ChatMessageTable(ChatMessageBase):
     """Chat message containing DataFrame content.
 
@@ -30,7 +31,7 @@ class ChatMessageTable(ChatMessageBase):
         )
     """
 
-    type: Literal["table"] = "table"
+    message_type: str = "table"
     role: Literal["assistant"] = "assistant"
     content: str | None = None
     table: Table | None = None
@@ -64,7 +65,7 @@ class ChatMessageTable(ChatMessageBase):
         message = ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content=self.content,
             external_id=self.external_id,
             data={"table_name": self.table.name} if self.table else {},
@@ -109,7 +110,7 @@ class ChatMessageTable(ChatMessageBase):
 
 
 class ChatMessageTableFront(ChatMessageBase):
-    type: Literal["table"] = "table"
+    message_type: str = "table"
     role: Literal["assistant"] = "assistant"
     content: str
     table_id: str

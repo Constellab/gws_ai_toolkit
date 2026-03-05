@@ -1,8 +1,11 @@
 import reflex as rx
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_code import ChatMessageCode
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_hint import ChatMessageHint
 from gws_ai_toolkit.models.chat.message.chat_message_image import ChatMessageImage
+from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotlyFront
+from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSourceFront
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
@@ -13,7 +16,7 @@ from gws_ai_toolkit.models.chat.message.chat_user_message import (
 from gws_reflex_base import plotly_fullscreen_dialog
 from gws_reflex_main import user_profile_picture
 
-from .chat_config import ChatConfig
+from .chat_config import ChatConfig, ChatMessageRenderer
 from .conversation_chat_state_base import ConversationChatStateBase
 from .plotly_message_component import plotly_message_component
 from .source.source_detail_component import source_detail_dialog
@@ -123,7 +126,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     )
 
 
-def _message_component(message: ChatMessage, config: ChatConfig) -> rx.Component:  # type: ignore
+def _message_component(message: ChatMessageBase, config: ChatConfig) -> rx.Component:
     """Content renderer that handles different message types.
 
     Routes message content to appropriate rendering functions based on
@@ -137,35 +140,34 @@ def _message_component(message: ChatMessage, config: ChatConfig) -> rx.Component
     """
 
     # Default renderers for each type
-    default_renderers = {
-        "text": _text_content,
-        "streaming-text": _text_content,
-        "user-text": user_message_base,
-        "image": _image_content,
-        "code": _code_content,
-        "plotly": plotly_message_component,
-        "error": _error_content,
-        "hint": _hint_content,
-        "source": lambda msg: source_message_component(msg, config.state),
+    default_renderers: dict[str, ChatMessageRenderer] = {
+        "text": (ChatMessageText, _text_content),
+        "streaming-text": (ChatMessageStreaming, _text_content),
+        "user-text": (ChatUserMessageText, user_message_base),
+        "image": (ChatMessageImage, _image_content),
+        "code": (ChatMessageCode, _code_content),
+        "plotly": (ChatMessagePlotlyFront, plotly_message_component),
+        "error": (ChatMessageError, _error_content),
+        "hint": (ChatMessageHint, _hint_content),
+        "source": (ChatMessageSourceFront, lambda msg: source_message_component(msg, config.state)),
     }
 
-    # Build match cases: custom renderers take priority, then defaults
-    renderers = {}
-    if config.custom_chat_messages:
-        renderers.update(config.custom_chat_messages)
+    # Merge custom renderers (priority) with defaults
+    all_renderers: dict[str, ChatMessageRenderer] = {
+        **default_renderers,
+        **(config.custom_chat_messages or {}),
+    }
 
-    # Add default renderers for types not in custom
-    for msg_type, default_renderer in default_renderers.items():
-        if msg_type not in renderers:
-            renderers[msg_type] = default_renderer
-
-    # Build the match cases
-    match_cases = [(msg_type, renderer(message)) for msg_type, renderer in renderers.items()]
+    # Build the match cases, casting message to target type for each renderer
+    match_cases = [
+        (msg_type, renderer(message.to(target_type)))
+        for msg_type, (target_type, renderer) in all_renderers.items()
+    ]
 
     return rx.match(  # type: ignore
-        message.type,  # type: ignore
-        *match_cases,  # type: ignore
-        rx.text(f"Unsupported message type {message.type}."),  # type: ignore
+        message.message_type,
+        *match_cases,
+        rx.text(f"Unsupported message type {message.message_type}."),
     )
 
 
@@ -229,14 +231,14 @@ def user_message_base(message: ChatUserMessageBase) -> rx.Component:
     )
 
 
-def _image_content(message: ChatMessageImage) -> rx.Component:
+def _image_content(message: ChatMessageBase) -> rx.Component:
     """Renders image content with optional text description.
 
     Args:
         message (ChatMessageImage) -> rx.Component:
     """
     return rx.image(
-        src=message.image,  # Use image_path instead of data
+        src=message.image,
         max_width="100%",
         height="auto",
     )

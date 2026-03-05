@@ -1,10 +1,9 @@
 from collections.abc import Callable
 
 import reflex as rx
-from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 from ..chat_base.chat_component import chat_component
-from ..chat_base.chat_config import ChatConfig
+from ..chat_base.chat_config import ChatConfig, ChatMessageRenderer
 from ..chat_base.conversation_chat_state_base import ConversationChatStateBase
 from .rag_chat_config_state import RagChatConfigState
 from .rag_chat_state import RagChatState
@@ -15,7 +14,7 @@ from .rag_page_layout_component import rag_header_component
 def rag_chat_config_factory(
     left_section: Callable[[ConversationChatStateBase], rx.Component] | None = None,
     right_section: Callable[[ConversationChatStateBase], rx.Component] | None = None,
-    custom_chat_messages: dict[str, Callable[[ChatMessageBase], rx.Component]] | None = None,
+    custom_chat_messages: dict[str, ChatMessageRenderer] | None = None,
 ) -> ChatConfig:
     """Factory function to create a ChatConfig for the RAG Chat page.
 

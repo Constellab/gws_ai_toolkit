@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 
 
+@ChatMessageBase.register_message_type
 class ChatMessageError(ChatMessageBase):
     """Chat message representing an error.
 
@@ -26,7 +27,7 @@ class ChatMessageError(ChatMessageBase):
         )
     """
 
-    type: Literal["error"] = "error"
+    message_type: str = "error"
     role: Literal["assistant"] = "assistant"
     error: str = ""
 
@@ -49,7 +50,7 @@ class ChatMessageError(ChatMessageBase):
         return ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content=self.error,
             external_id=self.external_id,
         )

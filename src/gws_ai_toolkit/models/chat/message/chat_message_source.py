@@ -19,6 +19,7 @@ class RagChatSourceFront(BaseModelDTO):
     document_extension: str = ""
 
 
+@ChatMessageBase.register_message_type
 class ChatMessageSource(ChatMessageBase):
     """Chat message containing text content from assistant.
 
@@ -38,7 +39,7 @@ class ChatMessageSource(ChatMessageBase):
         )
     """
 
-    type: Literal["source"] = "source"
+    message_type: str = "source"
     role: Literal["assistant"] = "assistant"
     content: str = ""
     sources: list[RagChatSource] | None = None
@@ -183,7 +184,7 @@ class ChatMessageSource(ChatMessageBase):
         return ChatMessageModel.build_message(
             conversation=conversation,
             role=self.role,
-            type_=self.type,
+            type_=self.message_type,
             content=self.content,
             external_id=self.external_id,
         )
@@ -201,7 +202,7 @@ class ChatMessageSourceFront(ChatMessageBase):
         content: Markdown content with <span class='source-placeholder'> elements
     """
 
-    type: Literal["source"] = "source"
+    message_type: str = "source"
     role: Literal["assistant"] = "assistant"
     content: str = ""
     sources: list[RagChatSourceFront]

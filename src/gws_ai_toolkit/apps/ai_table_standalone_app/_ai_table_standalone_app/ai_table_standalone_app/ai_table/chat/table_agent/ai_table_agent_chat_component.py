@@ -201,9 +201,9 @@ def ai_table_agent_chat_component():
     """
     chat_config = ChatConfig(
         state=AiTableAgentChatState,
-        custom_chat_messages={  # type: ignore
-            "table": _dataframe_message_content,
-            "user-table-front": _user_dataframe_text_message_content,
+        custom_chat_messages={
+            "table": (ChatMessageTableFront, _dataframe_message_content),
+            "user-table-front": (ChatUserMessageTableFront, _user_dataframe_text_message_content),
         },
     )
 

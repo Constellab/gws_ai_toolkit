@@ -30,8 +30,10 @@ from gws_ai_toolkit._app.ai_table import (
     ai_table_agent_chat_config_component,
     ai_table_component,
 )
-from gws_ai_toolkit.models.chat.conversation import ai_expert_chat_config
-from gws_ai_toolkit.models.chat.message.chat_message_source import RagChatSourceFront
+from gws_ai_toolkit.models.chat.message.chat_message_source import (
+    ChatMessageSourceFront,
+    RagChatSourceFront,
+)
 from gws_reflex_main import get_theme, main_component, register_gws_reflex_app
 
 from .associated_resources_component import (
@@ -65,8 +67,11 @@ sources_component_builder = custom_sources_list_component(custom_source_menu_ite
 
 _rag_chat_config = rag_chat_config_factory(
     custom_chat_messages={
-        "source": lambda message: source_message_component(
-            message, RagChatState, sources_component_builder
+        "source": (
+            ChatMessageSourceFront,
+            lambda message: source_message_component(
+                message, RagChatState, sources_component_builder
+            ),
         ),
     },
 )
