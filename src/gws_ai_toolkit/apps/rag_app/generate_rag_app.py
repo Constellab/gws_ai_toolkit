@@ -189,12 +189,10 @@ class GenerateDatahubRagFlowApp(Task):
             "resource_tag_key": StrParam(
                 human_name="Resource tag key",
                 short_description="Tag key for resources to sync",
-                optional=True,
             ),
             "resource_tag_value": StrParam(
                 human_name="Resource tag value",
                 short_description="Tag value for resources to sync",
-                optional=True,
             ),
             "show_config_page": BoolParam(
                 human_name="Show config page",

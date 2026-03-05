@@ -8,7 +8,6 @@ from .custom_states import CustomAppConfigState
 from .reflex.ai_expert.ai_expert_config_component import ai_expert_config_component
 from .reflex.ai_expert.ai_expert_config_state import AiExpertConfigState
 from .reflex.ai_expert.ai_expert_page_component import (
-    ai_expert_chat_config_factory,
     ai_expert_page_content,
 )
 from .reflex.ai_expert.ai_expert_state import AiExpertState
