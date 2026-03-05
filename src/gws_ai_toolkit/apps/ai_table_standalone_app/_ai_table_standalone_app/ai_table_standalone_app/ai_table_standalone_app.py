@@ -29,7 +29,7 @@ def page_component(content: rx.Component, disable_padding: bool = False) -> rx.C
             flex="1",
             padding="1em" if not disable_padding else "0",
             height="100vh",
-        )
+        ),
     )
 
 

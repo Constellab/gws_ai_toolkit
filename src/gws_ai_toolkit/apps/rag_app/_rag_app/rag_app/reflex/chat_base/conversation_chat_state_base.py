@@ -36,11 +36,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
         is retrieved from the conversation object via computed properties.
 
     UI Configuration:
-        title (str): Chat interface title
-        subtitle (Optional[str]): Optional subtitle text
         placeholder_text (str): Input field placeholder
-        empty_state_message (str): Message shown when chat is empty
-        show_chat_code_block (bool): Whether to display code blocks
 
     Abstract Methods:
         get_conversation(): Must be implemented to return the BaseChatConversation instance
@@ -55,10 +51,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
     _chat_messages: list[ChatMessageBase] = []
 
     # UI Configuration
-    title: str = "Chat"
-    subtitle: str | None = None
     placeholder_text: str = "Ask something..."
-    empty_state_message: str = "Start talking to the AI"
 
     _conversation: BaseChatConversation | None = None
 
@@ -112,9 +105,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
             # Prevent multiple submissions while streaming
             return
 
-        async with self:
-            self.is_streaming = True
-
         try:
             async with self:
                 conversation = await self.get_or_create_conversation()
@@ -122,9 +112,9 @@ class ConversationChatStateBase(rx.State, mixin=True):
                 with await main_state.authenticate_user():
                     conversation.create_conversation(user_message[:60])
                     self._chat_messages = [msg.to_front_dto() for msg in conversation.chat_messages]
+                self.is_streaming = True
         except Exception:
             async with self:
-                self.is_streaming = False
                 self.current_response_message = None
             raise
 

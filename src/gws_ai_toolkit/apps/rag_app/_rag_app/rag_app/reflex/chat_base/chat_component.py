@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import reflex as rx
 
 from .chat_config import ChatConfig
@@ -61,41 +63,10 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
     )
 
 
-def _empty_chat(config: ChatConfig) -> rx.Component:
-    """Chat layout for empty state - centered input with welcome message.
-
-    This layout is used when the chat has no messages. It centers the input
-    field vertically and displays a welcome message to guide the user.
-
-    Args:
-        config (ChatConfig): Chat configuration with state and components
-
-    Returns:
-        rx.Component: Centered layout with empty state message and input
-    """
-    return rx.vstack(
-        rx.box(flex="1"),  # Spacer to push input to center
-        rx.heading(
-            config.state.empty_state_message,
-            size="6",
-            margin_bottom="1em",
-            text_align="center",
-            width="100%",
-        ),
-        rx.box(
-            chat_input_component(config),
-            width="100%",
-            max_width="800px",
-            margin="auto",
-            class_name="chat",
-        ),
-        rx.box(flex="2"),  # Spacer to center input
-        width="100%",
-        flex="1",
-    )
-
-
-def chat_component(config: ChatConfig) -> rx.Component:
+def chat_component(
+    config: ChatConfig,
+    empty_chat_component: Callable[[ChatConfig], rx.Component] | None = None,
+) -> rx.Component:
     """Universal chat interface component providing complete chat functionality.
 
     This is the core chat component that provides a full-featured chat interface
@@ -118,6 +89,10 @@ def chat_component(config: ChatConfig) -> rx.Component:
 
     Args:
         config (ChatConfig): Configuration object
+        empty_chat_component (Callable[[ChatConfig], rx.Component] | None): Optional custom
+            component to display when the chat is empty (no messages). Takes the ChatConfig
+            as parameter and returns a Reflex component. When not provided, the default
+            empty chat layout is used.
 
     Returns:
         rx.Component: Complete chat interface with messages, input, and
@@ -143,24 +118,23 @@ def chat_component(config: ChatConfig) -> rx.Component:
             )
         )
 
-    empty_chat_view = (
-        config.empty_chat_component(config) if config.empty_chat_component else _empty_chat(config)
-    )
-
     center_children: list[rx.Component] = []
     if config.header:
         center_children.append(rx.box(config.header, padding_bottom="1em"))
 
-    center_children.append(
-        rx.cond(
-            # When there are messages, show normal layout with fixed input
-            config.state.show_empty_chat,
-            # When no messages, center the input vertically
-            empty_chat_view,
-            # Layout with messages - fixed input at bottom
-            _chat_with_messages(config),
-        ),
-    )
+    if empty_chat_component:
+        center_children.append(
+            rx.cond(
+                # When there are messages, show normal layout with fixed input
+                config.state.show_empty_chat,
+                # When no messages, center the input vertically
+                empty_chat_component(config),
+                # Layout with messages - fixed input at bottom
+                _chat_with_messages(config),
+            ),
+        )
+    else:
+        center_children.append(_chat_with_messages(config))
 
     children.append(
         rx.box(

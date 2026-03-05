@@ -45,8 +45,7 @@ class AiExpertState(ConversationChatStateBase, rx.State):
     """
 
     # UI configuration
-    title: str = "AI Expert"
-    empty_state_message: str = "Start asking questions about this document"
+    subtitle: str | None = None
 
     _rag_resource: RagResource | None = None
 
@@ -99,7 +98,9 @@ class AiExpertState(ConversationChatStateBase, rx.State):
 
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
-            db_conversation: ChatConversation = ChatConversation.get_by_id_and_check(conversation_id)
+            db_conversation: ChatConversation = ChatConversation.get_by_id_and_check(
+                conversation_id
+            )
             conversation._conversation_id = conversation_id
             conversation._external_conversation_id = db_conversation.external_conversation_id
 

@@ -38,6 +38,9 @@ class RagChatState(ConversationChatStateBase, rx.State):
     with proper source attribution.
     """
 
+    # UI configuration
+    subtitle: str | None = None
+
     async def _create_conversation(self) -> BaseChatConversation:
         """Create a new RagChatConversation instance.
 
@@ -80,13 +83,17 @@ class RagChatState(ConversationChatStateBase, rx.State):
         # Restore the conversation's internal state from the database
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
-            db_conversation: ChatConversation = ChatConversation.get_by_id_and_check(conversation_id)
+            db_conversation: ChatConversation = ChatConversation.get_by_id_and_check(
+                conversation_id
+            )
             conversation._conversation_id = conversation_id
             conversation._external_conversation_id = db_conversation.external_conversation_id
 
             # Load existing messages into the conversation object
             conversation_service = ChatConversationService()
-            conversation.chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
+            conversation.chat_messages = conversation_service.get_messages_of_conversation(
+                conversation_id
+            )
 
         self._conversation = conversation
 

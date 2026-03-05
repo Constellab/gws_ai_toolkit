@@ -54,9 +54,7 @@ class AiTableAgentChatState(ConversationChatStateBase, rx.State):
     """
 
     # UI configuration
-    title: str = "AI Table Operations"
     placeholder_text: str = "Ask me to visualize or transform your data..."
-    empty_state_message: str = "Start with data visualization or transformation requests"
 
     _selected_tables: list[ExcelSheetDTO]
     _enable_chat_save: bool = False

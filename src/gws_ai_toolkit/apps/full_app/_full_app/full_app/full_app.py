@@ -2,28 +2,27 @@ import reflex as rx
 import reflex_enterprise as rxe
 from gws_ai_toolkit._app.ai_chat import (
     AppConfigState,
-    ChatConfig,
     ConversationChatStateBase,
     custom_sources_list_component,
     get_default_source_menu_items,
-    rag_empty_chat_component,
     source_message_component,
 )
 from gws_ai_toolkit._app.ai_rag import (
+    AiExpertConfigState,
     AiExpertState,
     DocumentBrowserState,
-    HeaderSettingsState,
+    RagChatConfigState,
     RagChatState,
     RagConfigState,
     RagConfigStateFromParams,
-    ai_expert_component,
+    ai_expert_chat_config_factory,
     ai_expert_config_component,
-    ai_expert_header_component,
+    ai_expert_page_content,
     document_browser_component,
     rag_chat_component,
     rag_chat_config_component,
+    rag_chat_config_factory,
     rag_config_component,
-    rag_header_component,
     rag_page_layout_component,
 )
 from gws_ai_toolkit._app.ai_table import (
@@ -31,6 +30,7 @@ from gws_ai_toolkit._app.ai_table import (
     ai_table_agent_chat_config_component,
     ai_table_component,
 )
+from gws_ai_toolkit.models.chat.conversation import ai_expert_chat_config
 from gws_ai_toolkit.models.chat.message.chat_message_source import RagChatSourceFront
 from gws_reflex_main import get_theme, main_component, register_gws_reflex_app
 
@@ -63,10 +63,7 @@ def custom_source_menu_items(source: RagChatSourceFront, state: ConversationChat
 
 sources_component_builder = custom_sources_list_component(custom_source_menu_items)
 
-_rag_chat_config = ChatConfig(
-    state=RagChatState,
-    empty_chat_component=rag_empty_chat_component,
-    header=rag_header_component(RagChatState.subtitle),
+_rag_chat_config = rag_chat_config_factory(
     custom_chat_messages={
         "source": lambda message: source_message_component(
             message, RagChatState, sources_component_builder
@@ -96,7 +93,7 @@ def chat_with_conversation():
 def rag_config():
     """Resource page for managing RAG resources and sync."""
     return rx.cond(
-        HeaderSettingsState.show_settings_menu,
+        RagChatConfigState.show_settings_menu,
         rag_page_layout_component(content=rag_config_component()),
         rx.text("RAG Config page is not available.", color="red"),
     )
@@ -107,7 +104,7 @@ def rag_config():
 def config_rag_page():
     """Configuration page for RAG Chat settings."""
     return rx.cond(
-        HeaderSettingsState.show_settings_menu,
+        RagChatConfigState.show_settings_menu,
         rag_page_layout_component(content=rag_chat_config_component()),
         rx.text("Configuration page is not available.", color="red"),
     )
@@ -118,7 +115,7 @@ def config_rag_page():
 def config_ai_expert_page():
     """Configuration page for AI Expert settings."""
     return rx.cond(
-        HeaderSettingsState.show_settings_menu,
+        AiExpertConfigState.show_settings_menu,
         rag_page_layout_component(content=ai_expert_config_component()),
         rx.text("Configuration page is not available.", color="red"),
     )
@@ -129,7 +126,7 @@ def config_ai_expert_page():
 def config_ai_table_page():
     """Configuration page for AI Table settings."""
     return rx.cond(
-        HeaderSettingsState.show_settings_menu,
+        RagChatConfigState.show_settings_menu,
         rag_page_layout_component(content=ai_table_agent_chat_config_component()),
         rx.text("Configuration page is not available.", color="red"),
     )
@@ -147,6 +144,9 @@ def ai_expert_browser():
     )
 
 
+ai_expert_chat_conf = ai_expert_chat_config_factory(left_section=associated_resources_section)
+
+
 # AI Expert page - existing conversation loaded from URL
 @rx.page(
     route="/ai-expert/chat/[conversation_id]",
@@ -157,18 +157,7 @@ def ai_expert_browser():
 )
 def ai_expert_with_conversation():
     """AI Expert page for an existing conversation loaded from URL."""
-    _header = ai_expert_header_component(
-        AiExpertState.subtitle,
-        AiExpertState.open_current_resource_file,
-    )
-    config = ChatConfig(
-        state=AiExpertState,
-        header=_header,
-        left_section=associated_resources_section,
-    )
-    return rag_page_layout_component(
-        content=ai_expert_component(config),
-    )
+    return ai_expert_page_content(ai_expert_chat_conf)
 
 
 # AI Expert page - document-specific chat (new conversation)
@@ -178,18 +167,7 @@ def ai_expert_with_conversation():
 )
 def ai_expert():
     """AI Expert page for document-specific chat."""
-    _header = ai_expert_header_component(
-        AiExpertState.subtitle,
-        AiExpertState.open_current_resource_file,
-    )
-    config = ChatConfig(
-        state=AiExpertState,
-        header=_header,
-        left_section=associated_resources_section,
-    )
-    return rag_page_layout_component(
-        content=ai_expert_component(config),
-    )
+    return ai_expert_page_content(ai_expert_chat_conf)
 
 
 # AI Table page - Excel/CSV-specific data analysis

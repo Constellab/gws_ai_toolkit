@@ -62,7 +62,7 @@ class GenerateDatahubRagDifyApp(Task):
         {
             "chat_app_name": StrParam(
                 human_name="Chat app name",
-                short_description="Name chat app to use",
+                short_description="Name of the chat app. All conversations are associated to this chat name.",
             ),
             "chat_credentials": CredentialsParam(
                 human_name="Chat credentials",
@@ -172,7 +172,7 @@ class GenerateDatahubRagFlowApp(Task):
         {
             "chat_app_name": StrParam(
                 human_name="Chat app name",
-                short_description="Name chat app to use",
+                short_description="Name of the chat app. All conversations are associated to this chat name.",
             ),
             "ragflow_credentials": CredentialsParam(
                 human_name="RAGFlow credentials",

@@ -103,37 +103,18 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
     """
 
     return rx.box(
-        # Show empty state message when no messages exist
-        rx.cond(
-            config.state.show_empty_chat,
-            rx.box(
-                rx.text(
-                    config.state.empty_state_message
-                    if hasattr(config.state, "empty_state_message")
-                    else "Start a conversation...",
-                    color="var(--gray-9)",
-                    font_size="16px",
-                    text_align="center",
-                ),
-                display="flex",
-                align_items="center",
-                justify_content="center",
-                height="100%",
-                width="100%",
+        rx.box(
+            rx.foreach(
+                config.state.chat_messages, lambda message: _message_bubble(message, config)
             ),
-            rx.box(
-                rx.foreach(
-                    config.state.chat_messages, lambda message: _message_bubble(message, config)
-                ),
-                # Display current response message separately
-                rx.cond(
-                    config.state.current_response_message,
-                    _message_bubble(config.state.current_response_message, config),
-                    rx.text(""),
-                ),
-                _streaming_indicator(config.state),
-                width="100%",
+            # Display current response message separately
+            rx.cond(
+                config.state.current_response_message,
+                _message_bubble(config.state.current_response_message, config),
+                rx.text(""),
             ),
+            _streaming_indicator(config.state),
+            width="100%",
         ),
         source_detail_dialog(config.state),
         plotly_fullscreen_dialog(),

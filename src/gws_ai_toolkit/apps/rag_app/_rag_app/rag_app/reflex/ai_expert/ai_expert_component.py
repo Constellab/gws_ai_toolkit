@@ -2,6 +2,7 @@ import reflex as rx
 
 from ..chat_base.chat_component import chat_component
 from ..chat_base.chat_config import ChatConfig
+from ..rag_chat.rag_empty_chat_component import rag_empty_chat_component
 from .ai_expert_state import AiExpertState
 
 
@@ -46,4 +47,4 @@ def ai_expert_component(chat_config: ChatConfig | None = None) -> rx.Component:
     if not chat_config:
         chat_config = ChatConfig(state=AiExpertState)
 
-    return chat_component(chat_config)
+    return chat_component(chat_config, empty_chat_component=rag_empty_chat_component)

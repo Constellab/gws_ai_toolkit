@@ -36,10 +36,6 @@ from ...apps.rag_app._rag_app.rag_app.reflex.history.history_state import (
     HistoryState,
     SidebarHistoryListState,
 )
-from ...apps.rag_app._rag_app.rag_app.reflex.rag_chat.rag_empty_chat_component import (
-    rag_empty_chat_component,
-)
-
 __all__ = [
     # Classes
     "BaseAnalysisConfig",
@@ -63,5 +59,4 @@ __all__ = [
     # Component functions
     "AppConfigState",
     "AppConfigStateConfig",
-    "rag_empty_chat_component",
 ]

@@ -144,6 +144,30 @@ def _user_dataframe_text_message_content(message: ChatUserMessageTableFront) -> 
     )
 
 
+def _empty_chat_component(_: ChatConfig) -> rx.Component:
+    """Empty chat component displayed when there are no messages yet."""
+    return rx.vstack(
+        rx.box(flex="1"),
+        rx.image(
+            src="/constellab-logo.svg",
+            width="72px",
+            height="72px",
+        ),
+        rx.text(
+            "Ask the AI to transform your tables, combine multiple datasets, or generate interactive plots and charts.",
+            size="3",
+            color="gray",
+            text_align="center",
+            max_width="380px",
+        ),
+        rx.box(flex="2"),
+        align="center",
+        width="100%",
+        flex="1",
+        spacing="4",
+    )
+
+
 def ai_table_agent_chat_component():
     """AI Table Agent chat component.
 
@@ -183,107 +207,6 @@ def ai_table_agent_chat_component():
         },
     )
 
-    def _save_button():
-        """Render the save button when save functionality is enabled."""
-        return rx.cond(
-            AiTableAgentChatState.enable_chat_save,
-            rx.tooltip(
-                rx.button(
-                    rx.cond(
-                        AiTableAgentChatState.is_saving,
-                        rx.icon("loader-circle", class_name="animate-spin", size=16),
-                        rx.icon("save", size=16),
-                    ),
-                    on_click=AiTableAgentChatState.save_chat,
-                    disabled=AiTableAgentChatState.is_saving,
-                    variant="soft",
-                    size="2",
-                ),
-                content="Save chat conversation",
-            ),
-        )
-
-    def _table_item(table: SelectedTableDTO, is_selectable: bool = False):
-        """Render a table item with either remove (X) or add (+) button.
-
-        Args:
-            table: The table to render
-            is_selectable: If True, shows with dashed border and + button. If False, shows as selected with X button.
-        """
-        return rx.box(
-            rx.hstack(
-                rx.icon(
-                    "table-2",
-                    size=16,
-                    color=rx.cond(is_selectable, "var(--gray-9)", "var(--gray-10)"),
-                ),
-                rx.text(
-                    table.unique_name,
-                    font_size="12px",
-                    max_width="250px",
-                    overflow="hidden",
-                    text_overflow="ellipsis",
-                    white_space="nowrap",
-                    color=rx.cond(is_selectable, "var(--gray-9)", "inherit"),
-                ),
-                rx.cond(
-                    is_selectable,
-                    rx.tooltip(
-                        rx.icon(
-                            "plus",
-                            size=16,
-                            color="var(--gray-10)",
-                            cursor="pointer",
-                            on_click=AiTableAgentChatState.add_table(table.id, table.sheet_name),
-                        ),
-                        content="Include table in chat",
-                    ),
-                    rx.tooltip(
-                        rx.icon(
-                            "x",
-                            size=16,
-                            color="var(--gray-10)",
-                            cursor="pointer",
-                            on_click=AiTableAgentChatState.remove_table(table),
-                        ),
-                        content="Remove table",
-                    ),
-                ),
-                spacing="1",
-                align_items="center",
-            ),
-            padding_x="6px",
-            padding_y="2px",
-            border_radius="6px",
-            background=rx.cond(is_selectable, "var(--gray-2)", "var(--gray-3)"),
-            border=rx.cond(is_selectable, "1px dashed var(--gray-7)", "none"),
-            margin_right="6px",
-            min_width="0",
-            display="flex",
-            align_items="center",
-            user_select="none",
-        )
-
-    def _table_list():
-        # Use rx.foreach to render current tables
-        return rx.hstack(
-            rx.foreach(
-                AiTableAgentChatState.selected_tables,
-                lambda table: _table_item(table, is_selectable=False),
-            ),
-            # Show current table selectable if it exists and is not already selected
-            rx.cond(
-                AiTableAgentChatState.current_table_suggestion,
-                _table_item(AiTableAgentChatState.current_table_suggestion, is_selectable=True),
-            ),
-            table_selection_menu(),
-            spacing="1",
-            align_items="center",
-            margin_bottom="8px",
-            width="100%",
-            wrap="wrap",
-        )
-
     return rx.auto_scroll(
         rx.hstack(
             rx.heading("💬 Chat", size="3"),
@@ -292,7 +215,11 @@ def ai_table_agent_chat_component():
             header_clear_chat_button_component(chat_config.state.clear_chat, text="New chat"),  # type: ignore
             align_items="center",
         ),
-        chat_messages_list_component(chat_config),
+        rx.cond(
+            AiTableAgentChatState.show_empty_chat,
+            _empty_chat_component(chat_config),
+            chat_messages_list_component(chat_config),
+        ),
         _table_list(),
         chat_input_component(chat_config),
         width="100%",
@@ -303,4 +230,108 @@ def ai_table_agent_chat_component():
         flex_direction="column",
         padding="1em",
         on_mount=AiTableAgentChatState.on_load,
+    )
+
+
+def _save_button():
+    """Render the save button when save functionality is enabled."""
+    return rx.cond(
+        AiTableAgentChatState.enable_chat_save,
+        rx.tooltip(
+            rx.button(
+                rx.cond(
+                    AiTableAgentChatState.is_saving,
+                    rx.icon("loader-circle", class_name="animate-spin", size=16),
+                    rx.icon("save", size=16),
+                ),
+                on_click=AiTableAgentChatState.save_chat,
+                disabled=AiTableAgentChatState.is_saving,
+                variant="soft",
+                size="2",
+            ),
+            content="Save chat conversation",
+        ),
+    )
+
+
+def _table_item(table: SelectedTableDTO, is_selectable: bool = False):
+    """Render a table item with either remove (X) or add (+) button.
+
+    Args:
+        table: The table to render
+        is_selectable: If True, shows with dashed border and + button. If False, shows as selected with X button.
+    """
+    return rx.box(
+        rx.hstack(
+            rx.icon(
+                "table-2",
+                size=16,
+                color=rx.cond(is_selectable, "var(--gray-9)", "var(--gray-10)"),
+            ),
+            rx.text(
+                table.unique_name,
+                font_size="12px",
+                max_width="250px",
+                overflow="hidden",
+                text_overflow="ellipsis",
+                white_space="nowrap",
+                color=rx.cond(is_selectable, "var(--gray-9)", "inherit"),
+            ),
+            rx.cond(
+                is_selectable,
+                rx.tooltip(
+                    rx.icon(
+                        "plus",
+                        size=16,
+                        color="var(--gray-10)",
+                        cursor="pointer",
+                        on_click=AiTableAgentChatState.add_table(table.id, table.sheet_name),
+                    ),
+                    content="Include table in chat",
+                ),
+                rx.tooltip(
+                    rx.icon(
+                        "x",
+                        size=16,
+                        color="var(--gray-10)",
+                        cursor="pointer",
+                        on_click=AiTableAgentChatState.remove_table(table),
+                    ),
+                    content="Remove table",
+                ),
+            ),
+            spacing="1",
+            align_items="center",
+        ),
+        padding_x="6px",
+        padding_y="2px",
+        border_radius="6px",
+        background=rx.cond(is_selectable, "var(--gray-2)", "var(--gray-3)"),
+        border=rx.cond(is_selectable, "1px dashed var(--gray-7)", "none"),
+        margin_right="6px",
+        min_width="0",
+        display="flex",
+        align_items="center",
+        user_select="none",
+    )
+
+
+def _table_list():
+    # Use rx.foreach to render current tables
+    return rx.hstack(
+        rx.foreach(
+            AiTableAgentChatState.selected_tables,
+            lambda table: _table_item(table, is_selectable=False),
+        ),
+        # Show current table selectable if it exists and is not already selected
+        rx.cond(
+            AiTableAgentChatState.current_table_suggestion,
+            _table_item(AiTableAgentChatState.current_table_suggestion, is_selectable=True),
+        ),
+        table_selection_menu(),
+        spacing="1",
+        align_items="center",
+        margin_bottom="8px",
+        width="100%",
+        wrap="wrap",
     )

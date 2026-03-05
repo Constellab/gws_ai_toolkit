@@ -4,12 +4,9 @@ import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.rag_chat_config import RagChatConfig
 from gws_core import Logger
 
-from ..core.app_config_state import AppConfigState
+from gws_reflex_main import ReflexMainState
 
-import traceback
-print("=== IMPORT STACK TRACE for rag_chat_config_state.py ===")
-traceback.print_stack()
-print("=== END STACK TRACE ===")
+from ..core.app_config_state import AppConfigState
 
 
 class RagChatConfigState(rx.State):
@@ -35,6 +32,12 @@ class RagChatConfigState(rx.State):
     Attributes:
         None - All configuration is loaded from AppConfigState
     """
+
+    @rx.var
+    async def show_settings_menu(self) -> bool:
+        """Whether the settings menu should be shown in headers."""
+        main_state = await self.get_state(ReflexMainState)
+        return await main_state.get_param("show_config_page", False)
 
     async def get_config(self) -> RagChatConfig:
         app_config_state = await AppConfigState.get_instance(self)

@@ -10,6 +10,8 @@ from .chat.table_agent.ai_table_agent_chat_component import ai_table_agent_chat_
 from .chat.table_agent.ai_table_agent_chat_config_state import AiTableAgentChatConfigState
 from .stats.ai_table_stats_component import ai_table_stats_component
 
+css_asset_path = rx.asset("ai_table_component.css", shared=True)
+
 
 def _table_selector():
     """Select dropdown for switching between tables (no remove button)"""
@@ -470,18 +472,21 @@ def ai_table_component(header_left_component: rx.Component | None = None) -> rx.
     Returns:
         rx.Component: Complete AI Table interface with table and chat functionality
     """
-    return rx.cond(
-        AiTableDataState.dataframe_loaded,
-        # Show full table interface when dataframe is loaded
-        ai_table_layout(header_left_component),
-        # Show loading state when no dataframe
-        rx.center(
-            rx.hstack(
-                rx.spinner(size="3"),
-                rx.text("Loading data...", font_size="lg"),
-                spacing="4",
+    return rx.fragment(
+        rx.el.link(rel="stylesheet", href=css_asset_path),
+        rx.cond(
+            AiTableDataState.dataframe_loaded,
+            # Show full table interface when dataframe is loaded
+            ai_table_layout(header_left_component),
+            # Show loading state when no dataframe
+            rx.center(
+                rx.hstack(
+                    rx.spinner(size="3"),
+                    rx.text("Loading data...", font_size="lg"),
+                    spacing="4",
+                ),
+                height="100%",
+                width="100%",
             ),
-            height="100%",
-            width="100%",
         ),
     )

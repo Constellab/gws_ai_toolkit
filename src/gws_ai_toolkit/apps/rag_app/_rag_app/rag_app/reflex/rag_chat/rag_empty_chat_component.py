@@ -20,14 +20,14 @@ def rag_empty_chat_component(config: ChatConfig) -> rx.Component:
         ),
         # Title
         rx.heading(
-            config.state.title,
+            "Chat",
             size="6",
             weight="bold",
             text_align="center",
         ),
         # Subtitle
         rx.text(
-            config.state.empty_state_message,
+            "Start talking to the AI",
             size="3",
             color="gray",
             text_align="center",

@@ -6,29 +6,17 @@ from gws_reflex_main import (
     page_sidebar_component,
     sidebar_header_component,
 )
-from gws_reflex_main.reflex_main_state import ReflexMainState
 
 from ..core.conversation_mode_chip_component import (
     conversation_mode_chip_reactive,
     conversation_mode_chip_switchable,
 )
 from ..history.chat_history_sidebar_component import chat_history_sidebar_list
-from ..history.history_state import SidebarHistoryListState
 from .rag_history_state import RagHistoryState
-
-
-class HeaderSettingsState(rx.State):
-    """State to determine if the settings menu should be shown in headers."""
-
-    @rx.var
-    async def show_settings_menu(self) -> bool:
-        main_state = await self.get_state(ReflexMainState)
-        return await main_state.get_param("show_config_page", False)
 
 
 def rag_page_layout_component(
     content: rx.Component,
-    state: type[SidebarHistoryListState] | None = None,
     sidebar_width: str = "300px",
 ) -> rx.Component:
     """Standard page layout with sidebar for the RAG app.
@@ -43,7 +31,7 @@ def rag_page_layout_component(
     """
     return main_component(
         page_sidebar_component(
-            sidebar_content=_sidebar_content(state) if state else rx.fragment(),
+            sidebar_content=_sidebar_content(),
             content=content,
             sidebar_width=sidebar_width,
         )
@@ -59,13 +47,13 @@ def _header_divider() -> rx.Component:
     )
 
 
-def _rag_settings_menu_button() -> rx.Component:
+def _rag_settings_menu_button(show_settings: rx.Var[bool]) -> rx.Component:
     """Settings menu button for RAG chat header with links to Resources and Config pages.
 
-    Only rendered when show_config_page param is active.
+    :param show_settings: Reactive var controlling visibility.
     """
     return rx.cond(
-        HeaderSettingsState.show_settings_menu,
+        show_settings,
         rx.menu.root(
             rx.menu.trigger(
                 rx.button(
@@ -92,28 +80,13 @@ def _rag_settings_menu_button() -> rx.Component:
     )
 
 
-def _ai_expert_settings_button() -> rx.Component:
-    """Settings link button for AI Expert header that redirects to the AI Expert config page.
-
-    Only rendered when show_config_page param is active.
-    """
-    return rx.cond(
-        HeaderSettingsState.show_settings_menu,
-        rx.button(
-            rx.icon("settings", size=16),
-            variant="ghost",
-            size="2",
-            cursor="pointer",
-            color="var(--gray-11)",
-            on_click=rx.redirect("/config-ai-expert"),
-        ),
-    )
-
-
-def rag_header_component(subtitle: rx.Var[str | None]) -> rx.Component:
+def rag_header_component(
+    subtitle: rx.Var[str | None], show_settings: rx.Var[bool] | None = None
+) -> rx.Component:
     """Header for RAG chat pages showing the chat mode and file count.
 
     :param subtitle: Reactive var with the file count text (e.g. "5 files in the database").
+    :param show_settings: Reactive var controlling settings button visibility.
     :return: The header component.
     """
     return rx.hstack(
@@ -131,75 +104,7 @@ def rag_header_component(subtitle: rx.Var[str | None]) -> rx.Component:
             spacing="2",
         ),
         rx.spacer(),
-        _rag_settings_menu_button(),
-        align="center",
-        spacing="3",
-        width="100%",
-    )
-
-
-def ai_expert_header_component(
-    subtitle: rx.Var[str | None],
-    on_view_document: rx.EventChain,
-) -> rx.Component:
-    """Header for AI Expert pages showing the mode, document name, and view button.
-
-    :param subtitle: Reactive var with the document/resource name.
-    :param on_view_document: Event handler for the "View document" button.
-    :return: The header component.
-    """
-    return rx.hstack(
-        left_sidebar_open_button(),
-        conversation_mode_chip_switchable(ChatConversationMode.AI_EXPERT.value, size="big"),
-        _header_divider(),
-        rx.cond(
-            subtitle,
-            rx.badge(
-                rx.icon("file-text", size=14),
-                rx.text(subtitle, size="2", weight="medium"),
-                rx.icon(
-                    "x",
-                    size=14,
-                    cursor="pointer",
-                    _hover={"opacity": "0.7"},
-                    on_click=rx.redirect("/ai-expert"),
-                ),
-                variant="soft",
-                size="2",
-                background="var(--gray-3)",
-                color="var(--gray-12)",
-            ),
-            rx.text("Loading...", size="2", color="var(--gray-8)"),
-        ),
-        rx.spacer(),
-        rx.button(
-            rx.icon("eye", size=14),
-            "View document",
-            on_click=on_view_document,
-            variant="solid",
-            size="2",
-        ),
-        _ai_expert_settings_button(),
-        align="center",
-        spacing="3",
-        width="100%",
-    )
-
-
-def ai_expert_browser_header_component() -> rx.Component:
-    """Header for the AI Expert document browser page (no document selected).
-
-    Shows the switchable AI Expert chip and the settings button.
-
-    :return: The header component.
-    """
-    return rx.hstack(
-        left_sidebar_open_button(),
-        conversation_mode_chip_switchable(ChatConversationMode.AI_EXPERT.value, size="big"),
-        _header_divider(),
-        rx.text("Select a document", size="2", color="var(--gray-9)"),
-        rx.spacer(),
-        _ai_expert_settings_button(),
+        _rag_settings_menu_button(show_settings) if show_settings is not None else rx.fragment(),
         align="center",
         spacing="3",
         width="100%",

@@ -3,7 +3,8 @@
 import reflex as rx
 from gws_reflex_main import extension_badge_component
 
-from ..core.rag_page_layout_component import ai_expert_browser_header_component
+from .ai_expert_config_state import AiExpertConfigState
+from .ai_expert_header_component import ai_expert_browser_header_component
 from .document_browser_state import DocumentBrowserInfo, DocumentBrowserState
 
 
@@ -89,7 +90,7 @@ def document_browser_component() -> rx.Component:
         rx.box(
             rx.vstack(
                 # Header with switchable chip
-                ai_expert_browser_header_component(),
+                ai_expert_browser_header_component(show_settings=AiExpertConfigState.show_settings_menu),
                 rx.text(
                     "Select a source document from your chat history to start an in-depth conversation",
                     size="3",

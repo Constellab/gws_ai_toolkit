@@ -4,6 +4,8 @@ import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig
 from gws_core import Logger
 
+from gws_reflex_main import ReflexMainState
+
 from ..core.app_config_state import AppConfigState
 
 AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks", "full_file"]
@@ -37,6 +39,12 @@ class AiExpertConfigState(rx.State):
     """
 
     current_form_mode: AiExpertChatMode = "full_file"
+
+    @rx.var
+    async def show_settings_menu(self) -> bool:
+        """Whether the settings menu should be shown in headers."""
+        main_state = await self.get_state(ReflexMainState)
+        return await main_state.get_param("show_config_page", False)
 
     async def get_config(self) -> AiExpertChatConfig:
         app_config_state = await AppConfigState.get_instance(self)
@@ -182,7 +190,4 @@ class AiExpertConfigState(rx.State):
 
     @rx.var
     def show_max_chunk_config(self) -> bool:
-        return (
-            self.current_form_mode == "relevant_chunks"
-            or self.current_form_mode == "full_text_chunk"
-        )
+        return self.current_form_mode in {"relevant_chunks", "full_text_chunk"}
