@@ -24,9 +24,8 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
         rx.vstack(
             chat_messages_list_component(config),
             width="100%",
-            padding_bottom="5em",  # Space for fixed input
+            padding_bottom="4em",  # Space for fixed input
             flex="1",
-            overflow_y="auto",
         ),
         # Fixed input at bottom
         rx.box(
@@ -57,7 +56,7 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
         ),
         position="relative",
         width="100%",
-        height="100%",
+        flex="1",
         display="flex",
         flex_direction="column",
     )
