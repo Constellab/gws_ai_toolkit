@@ -82,6 +82,6 @@ class GenerateAiTableStandaloneApp(Task):
         # For the test, we disable the authentication
         reflex_app.set_requires_authentication(False)
 
-        reflex_app.name = "Constellab Analytics"
+        reflex_app.name = "Analytics"
 
         return {"reflex_app": reflex_app}

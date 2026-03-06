@@ -133,7 +133,7 @@ class GenerateDatahubRagDifyApp(Task):
         reflex_resource.set_param("configuration_file_path", app_config_file.path)
 
         reflex_resource.set_app_config(RagAppAppConfig())
-        reflex_resource.name = "DataHub RAG app"
+        reflex_resource.name = "Search"
 
         # TODO to remove
         # For the test, we disable the authentication
@@ -220,7 +220,7 @@ class GenerateDatahubRagFlowApp(Task):
         # For the test, we disable the authentication
         reflex_resource.set_requires_authentication(False)
 
-        reflex_resource.name = "Constellab Search"
+        reflex_resource.name = "Search"
 
         return {"streamlit_app": reflex_resource}
 

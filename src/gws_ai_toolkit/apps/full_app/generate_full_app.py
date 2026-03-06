@@ -70,7 +70,6 @@ class GenerateFullApp(Task):
         )
 
         reflex_resource.set_app_config(FullAppAppConfig())
-        reflex_resource.name = "FullApp app"
 
         # TODO to remove
         # For the test, we disable the authentication
@@ -78,6 +77,6 @@ class GenerateFullApp(Task):
 
         reflex_resource.set_enterprise_app(True)
 
-        reflex_resource.name = "Constellab Search with Analytics"
+        reflex_resource.name = "Search"
 
         return {"streamlit_app": reflex_resource}
