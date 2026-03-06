@@ -11,6 +11,7 @@ from gws_core import (
     InputSpecs,
     OutputSpecs,
     RegisterComposeOptionsRequestDTO,
+    StrParam,
     Task,
     TaskInputs,
     TaskOutputs,
@@ -55,7 +56,13 @@ class RagflowStartDockerCompose(Task):
 
     input_specs = InputSpecs()
     output_specs = OutputSpecs()
-    config_specs = ConfigSpecs()
+    config_specs = ConfigSpecs({
+        "es_java_opts": StrParam(
+            default_value="-Xms512m -Xmx512m",
+            human_name="Elasticsearch Java Opts",
+            short_description="JVM options for Elasticsearch (heap size). Example: -Xms512m -Xmx512m",
+        ),
+    })
 
     def run(self, params: ConfigParams, inputs: TaskInputs) -> TaskOutputs:
         """Start the RagFlow docker compose services.
@@ -95,7 +102,10 @@ class RagflowStartDockerCompose(Task):
             options=RegisterComposeOptionsRequestDTO(
                 description="RagFlow docker compose services",
                 auto_start=True,
-                environment_variables={"PASSWORD": credentials_data.password},
+                environment_variables={
+                    "PASSWORD": credentials_data.password,
+                    "ES_JAVA_OPTS": params.get_value("es_java_opts"),
+                },
             ),
         )
 
