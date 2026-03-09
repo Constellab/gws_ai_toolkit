@@ -41,12 +41,24 @@ class RagAppAppConfig(AppConfig):
 )
 class GenerateDatahubRagDifyApp(Task):
     """
-    Generate the Datahub RAG app using Dify rag.
+    Task that generates the Constellab Search app using Dify as the RAG engine.
 
-    Configuration :
-    - Resource sync mode: The mode for the resource to sync with the RAG platform (datahub or tag)
-        - if 'datahub' is selected, the app will sync resources store in the datahub from the space
-        - if 'tag' is selected, the app will sync resources with the tag 'send_to_rag:true'
+    This task creates a Reflex-based search application that indexes and queries resources through a
+    Dify-powered RAG pipeline. It requires separate credentials for the chat and knowledge base APIs.
+
+    Configuration:
+        - ``chat_app_name``: Name of the chat app. All conversations are associated to this chat name.
+        - ``chat_credentials``: Credentials to access the Dify chat API.
+        - ``dataset_credentials``: Credentials to access the Dify knowledge base API.
+        - ``dataset_id``: ID of the Dify knowledge base to use.
+        - ``resource_sync_mode``: Determines which resources are synced with the RAG platform.
+            - ``"datahub"``: syncs resources stored in the datahub from the space.
+            - ``"tag"``: syncs only resources matching the tag defined by ``resource_tag_key`` / ``resource_tag_value``.
+        - ``resource_tag_key``: Tag key used to filter resources for sync (only used when ``resource_sync_mode``
+          is ``"tag"``).
+        - ``resource_tag_value``: Tag value that must be paired with ``resource_tag_key`` for a resource to be
+          synced (only used when ``resource_sync_mode`` is ``"tag"``).
+        - ``show_config_page``: Whether to display the configuration page in the app.
     """
 
     input_specs = InputSpecs(
@@ -154,7 +166,25 @@ class GenerateDatahubRagDifyApp(Task):
 )
 class GenerateDatahubRagFlowApp(Task):
     """
-    Task that generates the DatahubRagApp app.
+    Task that generates the Constellab Search app using RAGFlow as the RAG engine.
+
+    This task creates a Reflex-based search application that indexes and queries resources through a
+    RAGFlow-powered RAG pipeline. Unlike the Dify variant, RAGFlow only supports the ``"tag"`` resource
+    sync mode, and uses a single set of credentials for both chat and knowledge base access.
+
+    This class also exposes ``configure_reflex_resource`` and ``set_configuration_file_path`` as class
+    methods so that subclasses (e.g. ``GenerateFullApp``) can reuse the configuration logic.
+
+    Configuration:
+        - ``chat_app_name``: Name of the chat app. All conversations are associated to this chat name.
+        - ``ragflow_credentials``: Credentials to access RAGFlow (used for both chat and dataset APIs).
+        - ``rag_dataset_id``: ID of the RAGFlow dataset (knowledge base) to use.
+        - ``rag_chat_id``: ID of the RAGFlow chat assistant to use.
+        - ``resource_tag_key``: Tag key used to filter which resources are synced with the RAG platform.
+          Only resources carrying a tag with this key (and matching value) will be indexed.
+        - ``resource_tag_value``: Tag value that must be paired with ``resource_tag_key`` for a resource
+          to be synced with the RAG platform.
+        - ``show_config_page``: Whether to display the configuration page in the app.
     """
 
     input_specs = InputSpecs(

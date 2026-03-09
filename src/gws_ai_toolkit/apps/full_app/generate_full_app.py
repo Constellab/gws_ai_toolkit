@@ -36,7 +36,18 @@ class FullAppAppConfig(AppConfig):
 )
 class GenerateFullApp(Task):
     """
-    Task that generates the FullApp app.
+    Task that generates the Constellab Search app with the Analytics plugin, using RAGFlow as the RAG engine.
+
+    This app extends the base search app by allowing table resources (Excel, CSV, TSV, etc.) to be associated
+    with the file resources sent to the RAG knowledge base. Associated resources are linked through a shared
+    tag with the key ``"study"``: resources that share the same ``study`` tag value are considered part of the
+    same study and will appear as associated resources in the app interface.
+
+    Configuration (inherited from ``GenerateDatahubRagFlowApp``):
+        - ``resource_tag_key``: The tag key used to select which resources are synced with the RAG platform.
+          Only resources carrying a tag with this key (and matching value) will be indexed.
+        - ``resource_tag_value``: The tag value that must be paired with ``resource_tag_key`` for a resource
+          to be synced with the RAG platform.
     """
 
     input_specs = InputSpecs(
