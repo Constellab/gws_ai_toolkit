@@ -1,4 +1,3 @@
-import os
 import re
 from typing import TYPE_CHECKING, Literal
 
@@ -153,8 +152,9 @@ class ChatMessageSource(ChatMessageBase):
         unique_sources: dict[str, RagChatSourceFront] = {}
         for s in self.sources or []:
             if s.document_id not in unique_sources:
-                _, ext = os.path.splitext(s.document_name)
-                extension = ext.lstrip(".").upper() if ext else ""
+                extension = (
+                    s.document_name.rsplit(".", 1)[-1].upper() if "." in s.document_name else ""
+                )
                 unique_sources[s.document_id] = RagChatSourceFront(
                     id=s.id,
                     document_id=s.document_id,

@@ -82,9 +82,7 @@ class GenerateFullApp(Task):
 
         reflex_resource.set_app_config(FullAppAppConfig())
 
-        # TODO to remove
-        # For the test, we disable the authentication
-        reflex_resource.set_requires_authentication(False)
+        reflex_resource.set_requires_authentication(params["requires_authentication"])
 
         reflex_resource.set_enterprise_app(True)
 

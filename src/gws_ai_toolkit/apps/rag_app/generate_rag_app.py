@@ -229,6 +229,11 @@ class GenerateDatahubRagFlowApp(Task):
                 short_description="Show the config page",
                 default_value=True,
             ),
+            "requires_authentication": BoolParam(
+                human_name="Requires authentication",
+                short_description="Whether the app requires authentication. If not every user will be associated with the System user.",
+                default_value=True,
+            ),
         }
     )
 
@@ -247,8 +252,8 @@ class GenerateDatahubRagFlowApp(Task):
         reflex_resource.set_app_config(RagAppAppConfig())
         reflex_resource.name = "DataHub RAG app"
 
-        # For the test, we disable the authentication
-        reflex_resource.set_requires_authentication(False)
+        # Set the authentication requirement based on the config parameter
+        reflex_resource.set_requires_authentication(params["requires_authentication"])
 
         reflex_resource.name = "Search"
 

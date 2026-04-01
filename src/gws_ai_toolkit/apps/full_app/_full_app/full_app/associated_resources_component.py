@@ -20,9 +20,19 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
         rx.Component: Formatted resource item with name and actions menu
     """
     return rx.hstack(
-        rx.icon("file-text", size=16),
-        rx.text(resource.name, size="1"),
-        rx.spacer(),
+        rx.icon("file-text", size=16, flex_shrink="0"),
+        rx.tooltip(
+            rx.text(
+                resource.name,
+                size="1",
+                flex="1",
+                min_width="0",
+                overflow="hidden",
+                text_overflow="ellipsis",
+                white_space="nowrap",
+            ),
+            content=resource.name,
+        ),
         rx.menu.root(
             rx.menu.trigger(
                 rx.button(rx.icon("ellipsis-vertical", size=16), variant="ghost", cursor="pointer")
@@ -62,6 +72,8 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
             flex_shrink="0",
         ),
         align_items="center",
+        width="100%",
+        overflow="hidden",
     )
 
 
@@ -75,12 +87,17 @@ def associated_resources_section(_: ConversationChatStateBase) -> rx.Component:
                     rx.foreach(AssociatedResourcesState.linked_resources_data, _resource_item),
                     spacing="2",
                     align="stretch",
+                    width="100%",
                 ),
                 is_loading=AssociatedResourcesState.is_loading,
             ),
             spacing="3",
             width="100%",
         ),
+        width="250px",
+        min_width="250px",
+        max_width="250px",
+        overflow="hidden",
     )
 
 
