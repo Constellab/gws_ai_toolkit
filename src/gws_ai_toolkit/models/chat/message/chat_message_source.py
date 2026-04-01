@@ -153,7 +153,7 @@ class ChatMessageSource(ChatMessageBase):
         for s in self.sources or []:
             if s.document_id not in unique_sources:
                 extension = (
-                    s.document_name.rsplit(".", 1)[-1].upper() if "." in s.document_name else ""
+                    s.document_name.rsplit(".", 1)[-1].upper()[:5] if "." in s.document_name else ""
                 )
                 unique_sources[s.document_id] = RagChatSourceFront(
                     id=s.id,

@@ -1,3 +1,4 @@
+from asyncio import sleep
 from typing import Literal
 
 import reflex as rx
@@ -13,6 +14,7 @@ class SyncAllResourcesDialogState(rx.State):
 
     resources_to_sync: list[RagResource] = []
     resources_to_sync_dialog_opened: bool = False
+    load_resources_is_loading: bool = False
     sync_resource_progress: int = -1
     sync_errors: list[str] = []
 
@@ -20,9 +22,9 @@ class SyncAllResourcesDialogState(rx.State):
     def count_resources_to_sync(self) -> int:
         return len(self.resources_to_sync)
 
-    @rx.var(cache=False)
+    @rx.var
     def has_loaded_resources_to_sync(self) -> bool:
-        return self.resources_to_sync is not None
+        return not self.load_resources_is_loading
 
     @rx.var
     def resources_sync_status(self) -> Literal["pending", "running", "done"]:
@@ -60,13 +62,18 @@ class SyncAllResourcesDialogState(rx.State):
         async with self:
             self.resources_to_sync = []
             self.sync_resource_progress = -1
+            self.load_resources_is_loading = True
             config_state = await RagConfigState.get_instance(self)
 
-        rag_service = await config_state.get_dataset_rag_app_service()
+        try:
+            rag_service = await config_state.get_dataset_rag_app_service()
 
-        resources_to_sync = rag_service.get_all_resource_to_sync()
-        async with self:
-            self.resources_to_sync = resources_to_sync
+            resources_to_sync = rag_service.get_all_resource_to_sync()
+            async with self:
+                self.resources_to_sync = resources_to_sync
+        finally:
+            async with self:
+                self.load_resources_is_loading = False
 
     @rx.event(background=True)
     async def sync_resources_to_rag(self):

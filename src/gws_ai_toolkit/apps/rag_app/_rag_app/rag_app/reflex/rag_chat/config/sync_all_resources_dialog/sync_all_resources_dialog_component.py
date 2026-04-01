@@ -1,4 +1,5 @@
 import reflex as rx
+from gws_reflex_base import loader_section
 
 from .sync_all_resources_dialog_state import SyncAllResourcesDialogState
 
@@ -70,13 +71,8 @@ def sync_all_resources_dialog() -> rx.Component:
             ),
             margin_bottom="1em",
         ),
-        rx.cond(
-            SyncAllResourcesDialogState.has_loaded_resources_to_sync,
+        loader_section(
             _dialog_content(),
-            rx.hstack(
-                rx.spinner(),
-                rx.text("Loading resources...", size="3"),
-                align_items="center",
-            ),
+            is_loading=SyncAllResourcesDialogState.load_resources_is_loading,
         ),
     )
