@@ -12,6 +12,7 @@
         "resource_tag_key": "send_to_rag",
         "resource_tag_value": "true",
         "show_config_page": true,
+        "show_admin_history": true,
         "configuration_file_path": "/lab/user/bricks/gws_ai_toolkit/_data/app_configuration.json"
     },
     "env_type": "NONE",

@@ -8,6 +8,7 @@ from gws_ai_toolkit._app.ai_chat import (
     source_message_component,
 )
 from gws_ai_toolkit._app.ai_rag import (
+    AdminHistoryState,
     AiExpertConfigState,
     AiExpertState,
     DocumentBrowserState,
@@ -15,6 +16,8 @@ from gws_ai_toolkit._app.ai_rag import (
     RagChatState,
     RagConfigState,
     RagConfigStateFromParams,
+    admin_history_detail_component,
+    admin_history_list_component,
     ai_expert_chat_config_factory,
     ai_expert_config_component,
     ai_expert_page_content,
@@ -134,6 +137,31 @@ def config_ai_table_page():
         RagChatConfigState.show_settings_menu,
         rag_page_layout_component(content=ai_table_agent_chat_config_component()),
         rx.text("Configuration page is not available.", color="red"),
+    )
+
+
+# Admin history - list page
+@rx.page(route="/admin-history")
+def admin_history():
+    """Admin page showing all conversations from all users."""
+    return rx.cond(
+        AdminHistoryState.show_admin_history,
+        admin_history_list_component(),
+        rx.text("Admin History page is not available.", color="red"),
+    )
+
+
+# Admin history - detail page
+@rx.page(
+    route="/admin-history/[conversation_id]",
+    on_load=AdminHistoryState.load_conversation_from_url,
+)
+def admin_history_detail():
+    """Admin page showing readonly messages of a single conversation."""
+    return rx.cond(
+        AdminHistoryState.show_admin_history,
+        admin_history_detail_component(),
+        rx.text("Admin History page is not available.", color="red"),
     )
 
 

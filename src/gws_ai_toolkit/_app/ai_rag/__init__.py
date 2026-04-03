@@ -1,3 +1,10 @@
+from ...apps.rag_app._rag_app.rag_app.reflex.admin_history.admin_history_component import (
+    admin_history_detail_component,
+    admin_history_list_component,
+)
+from ...apps.rag_app._rag_app.rag_app.reflex.admin_history.admin_history_state import (
+    AdminHistoryState,
+)
 from ...apps.rag_app._rag_app.rag_app.reflex.ai_expert.ai_expert_component import (
     ai_expert_component,
 )
@@ -76,4 +83,8 @@ __all__ = [
     "ai_expert_chat_config_factory",
     # History
     "RagHistoryState",
+    # Admin history
+    "AdminHistoryState",
+    "admin_history_list_component",
+    "admin_history_detail_component",
 ]

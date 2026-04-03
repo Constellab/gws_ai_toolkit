@@ -5,7 +5,7 @@ from peewee import CharField, ForeignKeyField, ModelSelect
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app import ChatApp
-from gws_ai_toolkit.models.chat.chat_conversation_dto import ChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_dto import AdminChatConversationDTO, ChatConversationDTO
 from gws_ai_toolkit.models.user.user import User
 
 
@@ -53,6 +53,17 @@ class ChatConversation(Model):
             .order_by(cls.last_modified_at.desc())
         )
 
+    @classmethod
+    def get_all_by_chat_app(cls, chat_app_id: str) -> ModelSelect:
+        """Get all conversations for a chat app (all users), ordered by last modified date.
+
+        :param chat_app_id: The ID of the chat app
+        :type chat_app_id: str
+        :return: ModelSelect query for conversations
+        :rtype: ModelSelect
+        """
+        return cls.select().where(cls.chat_app == chat_app_id).order_by(cls.last_modified_at.desc())
+
     def to_dto(self) -> "ChatConversationDTO":
         """Convert the ChatConversation model to a ConversationHistory DTO."""
 
@@ -65,6 +76,24 @@ class ChatConversation(Model):
             external_conversation_id=self.external_conversation_id,
             created_at=self.created_at,
             last_modified_at=self.last_modified_at,
+        )
+
+    def to_admin_dto(self) -> "AdminChatConversationDTO":
+        """Convert the ChatConversation model to an AdminChatConversationDTO with user fields."""
+
+        user = self.user
+        return AdminChatConversationDTO(
+            id=self.id,
+            chat_app_id=self.chat_app.id,
+            configuration=self.configuration,
+            mode=self.mode,
+            label=self.label,
+            external_conversation_id=self.external_conversation_id,
+            created_at=self.created_at,
+            last_modified_at=self.last_modified_at,
+            user_email=user.email if user else "",
+            user_first_name=user.first_name if user else "",
+            user_last_name=user.last_name if user else "",
         )
 
     def get_conversation_folder_path(self) -> str:

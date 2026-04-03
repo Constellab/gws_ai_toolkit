@@ -5,6 +5,11 @@ from gws_reflex_main import (
 )
 
 from .custom_states import CustomAppConfigState
+from .reflex.admin_history.admin_history_component import (
+    admin_history_detail_component,
+    admin_history_list_component,
+)
+from .reflex.admin_history.admin_history_state import AdminHistoryState
 from .reflex.ai_expert.ai_expert_config_component import ai_expert_config_component
 from .reflex.ai_expert.ai_expert_config_state import AiExpertConfigState
 from .reflex.ai_expert.ai_expert_page_component import (
@@ -64,6 +69,31 @@ def config_rag_page():
         RagChatConfigState.show_settings_menu,
         rag_page_layout_component(content=rag_chat_config_component()),
         rx.text("Configuration page is not available.", color="red"),
+    )
+
+
+# Admin history - list page
+@rx.page(route="/admin-history")
+def admin_history():
+    """Admin page showing all conversations from all users."""
+    return rx.cond(
+        AdminHistoryState.show_admin_history,
+        admin_history_list_component(),
+        rx.text("Admin History page is not available.", color="red"),
+    )
+
+
+# Admin history - detail page
+@rx.page(
+    route="/admin-history/[conversation_id]",
+    on_load=AdminHistoryState.load_conversation_from_url,
+)
+def admin_history_detail():
+    """Admin page showing readonly messages of a single conversation."""
+    return rx.cond(
+        AdminHistoryState.show_admin_history,
+        admin_history_detail_component(),
+        rx.text("Admin History page is not available.", color="red"),
     )
 
 

@@ -7,6 +7,7 @@ from gws_reflex_main import (
     sidebar_header_component,
 )
 
+from ..admin_history.admin_history_state import AdminHistoryState
 from ..core.conversation_mode_chip_component import (
     conversation_mode_chip_reactive,
     conversation_mode_chip_switchable,
@@ -74,6 +75,14 @@ def _rag_settings_menu_button(show_settings: rx.Var[bool]) -> rx.Component:
                     rx.icon("settings", size=16),
                     "Config",
                     on_click=rx.redirect("/config-rag"),
+                ),
+                rx.cond(
+                    AdminHistoryState.show_admin_history,
+                    rx.menu.item(
+                        rx.icon("users", size=16),
+                        "Admin History",
+                        on_click=rx.redirect("/admin-history"),
+                    ),
                 ),
             ),
         ),

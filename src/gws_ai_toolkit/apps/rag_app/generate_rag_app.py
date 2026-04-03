@@ -59,6 +59,7 @@ class GenerateDatahubRagDifyApp(Task):
         - ``resource_tag_value``: Tag value that must be paired with ``resource_tag_key`` for a resource to be
           synced (only used when ``resource_sync_mode`` is ``"tag"``).
         - ``show_config_page``: Whether to display the configuration page in the app.
+        - ``show_admin_history``: Whether to display the admin history page in the app, which allows browsing all conversations from all users.
     """
 
     input_specs = InputSpecs(
@@ -109,6 +110,11 @@ class GenerateDatahubRagDifyApp(Task):
                 short_description="Show the config page",
                 default_value=True,
             ),
+            "show_admin_history": BoolParam(
+                human_name="Show admin history",
+                short_description="Show the admin history page to browse all conversations",
+                default_value=False,
+            ),
         }
     )
 
@@ -131,6 +137,7 @@ class GenerateDatahubRagDifyApp(Task):
         reflex_resource.set_param("rag_dataset_id", params["rag_dataset_id"])
         reflex_resource.set_param("resource_sync_mode", params["resource_sync_mode"])
         reflex_resource.set_param("show_config_page", params["show_config_page"])
+        reflex_resource.set_param("show_admin_history", params["show_admin_history"])
         reflex_resource.set_param("rag_provider", "dify")
         reflex_resource.set_param("rag_chat_id", None)
 
@@ -229,6 +236,11 @@ class GenerateDatahubRagFlowApp(Task):
                 short_description="Show the config page",
                 default_value=True,
             ),
+            "show_admin_history": BoolParam(
+                human_name="Show admin history",
+                short_description="Show the admin history page to browse all conversations",
+                default_value=False,
+            ),
             "requires_authentication": BoolParam(
                 human_name="Requires authentication",
                 short_description="Whether the app requires authentication. If not every user will be associated with the System user.",
@@ -278,6 +290,7 @@ class GenerateDatahubRagFlowApp(Task):
         reflex_resource.set_param("resource_sync_mode", resource_sync_mode)
         reflex_resource.set_param("rag_dataset_id", params["rag_dataset_id"])
         reflex_resource.set_param("show_config_page", params["show_config_page"])
+        reflex_resource.set_param("show_admin_history", params["show_admin_history"])
         reflex_resource.set_param("rag_chat_id", params["rag_chat_id"])
         reflex_resource.set_param("rag_provider", "ragflow")
 

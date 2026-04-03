@@ -51,7 +51,7 @@ def _source_item(
 
     pill = rx.box(
         rx.hstack(
-            extension_badge_component(source.document_extension + "bonjourlesle"),
+            extension_badge_component(source.document_extension),
             rx.text(
                 source.document_name,
                 size="1",

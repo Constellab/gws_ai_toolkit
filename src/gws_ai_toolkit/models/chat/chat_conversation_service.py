@@ -4,6 +4,7 @@ from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_search_builder import ChatConversationSearchBuilder
 from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
@@ -20,6 +21,37 @@ class ChatConversationService:
     """
 
     HISTORY_EXTENSION_FOLDER_NAME = "chat_conversations"
+
+    def get_all_conversations_by_chat_app(
+        self,
+        chat_app_name: str,
+        label: str | None = None,
+        mode: str | None = None,
+        user_id: str | None = None,
+    ) -> list[ChatConversation]:
+        """Get all conversations for a chat app across all users, with optional filters.
+
+        :param chat_app_name: The name of the chat app
+        :param label: Optional text filter on conversation label (contains)
+        :param mode: Optional exact match filter on conversation mode
+        :param user_id: Optional filter on user ID
+        :return: List of matching conversations
+        """
+        chat_app = ChatAppService().get_by_name(chat_app_name)
+        if not chat_app:
+            return []
+
+        search_builder = ChatConversationSearchBuilder()
+        search_builder.add_chat_app_filter(chat_app.id)
+
+        if label:
+            search_builder.add_label_filter(label)
+        if mode:
+            search_builder.add_mode_filter(mode)
+        if user_id:
+            search_builder.add_user_filter(user_id)
+
+        return search_builder.search_all()
 
     def get_my_conversations_by_chat_app(self, chat_app_name: str) -> list[ChatConversation]:
         """Get all conversations for a chat app.

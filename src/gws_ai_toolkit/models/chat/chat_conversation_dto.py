@@ -14,6 +14,14 @@ class ChatConversationDTO(ModelDTO):
     external_conversation_id: str | None = None
 
 
+class AdminChatConversationDTO(ChatConversationDTO):
+    """DTO for admin conversation history with flat user fields for Reflex serialization."""
+
+    user_email: str = ""
+    user_first_name: str = ""
+    user_last_name: str = ""
+
+
 class SaveChatMessageSourceDTO(BaseModelDTO):
     """DTO for creating a message source."""
 
