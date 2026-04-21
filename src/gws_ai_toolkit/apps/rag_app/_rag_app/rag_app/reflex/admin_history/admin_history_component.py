@@ -86,6 +86,8 @@ def admin_history_detail_component() -> rx.Component:
                     ),
                     spacing="0",
                 ),
+                rx.spacer(),
+                _ai_expert_document_info(),
                 align="center",
                 spacing="3",
                 width="100%",
@@ -109,6 +111,42 @@ def admin_history_detail_component() -> rx.Component:
             margin_x="auto",
             spacing="4",
             padding="24px",
+        ),
+    )
+
+
+def _ai_expert_document_info() -> rx.Component:
+    """Document name badge and view button shown for AI Expert conversations."""
+    return rx.cond(
+        AdminHistoryState.selected_conversation_mode == ChatConversationMode.AI_EXPERT.value,
+        rx.hstack(
+            rx.cond(
+                AdminHistoryState.selected_document_name,
+                rx.badge(
+                    rx.icon("file-text", size=14),
+                    rx.text(
+                        AdminHistoryState.selected_document_name,
+                        size="2",
+                        weight="medium",
+                    ),
+                    variant="soft",
+                    size="2",
+                    background="var(--gray-3)",
+                    color="var(--gray-12)",
+                ),
+            ),
+            rx.cond(
+                AdminHistoryState.selected_resource_id,
+                rx.button(
+                    rx.icon("eye", size=14),
+                    "View document",
+                    on_click=AdminHistoryState.open_selected_document,
+                    variant="solid",
+                    size="2",
+                ),
+            ),
+            align="center",
+            spacing="2",
         ),
     )
 

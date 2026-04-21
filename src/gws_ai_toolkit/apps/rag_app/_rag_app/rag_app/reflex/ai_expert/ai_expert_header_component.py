@@ -2,6 +2,7 @@ import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 from gws_reflex_main import left_sidebar_open_button
 
+from ..admin_history.admin_history_state import AdminHistoryState
 from ..core.conversation_mode_chip_component import conversation_mode_chip_switchable
 
 
@@ -15,19 +16,42 @@ def _header_divider() -> rx.Component:
 
 
 def _ai_expert_settings_button(show_settings: rx.Var[bool]) -> rx.Component:
-    """Settings link button for AI Expert header that redirects to the AI Expert config page.
+    """Settings menu button for AI Expert header with links to Resources, Config, and Admin History pages.
 
     :param show_settings: Reactive var controlling visibility.
     """
     return rx.cond(
         show_settings,
-        rx.button(
-            rx.icon("settings", size=16),
-            variant="ghost",
-            size="2",
-            cursor="pointer",
-            color="var(--gray-11)",
-            on_click=rx.redirect("/config-ai-expert"),
+        rx.menu.root(
+            rx.menu.trigger(
+                rx.button(
+                    rx.icon("settings", size=16),
+                    variant="ghost",
+                    size="2",
+                    cursor="pointer",
+                    color="var(--gray-11)",
+                ),
+            ),
+            rx.menu.content(
+                rx.menu.item(
+                    rx.icon("database", size=16),
+                    "Resources",
+                    on_click=rx.redirect("/rag-config"),
+                ),
+                rx.menu.item(
+                    rx.icon("settings", size=16),
+                    "Config",
+                    on_click=rx.redirect("/config-ai-expert"),
+                ),
+                rx.cond(
+                    AdminHistoryState.show_admin_history,
+                    rx.menu.item(
+                        rx.icon("users", size=16),
+                        "Admin History",
+                        on_click=rx.redirect("/admin-history"),
+                    ),
+                ),
+            ),
         ),
     )
 

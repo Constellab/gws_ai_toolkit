@@ -1,11 +1,16 @@
 import reflex as rx
+from gws_ai_toolkit.core.utils import Utils
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_dto import AdminChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import (
+    AiExpertChatConversation,
+)
+from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
 from gws_ai_toolkit.models.user.user import User
-from gws_core import UserDTO
+from gws_core import ResourceModel, UserDTO
 from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
@@ -32,6 +37,9 @@ class AdminHistoryState(rx.State):
     # Detail page state
     selected_conversation_label: str = ""
     selected_conversation_user: str = ""
+    selected_conversation_mode: str = ""
+    selected_document_name: str = ""
+    selected_resource_id: str = ""
     detail_messages: list[ChatMessageFront] = []
     is_loading_messages: bool = False
 
@@ -108,6 +116,9 @@ class AdminHistoryState(rx.State):
             return
 
         self.is_loading_messages = True
+        self.selected_conversation_mode = ""
+        self.selected_document_name = ""
+        self.selected_resource_id = ""
 
         try:
             main_state = await self.get_state(ReflexMainState)
@@ -121,6 +132,18 @@ class AdminHistoryState(rx.State):
                 self.selected_conversation_user = (
                     f"{admin_dto.user_first_name} {admin_dto.user_last_name}"
                 )
+                self.selected_conversation_mode = admin_dto.mode
+
+                # For AI Expert conversations, resolve the document name/resource id
+                if admin_dto.mode == ChatConversationMode.AI_EXPERT.value:
+                    resource_id = conversation.configuration.get(
+                        AiExpertChatConversation.RESOURCE_ID_CONFIG_KEY
+                    )
+                    if resource_id:
+                        resource_model = ResourceModel.get_by_id(resource_id)
+                        if resource_model:
+                            self.selected_resource_id = resource_id
+                            self.selected_document_name = resource_model.name
 
                 # Load messages
                 messages = conversation_service.get_messages_of_conversation(conversation_id)
@@ -145,6 +168,20 @@ class AdminHistoryState(rx.State):
     def open_document_from_resource(self, resource_id: str):
         """No-op in readonly admin view."""
         pass
+
+    @rx.event
+    async def open_selected_document(self):
+        """Open the document associated with the currently selected AI Expert conversation."""
+        if not self.selected_resource_id:
+            return None
+
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            public_link = Utils.generate_temp_share_resource_link(self.selected_resource_id)
+
+        if public_link:
+            return rx.redirect(public_link, is_external=True)
+        return None
 
     @rx.var
     def chat_messages(self) -> list[ChatMessageBase]:
