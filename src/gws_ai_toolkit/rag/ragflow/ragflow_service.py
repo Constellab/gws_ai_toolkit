@@ -1,8 +1,5 @@
 from collections.abc import Generator
 
-from gws_core import CredentialsDataOther
-from ragflow_sdk import Chat, Chunk, DataSet, Document, RAGFlow, Session
-
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagflowAskStreamResponse,
     RagFlowCreateChatRequest,
@@ -12,6 +9,8 @@ from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagFlowUpdateDatasetRequest,
     RagFlowUpdateDocumentOptions,
 )
+from gws_core import CredentialsDataOther
+from ragflow_sdk import Chat, Chunk, DataSet, Document, RAGFlow, Session
 
 
 class RagFlowService:
@@ -33,7 +32,7 @@ class RagFlowService:
                 self._client = RAGFlow(api_key=self.api_key, base_url=self.base_url)
             except ImportError:
                 raise RuntimeError(
-                    "RagFlow SDK is not installed. Please install it with: pip install ragflow-sdk"
+                    "RagFlow SDK is not installed. Please install it with: uv install ragflow-sdk"
                 )
         return self._client
 
@@ -57,7 +56,9 @@ class RagFlowService:
         try:
             params: dict = {
                 "name": dataset.name,
-                "chunk_method": dataset.parse_method if hasattr(dataset, "parse_method") else "naive",
+                "chunk_method": dataset.parse_method
+                if hasattr(dataset, "parse_method")
+                else "naive",
                 "permission": dataset.permission if hasattr(dataset, "permission") else "me",
             }
 
