@@ -10,6 +10,7 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatC
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
 from gws_ai_toolkit.models.user.user import User
+from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_core import ResourceModel, UserDTO
 from gws_reflex_main import ReflexMainState
 
@@ -160,14 +161,25 @@ class AdminHistoryState(rx.State):
         return rx.redirect(f"/ai-expert/{rag_document_id}")
 
     @rx.event
-    def open_document(self, rag_document_id: str):
-        """No-op in readonly admin view."""
-        pass
+    async def open_document(self, rag_document_id: str):
+        """Redirect the user to an external URL for the document."""
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            rag_resource = RagResource.from_document_id(rag_document_id)
+            if not rag_resource:
+                raise ValueError(f"Resource with ID {rag_document_id} not found")
+        return await self.open_document_from_resource(rag_resource.get_id())
 
     @rx.event
-    def open_document_from_resource(self, resource_id: str):
-        """No-op in readonly admin view."""
-        pass
+    async def open_document_from_resource(self, resource_id: str):
+        """Redirect the user to an external URL for the resource."""
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            public_link = Utils.generate_temp_share_resource_link(resource_id)
+
+        if public_link:
+            return rx.redirect(public_link, is_external=True)
+        return None
 
     @rx.event
     async def open_selected_document(self):

@@ -100,7 +100,7 @@ def ai_expert_header_component(
                 max_width="50%",
                 min_width="0",
                 overflow="hidden",
-                title=subtitle,
+                title=rx.cond(subtitle, subtitle, ""),
             ),
             rx.text("Loading...", size="2", color="var(--gray-8)"),
         ),

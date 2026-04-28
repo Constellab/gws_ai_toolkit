@@ -123,16 +123,24 @@ def _ai_expert_document_info() -> rx.Component:
             rx.cond(
                 AdminHistoryState.selected_document_name,
                 rx.badge(
-                    rx.icon("file-text", size=14),
+                    rx.icon("file-text", size=14, flex_shrink="0"),
                     rx.text(
                         AdminHistoryState.selected_document_name,
                         size="2",
                         weight="medium",
+                        overflow="hidden",
+                        text_overflow="ellipsis",
+                        white_space="nowrap",
+                        min_width="0",
                     ),
                     variant="soft",
                     size="2",
                     background="var(--gray-3)",
                     color="var(--gray-12)",
+                    max_width="200px",
+                    min_width="0",
+                    overflow="hidden",
+                    title=AdminHistoryState.selected_document_name,
                 ),
             ),
             rx.cond(
