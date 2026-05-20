@@ -69,7 +69,7 @@ class GenerateAiTableStandaloneApp(Task):
             ),
             "stop_policy": SelectParam(
                 AppStopPolicy,
-                default_value=AppStopPolicy.AUTO,
+                default_value=AppStopPolicy.MANUAL,
                 human_name="Stop policy",
                 short_description="How the app is stopped: AUTO stops it when no "
                 "connection is detected, MANUAL keeps it running.",
