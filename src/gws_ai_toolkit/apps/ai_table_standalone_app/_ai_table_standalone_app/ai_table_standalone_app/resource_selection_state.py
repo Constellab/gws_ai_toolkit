@@ -1,8 +1,11 @@
 """State for handling resource selection in the home page."""
 
 import reflex as rx
+from gws_ai_toolkit.apps.ai_table_standalone_app.analytics_resource_action_plugin import (
+    ANALYTICS_APP_RESOURCE_QUERY_PARAM_KEY,
+)
 from gws_core import File, ResourceModel, ResourceSearchBuilder, Table
-from gws_reflex_main import ResourceSelectState
+from gws_reflex_main import ReflexMainState, ResourceSelectState
 
 from .ai_table.ai_table_data_state import (
     AiTableDataState,
@@ -43,6 +46,39 @@ class ResourceSelectionState(ResourceSelectState, rx.State):
             table_state.add_file(resource, resource.name, resource_model.id)
         else:
             table_state.add_table(resource)
+
+        main_state_instance = await self.get_state(MainState)
+        return await main_state_instance.after_new_table()
+
+    @rx.event
+    async def load_from_query_param(self):
+        """Page load handler for the home page.
+
+        If a ``resource_id`` query param is provided (e.g. ``/?resource_id=ABC``),
+        load that Table or Excel/CSV File resource and redirect to the AI Table page.
+
+        On any error (resource not found, wrong type, no access), shows a toast
+        and stays on the home page so the user can pick or upload a resource manually.
+        """
+        main_state = await self.get_state(ReflexMainState)
+        query_params = main_state.get_query_params()
+        resource_id = query_params.get(ANALYTICS_APP_RESOURCE_QUERY_PARAM_KEY)
+
+        if not resource_id:
+            return None
+
+        try:
+            table_state = await self.get_state(AiTableDataState)
+            # Avoid re-adding the same resource if on_load fires again
+            # (e.g. page reload with the query param still in the URL).
+            existing = table_state.get_excel_file_by_resource_model_id(resource_id)
+            if existing is not None:
+                table_state.select_excel_file(existing.id)
+            else:
+                with await main_state.authenticate_user():
+                    table_state.add_resource_model(resource_id)
+        except Exception as e:  # noqa: BLE001
+            return rx.toast.error(f"Could not load resource: {e}")
 
         main_state_instance = await self.get_state(MainState)
         return await main_state_instance.after_new_table()

@@ -348,6 +348,16 @@ class AiTableDataState(rx.State):
         """Count the number of tables currently loaded"""
         return len(self._excel_files)
 
+    def get_excel_file_by_resource_model_id(self, resource_model_id: str) -> ExcelFile | None:
+        """Get an already-loaded ExcelFile by its source resource model id.
+
+        Returns None if no loaded table originates from that resource.
+        """
+        for excel_file in self._excel_files.values():
+            if excel_file.resource_model_id == resource_model_id:
+                return excel_file
+        return None
+
     def get_table(self, table_id: str, sheet_name: str = "") -> ExcelSheetDTO | None:
         """Get a specific table by ID and optional sheet name
 
@@ -364,7 +374,12 @@ class AiTableDataState(rx.State):
         return None
 
     def load_from_resource_id_url_param(self) -> None:
-        """Load resource from URL parameter"""
+        """Load resource from the ``[resource_id]`` dynamic route segment.
+
+        Used by full_app's ``/ai-table/[resource_id]`` route. The standalone app
+        instead reads a ``resource_id`` query param on the home page (see
+        ``ResourceSelectionState.load_from_query_param``).
+        """
         # Get the dynamic route parameter
         resource_id = self.resource_id if hasattr(self, "resource_id") else None
 

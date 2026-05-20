@@ -2,6 +2,7 @@ from typing import cast
 
 from gws_core import (
     AppConfig,
+    AppStopPolicy,
     AppType,
     BoolParam,
     ConfigParams,
@@ -12,11 +13,18 @@ from gws_core import (
     OutputSpec,
     OutputSpecs,
     ReflexResource,
+    SelectParam,
+    Tag,
     Task,
     TaskInputs,
     TaskOutputs,
     app_decorator,
     task_decorator,
+)
+
+from .analytics_app_constants import (
+    ANALYTICS_APP_TAG_KEY,
+    ANALYTICS_APP_TAG_VALUE,
 )
 
 
@@ -59,6 +67,13 @@ class GenerateAiTableStandaloneApp(Task):
                 short_description="Show the config page",
                 default_value=True,
             ),
+            "stop_policy": SelectParam(
+                AppStopPolicy,
+                default_value=AppStopPolicy.AUTO,
+                human_name="Stop policy",
+                short_description="How the app is stopped: AUTO stops it when no "
+                "connection is detected, MANUAL keeps it running.",
+            ),
         }
     )
 
@@ -79,9 +94,15 @@ class GenerateAiTableStandaloneApp(Task):
 
         reflex_app.set_enterprise_app(True)
 
+        # apply the stop policy chosen in the config
+        reflex_app.set_stop_policy(AppStopPolicy(params["stop_policy"]))
+
         # For the test, we disable the authentication
         reflex_app.set_requires_authentication(False)
 
         reflex_app.name = "Analytics"
+
+        # tag the resource to identify it as the Constellab Analytics app
+        reflex_app.tags.add_tag(Tag(ANALYTICS_APP_TAG_KEY, ANALYTICS_APP_TAG_VALUE))
 
         return {"reflex_app": reflex_app}

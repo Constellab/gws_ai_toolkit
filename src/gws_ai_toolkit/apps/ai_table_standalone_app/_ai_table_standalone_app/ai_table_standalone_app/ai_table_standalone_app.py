@@ -12,6 +12,7 @@ from .ai_table.chat.table_agent.ai_table_agent_chat_config_component import (
 )
 from .custom_states import CustomAppConfigState
 from .home_page import home_page
+from .resource_selection_state import ResourceSelectionState
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 
@@ -29,12 +30,15 @@ def page_component(content: rx.Component, disable_padding: bool = False) -> rx.C
             flex="1",
             padding="1em" if not disable_padding else "0",
             height="100vh",
+            class_name="ai-table-standalone-app",
         ),
     )
 
 
 # Home page route (now at root)
-@rx.page()
+# Supports an optional `resource_id` query param (e.g. /?resource_id=ABC):
+# when present, the resource is loaded and the app redirects to /ai-table.
+@rx.page(on_load=ResourceSelectionState.load_from_query_param)
 def index():
     """Home page for file upload"""
     return page_component(
@@ -71,7 +75,6 @@ def ai_table():
                     align="center",
                     spacing="4",
                 ),
-                height="100%",
                 width="100%",
             ),
         ),

@@ -441,7 +441,6 @@ def ai_table_layout(header_left_component: rx.Component | None = None):
         #     min_height="0",
         # ),
         width="100%",
-        height="100%",
         spacing="0",
     )
 
@@ -485,7 +484,6 @@ def ai_table_component(header_left_component: rx.Component | None = None) -> rx.
                     rx.text("Loading data...", font_size="lg"),
                     spacing="4",
                 ),
-                height="100%",
                 width="100%",
             ),
         ),
