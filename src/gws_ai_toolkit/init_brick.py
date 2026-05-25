@@ -63,6 +63,9 @@ class GwsAiToolkitListener(EventListener):
                     app_config_resource.id,
                     generate_task << "app_config",
                 )
+                protocol.add_output(
+                    "reflex_app_output", generate_task >> "reflex_app"
+                )
 
                 scenario.add_to_queue()
         except Exception as err:
