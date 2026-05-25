@@ -9,7 +9,7 @@
         "bricks": [
             {
                 "name": "gws_core",
-                "version": "0.20.11"
+                "version": "0.22.0"
             }
         ],
         "pip": [
@@ -22,7 +22,7 @@
                     },
                     {
                         "name": "reflex-enterprise",
-                        "version": "0.4.1"
+                        "version": "0.8.2"
                     },
                     {
                         "name": "reflex-resizable-panels",

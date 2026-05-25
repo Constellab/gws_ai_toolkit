@@ -1,5 +1,5 @@
 import reflex as rx
-from gws_reflex_base import loader_section
+from gws_reflex_main import loader_section
 
 from .sync_all_resources_dialog_state import SyncAllResourcesDialogState
 

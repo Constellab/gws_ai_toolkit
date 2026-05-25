@@ -1,6 +1,6 @@
 import reflex as rx
 from gws_ai_toolkit.stats.ai_table_stats_type import AiTableStatsResults
-from gws_reflex_base import plotly_fullscreen_dialog, plotly_with_fullscreen
+from gws_reflex_main import plotly_fullscreen_dialog, plotly_with_fullscreen
 
 from .ai_table_stats_state import AiTableStatsState
 

@@ -1,6 +1,6 @@
 import reflex as rx
 from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotlyFront
-from gws_reflex_base import plotly_with_fullscreen
+from gws_reflex_main import plotly_with_fullscreen
 
 
 def plotly_message_component(message: ChatMessagePlotlyFront) -> rx.Component:

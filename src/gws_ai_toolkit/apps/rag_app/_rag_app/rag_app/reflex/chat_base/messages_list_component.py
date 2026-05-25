@@ -13,8 +13,7 @@ from gws_ai_toolkit.models.chat.message.chat_user_message import (
     ChatUserMessageBase,
     ChatUserMessageText,
 )
-from gws_reflex_base import plotly_fullscreen_dialog
-from gws_reflex_main import user_profile_picture
+from gws_reflex_main import plotly_fullscreen_dialog, user_profile_picture
 
 from .chat_config import ChatConfig, ChatMessageRenderer
 from .conversation_chat_state_base import ConversationChatStateBase

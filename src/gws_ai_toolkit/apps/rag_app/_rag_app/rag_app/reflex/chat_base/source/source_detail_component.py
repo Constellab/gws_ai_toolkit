@@ -1,5 +1,5 @@
 import reflex as rx
-from gws_reflex_base.component.reflex_dialog_components import dialog_header
+from gws_reflex_main import dialog_header
 
 from ..conversation_chat_state_base import ConversationChatStateBase
 from .source_detail_state import SourceDetailState
