@@ -3,8 +3,9 @@ from collections.abc import Generator
 from typing import Any, Literal
 
 import requests
-from gws_core import CredentialsDataOther, ExternalApiService, FormData, Logger
+from gws_core import ExternalApiService, FormData, Logger
 
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataDify
 from gws_ai_toolkit.rag.dify.dify_class import (
     DifyChunksResponse,
     DifyCreateDatasetMetadataRequest,
@@ -673,10 +674,5 @@ class DifyService:
         return self.route.split("/")[0] + "//" + self.route.split("/")[2]
 
     @staticmethod
-    def from_credentials(credentials: CredentialsDataOther):
-        # check credentials
-        if "route" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'route'")
-        if "api_key" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'api_key'")
-        return DifyService(credentials.data["route"], credentials.data["api_key"])
+    def from_credentials(credentials: CredentialsDataDify):
+        return DifyService(credentials.route, credentials.api_key)

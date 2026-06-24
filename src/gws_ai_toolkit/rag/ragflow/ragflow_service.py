@@ -1,5 +1,6 @@
 from collections.abc import Generator
 
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataRagflow
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagflowAskStreamResponse,
     RagFlowCreateChatRequest,
@@ -9,7 +10,6 @@ from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagFlowUpdateDatasetRequest,
     RagFlowUpdateDocumentOptions,
 )
-from gws_core import CredentialsDataOther
 from ragflow_sdk import Chat, Chunk, DataSet, Document, RAGFlow, Session
 
 
@@ -560,26 +560,17 @@ class RagFlowService:
             raise RuntimeError(f"Error asking question: {str(e)}") from e
 
     @staticmethod
-    def from_credentials(credentials: CredentialsDataOther):
+    def from_credentials(credentials: CredentialsDataRagflow):
         """Create RagFlowService from credentials.
 
         Parameters
         ----------
-        credentials : CredentialsDataOther
-            Credentials containing base_url and api_key
+        credentials : CredentialsDataRagflow
+            Credentials containing the route and api_key
 
         Returns
         -------
         RagFlowService
             Configured service instance
-
-        Raises
-        ------
-        ValueError
-            If required credentials are missing
         """
-        if "route" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'route'")
-        if "api_key" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'api_key'")
-        return RagFlowService(credentials.data["route"], credentials.data["api_key"])
+        return RagFlowService(credentials.route, credentials.api_key)

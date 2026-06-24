@@ -1,6 +1,5 @@
-from gws_core import CredentialsDataOther
-
 from .base_rag_service import BaseRagService
+from .rag_credentials import CredentialsDataRag
 from .rag_enums import RagProvider
 
 
@@ -8,7 +7,7 @@ class RagServiceFactory:
     """Factory class to create RAG services based on provider type."""
 
     @staticmethod
-    def create_service(provider: RagProvider, credentials: CredentialsDataOther) -> BaseRagService:
+    def create_service(provider: RagProvider, credentials: CredentialsDataRag) -> BaseRagService:
         """Create the appropriate RAG service based on provider.
 
         Args:

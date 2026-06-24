@@ -1,3 +1,4 @@
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataRagflow
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_ai_toolkit.rag.common.tag_rag_app_service import TagRagAppService
 from gws_ai_toolkit.rag.ragflow.ragflow_service import RagFlowService
@@ -7,9 +8,7 @@ from gws_ai_toolkit.services.community_resource_files_manager_service import (
 from gws_core import (
     ConfigParams,
     ConfigSpecs,
-    CredentialsDataOther,
     CredentialsParam,
-    CredentialsType,
     InputSpec,
     InputSpecs,
     IntParam,
@@ -71,7 +70,7 @@ class PushResourcesToRagFlow(Task):
 
     config_specs = ConfigSpecs({
         "api_key": CredentialsParam(
-            credentials_type=CredentialsType.OTHER,
+            credentials_type=CredentialsDataRagflow,
             human_name="RagFlow API Key",
             short_description="A credentials that contains 'route' and 'api_key'",
         ),
@@ -102,7 +101,7 @@ class PushResourcesToRagFlow(Task):
         """Run the task to push resources to RagFlow using TagRagAppService."""
 
         # Get config
-        credentials: CredentialsDataOther = params.get_value("api_key")
+        credentials: CredentialsDataRagflow = params.get_value("api_key")
         dataset_id = params.get_value("dataset_id")
         tag_key = params.get_value("tag_key")
         tag_value = params.get_value("tag_value")

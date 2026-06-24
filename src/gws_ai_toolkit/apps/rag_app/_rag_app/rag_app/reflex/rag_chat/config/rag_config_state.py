@@ -5,9 +5,10 @@ import reflex as rx
 from gws_ai_toolkit.rag.common.base_rag_app_service import BaseRagAppService
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
 from gws_ai_toolkit.rag.common.rag_app_service_factory import RagAppServiceFactory
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataRag
 from gws_ai_toolkit.rag.common.rag_enums import RagProvider, RagResourceSyncMode
 from gws_ai_toolkit.rag.common.rag_service_factory import RagServiceFactory
-from gws_core import BaseModelDTO, Credentials, CredentialsDataOther
+from gws_core import BaseModelDTO, Credentials
 from gws_reflex_main import ReflexMainState
 
 
@@ -43,7 +44,7 @@ class RagConfigState(rx.State, mixin=True):
     """
 
     _rag_config: RagConfigStateConfig
-    _credentials: CredentialsDataOther
+    _credentials: CredentialsDataRag
 
     __sub_class_type__: type["RagConfigState"] | None = None
 
@@ -86,25 +87,25 @@ class RagConfigState(rx.State, mixin=True):
         config = await self.get_rag_config()
         return config.resource_sync_mode
 
-    async def get_dataset_credentials(self) -> CredentialsDataOther | None:
+    async def get_dataset_credentials(self) -> CredentialsDataRag | None:
         """Get the dataset credentials."""
         if not self._credentials:
             config = await self.get_rag_config()
             if not config.rag_dataset_credentials_name:
                 return None
             ds_creds = Credentials.find_by_name_and_check(config.rag_dataset_credentials_name)
-            self._credentials = cast(CredentialsDataOther, ds_creds.get_data_object())
+            self._credentials = cast(CredentialsDataRag, ds_creds.get_data_object())
 
         return self._credentials
 
-    async def get_chat_credentials(self) -> CredentialsDataOther | None:
+    async def get_chat_credentials(self) -> CredentialsDataRag | None:
         """Get the chat credentials."""
         if not self._credentials:
             config = await self.get_rag_config()
             if not config.rag_chat_credentials_name:
                 return None
             chat_creds = Credentials.find_by_name_and_check(config.rag_chat_credentials_name)
-            self._credentials = cast(CredentialsDataOther, chat_creds.get_data_object())
+            self._credentials = cast(CredentialsDataRag, chat_creds.get_data_object())
 
         return self._credentials
 
@@ -134,7 +135,7 @@ class RagConfigState(rx.State, mixin=True):
         return await self._build_rag_service(credentials)
 
     async def _build_rag_app_service(
-        self, credentials: CredentialsDataOther
+        self, credentials: CredentialsDataRag
     ) -> BaseRagAppService | None:
         """Build a RAG app service."""
         rag_service = await self._build_rag_service(credentials)
@@ -155,7 +156,7 @@ class RagConfigState(rx.State, mixin=True):
             await self.get_resource_sync_mode(), rag_service, dataset_id or "", additional_config
         )
 
-    async def _build_rag_service(self, credentials: CredentialsDataOther) -> BaseRagService | None:
+    async def _build_rag_service(self, credentials: CredentialsDataRag) -> BaseRagService | None:
         """Build a RAG app service."""
         provider = await self.get_rag_provider()
         if not provider:

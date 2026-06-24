@@ -1,3 +1,4 @@
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataRagflow
 from gws_ai_toolkit.rag.ragflow.ragflow_class import (
     RagFlowCreateDatasetRequest,
     RagFlowUpdateDatasetRequest,
@@ -6,9 +7,7 @@ from gws_ai_toolkit.rag.ragflow.ragflow_service import RagFlowService
 from gws_core import (
     ConfigParams,
     ConfigSpecs,
-    CredentialsDataOther,
     CredentialsParam,
-    CredentialsType,
     IntParam,
     OutputSpec,
     OutputSpecs,
@@ -62,7 +61,7 @@ class RagFlowCreateOrUpdateDataset(Task):
     config_specs = ConfigSpecs(
         {
             "api_key": CredentialsParam(
-                credentials_type=CredentialsType.OTHER,
+                credentials_type=CredentialsDataRagflow,
                 human_name="RagFlow API Key",
                 short_description="A credentials that contains 'route' and 'api_key'",
             ),
@@ -106,7 +105,7 @@ class RagFlowCreateOrUpdateDataset(Task):
     )
 
     def run(self, params: ConfigParams, inputs: TaskInputs) -> TaskOutputs:
-        credentials: CredentialsDataOther = params.get_value("api_key")
+        credentials: CredentialsDataRagflow = params.get_value("api_key")
         ragflow_service = RagFlowService.from_credentials(credentials)
 
         name: str = params.get_value("name")

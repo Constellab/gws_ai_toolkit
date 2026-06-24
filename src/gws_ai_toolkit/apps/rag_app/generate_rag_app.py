@@ -1,5 +1,6 @@
 from typing import cast
 
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataDify, CredentialsDataRagflow
 from gws_ai_toolkit.rag.common.rag_enums import RagResourceSyncMode
 from gws_core import (
     AppConfig,
@@ -7,7 +8,6 @@ from gws_core import (
     BoolParam,
     ConfigParams,
     ConfigSpecs,
-    CredentialsDataOther,
     CredentialsParam,
     File,
     InputSpec,
@@ -78,10 +78,12 @@ class GenerateDatahubRagDifyApp(Task):
                 short_description="Name of the chat app. All conversations are associated to this chat name.",
             ),
             "chat_credentials": CredentialsParam(
+                credentials_type=CredentialsDataDify,
                 human_name="Chat credentials",
                 short_description="Credentials to access the RAG platform chat",
             ),
             "dataset_credentials": CredentialsParam(
+                credentials_type=CredentialsDataDify,
                 human_name="Knowledge Base credentials",
                 short_description="Credentials to access RAG platform knowledge bases",
             ),
@@ -126,10 +128,10 @@ class GenerateDatahubRagDifyApp(Task):
         # set the chat app name
         reflex_resource.set_param("chat_app_name", params.get("chat_app_name"))
 
-        chat_credentials_data: CredentialsDataOther = params["chat_credentials"]
+        chat_credentials_data: CredentialsDataDify = params["chat_credentials"]
         reflex_resource.set_param("rag_chat_credentials_name", chat_credentials_data.meta.name)
 
-        dataset_credentials_data: CredentialsDataOther = params["dataset_credentials"]
+        dataset_credentials_data: CredentialsDataDify = params["dataset_credentials"]
         reflex_resource.set_param(
             "rag_dataset_credentials_name", dataset_credentials_data.meta.name
         )
@@ -212,6 +214,7 @@ class GenerateDatahubRagFlowApp(Task):
                 short_description="Name of the chat app. All conversations are associated to this chat name.",
             ),
             "ragflow_credentials": CredentialsParam(
+                credentials_type=CredentialsDataRagflow,
                 human_name="RAGFlow credentials",
                 short_description="Credentials to access RAGFlow",
             ),
@@ -279,7 +282,7 @@ class GenerateDatahubRagFlowApp(Task):
 
         reflex_resource.set_param("chat_app_name", params["chat_app_name"])
         # set both credentials using the ragflow_credentials
-        ragflow_credentials_data: CredentialsDataOther = params["ragflow_credentials"]
+        ragflow_credentials_data: CredentialsDataRagflow = params["ragflow_credentials"]
         reflex_resource.set_param("rag_chat_credentials_name", ragflow_credentials_data.meta.name)
         reflex_resource.set_param(
             "rag_dataset_credentials_name", ragflow_credentials_data.meta.name

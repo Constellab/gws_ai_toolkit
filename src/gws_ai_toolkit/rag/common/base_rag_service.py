@@ -2,8 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from typing import Any
 
-from gws_core import CredentialsDataOther
-
+from .rag_credentials import CredentialsDataRag
 from .rag_models import RagChatEndStreamResponse, RagChatStreamResponse, RagChunk, RagDocument
 
 
@@ -99,7 +98,7 @@ class BaseRagService(ABC):
     # Factory method
     @staticmethod
     @abstractmethod
-    def from_credentials(credentials: CredentialsDataOther) -> "BaseRagService":
+    def from_credentials(credentials: CredentialsDataRag) -> "BaseRagService":
         """Create service instance from credentials."""
         raise NotImplementedError
 

@@ -1,9 +1,8 @@
 from collections.abc import Generator
 from typing import Any
 
-from gws_core import CredentialsDataOther
-
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataRag
 from gws_ai_toolkit.rag.common.rag_models import (
     RagChatEndStreamResponse,
     RagChatStreamResponse,
@@ -177,14 +176,9 @@ class RagDifyService(BaseRagService):
                 yield chat_end
 
     @staticmethod
-    def from_credentials(credentials: CredentialsDataOther) -> "RagDifyService":
+    def from_credentials(credentials: CredentialsDataRag) -> "RagDifyService":
         """Create service instance from credentials."""
-        # Check credentials
-        if "route" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'route'")
-        if "api_key" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'api_key'")
-        return RagDifyService(credentials.data["route"], credentials.data["api_key"])
+        return RagDifyService(credentials.route, credentials.api_key)
 
     # Provide access to underlying Dify service for advanced use cases
     @property

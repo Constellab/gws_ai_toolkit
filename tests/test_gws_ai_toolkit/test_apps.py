@@ -5,11 +5,9 @@ from gws_ai_toolkit.apps.ai_table_standalone_app.generate_ai_table_standalone_ap
 )
 from gws_ai_toolkit.apps.full_app.generate_full_app import GenerateFullApp
 from gws_ai_toolkit.apps.rag_app.generate_rag_app import GenerateDatahubRagFlowApp
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataRagflow
 from gws_core import File
 from gws_core.credentials.credentials import Credentials
-from gws_core.credentials.credentials_type import CredentialsType
-from gws_core.resource.resource_dto import ResourceOrigin
-from gws_core.resource.resource_model import ResourceModel
 from gws_core.test.app_tester import AppTester
 from gws_core.test.base_test_case import BaseTestCase
 
@@ -23,10 +21,8 @@ class TestApps(BaseTestCase):
         super().init_before_test()
         credentials = Credentials()
         credentials.name = "test_credentials"
-        credentials.type = CredentialsType.OTHER
-        credentials.data = {
-            "data": [{"key": "route", "value": "fake_key"}, {"key": "api_key", "value": "fake_key"}]
-        }
+        credentials.type = CredentialsDataRagflow.get_type_id()
+        credentials.data = {"route": "fake_key", "api_key": "fake_key"}
         credentials.save()
         cls._credentials_name = credentials.name
 

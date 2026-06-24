@@ -1,16 +1,15 @@
 from collections.abc import Generator
-from typing import Any, Literal, Optional
-
-from gws_core import CredentialsDataOther
-from ragflow_sdk import Chunk, Document
+from typing import Any, Literal
 
 from gws_ai_toolkit.rag.common.base_rag_service import BaseRagService
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataRag
 from gws_ai_toolkit.rag.common.rag_models import (
     RagChatEndStreamResponse,
     RagChatStreamResponse,
     RagChunk,
     RagDocument,
 )
+from ragflow_sdk import Chunk, Document
 
 from .ragflow_class import RagFlowUpdateDocumentOptions
 from .ragflow_service import RagFlowService
@@ -132,14 +131,9 @@ class RagRagFlowService(BaseRagService):
                     )
 
     @staticmethod
-    def from_credentials(credentials: CredentialsDataOther) -> "RagRagFlowService":
+    def from_credentials(credentials: CredentialsDataRag) -> "RagRagFlowService":
         """Create service instance from credentials."""
-        # Check credentials
-        if "route" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'route'")
-        if "api_key" not in credentials.data:
-            raise ValueError("The credentials must contain the field 'api_key'")
-        return RagRagFlowService(credentials.data["route"], credentials.data["api_key"])
+        return RagRagFlowService(credentials.route, credentials.api_key)
 
     # Provide access to underlying RagFlow service for advanced use cases
     @property
@@ -153,7 +147,7 @@ class RagRagFlowService(BaseRagService):
     def _convert_document_to_rag_document(self, document: Document) -> RagDocument:
         """Convert SDK Document directly to RagDocument."""
 
-        parsed_status: Optional[Literal["DONE", "PENDING", "RUNNING", "ERROR"]] = None
+        parsed_status: Literal["DONE", "PENDING", "RUNNING", "ERROR"] | None = None
         if document.run == "UNSTART":
             parsed_status = "PENDING"
         elif document.run == "DONE":

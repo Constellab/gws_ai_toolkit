@@ -2,9 +2,7 @@
 from gws_core import (
     ConfigParams,
     ConfigSpecs,
-    CredentialsDataOther,
     CredentialsParam,
-    CredentialsType,
     DynamicInputs,
     File,
     Folder,
@@ -22,6 +20,7 @@ from gws_core import (
     task_decorator,
 )
 
+from gws_ai_toolkit.rag.common.rag_credentials import CredentialsDataDify
 from gws_ai_toolkit.rag.dify.dify_class import DifyIndexingTechnique, DifySendDocumentOptions
 from gws_ai_toolkit.rag.dify.dify_service import DifyService
 
@@ -51,7 +50,7 @@ class DifySendFileToKnownledgeBase(Task):
     config_specs = ConfigSpecs(
         {
             "api_key": CredentialsParam(
-                credentials_type=CredentialsType.OTHER,
+                credentials_type=CredentialsDataDify,
                 human_name="Dify API Key",
                 short_description="A credentials that contains 'route' and 'api_key'",
             ),
@@ -89,7 +88,7 @@ class DifySendFileToKnownledgeBase(Task):
 
         fs_nodes: ResourceList = inputs[DynamicInputs.SPEC_NAME]
 
-        credentials: CredentialsDataOther = params.get_value("api_key")
+        credentials: CredentialsDataDify = params.get_value("api_key")
         dify_service = DifyService.from_credentials(credentials)
 
         file_paths: list[str] = []
