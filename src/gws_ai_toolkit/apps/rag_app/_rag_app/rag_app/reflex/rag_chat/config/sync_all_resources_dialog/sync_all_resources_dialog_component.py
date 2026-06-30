@@ -8,8 +8,23 @@ def _sync_pending() -> rx.Component:
     """Content for the sync pending state."""
     return rx.vstack(
         rx.text(
-            f"Are you sure you want to sync all {SyncAllResourcesDialogState.count_resources_to_sync} resources?",
+            f"{SyncAllResourcesDialogState.total_resources_to_sync} resources available to sync. "
+            f"{SyncAllResourcesDialogState.count_resources_to_sync} will be synced.",
             size="4",
+            margin_bottom="0.5em",
+        ),
+        rx.hstack(
+            rx.text("Limit:", size="3"),
+            rx.input(
+                type="number",
+                min=1,
+                placeholder="All",
+                value=SyncAllResourcesDialogState.sync_limit_input_value,
+                on_change=SyncAllResourcesDialogState.set_sync_limit,
+                width="6em",
+            ),
+            rx.text("(leave empty to sync all)", size="2", color_scheme="gray"),
+            align_items="center",
             margin_bottom="1em",
         ),
         rx.hstack(

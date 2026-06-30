@@ -37,7 +37,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_source import (
     ChatMessageSourceFront,
     RagChatSourceFront,
 )
-from gws_reflex_main import get_theme, main_component, register_gws_reflex_app
+from gws_reflex_main import main_component, register_gws_reflex_app
 
 from .associated_resources_component import (
     associated_resources_dialog,
@@ -49,7 +49,9 @@ from .custom_states import CustomAppConfigState
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
 RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
-app = register_gws_reflex_app(rxe.App(theme=get_theme()))
+# Theme is configured via RadixThemesPlugin in rxconfig.py (App(theme=...) is
+# deprecated), so the app is created without an explicit theme here.
+app = register_gws_reflex_app(rxe.App())
 
 
 def custom_source_menu_items(source: RagChatSourceFront, state: ConversationChatStateBase):

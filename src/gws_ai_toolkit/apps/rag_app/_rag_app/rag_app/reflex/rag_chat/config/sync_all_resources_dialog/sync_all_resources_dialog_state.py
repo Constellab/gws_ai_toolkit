@@ -1,4 +1,3 @@
-from asyncio import sleep
 from typing import Literal
 
 import reflex as rx
@@ -17,9 +16,42 @@ class SyncAllResourcesDialogState(rx.State):
     load_resources_is_loading: bool = False
     sync_resource_progress: int = -1
     sync_errors: list[str] = []
+    sync_limit: int | None = None
+
+    @rx.event
+    def set_sync_limit(self, value: str):
+        """Set the maximum number of resources to sync. Empty value means no limit."""
+        value = (value or "").strip()
+        if not value:
+            self.sync_limit = None
+            return
+        try:
+            limit = int(value)
+        except ValueError:
+            self.sync_limit = None
+            return
+        self.sync_limit = limit if limit > 0 else None
+
+    @rx.var
+    def sync_limit_input_value(self) -> str:
+        """String value for the limit input field (empty when no limit is set)."""
+        return "" if self.sync_limit is None else str(self.sync_limit)
+
+    @rx.var
+    def total_resources_to_sync(self) -> int:
+        """Total number of resources available to sync, before applying the limit."""
+        return len(self.resources_to_sync)
+
+    def _get_limited_resources_to_sync(self) -> list[RagResource]:
+        """Return the resources to sync, capped to the configured limit."""
+        if self.sync_limit is not None and self.sync_limit > 0:
+            return self.resources_to_sync[: self.sync_limit]
+        return self.resources_to_sync
 
     @rx.var
     def count_resources_to_sync(self) -> int:
+        if self.sync_limit is not None and self.sync_limit > 0:
+            return min(self.sync_limit, len(self.resources_to_sync))
         return len(self.resources_to_sync)
 
     @rx.var
@@ -62,6 +94,7 @@ class SyncAllResourcesDialogState(rx.State):
         async with self:
             self.resources_to_sync = []
             self.sync_resource_progress = -1
+            self.sync_limit = None
             self.load_resources_is_loading = True
             config_state = await RagConfigState.get_instance(self)
 
@@ -86,7 +119,7 @@ class SyncAllResourcesDialogState(rx.State):
 
         rag_service = await config_state.get_dataset_rag_app_service()
 
-        for resource in self.resources_to_sync:
+        for resource in self._get_limited_resources_to_sync():
             try:
                 with await main_state.authenticate_user():
                     rag_service.send_resource_to_rag(resource, upload_options=None)

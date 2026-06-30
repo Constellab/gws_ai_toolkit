@@ -1,6 +1,5 @@
 import reflex as rx
 from gws_reflex_main import (
-    get_theme,
     register_gws_reflex_app,
 )
 
@@ -31,7 +30,9 @@ AppConfigState.set_config_state_class_type(CustomAppConfigState)
 RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
 
-app = register_gws_reflex_app(rx.App(theme=get_theme()))
+# Theme is configured via RadixThemesPlugin in rxconfig.py (App(theme=...) is
+# deprecated), so the app is created without an explicit theme here.
+app = register_gws_reflex_app(rx.App())
 
 
 @rx.page(route="/")
