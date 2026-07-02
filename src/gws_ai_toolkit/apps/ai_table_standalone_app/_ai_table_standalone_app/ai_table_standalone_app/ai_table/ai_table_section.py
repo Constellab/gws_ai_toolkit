@@ -1,5 +1,5 @@
 import reflex as rx
-import reflex_enterprise as rxe
+from gws_reflex_main.gws_components import ag_grid_component
 
 from .ai_table_data_state import AiTableDataState
 from .selection.ai_table_selection_dialog import ai_table_selection_dialog
@@ -115,12 +115,13 @@ def table_section():
         # AG Grid with selection enabled
         rx.box(
             rx.box(
-                rxe.ag_grid(
+                ag_grid_component(
                     id="ai_table_ag_grid",
                     column_defs=AiTableDataState.ag_grid_column_defs,
                     row_data=AiTableDataState.ag_grid_row_data,
                     on_cell_selection_changed=AiTableSelectionState.on_cell_selection_changed,
                     cell_selection=True,
+                    enterprise=True,
                     theme="quartz",
                     width="100%",
                     height="100%",

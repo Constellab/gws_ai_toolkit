@@ -10,7 +10,6 @@
     "@radix-ui/react-form": "0.1.8",
     "@radix-ui/themes": "3.3.0",
     "@react-router/node": "7.15.0",
-    "ag-charts-enterprise": "11.2.4",
     "ag-grid-community": "34.3.1",
     "ag-grid-enterprise": "34.3.1",
     "ag-grid-react": "34.3.1",

@@ -1,5 +1,4 @@
 import reflex as rx
-import reflex_enterprise as rxe
 from gws_ai_toolkit._app.ai_chat import (
     AppConfigState,
     ConversationChatStateBase,
@@ -51,7 +50,7 @@ RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
 # Theme is configured via RadixThemesPlugin in rxconfig.py (App(theme=...) is
 # deprecated), so the app is created without an explicit theme here.
-app = register_gws_reflex_app(rxe.App())
+app = register_gws_reflex_app(rx.App())
 
 
 def custom_source_menu_items(source: RagChatSourceFront, state: ConversationChatStateBase):

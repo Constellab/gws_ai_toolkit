@@ -1,5 +1,4 @@
 import reflex as rx
-import reflex_enterprise as rxe
 from gws_ai_toolkit._app.ai_chat import (
     AppConfigState,
 )
@@ -19,7 +18,7 @@ AppConfigState.set_config_state_class_type(CustomAppConfigState)
 
 # Theme is configured via RadixThemesPlugin in rxconfig.py (App(theme=...) is
 # deprecated), so the app is created without an explicit theme here.
-app = register_gws_reflex_app(rxe.App())
+app = register_gws_reflex_app(rx.App())
 
 
 def page_component(content: rx.Component, disable_padding: bool = False) -> rx.Component:

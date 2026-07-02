@@ -10,7 +10,6 @@
         "@radix-ui/react-form": "0.1.8",
         "@radix-ui/themes": "3.3.0",
         "@react-router/node": "7.15.0",
-        "ag-charts-enterprise": "11.2.4",
         "ag-grid-community": "34.3.1",
         "ag-grid-enterprise": "34.3.1",
         "ag-grid-react": "34.3.1",
@@ -523,13 +522,13 @@
 
     "acorn": ["acorn@7.4.1", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A=="],
 
-    "ag-charts-community": ["ag-charts-community@11.2.4", "", { "dependencies": { "ag-charts-core": "11.2.4", "ag-charts-locale": "11.2.4", "ag-charts-types": "11.2.4" } }, "sha512-L4DDGpCP1IVjjgacADRMPSucUiH7CU4nLJFFI/eWkv+ee0WOte7XIgIiwzUci+UD4IhLHu5zwbOoHdZ9LX/E5w=="],
+    "ag-charts-community": ["ag-charts-community@12.3.1", "", { "dependencies": { "ag-charts-core": "12.3.1", "ag-charts-locale": "12.3.1", "ag-charts-types": "12.3.1" } }, "sha512-uRaUFmCl8e0Y3KxjaHUYlkCPS5OtwtfTChkdpoZuBKDXqerCPTjPu+uvlun3rYUSYxScwVf2LZCI0Hfw4Vc+WQ=="],
 
-    "ag-charts-core": ["ag-charts-core@11.2.4", "", { "dependencies": { "ag-charts-types": "11.2.4" } }, "sha512-RiN2GXSBuYBAGhbfxiQjhM+pDnJ+2iT/W0r/2KHBHXI8Bv89l+jYKBunb/4SqcP6/DBaxhh+yESk25dYj391Bg=="],
+    "ag-charts-core": ["ag-charts-core@12.3.1", "", { "dependencies": { "ag-charts-types": "12.3.1" } }, "sha512-711UJ0fXengb8+4PEW4nlzWDowmbYymPcjW2eJWHRzzvttUf14hnh+wP/l/s3EGVgYkEHe9vkXFwmeOJUlkC0Q=="],
 
-    "ag-charts-enterprise": ["ag-charts-enterprise@11.2.4", "", { "dependencies": { "ag-charts-community": "11.2.4", "ag-charts-core": "11.2.4" } }, "sha512-4msY1swe0GwEytQI9H3ANM+pMWVeAa8u8yGcZJ8kMzTFB3urNjXXGmYLZ7rQCiPfzLUuY25iGKf36ToUMHrrNA=="],
+    "ag-charts-enterprise": ["ag-charts-enterprise@12.3.1", "", { "dependencies": { "ag-charts-community": "12.3.1", "ag-charts-core": "12.3.1" } }, "sha512-2sQIwLfksRTcI4JVRjgQkyGq6z68UVTO/I91HKmtpukrQLsW/o0TzzHmgTtVJOXd9yO9gx2KWa2DMg0+FKdXEQ=="],
 
-    "ag-charts-locale": ["ag-charts-locale@11.2.4", "", {}, "sha512-hArufzKISb/5UJtIPfTKu3TvSQ3ZAuwMrOsn8F6I4rOwJnNxbZYeQvm2yiKXx9D7hMhr3d1lNZxNIlKOrMZY/w=="],
+    "ag-charts-locale": ["ag-charts-locale@12.3.1", "", {}, "sha512-dCn7oHh3xLI576FT514aBedNQgtb5zwh/Gcj7jHvjOWYRnfH8kaekZzLzntITA6dF6E78okJfoI7CUCbYduQ4Q=="],
 
     "ag-charts-types": ["ag-charts-types@12.3.1", "", {}, "sha512-5216xYoawnvMXDFI6kTpPku+mH0Csiwu/FE7lsAm8Z22HEN6ciSG/V7g+IrpLWncELqksgENebCTP75PZ3CsHA=="],
 
@@ -1459,14 +1458,6 @@
 
     "@maplibre/maplibre-gl-style-spec/tinyqueue": ["tinyqueue@3.0.0", "", {}, "sha512-gRa9gwYU3ECmQYv3lslts5hxuIa90veaEcxDYuu3QGOIAEM2mOZkVHp48ANJuu1CURtRdHKUBY5Lm1tHV+sD4g=="],
 
-    "ag-charts-community/ag-charts-types": ["ag-charts-types@11.2.4", "", {}, "sha512-a1aQjtQ9ZH+J8BF3YcWAIHUt9ZLiL9IVZ8R5h7z2CkTNu2TPq5UlsCcF0/YZKc1M8CM0CdSNLSGQuWUwDNxAcA=="],
-
-    "ag-charts-core/ag-charts-types": ["ag-charts-types@11.2.4", "", {}, "sha512-a1aQjtQ9ZH+J8BF3YcWAIHUt9ZLiL9IVZ8R5h7z2CkTNu2TPq5UlsCcF0/YZKc1M8CM0CdSNLSGQuWUwDNxAcA=="],
-
-    "ag-grid-enterprise/ag-charts-community": ["ag-charts-community@12.3.1", "", { "dependencies": { "ag-charts-core": "12.3.1", "ag-charts-locale": "12.3.1", "ag-charts-types": "12.3.1" } }, "sha512-uRaUFmCl8e0Y3KxjaHUYlkCPS5OtwtfTChkdpoZuBKDXqerCPTjPu+uvlun3rYUSYxScwVf2LZCI0Hfw4Vc+WQ=="],
-
-    "ag-grid-enterprise/ag-charts-enterprise": ["ag-charts-enterprise@12.3.1", "", { "dependencies": { "ag-charts-community": "12.3.1", "ag-charts-core": "12.3.1" } }, "sha512-2sQIwLfksRTcI4JVRjgQkyGq6z68UVTO/I91HKmtpukrQLsW/o0TzzHmgTtVJOXd9yO9gx2KWa2DMg0+FKdXEQ=="],
-
     "color-alpha/color-parse": ["color-parse@1.4.3", "", { "dependencies": { "color-name": "^1.0.0" } }, "sha512-BADfVl/FHkQkyo8sRBwMYBqemqsgnu7JZAwUgvBvuwwuNUZAhSvLTbsEErS5bQXzOjDR0dWzJ4vXN2Q+QoPx0A=="],
 
     "color-normalize/color-rgba": ["color-rgba@2.4.0", "", { "dependencies": { "color-parse": "^1.4.2", "color-space": "^2.0.0" } }, "sha512-Nti4qbzr/z2LbUWySr7H9dk3Rl7gZt7ihHAxlgT4Ho90EXWkjtkL1avTleu9yeGuqrt/chxTB6GKK8nZZ6V0+Q=="],
@@ -1526,12 +1517,6 @@
     "vite-node/pathe": ["pathe@2.0.3", "", {}, "sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w=="],
 
     "vite-node/vite": ["vite@7.3.3", "", { "dependencies": { "esbuild": "^0.27.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["@types/node", "jiti", "less", "lightningcss", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx", "yaml"], "bin": { "vite": "bin/vite.js" } }, "sha512-/4XH147Ui7OGTjg3HbdWe5arnZQSbfuRzdr9Ec7TQi5I7R+ir0Rlc9GIvD4v0XZurELqA035KVXJXpR61xhiTA=="],
-
-    "ag-grid-enterprise/ag-charts-community/ag-charts-core": ["ag-charts-core@12.3.1", "", { "dependencies": { "ag-charts-types": "12.3.1" } }, "sha512-711UJ0fXengb8+4PEW4nlzWDowmbYymPcjW2eJWHRzzvttUf14hnh+wP/l/s3EGVgYkEHe9vkXFwmeOJUlkC0Q=="],
-
-    "ag-grid-enterprise/ag-charts-community/ag-charts-locale": ["ag-charts-locale@12.3.1", "", {}, "sha512-dCn7oHh3xLI576FT514aBedNQgtb5zwh/Gcj7jHvjOWYRnfH8kaekZzLzntITA6dF6E78okJfoI7CUCbYduQ4Q=="],
-
-    "ag-grid-enterprise/ag-charts-enterprise/ag-charts-core": ["ag-charts-core@12.3.1", "", { "dependencies": { "ag-charts-types": "12.3.1" } }, "sha512-711UJ0fXengb8+4PEW4nlzWDowmbYymPcjW2eJWHRzzvttUf14hnh+wP/l/s3EGVgYkEHe9vkXFwmeOJUlkC0Q=="],
 
     "color-normalize/color-rgba/color-parse": ["color-parse@1.4.3", "", { "dependencies": { "color-name": "^1.0.0" } }, "sha512-BADfVl/FHkQkyo8sRBwMYBqemqsgnu7JZAwUgvBvuwwuNUZAhSvLTbsEErS5bQXzOjDR0dWzJ4vXN2Q+QoPx0A=="],
 

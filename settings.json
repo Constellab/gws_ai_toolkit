@@ -21,10 +21,6 @@
                         "version": "0.22.1"
                     },
                     {
-                        "name": "reflex-enterprise",
-                        "version": "0.8.3"
-                    },
-                    {
                         "name": "reflex-resizable-panels",
                         "version": "0.0.1"
                     },

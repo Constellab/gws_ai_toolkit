@@ -1,14 +1,13 @@
 import os
 
 import reflex as rx
-import reflex_enterprise as rxe
 
 # [START_AUTO_CODE]
 # Code to load gws_core environment and initialize the main state.
 # DO NOT MODIFY THIS CODE UNLESS YOU KNOW WHAT YOU ARE DOING.
 
 
-def _init_reflex(config: rxe.Config) -> None:
+def _init_reflex(config: rx.Config) -> None:
     """Initialize Reflex environment after config is created to avoid circular imports."""
     # Import inside the function to avoid circular import
     from gws_reflex_base import ReflexInit, get_theme
@@ -29,7 +28,7 @@ if api_url is None:
     raise ValueError("GWS_REFLEX_API_URL environment variable is not set")
 # [END_AUTO_CODE]
 
-config = rxe.Config(
+config = rx.Config(
     app_name="ai_table_standalone_app",
     plugins=[rx.plugins.SitemapPlugin()],
     # [START_AUTO_CODE]
