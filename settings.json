@@ -1,7 +1,7 @@
 {
     "name": "gws_ai_toolkit",
     "author": "Gencovery",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "variables": {
         "skeleton:testdata_dir": "${CURRENT_DIR}/tests/testdata"
     },
@@ -22,7 +22,7 @@
                     },
                     {
                         "name": "reflex-enterprise",
-                        "version": "0.9.0.post1"
+                        "version": "0.8.3"
                     },
                     {
                         "name": "reflex-resizable-panels",
