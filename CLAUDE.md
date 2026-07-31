@@ -4,29 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provides AI-driven tools for data analysis and visualization in the life sciences. It depends on the `gws_core` brick (version 0.16.1) and includes RAG (Retrieval Augmented Generation) implementations for Dify and RagFlow platforms, plus a standalone Reflex-based RAG application.
+GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provides AI-driven tools for data analysis and visualization in the life sciences. It depends on the `gws_core` brick (see `settings.json` for the current version) and includes RAG (Retrieval Augmented Generation) implementations for Dify and RagFlow platforms, plus a standalone Reflex-based RAG application.
 
 ## Architecture
 
 ### Directory Structure
 - `src/gws_ai_toolkit/` - Main RAG implementations
-  - `rag/` - RAG services and integrations
+  - `apps/` - Reflex applications and their generator tasks (`rag_app/`, `ai_table_standalone_app/`, `full_app/`)
+  - `rag/` - RAG services and integrations (Dify, RagFlow) under `rag/common/`, `rag/dify/`, `rag/ragflow/`
+  - `models/` - Peewee persistence models (chat conversations/messages/sources, users)
+  - `services/` - Service layer
+  - `tasks/` - Task implementations
   - `stats/` - Tools to perform statistical analysis and generate visualizations
   - `core/` - Core utilities and helpers
     - `agents/` - Base and specialized agent implementations
-  - `ai_table_standalone_app/` - Standalone Reflex-based AI Table application
+  - `_app/` - Re-export facades for app components (Reflex components only, not tasks)
 - `tests/test_gws_ai_toolkit/` - Test files
+- `docs/todo/` / `docs/done/` - Plan documents (pending / implemented)
 
 
 ## Applications
-- RAG app directory: `src/gws_ai_toolkit/rag/rag_app/_rag_app/`
-  - CONFIG_FILE_PATH: `src/gws_ai_toolkit/rag/rag_app/_rag_app/dev_config.json`
-- Ai Table app directory: `src/gws_ai_toolkit/ai_table_standalone_app/_ai_table_standalone_app/`
-  - CONFIG_FILE_PATH: `src/gws_ai_toolkit/ai_table_standalone_app/_ai_table_standalone_app/dev_config.json`
+- RAG app directory: `src/gws_ai_toolkit/apps/rag_app/_rag_app/`
+  - CONFIG_FILE_PATH: `src/gws_ai_toolkit/apps/rag_app/_rag_app/dev_config.json`
+- Ai Table app directory: `src/gws_ai_toolkit/apps/ai_table_standalone_app/_ai_table_standalone_app/`
+  - CONFIG_FILE_PATH: `src/gws_ai_toolkit/apps/ai_table_standalone_app/_ai_table_standalone_app/dev_config.json`
+- Full app directory: `src/gws_ai_toolkit/apps/full_app/_full_app/`
+  - CONFIG_FILE_PATH: `src/gws_ai_toolkit/apps/full_app/_full_app/dev_config.json`
 
 ### Dependencies
-- `gws_core` (v0.16.1) - Core Constellab functionality including BaseModelDTO, credentials, external API services
-- `reflex` (v0.8.8) - Web framework for the RAG application
+- `gws_core` - Core Constellab functionality including BaseModelDTO, credentials, external API services; also provides `reflex` (the web framework used by the apps). Current pinned version: see `settings.json`
+- Brick-specific pip packages (see `settings.json`): `ragflow-sdk`, `reflex-resizable-panels`, `scikit-posthocs`
 
 ### Development best practises
 - Follow a modular architecture for components and pages
@@ -36,7 +43,7 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
     - `chat/chat_state.py` (state management)
 - Use state management effectively to handle application state
 - Keep UI components reusable and maintainable
-- All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import ai_expert_config_component` instead of `from gws_ai_toolkit.rag.rag_app._rag_app.rag_app.reflex import ai_expert_config_component`
+- All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import ai_expert_config_component` instead of `from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex import ai_expert_config_component`
 - Define the attributes, parameters and return types of functions, methods and classes using type hints
 - for the `rx.button` :
   - For primary and secondary button leave color_scheme to default.

@@ -4,13 +4,57 @@
 > [rag_migration_ragflow_to_llamaindex_plan.md](rag_migration_ragflow_to_llamaindex_plan.md).
 > Grounded in the existing code (July 2026). Move both docs to `docs/done/` once implemented.
 
-## ⚠️ Open decision (blocking for external-document handling — NOT settled)
+## ✅ Open decision — RESOLVED (July 2026) by the core document index
+
+The blocking decision below is **settled**: `gws_core` gains a **document index** — see
+`gws_core/docs/todo/refactor/document_management_plan.md`. Read that document before implementing §1
+(sources), §3 (`RagDatasetFile`), §6 (sync) or §7 (disk layout); the original text is kept underneath
+for context. What changes:
+
+- **One provider, not N.** This brick implements a single `document_index` source instead of one per
+  app. There is **no `resource` provider** — so the question of who ships it disappears. A dataset's
+  `sync_config` becomes a query over the index (tag / app / drive folder), and any app that indexes
+  becomes RAG-able with zero change here.
+- **`(entity_type, entity_id)` from day one.** The index uses those keys (same as `EntityTag`), so
+  `RagDatasetFile.source_type`/`source_id` collapse into a single `document_index_id`.
+- **Admin upload goes through the drive**, then is picked up from the index — one write path. Drop
+  `add_uploaded_document` (§3 services) and the built-in `upload` provider (§1): an uploaded file
+  becomes a drive document, and therefore taggable, searchable and scope-filtered like any other.
+- **Hash instead of snapshot.** Drop the snapshot-on-add invariant (§3) and `files/<dataset_id>/`
+  (§7). `snapshot_path` → `content_hash`; the **LanceDB chunks are the persisted data**. The snapshot
+  only ever protected re-indexing after the source vanished — which reconstructs data that should be
+  gone. `get_version_marker` becomes the hash: more reliable than `last_modified_at` (a no-op save no
+  longer triggers re-indexing), and it is what makes indexing frequently-saved DB entities affordable.
+  Consequence: `open_document` (§5) deep-links into the owning app instead of downloading a copy, and
+  needs a "source unavailable" state — chunks stay displayable since they are in LanceDB.
+- **Deletion becomes event-driven and immediate** instead of sync-only (§6 step 3): a metadata-predicate
+  `DELETE` costs no LLM/embedding call. ⚠️ The single-writer rule (see Risks) means a core-side
+  listener **cannot** write to LanceDB: deletions and metadata updates must be **enqueued in a DB table
+  this brick's process consumes**.
+- **Access control (new, mandatory).** Documents carry an `access_scope`; it must ride in the chunk
+  metadata so `MetadataFilters` can filter inside the engine. **Metadata alone is not sufficient**: a
+  chunk's scope is frozen at indexing time, and a perimeter change does not change the narrative text,
+  so the hash-based trigger would never refresh it — a stale scope would persist indefinitely. Hence
+  (a) **two triggers** — text change → full re-index; perimeter change → metadata-only update (the
+  nominal path, driven by an event/API call from the core), and (b) **verify the retrieved
+  `document_id`s against the index in SQL** before building the answer (one indexed `IN` query).
+  (b) is kept even though (a) exists because the single-writer rule forces (a) through a cross-process
+  queue: if this brick's process is down, LanceDB still serves reads, so stale scopes would be answered
+  with no error and no log. (b) costs milliseconds and removes that dependency.
+- **Beyond documents: structured entities.** DB objects (e.g. `gws_project.Task`) can be indexed too,
+  but **do not serialise the row into text** — status/dates/priority are SQL questions and embeddings
+  cannot count or order them. Index the *narrative* (`to_rag_text`, e.g. rich-text description) and put
+  the structured fields in chunk metadata only (`to_rag_metadata`, excluded from the embedded text, as
+  §1 already does). Structured querying belongs to the agent's MCP `db_query`.
+
+## ⚠️ Open decision (superseded — kept for context)
 
 **How external documents are referenced and fetched depends on the global data lab refactor
-(`gws_core/docs/todo/modular_apps_split_plan.md`), which is not decided yet.** That refactor splits
-gws_core into core + workflow + note + form with the golden rule "an app never imports another app —
-only the core": `ResourceModel`/`FSNodeModel`/`FileStore` move to `gws_workflow`, cross-app entities
-become soft `(entity_type, entity_id)` references (no FK), and cross-app collaboration goes through
+(`gws_core/docs/todo/refactor/modular_apps_split_plan.md`), which is not decided yet.** That refactor
+splits gws_core into core + workflow + note + form with the golden rule "an app never imports another
+app — only the core": `ResourceModel` (and the `File`/`Folder` resources) moves to `gws_workflow`
+while the file layer (`FSNodeModel`/`FileStore`) stays in the reduced core, cross-app entities become
+soft `(entity_type, entity_id)` references (no FK), and cross-app collaboration goes through
 core-owned registries/events (`EntityLink`, deletion policies).
 
 Impact on this plan — to be decided once the refactor lands (or is abandoned):
@@ -42,22 +86,25 @@ store) + OpenAI multilingual embeddings + Pydantic AI (chat loop)**.
 ### Key exploration findings
 
 - **The gws_core Pydantic AI agent does not exist yet** — only planned
-  (`gws_core/docs/todo/ai_agent_chat_plan.md`). → V1 chat loop lives in this brick, aligned with that
+  (`gws_core/docs/todo/refactor/ai_agent_chat_plan.md`). → V1 chat loop lives in this brick, aligned with that
   plan (`provider:model` strings, `CredentialsDataOther` keys) so it can migrate later.
 - **The chat stack has a clean seam**: generic chat widget (`reflex/chat_base/`) →
   `ConversationChatStateBase` (streaming state mixin; subclasses implement
   `_create_conversation`/`_restore_conversation`) → `BaseChatConversation` whose single abstract
   method is `_call_ai_chat(user_message) -> Generator[ChatMessage]` (verified). Helpers:
-  `build_current_message()` (streaming deltas), `close_current_message(sources=list[RagChatSource])`
-  (persists final text/source message).
+  `build_current_message()` (streaming deltas),
+  `close_current_message(external_id=None, sources=list[RagChatSource])` (persists final text/source
+  message).
 - **Chat history is already persisted locally** (Peewee via `AiToolkitDbManager`):
-  `ChatConversation`/`ChatMessageModel`/`ChatMessageSourceModel` (stores `RagChatSource` DTOs) —
-  provider-agnostic, reused as-is. Emitting `RagChatSource` keeps the source-pill UI and chunk dialog
-  working unchanged.
+  `ChatConversation`/`ChatMessageModel`/`ChatMessageSourceModel` (stores sources as decomposed
+  columns — document_id/document_name/score + chunk JSON — rebuilt into `RagChatSource` via
+  `to_rag_dto()`) — provider-agnostic, reused as-is. Emitting `RagChatSource` keeps the source-pill
+  UI and chunk dialog working unchanged.
 - **Resource sync** is tag-based (`RagResource`: ext txt/pdf/docx/doc/md/json, 15 MB cap, RichText
   JSON→Markdown) — compatibility rules and file conversion are reused; RAGFlow bookkeeping tags are
   NOT.
-- Reflex 0.9.5 (from gws_core 0.23.0); `rx.upload` pattern already used in
+- Reflex 0.9.5.post2 (from gws_core — brick depends on 0.23.0, gws_core itself is at 0.23.8);
+  `rx.upload` pattern already used in
   `ai_table_standalone_app`. `RagChatConfig` name already taken → new chat entity named
   **`RagChatProfile`**.
 
@@ -103,9 +150,12 @@ embedded_rag_engine.py        EmbeddedRagEngine(db_dir, embedding_config) — on
                                 (MetadataFilters IN on dataset_id + optional SimilarityPostprocessor)
                               count_chunks(dataset_id=None)
 embedded_rag_storage.py       Disk layout under BrickService.get_brick_extension_dir("gws_ai_toolkit",
-                              "embedded_rag/..."): lancedb/ (default instance) + files/<dataset_id>/
+                              "embedded_rag") — ⚠️ signature is (brick_name, extension_name); verify at
+                              implementation whether extension_name accepts a nested sub-path, else join
+                              sub-dirs (lancedb/, files/<dataset_id>/) onto the returned dir. Layout:
+                              lancedb/ (default instance) + files/<dataset_id>/
                               (snapshots of ALL documents, whatever their origin)
-embedded_rag_credentials.py   resolve_openai_api_key(credentials_name) → CredentialsDataOther["api_key"]
+embedded_rag_credentials.py   resolve_openai_api_key(credentials_name) → CredentialsDataOther.data["api_key"]
                               → fallback Settings.get_open_ai_api_key() (env)
 sources/                      document-source extension point (see below)
 ├── rag_document_source.py    RagDocumentSource ABC + registry
@@ -205,6 +255,8 @@ Notes:
 - `docx2txt` is a runtime requirement of `DocxReader` — declared explicitly.
 - `pydantic-ai-slim[openai]` avoids installing every provider SDK; add the `anthropic` extra later
   if profiles need it.
+- pydantic-ai 2.18.0 shipped 2026-07-25 (after planning): 2.17.0 stays the verified pin
+  (`run_stream_sync` confirmed in its wheel); re-check the changelog if bumping.
 
 ## 3. Data model — new package `src/gws_ai_toolkit/models/rag_dataset/`
 
@@ -281,7 +333,8 @@ breaks retrieval or re-index (refresh from source is a separate, explicit sync a
 
 `ChatConversation` (stores `{"chat_profile_id": ...}` in its `configuration` JSON,
 `mode="embedded_rag"`, `external_conversation_id` unused), `ChatMessageModel`,
-`ChatMessageSourceModel` (persists the `RagChatSource` DTOs the new stack emits), `ChatApp`, `User`.
+`ChatMessageSourceModel` (persists the `RagChatSource` DTOs the new stack emits, as decomposed
+columns + chunk JSON), `ChatApp`, `User`.
 
 ### Non-DB entities (module DTOs, `rag/embedded/`)
 
@@ -367,8 +420,11 @@ param): `/rag`, `/rag/chat/[conversation_id]`, `/rag/datasets`, `/rag/datasets/[
 
 **Generator task**: `apps/rag_app/generate_embedded_rag_app.py` — `GenerateEmbeddedRagApp(Task)`
 modeled on `GenerateDatahubRagFlowApp` (chat_app_name, optional
-`CredentialsParam(CredentialsDataOther)`, admin-history/auth flags). Re-export in `_app/ai_rag`
-facade if full_app should pick it up (check at implementation).
+`CredentialsParam(CredentialsDataOther)`, admin-history/auth flags — note the RagFlow task's
+credential param is a required `CredentialsDataRagflow`; the new task deliberately uses an optional
+`CredentialsDataOther` instead). Re-export from the brick's top-level `__init__.py` (where
+`GenerateDatahubRagFlowApp` is exported today — the `_app/ai_rag` facade re-exports Reflex
+components only, not tasks).
 
 ## 6. Bulk sync — provider-driven (no `BaseRagService`, no resource coupling)
 

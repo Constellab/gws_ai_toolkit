@@ -4,7 +4,7 @@
 > [rag_embedded_stack_implementation_plan.md](rag_embedded_stack_implementation_plan.md) —
 > code-grounded module/data-model/UI design, verified dependency pins, phased implementation order,
 > and one **open decision** (external-document handling, pending the global data lab refactor in
-> `gws_core/docs/todo/modular_apps_split_plan.md`).
+> `gws_core/docs/todo/refactor/modular_apps_split_plan.md`).
 > Settled since this doc was written: standalone module `rag/embedded/` (no `BaseRagService`),
 > pydantic-ai chat loop in this brick, new chat entity named `RagChatProfile`, source-agnostic
 > document storage via a `RagDocumentSource` registry with snapshot-on-add.
@@ -161,7 +161,7 @@ called by the Chat service.
 
 > Context from the existing brick (verify against code before building):
 > `gws_ai_toolkit` already ships RAG integrations (Dify, RAGFlow) under `rag/` and
-> a **standalone Reflex RAG app** (`rag/rag_app/_rag_app/`) with `chat/` and
+> a **standalone Reflex RAG app** (`apps/rag_app/_rag_app/`) with `chat/` and
 > `agents/` components. The LlamaIndex+LanceDB engine and the objects below should
 > **evolve that existing app**, not start from scratch.
 
