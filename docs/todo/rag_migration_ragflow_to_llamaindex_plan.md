@@ -1,13 +1,23 @@
 # RAG migration — RAGFlow → LlamaIndex + LanceDB
 
-> **Detailed implementation plan**: see
-> [rag_embedded_stack_implementation_plan.md](rag_embedded_stack_implementation_plan.md) —
-> code-grounded module/data-model/UI design, verified dependency pins, phased implementation order,
-> and one **open decision** (external-document handling, pending the global data lab refactor in
-> `gws_core/docs/todo/refactor/modular_apps_split_plan.md`).
-> Settled since this doc was written: standalone module `rag/embedded/` (no `BaseRagService`),
-> pydantic-ai chat loop in this brick, new chat entity named `RagChatProfile`, source-agnostic
-> document storage via a `RagDocumentSource` registry with snapshot-on-add.
+> This document holds the **rationale and stack choice**. The work is planned in three companion
+> documents, reviewed August 2026:
+>
+> - [pydantic_ai_agent_migration_plan.md](pydantic_ai_agent_migration_plan.md) — **prerequisite**:
+>   every hand-rolled OpenAI agent loop in this brick moves to pydantic-ai first.
+> - [rag_embedded_stack_implementation_plan.md](rag_embedded_stack_implementation_plan.md) — engine,
+>   data model, UI, sync, and the removal of Dify/RAGFlow.
+> - [knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md) — the HTTP route the
+>   Constellab Community backend calls.
+>
+> **Terminology settled**: the container of indexed documents is a **`KnowledgeBase`** (not
+> "dataset" — that word already means a lab resource, experimental data, and the retired platforms'
+> own knowledge bases). A configured chat is a **`RagChatProfile`**. Documents are supplied through a
+> `KnowledgeBaseDocumentSource` registry with snapshot-on-add.
+>
+> **Also settled**: Dify and RAGFlow are removed from this brick in the same refactor, taking
+> `BaseRagService` and the service factories with them; there is no coexistence period and no feature
+> flag.
 
 ## Goal
 
@@ -30,8 +40,14 @@ LlamaIndex   → RAG engine (ingestion, chunking, retrieval), driven in Python c
 LanceDB      → embedded vector store: one directory = one index (the "SQLite of
                vector stores") → one per lab, created by code, no server to run
 Embeddings   → via API (multilingual by default, e.g. text-embedding-3)
-LLM          → the existing Pydantic AI agent (provider-configurable)
+LLM          → a pydantic-ai agent (provider-configurable via `provider:model` strings)
 ```
+
+⚠️ The gws_core pydantic-ai agent **does not exist** — it is planned in
+`gws_core/docs/todo/refactor/ai_agent_chat_plan.md`. The chat loop therefore lives in this brick, and
+this brick's three existing hand-rolled OpenAI loops migrate to pydantic-ai **first**, so the
+knowledge-base chat is written once on a shared base rather than adding a second paradigm. See
+[pydantic_ai_agent_migration_plan.md](pydantic_ai_agent_migration_plan.md).
 
 Retrieval is exposed to the agent as a **tool** (e.g. `search_knowledge(query)`);
 the agent (Pydantic AI) still owns the chat loop (memory, streaming, tool calls).
@@ -91,119 +107,139 @@ the question's language. Both covered by the stack.
 
 ## Multi-instance design
 
-- **One LanceDB directory per index.** Community = one shared dir; per-lab = one dir
-  per lab, created automatically at lab provisioning. Isolation is structural (a lab
-  cannot read another lab's dir).
-- **No server, no manual config.** Provisioning an instance = create a directory +
-  run the ingestion code. Chunking / retrieval config lives in code, per instance
-  type.
-- **Ingestion / re-indexing** is a code job (initial index + refresh when docs or
-  lab data change), not a UI action.
+- **One LanceDB directory per instance**, at `knowledge_base/instances/<scope>/`. Isolation is
+  structural: an instance cannot read another instance's directory.
+- **No server, no manual config.** Provisioning = create a directory and index. Embedding config is
+  **instance-level** (one shared vector space, recorded in a manifest table keyed by scope and
+  validated fail-closed on open); chunk size and overlap are **per knowledge base**.
+- **Ingestion is both** a UI action (upload, "Sync now") and a provider-driven sync — the earlier
+  "code job, not a UI action" framing was wrong for the product this became.
 
-## Multi-dataset & per-query activation (Approach A: metadata filtering)
+### The Community instance is a lab, not a separate platform
 
-Several datasets can live in **one** LanceDB index, each chunk tagged with a
-`dataset` metadata field (plus any other tags: `lang`, `visibility`…). A query
-then **activates only chosen datasets** via a metadata filter — dynamic per
-request, no reconfiguration. This is the equivalent of RAGFlow's "tick which
-knowledge bases", in one line; LanceDB pushes the filter down to the store
-(efficient, not a naive post-filter).
+Worth recording, because it was not obvious: the Community chatbot **already runs in a data lab**.
+`rag/ragflow/ragflow_start_docker_compose.py` starts RAGFlow as a docker compose stack inside a lab
+via Constellab's `DockerService`, and `gws_core`'s `CommunityUserService.ask_ragflow_chatbot` calls
+`POST {community_api_url}/ragflow-chatbot/ask` — the Community backend fronts it.
+
+So "community-level" is not a different deployment model: it is **one lab that serves external
+callers**, and what it needs is an authenticated HTTP route. Hence
+[knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md). Note also that removing
+RAGFlow from this brick does **not** retire that deployment — repointing it is coordinated work in the
+Community codebase.
+
+## Multiple knowledge bases & per-query activation (Approach A: metadata filtering)
+
+Several knowledge bases can live in **one** LanceDB index, each chunk tagged with a
+`knowledge_base_id` metadata field (plus any other tags: `lang`, `access_scope`…). A query then
+**activates only chosen knowledge bases** via a metadata filter — dynamic per request, no
+reconfiguration. This is the equivalent of RAGFlow's "tick which knowledge bases", in one line;
+LanceDB pushes the filter down to the store (efficient, not a naive post-filter).
 
 ```python
-# Ingestion: each document carries its dataset (and other tags)
-doc.metadata = {"dataset": "product_docs", "lang": "en"}
+# Ingestion: each document carries its knowledge base (and other tags)
+doc.metadata = {"knowledge_base_id": "<kb id>", "lang": "en", "access_scope": "*"}
 
-# Query: activate only some datasets
+# Query: activate only some knowledge bases
 from llama_index.core.vector_stores import (
     MetadataFilters, MetadataFilter, FilterOperator,
 )
 
 filters = MetadataFilters(filters=[
-    MetadataFilter(key="dataset",
-                   value=["product_docs", "api_reference"],
+    MetadataFilter(key="knowledge_base_id",
+                   value=["<kb id>", "<other kb id>"],
                    operator=FilterOperator.IN),
 ])
 retriever = index.as_retriever(similarity_top_k=5, filters=filters)
 ```
 
-- One index to manage; a chunk can belong to several datasets; combine tags
-  (`dataset`, `lang`, `visibility`) freely.
+- One index to manage; combine tags (`knowledge_base_id`, `lang`, `access_scope`) freely.
 - The activated subset is a **query parameter**, not a config change.
+- ⚠️ **Verify the push-down holds in hybrid mode**, where results come from two retrievers and are
+  fused. This is the isolation mechanism between knowledge bases, so it needs a dedicated test rather
+  than an assumption.
 
 ### How A relates to the per-instance (Approach B) design above
 
 The two combine, and map onto this brick's layers:
 
 ```
-Lab / Community boundary  → one LanceDB dir per instance   (physical isolation)
-Inside a lab / Community  → one index + `dataset` filter    (soft, per-query)
+Instance boundary  → one LanceDB dir per scope        (physical isolation)
+Inside an instance → one index + knowledge_base_id filter   (soft, per-query)
 ```
 
-- **Physical isolation (one dir per lab)** for the hard boundary between labs and
-  between Community and a lab — isolation by construction, per the multi-instance
-  design above.
-- **Metadata filtering (Approach A)** for soft boundaries *inside* one index:
-  content types in the same lab (product docs vs notes vs lab data), toggled
-  per query.
+- **Physical isolation (one dir per scope)** for the hard boundary between deployments — isolation by
+  construction, per the multi-instance design above. It is also what forces one embedding space per
+  instance, since everything in a directory must be comparable.
+- **Metadata filtering (Approach A)** for soft boundaries *inside* one instance: content types in the
+  same lab (product docs vs notes vs lab data), toggled per query.
 
-**Security note:** do **not** rely on the metadata filter alone to isolate data
-between users/labs. A filter is easy to forget or mis-pass, and then a query sees
-everything. For a real privacy boundary (a lab's own data), use physical isolation
-(a separate dir): what is not in the directory cannot leak. Keep metadata filtering
-for convenience/scoping within an already-isolated index.
+**Security note:** do **not** rely on the metadata filter alone to isolate data between users. A
+filter is easy to forget or mis-pass, and then a query sees everything. For a real privacy boundary,
+use physical isolation: what is not in the directory cannot leak. Keep metadata filtering for
+convenience and scoping within an already-isolated instance.
 
-## Management layer: Datasets, Chats, and their binding
+This is why the externally-reachable route derives its scope from a **publish token** rather than a
+caller-supplied id — with no per-document access control in V1, a caller-supplied knowledge-base id
+would be exactly the "forget the filter" failure, reachable from outside the lab.
 
-Beyond the RAG engine, this is a **RAG product**: three persisted first-class
-objects, each with a management tool/UI. Everything lives in **this brick
-(`gws_ai_toolkit`)**; the gws_core Pydantic AI agent stays the chat *engine*
-called by the Chat service.
+## Management layer: knowledge bases, chat profiles, and their binding
 
-> Context from the existing brick (verify against code before building):
-> `gws_ai_toolkit` already ships RAG integrations (Dify, RAGFlow) under `rag/` and
-> a **standalone Reflex RAG app** (`apps/rag_app/_rag_app/`) with `chat/` and
-> `agents/` components. The LlamaIndex+LanceDB engine and the objects below should
-> **evolve that existing app**, not start from scratch.
+Beyond the RAG engine, this is a **RAG product**: three persisted first-class objects, each with a
+management tool/UI. Everything lives in **this brick (`gws_ai_toolkit`)**, including the chat loop —
+the gws_core agent it would eventually delegate to does not exist yet.
 
-**Decision: the entire RAG config app + the chat are Reflex**, in this brick. A
-separate Angular chat may exist later but is handled externally — **out of scope**
-for these plans.
+> Context from the existing brick: `gws_ai_toolkit` ships RAG integrations (Dify, RAGFlow) under
+> `rag/` and a **standalone Reflex RAG app** (`apps/rag_app/_rag_app/`). The new engine and objects
+> **evolve that existing app** — the generic chat widget, conversation persistence and history sidebar
+> are reused as-is — while the two platform integrations and their service abstractions are removed.
+
+**Decision: the management app and the in-lab chat are Reflex**, in this brick. Externally, the
+Community website consumes the HTTP route rather than a Reflex page — see
+[knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md). A separate Angular chat, if it
+happens, would consume the same route.
 
 ### Data model (Peewee, in this brick)
 
 ```
-Dataset ──< DatasetFile          a dataset = a set of indexed files
-   │                             + ingestion config (chunking), index state
+KnowledgeBase ──< KnowledgeBaseDocument   a KB = a set of indexed documents
+   │                                      + ingestion config (chunking), index state
    │  (many-to-many)
    ▼
-Chat ── config: bound datasets + prompt + top_k + provider/model …
+RagChatProfile ── bound knowledge bases + prompt + top_k + provider/model …
    │
-   └──< ChatMessage              conversation history, persisted per chat (V1)
+   └──< ChatMessage                       conversation history, persisted per chat (V1)
 ```
 
-- **Dataset** — name, description, files, chunking config, index status.
-- **Chat** — name, **bound datasets**, prompt, provider/model, retrieval params.
-- **ChatMessage** — per-chat history. **Persisted in DB from V1** (multiple chats
-  must be listable and resumable) — this supersedes the "stateless V1" note in the
-  gws_core agent plan.
+- **KnowledgeBase** — name, description, documents, chunking config, index status.
+- **RagChatProfile** — name, **bound knowledge bases**, prompt, provider/model, retrieval params.
+- **ChatMessage** — per-chat history. **Persisted in DB from V1** (multiple chats must be listable
+  and resumable) — this supersedes the "stateless V1" note in the gws_core agent plan. Since the
+  chat loop keeps history **client-side** (no OpenAI `previous_response_id`), these rows are what the
+  model sees on restore, so tool turns are persisted too.
 
-### The key articulation: chat → datasets IS the metadata filter
+### The key articulation: chat → knowledge bases IS the metadata filter
 
-"Configure each chat on some datasets" = the chat's *bound datasets* field becomes
-the **`MetadataFilters`** of Approach A above. The chat→datasets binding stored in
-DB is exactly what is passed as the `dataset` filter at query time. The management
-layer and the retrieval layer connect through this one field.
+"Configure each chat on some knowledge bases" = the profile's *bound knowledge bases* field becomes
+the **`MetadataFilters`** of Approach A above. The binding stored in DB is exactly what is passed as
+the filter at query time. The management layer and the retrieval layer connect through this one
+field.
+
+⚠️ Because that filter is the only thing separating knowledge bases inside one index, it must be
+verified to push down in **hybrid** (vector + full-text) mode as well as pure vector mode. A filter
+that silently fails open there is a correctness bug, not a performance one.
 
 ### Tools to build
 
 | Tool | Does |
 |---|---|
-| **Dataset manager** | list / create / **upload files** / re-index / delete a dataset |
-| **Chat manager** | list / create / configure (bound datasets, prompt, model) / delete |
-| **Chat window** | converse in a chat; retrieval scoped to that chat's bound datasets |
+| **Knowledge-base manager** | list / create / **upload documents** / re-index / sync / delete |
+| **Chat-profile manager** | list / create / configure (bound KBs, prompt, model) / publish / delete |
+| **Chat window** | converse in a chat; retrieval scoped to that profile's bound knowledge bases |
 
-Layers: RAG (LlamaIndex/LanceDB) = retrieval; gws_core agent = chat loop;
-this management layer (persisted datasets/chats) + Reflex UI sits on top.
+Layers: LlamaIndex/LanceDB = retrieval; pydantic-ai = chat loop; this management layer (persisted
+knowledge bases and chat profiles) + Reflex UI sits on top; the HTTP route is a second consumer of the
+same chat loop.
 
 ## File formats & handling tabular data (JSON / Excel / CSV)
 
@@ -216,7 +252,7 @@ natural-language question, giving weak retrieval. Three handling modes:
 | Mode | How | Good for |
 |---|---|---|
 | **1. Index as text** | each row → a sentence ("Investment #42 has status PAID, amount 1500€"); each sheet/object → a doc | **qualitative** questions over small/medium tables |
-| **2. Summary + metadata** | index a *summary* (columns, stats, description); keep the raw file aside | finding *which* file/dataset is relevant |
+| **2. Summary + metadata** | index a *summary* (columns, stats, description); keep the raw file aside | finding *which* file or table is relevant |
 | **3. Text-to-SQL / query engine** (NOT RAG) | load the table as DataFrame/SQL, **generate a query** instead of vector retrieval | **quantitative** questions (sum, average, precise filtering) |
 
 **Vector RAG is not for analytics.** "How many / sum / average / filter precisely"
@@ -224,9 +260,25 @@ natural-language question, giving weak retrieval. Three handling modes:
 for DB data via the MCP `db_query` tool (read-only text-to-SQL) — so the agent has
 capability 3 for in-database data already; the RAG here serves 1/2 (qualitative).
 
-**V1 recommendation:** index **documents (PDF/MD/txt/DOCX/HTML) + tabular in text
-mode (1)** — CSV/Excel/JSON converted to row-sentences at ingestion. Honest about
-its limits; leave quantitative questions to `db_query` / a dedicated query engine.
+**V1 decision (revised): documents only.** PDF / MD / txt / DOCX / HTML, plus RichText JSON (note
+content, converted to Markdown by `RagResource`). **CSV, Excel and data JSON are rejected at add
+time** with a clear message.
+
+Mode 1 was the earlier recommendation and was dropped for three compounding reasons:
+
+- At the 15 MB cap, a CSV is easily 100k+ rows. Row-sentences make that **100k chunks inside one
+  document**, at 100k embeddings' worth of cost.
+- Those chunks are near-identical in form, so they match *everything* weakly — degrading retrieval for
+  the PDFs and notes that share the index. The failure mode is not "tables answer badly", it is
+  "everything answers slightly worse".
+- The questions people actually ask a table (count, sum, filter, compare) are exactly the ones vector
+  RAG cannot do. `db_query` covers them for data **in the lab database**, but an uploaded CSV is not
+  there — so mode 1's honest scope is small tables of qualitative text, which a 15 MB cap does not
+  suggest.
+
+Follow-ups if a real need appears, in order of preference: a **column summary** chunk per table
+(columns, dtypes, row count, ranges, samples — makes a table *findable* without polluting the space,
+and needs no LLM call), then row-level indexing behind an explicit row cap.
 
 ## Trade-offs vs RAGFlow (honest)
 
@@ -243,11 +295,27 @@ its limits; leave quantitative questions to `db_query` / a dedicated query engin
   (BGE / sentence-transformers via `fastembed`, nothing leaves the lab) if per-lab
   data sensitivity requires it. Design the embedding layer swappable from the start.
 
-## Open questions
+## Resolved (August 2026)
 
-- Reranking at launch? (API reranker vs local BGE-reranker vs none for V1.)
-- Refresh strategy: full re-index vs incremental on doc/data change.
-- Per-lab RAG scope: which lab data is indexed (resources, notes, files?) and how
-  access control maps to the connected user.
-- Where this brick's RAG service is exposed to the agent (MCP tool vs in-process
-  LlamaIndex tool) — align with the agent plan in gws_core.
+- **Reranking at launch?** No reranker. Instead **hybrid retrieval** — vector + full-text search,
+  fused with a model-free strategy. LanceDB already pulls `tantivy`, so full-text is nearly free, and
+  it fixes a failure embeddings genuinely have: exact terms (error codes, gene names, ids). A reranker
+  adds either a second vendor and credential (Cohere) or `sentence-transformers` + torch (local BGE) —
+  revisit when a real query retrieves the right document but ranks it badly. The node-postprocessor
+  seam stays in place so one drops in without an interface change.
+- **Refresh strategy.** Incremental, driven by a **content hash** rather than `last_modified_at`, so a
+  no-op save no longer triggers re-embedding. Full re-index remains an explicit operation (and is
+  forced by an embedding-model change).
+- **Where the retrieval tool lives.** In-process pydantic-ai agent tool (`search_knowledge`), not MCP.
+- **Access control.** Out of scope for V1: `gws_core` has no per-object permissions today, so there is
+  nothing to derive a scope from. Chunks carry `access_scope = "*"` as a reserved field. The V1
+  boundary is app access, plus the publish token for externally-reachable profiles.
+
+## Still open
+
+- **Which lab data is indexed** beyond tag-selected resources (notes, files) — driven by the source
+  registry, so each is an additive provider rather than a design change.
+- **Who may create, delete or publish a knowledge base.** No permission model exists; publishing is
+  the sharper case, since a published profile is readable by anyone holding its token.
+- **Local embeddings** for privacy-sensitive per-lab data (the caveat below). `EmbeddingFactory` is
+  the single swap point.
