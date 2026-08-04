@@ -1,14 +1,17 @@
-from typing import Literal, cast
+from typing import cast, get_args
 
 import reflex as rx
-from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import (
+    AiExpertChatConfig,
+    AiExpertChatMode,
+)
 from gws_core import Logger
-
 from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
 
-AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks", "full_file"]
+# Selectable modes, in the order they are displayed in the configuration form
+AI_EXPERT_CHAT_MODES: list[str] = list(get_args(AiExpertChatMode))
 
 
 class AiExpertConfigState(rx.State):
@@ -21,7 +24,6 @@ class AiExpertConfigState(rx.State):
 
     The state manages:
         - Form field values and validation
-        - Dynamic field visibility based on mode selection
         - Configuration loading from and saving to the application config
         - Form submission handling with error management
         - Real-time updates for reactive form elements
@@ -29,16 +31,9 @@ class AiExpertConfigState(rx.State):
     Key Features:
         - Async configuration loading and saving
         - Form validation with user-friendly error messages
-        - Dynamic form behavior (fields show/hide based on selections)
         - Integration with AppConfigState for persistence
         - Toast notifications for user feedback
-
-    Attributes:
-        current_form_mode (AiExpertChatMode): Currently selected mode in the form,
-            used for dynamic field visibility and validation.
     """
-
-    current_form_mode: AiExpertChatMode = "full_file"
 
     @rx.var
     async def show_settings_menu(self) -> bool:
@@ -108,7 +103,7 @@ class AiExpertConfigState(rx.State):
             if not new_system_prompt:
                 return rx.toast.error("System prompt cannot be empty")
 
-            if not new_mode or new_mode not in ["full_text_chunk", "relevant_chunks", "full_file"]:
+            if not new_mode or new_mode not in AI_EXPERT_CHAT_MODES:
                 return rx.toast.error("Invalid mode selected")
 
             if not new_model:
@@ -125,19 +120,11 @@ class AiExpertConfigState(rx.State):
             except ValueError:
                 return rx.toast.error("Temperature must be a valid number")
 
-            # Validate max_chunks (only required for relevant_chunks mode)
+            # Validate max_chunks (used by both modes)
             new_max_chunks = 5  # default value
-            if new_mode == "relevant_chunks":
-                if not new_max_chunks_str:
-                    return rx.toast.error("Chunk count is required for relevant chunks mode")
-                try:
-                    new_max_chunks = int(new_max_chunks_str)
-                    if new_max_chunks < 1 or new_max_chunks > 100:
-                        return rx.toast.error("Chunk count must be between 1 and 100")
-                except ValueError:
-                    return rx.toast.error("Chunk count must be a valid number")
-            elif new_max_chunks_str:
-                # If max_chunks is provided for other modes, validate it but use it
+            if new_mode == "relevant_chunks" and not new_max_chunks_str:
+                return rx.toast.error("Chunk count is required for relevant chunks mode")
+            if new_max_chunks_str:
                 try:
                     new_max_chunks = int(new_max_chunks_str)
                     if new_max_chunks < 1 or new_max_chunks > 100:
@@ -181,13 +168,3 @@ class AiExpertConfigState(rx.State):
         except Exception as e:
             Logger.log_exception_stack_trace(e)
             return rx.toast.error(f"Unexpected error updating configuration: {e}")
-
-    async def on_form_mount(self):
-        self.current_form_mode = await self.current_mode
-
-    def on_mode_change(self, new_mode: AiExpertChatMode):
-        self.current_form_mode = new_mode
-
-    @rx.var
-    def show_max_chunk_config(self) -> bool:
-        return self.current_form_mode in {"relevant_chunks", "full_text_chunk"}

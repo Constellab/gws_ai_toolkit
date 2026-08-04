@@ -29,14 +29,12 @@ class AiExpertState(ConversationChatStateBase, rx.State):
 
     Key Features:
         - Document-specific chat with full context awareness
-        - Multiple processing modes (full_file, relevant_chunks, full_text_chunk)
+        - Multiple processing modes (relevant_chunks, full_text_chunk)
         - OpenAI integration with streaming responses
-        - File upload to OpenAI for advanced analysis
         - Document chunk retrieval and processing
         - Automatic conversation persistence
 
     Processing Modes:
-        - full_file: Uploads entire document to OpenAI with code interpreter access
         - relevant_chunks: Retrieves only most relevant document chunks for the query
         - full_text_chunk: Includes all document chunks as text in the AI prompt
 

@@ -1,8 +1,14 @@
-from typing import Literal
+from typing import Any, Literal
 
-from gws_core import BaseModelDTO
+from gws_core import BaseModelDTO, Logger
+from pydantic import field_validator
 
-AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks", "full_file"]
+AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks"]
+
+# Mode removed in August 2026 together with the OpenAI file upload and the hosted code interpreter.
+# Persisted configurations may still carry it, so it is silently mapped to the fallback below.
+REMOVED_AI_EXPERT_CHAT_MODE = "full_file"
+REMOVED_AI_EXPERT_CHAT_MODE_FALLBACK: AiExpertChatMode = "relevant_chunks"
 
 
 class AiExpertChatConfig(BaseModelDTO):
@@ -15,7 +21,10 @@ class AiExpertChatConfig(BaseModelDTO):
     The AI Expert supports different processing modes:
         - full_text_chunk: Document content (all chunks) converted to text and integrated in prompt
         - relevant_chunks: Only most relevant chunks retrieved based on user question
-        - full_file: Original file uploaded to AI with access to complete document structure
+
+    The former 'full_file' mode (original file uploaded to OpenAI with code interpreter access)
+    has been removed. A persisted configuration still carrying it loads as 'relevant_chunks'
+    with a warning instead of raising a validation error.
 
     Attributes:
         prompt_file_placeholder (str): Placeholder token used in system prompt to represent
@@ -25,7 +34,7 @@ class AiExpertChatConfig(BaseModelDTO):
             behave when analyzing documents. Should include the prompt_file_placeholder.
 
         mode (AiExpertChatMode): Processing mode for document analysis.
-            Options: 'full_text_chunk', 'relevant_chunks', 'full_file'
+            Options: 'full_text_chunk', 'relevant_chunks'
 
         max_chunks (int): Maximum number of chunks to retrieve in 'relevant_chunks' mode.
             Range: 1-100, Default: 5
@@ -66,8 +75,7 @@ The user is asking questions specifically about this document, so focus your res
     # Mode for the call to AI
     # 'full_text_chunk' basic chat call where the document content (all chunks as text) is integrated in the prompt
     # 'relevant_chunks' retrieves only the most relevant chunks based on the user's question
-    # 'full_file' mode where the file is uploaded and the AI has access to the original file to answer
-    mode: AiExpertChatMode = "full_file"
+    mode: AiExpertChatMode = "relevant_chunks"
 
     # Number of chunks to retrieve for relevant_chunks mode (1-100)
     max_chunks: int = 5
@@ -80,3 +88,27 @@ The user is asking questions specifically about this document, so focus your res
 
     # Placeholder text for the chat input field
     placeholder_text: str = "Ask about this document..."
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def map_removed_mode(cls, value: Any) -> Any:
+        """Map the removed 'full_file' mode to the fallback mode instead of failing to load.
+
+        Configurations persisted before the removal of the 'full_file' mode must keep loading,
+        so the obsolete value is replaced by the fallback and a warning is logged. Any other
+        unknown value is left untouched and rejected by the regular Literal validation.
+
+        Args:
+            value (Any): Raw mode value coming from the persisted configuration.
+
+        Returns:
+            Any: The fallback mode when the removed mode is detected, the value unchanged otherwise.
+        """
+        if value == REMOVED_AI_EXPERT_CHAT_MODE:
+            Logger.warning(
+                f"AI Expert mode '{REMOVED_AI_EXPERT_CHAT_MODE}' has been removed, "
+                f"falling back to '{REMOVED_AI_EXPERT_CHAT_MODE_FALLBACK}'. "
+                "Update the AI Expert configuration to remove this warning."
+            )
+            return REMOVED_AI_EXPERT_CHAT_MODE_FALLBACK
+        return value

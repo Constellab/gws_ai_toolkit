@@ -1,6 +1,6 @@
 import reflex as rx
 
-from .ai_expert_config_state import AiExpertConfigState
+from .ai_expert_config_state import AI_EXPERT_CHAT_MODES, AiExpertConfigState
 
 
 def ai_expert_config_component() -> rx.Component:
@@ -12,18 +12,16 @@ def ai_expert_config_component() -> rx.Component:
     for each configuration option.
 
     Features:
-        - Interactive mode selection (full_text_chunk, relevant_chunks, full_file)
-        - Dynamic form fields that show/hide based on selected mode
+        - Interactive mode selection (full_text_chunk, relevant_chunks)
         - Model and temperature configuration with validation
         - System prompt editing with placeholder validation
-        - Chunk count configuration for relevant_chunks mode
+        - Chunk count configuration
         - Real-time form validation and error feedback
         - Success/error toast notifications
 
     The component uses AiExpertConfigState for state management, which handles:
         - Configuration loading and saving
         - Form validation and submission
-        - Dynamic field visibility based on mode selection
         - Integration with the application configuration system
 
     Returns:
@@ -56,10 +54,9 @@ def ai_expert_config_component() -> rx.Component:
                     rx.heading("AI Mode", size="4"),
                     rx.text("Choose how the AI processes documents:", color="gray"),
                     rx.radio(
-                        ["full_text_chunk", "relevant_chunks", "full_file"],
+                        AI_EXPERT_CHAT_MODES,
                         name="mode",
                         default_value=AiExpertConfigState.current_mode,
-                        on_change=AiExpertConfigState.on_mode_change,
                         direction="column",
                         spacing="3",
                     ),
@@ -74,34 +71,36 @@ def ai_expert_config_component() -> rx.Component:
                             size="2",
                             color="gray",
                         ),
-                        rx.text(
-                            "• full_file: Original file is uploaded to AI with access to the complete document structure. Better for complex documents with formatting, images, or tables.",
-                            size="2",
-                            color="gray",
-                        ),
                         spacing="2",
                         margin_left="2",
                     ),
-                    # Conditional field for chunk count when relevant_chunks mode is selected
-                    rx.cond(
-                        AiExpertConfigState.show_max_chunk_config,
-                        rx.vstack(
-                            rx.text("Max number of chunks (1-100):", color="gray"),
-                            rx.input(
-                                placeholder="5",
-                                name="max_chunks",
-                                default_value=rx.cond(
-                                    AiExpertConfigState.max_chunks,
-                                    AiExpertConfigState.max_chunks.to(str),
-                                    "5",
-                                ),
-                                type="number",
-                                min=1,
-                                max=100,
-                                width="100%",
+                    rx.callout(
+                        "The former 'full_file' mode has been removed. The AI Expert no longer "
+                        "uploads the original file, so it can no longer run code over it to "
+                        "generate charts or spreadsheets. Answers are now always based on the "
+                        "indexed document text. Configurations still set to 'full_file' load as "
+                        "'relevant_chunks'.",
+                        icon="info",
+                        size="1",
+                        width="100%",
+                    ),
+                    rx.vstack(
+                        rx.text("Max number of chunks (1-100):", color="gray"),
+                        rx.input(
+                            placeholder="5",
+                            name="max_chunks",
+                            default_value=rx.cond(
+                                AiExpertConfigState.max_chunks,
+                                AiExpertConfigState.max_chunks.to(str),
+                                "5",
                             ),
-                            spacing="2",
+                            type="number",
+                            min=1,
+                            max=100,
+                            width="100%",
                         ),
+                        spacing="2",
+                        width="100%",
                     ),
                     rx.heading("Model Configuration", size="4", margin_top="4"),
                     rx.text("OpenAI model to use for AI responses:", color="gray"),
@@ -151,7 +150,6 @@ def ai_expert_config_component() -> rx.Component:
                 ),
                 on_submit=AiExpertConfigState.handle_config_form_submit,
                 width="100%",
-                on_mount=AiExpertConfigState.on_form_mount,
             ),
             spacing="3",
             width="100%",
