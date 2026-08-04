@@ -5,7 +5,10 @@ from peewee import CharField, ForeignKeyField, ModelSelect
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app import ChatApp
-from gws_ai_toolkit.models.chat.chat_conversation_dto import AdminChatConversationDTO, ChatConversationDTO
+from gws_ai_toolkit.models.chat.chat_conversation_dto import (
+    AdminChatConversationDTO,
+    ChatConversationDTO,
+)
 from gws_ai_toolkit.models.user.user import User
 
 

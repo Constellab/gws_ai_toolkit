@@ -3,7 +3,6 @@ from typing import cast
 import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.rag_chat_config import RagChatConfig
 from gws_core import Logger
-
 from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState

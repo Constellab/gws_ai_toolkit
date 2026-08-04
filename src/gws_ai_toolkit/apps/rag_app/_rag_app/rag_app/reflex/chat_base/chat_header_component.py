@@ -2,8 +2,6 @@ from collections.abc import Callable
 
 import reflex as rx
 
-from .chat_config import ChatConfig
-
 
 def header_clear_chat_button_component(clear_chat: Callable[[], None], text: str) -> rx.Component:
     """Standard clear chat button component for chat headers.
