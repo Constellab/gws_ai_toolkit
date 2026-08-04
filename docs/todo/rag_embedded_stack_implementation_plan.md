@@ -6,6 +6,11 @@
 > The Community-facing HTTP surface is [knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md).
 > Rewritten August 2026 after a full review of the earlier draft. Move all four docs to `docs/done/`
 > once implemented.
+> **Step-1 spike run August 2026** — its findings are folded into *Spike results* under §Hybrid
+> retrieval, and they changed two decisions (fusion named, `score_threshold` redefined, engine reads
+> the LanceDB table directly). The probe itself is captured on the throwaway branch
+> **`spike/lancedb-hybrid`** under `spike_lancedb/` (`./run.sh`, deterministic, no API key) — see
+> its `FINDINGS.md`. That branch is a primary source, **never merged**.
 
 ## What this rewrite changes, and why
 
@@ -75,7 +80,9 @@ Superseded decisions from the earlier draft, for the record:
 5. **`fcntl.flock` around LanceDB access**; any process may write.
 6. **Documents only.** PDF / MD / TXT / DOCX / HTML, plus RichText JSON (note content). CSV, XLSX and
    data JSON are rejected at add time.
-7. **Hybrid retrieval** — vector + full-text, model-free fusion. No reranker.
+7. **Hybrid retrieval** — vector + full-text, fused with LanceDB's `RRFReranker` (`k = 60`), which is
+   model-free arithmetic. **No cross-encoder or hosted reranking model.** The engine reads the
+   LanceDB table directly so it sees the real fused score — see *Spike results*.
 8. **Multi-instance is built**, not documented-only. Per-lab deployment ships; the community
    deployment is the public-API plan.
 9. **Dify and RAGFlow are deleted**, with `BaseRagService` and the factories.
@@ -147,17 +154,57 @@ Vector search plus a full-text (tantivy) index over chunk text, fused with a mod
 (reciprocal rank fusion or linear combination). This fixes exact-term lookups — error codes, gene
 names, task ids — that embeddings handle poorly, with no extra vendor, credential or model.
 
-Three things to settle in the step-1 spike, not at design time:
+### Spike results (August 2026) — settled, do not re-litigate
 
-- **FTS index maintenance.** LanceDB's full-text index is not automatically incremental; the write
-  path needs an explicit optimise/rebuild step.
-- **Fusion strategy**, chosen deliberately and recorded here.
-- **`MetadataFilters` push-down in hybrid mode.** ⚠️ That filter is the *isolation mechanism between
-  knowledge bases*. If it does not push down in hybrid mode, a query can return another knowledge
-  base's chunks — a correctness bug, not a performance one. Test it explicitly before building on it.
+Run against `lancedb 0.36.0`, `llama-index-core 0.14.23`, `pyarrow 24.0.0`, `pandas 2.3.3`,
+`tantivy 0.26.0`, with a deterministic mock embedding. All four step-1 questions are answered.
 
-`score_threshold` needs redefining against the **fused** score: an RRF score is not a cosine
-similarity, so the existing threshold semantics do not carry over.
+| Question | Answer |
+|---|---|
+| **`MetadataFilters` push-down in hybrid mode** | ✅ **Works.** Verified in vector, FTS *and* hybrid mode, at both layers — raw `where(pred, prefilter=True)` and llama-index `MetadataFilters`. A canary term present only in knowledge base B never leaks into a query filtered to A. The isolation mechanism holds. |
+| **Second filter (`document_ids`)** | ✅ **Works**, same push-down path — `knowledge_base_id = 'x' AND document_id = 'y'` narrows correctly. AI Expert's `relevant_chunks` mode is safe to build on it. |
+| **FTS incrementality** | ✅ **No maintenance step needed.** Rows added after index creation are immediately full-text searchable — LanceDB scans the unindexed fragment. `table.optimize()` and `create_fts_index(replace=True)` both also work. **The write path needs no explicit optimise call**, contradicting the earlier assumption. Watch the cost as the unindexed tail grows; batching stays a follow-up, not a prerequisite. |
+| **Delete predicate** | ✅ Flat column, `IN (...)` lists and backticked identifiers all work. **Single quotes in a value must be doubled** (`'doc_o''brien'`) — the one thing `_delete_where` genuinely has to encapsulate, since filenames and ids reach it from user input. |
+
+**Fusion strategy: LanceDB's `RRFReranker`, default `k = 60`.** Note the vocabulary clash that
+decision 7 walks into: LanceDB calls hybrid fusion a *"reranker"*. `RRFReranker` and
+`LinearCombinationReranker` (default `weight = 0.7`) are pure arithmetic — no model, no vendor, no
+credential. So "hybrid search, no reranker" means **no cross-encoder or hosted reranking model**; we
+do use RRF fusion, and the plan must name it rather than appear to forbid it.
+
+Also: `create_fts_index` is deprecated as of lancedb 0.25.0 — use `create_index(config=FTS())`.
+
+### ⚠️ `score_threshold` cannot live at the llama-index layer
+
+The one negative finding, and it changes a column's meaning. `LanceDBVectorStore.query()` does not
+return the fused score — it returns **rank position rescaled to 0..1**. Same query, same corpus:
+
+```
+top_k=2  ->  [1.0, 0.0]
+top_k=3  ->  [1.0, 0.5, 0.0]
+top_k=4  ->  [1.0, 0.6667, 0.3333, 0.0]
+top_k=6  ->  [1.0, 0.8, 0.6, 0.4, 0.2, 0.0]
+```
+
+The top hit is always `1.0`, the last always `0.0`, evenly spaced regardless of relevance. A
+threshold applied to that number cannot mean *"relevant enough"* — only *"in the top slice"* — and
+its meaning silently shifts every time `top_k` changes. Reading the raw table directly gives the real
+fused score: `_relevance_score` from RRF, ~0.015–0.033 in this corpus, rank-derived and **not
+comparable to a cosine similarity** (`_distance` in vector mode, `_score`/BM25 in FTS mode).
+
+Two consequences, both settled here:
+
+- **The engine reads the LanceDB table directly** rather than going through
+  `LanceDBVectorStore.query()`, so `score_threshold` applies to `_relevance_score`. The wrapper also
+  nests our metadata under a `metadata: struct<...>` column, which makes every predicate
+  `metadata.document_id = '...'`; owning the table keeps the flat schema §7 assumes. llama-index
+  stays in the picture for `document_loader.py` (readers, chunking, `Document`), which is what it is
+  actually good for here.
+- **`RagChatProfile.score_threshold` is documented against the RRF score**, default `None`. Do not
+  carry over a cosine-tuned value: on this scale a `0.5` threshold rejects everything.
+
+Untested, because it only matters if the wrapper is kept after all: deleting by predicate against the
+wrapper's **nested** `metadata` struct.
 
 ### Embedding manifest — fail closed
 
@@ -351,7 +398,7 @@ stamped when the status is set; a row whose lease exceeds the threshold is repor
 | system_prompt | `TextField(default=...)` | instructs tool use + answering in the user's language |
 | model | `CharField(100, default="openai:gpt-4.1-mini")` | pydantic-ai `provider:model` |
 | top_k | `IntegerField(default=5)` | |
-| score_threshold | `FloatField(null=True)` | **defined against the fused hybrid score** |
+| score_threshold | `FloatField(null=True)` | **defined against the RRF `_relevance_score`** (~0.015–0.033 scale, rank-derived), not a cosine similarity. Default `None` |
 | knowledge_base_ids | `JSONField(default=list)` | bound KBs — **becomes the LanceDB `MetadataFilters`** at query time. Soft M2M: validated on save, dangling ids dropped at query time; join table is a follow-up |
 | is_published / publish_token / published_at | | see [knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md) |
 
@@ -515,12 +562,14 @@ carrying the `openai` bump, **remove `ragflow-sdk`**, and add:
 
 `pydantic-ai-slim[openai]` is added by the agent-migration plan, not here.
 
-**Re-verify every pin at implementation time.** The versions in the earlier draft were checked in
-July 2026 and at least one is already stale. Constraints that must hold: the three llama-index
-integrations require `llama-index-core>=0.13,<0.15`; `lancedb` needs `pyarrow>=16` (gws_core has
-24.0.0) and pulls `pylance` + `tantivy` (sizeable Rust wheels — accepted, and `tantivy` is what makes
-hybrid search free); `llama-index-readers-file` needs `pandas<3` (2.3.3 present) and
-`beautifulsoup4`, and pulls `pypdf`.
+**Pins verified by the August 2026 spike** — `lancedb 0.36.0` and `llama-index-core 0.14.23`
+install and run **against gws_core's exact `pyarrow 24.0.0` and `pandas 2.3.3`**, so there is no
+conflict to resolve. `tantivy 0.26.0` comes in transitively. The `>=0.13,<0.15` core constraint holds.
+
+Still to re-verify at implementation time: `llama-index-readers-file` (needs `pandas<3`, pulls
+`pypdf`, wants `beautifulsoup4`) and `llama-index-embeddings-openai`, neither of which the spike
+installed. `lancedb` pulls `pylance` + `tantivy` (sizeable Rust wheels — accepted, and `tantivy` is
+what makes hybrid search free).
 
 Notes: do **not** add the `llama-index` meta package. Pin `lancedb` explicitly even though it comes
 in transitively, so upgrades are deliberate. `docx2txt` is a runtime requirement of `DocxReader`.
@@ -561,9 +610,11 @@ sequence.
 0. **Agent migration steps 0–4** — gws_core `openai` bump, `full_file` removal, table and env agents
    ported, tool-turn persistence. The knowledge-base chat (step 3 below) is built on that base, so it
    does not start first.
-1. **Deps + engine spike** — settings.json, install; settle the LanceDB delete predicate, FTS
-   incrementality, fusion strategy, and **hybrid metadata-filter push-down**; `rag/knowledge_base/`;
-   engine tests green (including the manifest and two-instance cases).
+1. **Deps + engine** — settings.json, install. ~~Spike~~ **done August 2026** (see *Spike results*):
+   delete predicate, FTS incrementality, fusion strategy and hybrid metadata-filter push-down are all
+   settled, so this step is now straight implementation of `rag/knowledge_base/`; engine tests green
+   (including the manifest and two-instance cases). The mock embedding and the two-knowledge-base
+   canary corpus lift straight out of the spike.
 2. **Models + services** — `models/knowledge_base/`, `KNOWLEDGE_BASE` mode, manifest table, lease
    reclaim; service tests green (incl. `FakeDocumentSource` and the upload provider).
    → **AI Expert ported and repointed here** (agent-migration step 6), against
@@ -581,11 +632,19 @@ sequence.
 
 ## Risks
 
-- **Hybrid-mode metadata filtering** is the highest-severity unknown: it is the isolation mechanism
-  between knowledge bases. Pinned by a step-1 test before anything is built on it.
-- **LanceDB delete-predicate syntax** (flat columns vs struct) — pinned by step 1, encapsulated in
-  `_delete_where`.
-- **FTS index maintenance cost** on every write; may need batching if indexing feels slow.
+- ~~**Hybrid-mode metadata filtering**~~ — **resolved by the spike**: it pushes down in all three
+  modes. Keep the isolation test in `test_knowledge_base_engine.py` as a regression guard, since a
+  lancedb upgrade could regress it.
+- ~~**LanceDB delete-predicate syntax**~~ — **resolved**: flat columns work. `_delete_where` still
+  earns its keep by doubling single quotes in values.
+- ~~**FTS index maintenance**~~ — **resolved**: no explicit optimise step needed. The residual risk is
+  cost, not correctness: the unindexed-fragment scan grows until `optimize()` runs, so batching may
+  still be wanted if indexing feels slow.
+- **Reading the LanceDB table directly** (rather than through `LanceDBVectorStore`) means we own the
+  query construction, including the RRF reranker wiring and the arrow schema. That is the price of a
+  usable `score_threshold`; it also means a lancedb API change hits our code rather than being
+  absorbed by llama-index. `create_fts_index` is already deprecated in favour of
+  `create_index(config=FTS())`.
 - ~~Data loss on deleting Dify/RAGFlow~~ — not a risk: the whole corpus is tagged lab resources and
   re-indexable from source.
 - **Synchronous indexing in Reflex background events** (accepted, existing pattern). The lease bounds

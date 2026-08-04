@@ -77,3 +77,17 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
 ## Testing
 - Tests are located in `tests/test_gws_ai_toolkit/`
 - Use `gws server test [FILENAME]` to run tests
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live as GitHub issues in `Constellab/gws_ai_toolkit`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles are used verbatim as label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
