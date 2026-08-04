@@ -205,7 +205,7 @@ def _delete_document_dialog(document: KnowledgeBaseDocumentDTO) -> rx.Component:
             ),
             rx.flex(
                 rx.alert_dialog.cancel(
-                    rx.button("Cancel", variant="soft", color_scheme="gray"),
+                    rx.button("Cancel", variant="soft"),
                 ),
                 rx.alert_dialog.action(
                     rx.button(

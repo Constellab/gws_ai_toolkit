@@ -11,6 +11,7 @@ indistinguishable from a file that was quietly skipped.
 
 import reflex as rx
 
+from ...core.form_field_component import form_field
 from .add_document_dialog_state import (
     MAX_UPLOAD_FILES,
     UPLOAD_ZONE_ID,
@@ -55,7 +56,6 @@ def add_document_dialog() -> rx.Component:
                     rx.button(
                         "Close",
                         variant="soft",
-                        color_scheme="gray",
                         on_click=AddDocumentDialogState.close_dialog,
                     ),
                     width="100%",
@@ -146,19 +146,17 @@ def _upload_zone() -> rx.Component:
 def _source_document_form() -> rx.Component:
     """The form a non-upload source needs: the document's id in that system, plus extras."""
     return rx.vstack(
-        rx.vstack(
-            rx.text("Document id in the source", size="2", weight="medium"),
+        form_field(
+            "Document id in the source",
             rx.input(
                 placeholder="Id of the document in the source system",
                 value=AddDocumentDialogState.source_id,
                 on_change=AddDocumentDialogState.set_source_id,
                 width="100%",
             ),
-            spacing="1",
-            width="100%",
         ),
-        rx.vstack(
-            rx.text("Source metadata (optional JSON)", size="2", weight="medium"),
+        form_field(
+            "Source metadata (optional JSON)",
             rx.text_area(
                 placeholder='{"key": "value"}',
                 value=AddDocumentDialogState.source_metadata_json,
@@ -166,8 +164,6 @@ def _source_document_form() -> rx.Component:
                 width="100%",
                 rows="3",
             ),
-            spacing="1",
-            width="100%",
         ),
         rx.button(
             rx.spinner(loading=AddDocumentDialogState.is_adding),

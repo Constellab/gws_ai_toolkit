@@ -16,8 +16,12 @@ handler, and the result goes out of scope with it. Opening a local directory is 
 
 **Indexing refreshes the table after every document**, rather than once at the end of a batch: the
 whole point of a background event here is that a row reaches ``done`` with its chunk count without
-anyone pressing refresh.
+anyone pressing refresh. The pending list is re-read after every pass, so a document uploaded while a
+run was working is picked up by that same run instead of being left ``pending`` with nothing to retry
+it.
 """
+
+from collections.abc import AsyncGenerator
 
 import reflex as rx
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
@@ -26,15 +30,11 @@ from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
     KnowledgeBaseDTO,
 )
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
-from gws_ai_toolkit.rag.knowledge_base.document_compatibility import DocumentTooLargeError
-from gws_ai_toolkit.rag.knowledge_base.document_loader import UnsupportedDocumentFormatError
-from gws_ai_toolkit.rag.knowledge_base.sources.knowledge_base_source import (
-    DocumentSourceOperationNotSupportedError,
-    UnknownDocumentSourceError,
-)
+from gws_ai_toolkit.rag.knowledge_base.knowledge_base_engine import KnowledgeBaseEngine
 from gws_reflex_main import ReflexAppException, ReflexMainState
 
 from ..core.knowledge_base_app_state import KnowledgeBaseAppState
+from ..core.knowledge_base_errors import DOCUMENT_REJECTION_ERRORS
 
 # Name of the dynamic segment of ``/kb/bases/[knowledge_base_id]``. Reflex exposes it as a var of the
 # same name on every state, which is also why no state here may declare a var called this.
@@ -53,8 +53,9 @@ class KnowledgeBaseDetailState(rx.State):
     documents: list[KnowledgeBaseDocumentDTO] = []
 
     # The id the page was loaded with, kept so background events do not have to re-read the router.
-    # Not called ``knowledge_base_id``: that name belongs to the dynamic route var.
-    loaded_knowledge_base_id: str = ""
+    # A backend var: nothing in the UI reads it, and the id is already in the URL. Not called
+    # ``knowledge_base_id`` either — that name belongs to the dynamic route var.
+    _loaded_knowledge_base_id: str = ""
 
     is_loading: bool = False
     # True while an indexing run owns this page. One run at a time, so two runs cannot index the same
@@ -98,7 +99,7 @@ class KnowledgeBaseDetailState(rx.State):
     ############################################### LOAD ###############################################
 
     @rx.event
-    async def load_knowledge_base(self):
+    async def load_knowledge_base(self) -> AsyncGenerator[rx.event.EventType, None]:
         """Load the knowledge base named by the route, then index whatever is still pending.
 
         Bound to the page's ``on_load``. Reclaiming stale leases happens first, so a run killed by an
@@ -110,7 +111,7 @@ class KnowledgeBaseDetailState(rx.State):
             self.documents = []
             return
 
-        self.loaded_knowledge_base_id = knowledge_base_id
+        self._loaded_knowledge_base_id = knowledge_base_id
         self.is_loading = True
         try:
             main_state = await self.get_state(ReflexMainState)
@@ -142,7 +143,7 @@ class KnowledgeBaseDetailState(rx.State):
         its own — but it is what a user reaches for after an external change, and it is the honest
         answer to a row that has been ``indexing`` too long.
         """
-        if not self.loaded_knowledge_base_id:
+        if not self._loaded_knowledge_base_id:
             return
 
         main_state = await self.get_state(ReflexMainState)
@@ -156,8 +157,9 @@ class KnowledgeBaseDetailState(rx.State):
     async def index_pending_documents(self) -> None:
         """Index every ``pending`` document of this knowledge base, refreshing the table as it goes.
 
-        The work list is read from the database rather than from ``self.documents``: an upload that
-        arrived while a previous run was finishing must not be missed.
+        The work list is read from the database rather than from ``self.documents``, and re-read after
+        every pass: an upload that arrives while this run is working must not be missed. Called again
+        while a run is in progress, this returns quietly — that run will pick the new documents up.
         """
         await self._index_documents(None)
 
@@ -174,7 +176,9 @@ class KnowledgeBaseDetailState(rx.State):
     ############################################### REFRESH FROM SOURCE ###############################################
 
     @rx.event(background=True)
-    async def refresh_document_from_source(self, document_id: str):
+    async def refresh_document_from_source(
+        self, document_id: str
+    ) -> AsyncGenerator[rx.event.EventType, None]:
         """Re-fetch a document from its source, replace its snapshot, then re-index it.
 
         A source that cannot be re-fetched — an upload, whose bytes *are* its snapshot — says so, and
@@ -183,19 +187,16 @@ class KnowledgeBaseDetailState(rx.State):
         """
         async with self:
             self.busy_document_id = document_id
-            main_state = await self.get_state(ReflexMainState)
 
         try:
+            async with self:
+                main_state = await self.get_state(ReflexMainState)
+
             service = KnowledgeBaseService()
             with await main_state.authenticate_user():
                 try:
                     document = service.refresh_document(document_id)
-                except (
-                    DocumentSourceOperationNotSupportedError,
-                    UnknownDocumentSourceError,
-                    UnsupportedDocumentFormatError,
-                    DocumentTooLargeError,
-                ) as err:
+                except DOCUMENT_REJECTION_ERRORS as err:
                     # Every one of these carries a message written for a user: an upload cannot be
                     # re-fetched, a provider is no longer installed, the new version is of a format
                     # or a size that cannot be indexed.
@@ -217,7 +218,7 @@ class KnowledgeBaseDetailState(rx.State):
     ############################################### DELETE ###############################################
 
     @rx.event(background=True)
-    async def delete_document(self, document_id: str):
+    async def delete_document(self, document_id: str) -> AsyncGenerator[rx.event.EventType, None]:
         """Delete a document: its chunks, its snapshot and its row.
 
         Confirmation is the caller's: the button that reaches this sits behind an alert dialog.
@@ -225,15 +226,21 @@ class KnowledgeBaseDetailState(rx.State):
         service = KnowledgeBaseService()
         async with self:
             self.busy_document_id = document_id
-            main_state = await self.get_state(ReflexMainState)
-            app_state = await self.get_state(KnowledgeBaseAppState)
-            instance_scope = self._get_instance_scope()
-            with await main_state.authenticate_user():
-                filename = service.get_document_and_check(document_id).filename
-            # Inside the lock because building it needs ``get_state``; used once below, then dropped.
-            engine = await app_state.build_engine(instance_scope, main_state)
 
+        # Everything after the flag is set lives in the ``try``, including the lookups and the engine:
+        # resolving the embedding configuration or reading the row can raise, and a row left spinning
+        # on an operation that never started is a lie the user cannot clear.
         try:
+            async with self:
+                main_state = await self.get_state(ReflexMainState)
+                app_state = await self.get_state(KnowledgeBaseAppState)
+                instance_scope = self._get_instance_scope()
+                with await main_state.authenticate_user():
+                    filename = service.get_document_and_check(document_id).filename
+                # Inside the lock because building it needs ``get_state``; used once below, then
+                # dropped.
+                engine = await app_state.build_engine(instance_scope, main_state)
+
             with await main_state.authenticate_user():
                 service.delete_document(document_id, engine)
         finally:
@@ -247,64 +254,104 @@ class KnowledgeBaseDetailState(rx.State):
 
     ############################################### INTERNALS ###############################################
 
+    def get_loaded_knowledge_base_id(self) -> str:
+        """The knowledge base this page was loaded with, for a sibling state to read.
+
+        The var behind it is backend-only — nothing in the UI needs it, and the id is already in the
+        URL — so this is how the add-document dialog asks which knowledge base it is adding to.
+        """
+        return self._loaded_knowledge_base_id
+
     async def _index_documents(self, document_ids: list[str] | None) -> None:
         """Index documents one at a time, refreshing the table after each.
 
-        :param document_ids: the documents to index, or ``None`` to index everything still
-                             ``pending`` — read from the database, so an upload that landed mid-run
-                             is picked up
-        :raises ReflexAppException: if a run is already in progress; two runs on the same document
-                would race on its lease, and refusing is more honest than queueing silently
+        :param document_ids: the documents to index, or ``None`` to sweep everything still
+                             ``pending`` — re-read from the database after every pass, so a document
+                             uploaded while this run was working is indexed by this run
+        :raises ReflexAppException: if a named document is asked for while a run is in progress; two
+                runs on the same document would race on its lease, and refusing is more honest than
+                queueing silently
         """
         async with self:
-            knowledge_base_id = self.loaded_knowledge_base_id
+            knowledge_base_id = self._loaded_knowledge_base_id
             if not knowledge_base_id:
                 return
             if self.is_indexing:
+                if document_ids is None:
+                    # The pending sweep. The run already going re-reads the pending documents after
+                    # every pass, so whatever triggered this is in its work list already. Refusing
+                    # here would leave a freshly uploaded document ``pending`` with nothing to retry
+                    # it — the row would never reach ``done`` without a manual re-index.
+                    return
                 raise ReflexAppException(
                     "An indexing run is already in progress for this knowledge base. Wait for it to "
                     "finish, then try again."
                 )
             self.is_indexing = True
-            main_state = await self.get_state(ReflexMainState)
-            app_state = await self.get_state(KnowledgeBaseAppState)
-            service = KnowledgeBaseService()
-            with await main_state.authenticate_user():
-                knowledge_base = service.get_knowledge_base_and_check(knowledge_base_id)
-                ids_to_index = (
-                    document_ids
-                    if document_ids is not None
-                    else [
-                        document.id
-                        for document in service.get_documents_to_index(knowledge_base_id)
-                    ]
-                )
-            # One engine for the batch: still one operation, still nothing stored on the state. Built
-            # inside the lock because it needs ``get_state``, which a background handler's proxy
-            # refuses outside its context manager; the slow part — embedding and writing chunks —
-            # happens below, outside the lock.
-            engine = await app_state.build_engine(knowledge_base.instance_scope, main_state)
 
+        # From here on the flag is set, so everything — including resolving the embedding
+        # configuration, which can raise on missing credentials or a manifest mismatch — has to sit
+        # inside the ``try``. Otherwise a failure before the first document would leave the page
+        # ``is_indexing`` for good, with every row's re-index and refresh button disabled.
         try:
+            service = KnowledgeBaseService()
+            async with self:
+                main_state = await self.get_state(ReflexMainState)
+                app_state = await self.get_state(KnowledgeBaseAppState)
+                with await main_state.authenticate_user():
+                    knowledge_base = service.get_knowledge_base_and_check(knowledge_base_id)
+                # One engine for the whole run: still one operation, still nothing stored on the
+                # state. Built inside the lock because it needs ``get_state``, which a background
+                # handler's proxy refuses outside its context manager; the slow part — embedding and
+                # writing chunks — happens below, outside the lock.
+                engine = await app_state.build_engine(knowledge_base.instance_scope, main_state)
+
             with await main_state.authenticate_user():
-                for document_id in ids_to_index:
-                    # The service records a failure on the row (status ``error`` plus the message)
-                    # instead of raising, so one bad document does not abandon the rest of the batch
-                    # — and the reason is on screen either way.
-                    service.index_document(document_id, engine)
-                    async with self:
-                        await self._reload_documents()
+                if document_ids is not None:
+                    await self._index_batch(document_ids, service, engine)
+                else:
+                    # Sweep until nothing pending is left. ``attempted`` is what makes this
+                    # terminate: a document is only ever picked up once per run, whatever status the
+                    # service leaves on its row.
+                    attempted: set[str] = set()
+                    while True:
+                        pending_ids = [
+                            document.id
+                            for document in service.get_documents_to_index(knowledge_base_id)
+                            if document.id not in attempted
+                        ]
+                        if not pending_ids:
+                            break
+                        attempted.update(pending_ids)
+                        await self._index_batch(pending_ids, service, engine)
         finally:
             async with self:
                 self.is_indexing = False
 
+    async def _index_batch(
+        self, document_ids: list[str], service: KnowledgeBaseService, engine: KnowledgeBaseEngine
+    ) -> None:
+        """Index the given documents in order, refreshing the table after each one.
+
+        :param document_ids: the documents to index, in the order they should be indexed
+        :param service: the service to index through, already inside an authenticated context
+        :param engine: the engine for this knowledge base's instance scope
+        """
+        for document_id in document_ids:
+            # The service records a failure on the row (status ``error`` plus the message) instead of
+            # raising, so one bad document does not abandon the rest of the batch — and the reason is
+            # on screen either way.
+            service.index_document(document_id, engine)
+            async with self:
+                await self._reload_documents()
+
     async def _reload_documents(self) -> None:
         """Re-read the document rows into DTOs. Callable from the backend, unlike the events above."""
-        if not self.loaded_knowledge_base_id:
+        if not self._loaded_knowledge_base_id:
             return
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
-            documents = KnowledgeBaseService().get_documents(self.loaded_knowledge_base_id)
+            documents = KnowledgeBaseService().get_documents(self._loaded_knowledge_base_id)
         self.documents = [document.to_dto() for document in documents]
 
     def _get_instance_scope(self) -> str:

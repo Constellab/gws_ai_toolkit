@@ -17,25 +17,21 @@ rejected on its own, and every rejection keeps its message.
 """
 
 import json
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import reflex as rx
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
-from gws_ai_toolkit.rag.knowledge_base.document_compatibility import (
-    MAX_DOCUMENT_SIZE_MB,
-    DocumentTooLargeError,
-)
-from gws_ai_toolkit.rag.knowledge_base.document_loader import (
-    SUPPORTED_EXTENSIONS,
-    UnsupportedDocumentFormatError,
-)
+from gws_ai_toolkit.rag.knowledge_base.document_compatibility import MAX_DOCUMENT_SIZE_MB
+from gws_ai_toolkit.rag.knowledge_base.document_loader import SUPPORTED_EXTENSIONS
 from gws_ai_toolkit.rag.knowledge_base.sources.knowledge_base_source import (
-    DocumentSourceOperationNotSupportedError,
     KnowledgeBaseDocumentSourceRegistry,
-    UnknownDocumentSourceError,
 )
 from gws_ai_toolkit.rag.knowledge_base.sources.upload_source import UPLOAD_SOURCE_TYPE
+from gws_core import Logger
 from gws_reflex_main import ReflexAppException, ReflexMainState
 
+from ...core.knowledge_base_errors import DOCUMENT_REJECTION_ERRORS
 from ..knowledge_base_detail_state import KnowledgeBaseDetailState
 
 # Id of the ``rx.upload`` zone. Reflex keys the selected-file list by it, so clearing the zone after an
@@ -133,13 +129,15 @@ class AddDocumentDialogState(rx.State):
     ############################################### UPLOAD ###############################################
 
     @rx.event
-    def handle_upload_progress(self, progress: dict) -> None:
+    def handle_upload_progress(self, progress: dict[str, Any]) -> None:
         """Show the upload as running while the browser is still sending bytes."""
         if progress["progress"] < 1:
             self.is_uploading = True
 
     @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile]):
+    async def handle_upload(
+        self, files: list[rx.UploadFile]
+    ) -> AsyncGenerator[rx.event.EventType, None]:
         """Add every uploaded file as a ``pending`` document, then index them in the background.
 
         Each file is admitted on its own: the loop keeps going after a rejection, and the reason is
@@ -164,13 +162,16 @@ class AddDocumentDialogState(rx.State):
                     with await main_state.authenticate_user():
                         service.add_uploaded_document(knowledge_base_id, filename, content)
                     added_count += 1
-                except (UnsupportedDocumentFormatError, DocumentTooLargeError) as err:
+                except DOCUMENT_REJECTION_ERRORS as err:
                     # The admission check refused it, and said why. That reason is the whole value of
-                    # this branch: a skipped file with no explanation reads as a success.
+                    # this branch: a skipped file with no explanation reads as a success. No stack
+                    # trace: nothing went wrong on the server, the file was simply not indexable.
                     rejections.append(f"{filename}: {err}")
                 except Exception as err:
                     # Anything else — a provider error, a full disk — is reported the same way rather
-                    # than aborting the batch. It is never swallowed.
+                    # than aborting the batch. It is never swallowed, and unlike a rejection it is a
+                    # server-side problem, so it is logged with its stack trace as well as shown.
+                    Logger.log_exception_stack_trace(err)
                     rejections.append(f"{filename}: {err}")
         finally:
             self.is_uploading = False
@@ -197,7 +198,7 @@ class AddDocumentDialogState(rx.State):
     ############################################### REGISTERED SOURCE ###############################################
 
     @rx.event
-    async def add_from_source(self):
+    async def add_from_source(self) -> AsyncGenerator[rx.event.EventType, None]:
         """Add a document from a registered source: fetch it, snapshot it, queue it for indexing.
 
         The provider is contacted here, which is why this can be slow or fail — and why its failure
@@ -226,12 +227,7 @@ class AddDocumentDialogState(rx.State):
                         source_id=source_id,
                         source_metadata=source_metadata,
                     )
-                except (
-                    UnsupportedDocumentFormatError,
-                    DocumentTooLargeError,
-                    UnknownDocumentSourceError,
-                    DocumentSourceOperationNotSupportedError,
-                ) as err:
+                except DOCUMENT_REJECTION_ERRORS as err:
                     # Reported at add time, with the reason, while the user is still looking at the
                     # form.
                     self.rejections = [f"{source_id}: {err}"]
@@ -254,7 +250,7 @@ class AddDocumentDialogState(rx.State):
                 otherwise fail deep inside the service
         """
         detail_state = await self.get_state(KnowledgeBaseDetailState)
-        knowledge_base_id = detail_state.loaded_knowledge_base_id
+        knowledge_base_id = detail_state.get_loaded_knowledge_base_id()
         if not knowledge_base_id:
             raise ReflexAppException("Open a knowledge base before adding documents to it.")
         return knowledge_base_id

@@ -8,7 +8,8 @@ with it. Nothing here deletes on one click.
 import reflex as rx
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import KnowledgeBaseDTO
 
-from .knowledge_base_list_state import KnowledgeBaseListState
+from ..core.form_field_component import form_field
+from .knowledge_base_list_state import KNOWLEDGE_BASES_ROUTE, KnowledgeBaseListState
 
 
 def knowledge_base_list_component() -> rx.Component:
@@ -81,15 +82,16 @@ def _knowledge_base_table() -> rx.Component:
 
 def _knowledge_base_row(knowledge_base: KnowledgeBaseDTO) -> rx.Component:
     """One knowledge base: click it to open it, or delete it from the end of the row."""
+    open_it = rx.redirect(f"{KNOWLEDGE_BASES_ROUTE}/{knowledge_base.id}")
     return rx.table.row(
         rx.table.cell(
             rx.text(knowledge_base.name, size="2", weight="medium"),
-            on_click=lambda: KnowledgeBaseListState.open_knowledge_base(knowledge_base.id),
+            on_click=open_it,
             cursor="pointer",
         ),
         rx.table.cell(
             rx.text(knowledge_base.description, size="2", color="var(--gray-11)"),
-            on_click=lambda: KnowledgeBaseListState.open_knowledge_base(knowledge_base.id),
+            on_click=open_it,
             cursor="pointer",
         ),
         rx.table.cell(rx.badge(knowledge_base.instance_scope, variant="soft", color_scheme="gray")),
@@ -107,7 +109,7 @@ def _knowledge_base_row(knowledge_base: KnowledgeBaseDTO) -> rx.Component:
                     "Open",
                     variant="soft",
                     size="1",
-                    on_click=lambda: KnowledgeBaseListState.open_knowledge_base(knowledge_base.id),
+                    on_click=open_it,
                 ),
                 _delete_dialog(knowledge_base),
                 spacing="2",
@@ -127,7 +129,7 @@ def _delete_dialog(knowledge_base: KnowledgeBaseDTO) -> rx.Component:
                 variant="ghost",
                 size="1",
                 color_scheme="red",
-                loading=KnowledgeBaseListState.deleting_knowledge_base_id == knowledge_base.id,
+                loading=KnowledgeBaseListState.busy_knowledge_base_id == knowledge_base.id,
             )
         ),
         rx.alert_dialog.content(
@@ -138,7 +140,7 @@ def _delete_dialog(knowledge_base: KnowledgeBaseDTO) -> rx.Component:
                 margin_bottom="1rem",
             ),
             rx.flex(
-                rx.alert_dialog.cancel(rx.button("Cancel", variant="soft", color_scheme="gray")),
+                rx.alert_dialog.cancel(rx.button("Cancel", variant="soft")),
                 rx.alert_dialog.action(
                     rx.button(
                         "Delete",
@@ -181,15 +183,16 @@ def _empty_message() -> rx.Component:
 def _create_dialog() -> rx.Component:
     """The create form.
 
-    The instance scope and the chunking policy are on the form because they are the two settings that
-    cannot be changed freely afterwards: moving a populated knowledge base to another scope means
-    re-indexing it, and a new chunk size only affects documents indexed after the change.
+    The chunking policy is on the form because it cannot be changed freely afterwards: a new chunk
+    size only affects documents indexed after the change. The instance scope is *not* on the form —
+    it decides which vector space holds the chunks, and a typo would create a knowledge base in an
+    instance nothing else addresses.
     """
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.title("New knowledge base"),
             rx.vstack(
-                _form_field(
+                form_field(
                     "Name",
                     rx.input(
                         placeholder="Sequencing protocols",
@@ -198,7 +201,7 @@ def _create_dialog() -> rx.Component:
                         width="100%",
                     ),
                 ),
-                _form_field(
+                form_field(
                     "Description",
                     rx.text_area(
                         placeholder="What this knowledge base is for",
@@ -208,17 +211,8 @@ def _create_dialog() -> rx.Component:
                         rows="2",
                     ),
                 ),
-                _form_field(
-                    "Instance scope",
-                    rx.input(
-                        value=KnowledgeBaseListState.new_instance_scope,
-                        on_change=KnowledgeBaseListState.set_new_instance_scope,
-                        width="100%",
-                    ),
-                    hint="Which vector store holds the chunks. Changing it later means re-indexing.",
-                ),
                 rx.hstack(
-                    _form_field(
+                    form_field(
                         "Chunk size",
                         rx.input(
                             value=KnowledgeBaseListState.new_chunk_size,
@@ -228,7 +222,7 @@ def _create_dialog() -> rx.Component:
                         ),
                         hint="In tokens.",
                     ),
-                    _form_field(
+                    form_field(
                         "Chunk overlap",
                         rx.input(
                             value=KnowledgeBaseListState.new_chunk_overlap,
@@ -246,7 +240,6 @@ def _create_dialog() -> rx.Component:
                     rx.button(
                         "Cancel",
                         variant="soft",
-                        color_scheme="gray",
                         on_click=KnowledgeBaseListState.close_create_dialog,
                     ),
                     rx.button(
@@ -266,20 +259,4 @@ def _create_dialog() -> rx.Component:
             max_width="30rem",
         ),
         open=KnowledgeBaseListState.create_dialog_open,
-    )
-
-
-def _form_field(label: str, field: rx.Component, hint: str | None = None) -> rx.Component:
-    """A labelled form field, with an optional line explaining what it decides.
-
-    :param label: the field's label
-    :param field: the input itself
-    :param hint: one line of explanation shown under the input
-    """
-    return rx.vstack(
-        rx.text(label, size="2", weight="medium"),
-        field,
-        rx.text(hint, size="1", color="var(--gray-10)") if hint else rx.fragment(),
-        spacing="1",
-        width="100%",
     )

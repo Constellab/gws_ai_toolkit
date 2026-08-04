@@ -12,7 +12,15 @@ the instance it actually lives in.
 ``KnowledgeBaseNameAlreadyUsedError`` with a message written for a user, so it is re-raised as a
 ``ReflexAppException`` and lands in a toast; everything else is left to the global handler installed
 by ``register_gws_reflex_app``.
+
+A knowledge base is always created in ``DEFAULT_INSTANCE_SCOPE``. The scope decides which vector space
+holds the chunks, so a typo in a free-text field would silently create a knowledge base in an instance
+nothing else addresses; choosing another scope belongs to the app's configuration, not to a create
+form. The scope a knowledge base lives in is still *shown*, because it explains what a retrieval can
+reach.
 """
+
+from collections.abc import AsyncGenerator
 
 import reflex as rx
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
@@ -52,13 +60,12 @@ class KnowledgeBaseListState(rx.State):
     is_creating: bool = False
     new_name: str = ""
     new_description: str = ""
-    new_instance_scope: str = DEFAULT_INSTANCE_SCOPE
     new_chunk_size: str = str(DEFAULT_CHUNK_SIZE)
     new_chunk_overlap: str = str(DEFAULT_CHUNK_OVERLAP)
 
-    # Id of the knowledge base currently being deleted, so its own row can show the spinner rather
+    # Id of the knowledge base a row action is working on, so its own row can show the spinner rather
     # than the whole table going busy.
-    deleting_knowledge_base_id: str = ""
+    busy_knowledge_base_id: str = ""
 
     ############################################### READ ###############################################
 
@@ -76,11 +83,6 @@ class KnowledgeBaseListState(rx.State):
         finally:
             self.is_loading = False
 
-    @rx.event
-    def open_knowledge_base(self, knowledge_base_id: str) -> rx.event.EventSpec:
-        """Navigate to a knowledge base's detail page."""
-        return rx.redirect(f"{KNOWLEDGE_BASES_ROUTE}/{knowledge_base_id}")
-
     ############################################### CREATE ###############################################
 
     @rx.event
@@ -88,7 +90,6 @@ class KnowledgeBaseListState(rx.State):
         """Open the create dialog on a blank form."""
         self.new_name = ""
         self.new_description = ""
-        self.new_instance_scope = DEFAULT_INSTANCE_SCOPE
         self.new_chunk_size = str(DEFAULT_CHUNK_SIZE)
         self.new_chunk_overlap = str(DEFAULT_CHUNK_OVERLAP)
         self.create_dialog_open = True
@@ -109,11 +110,6 @@ class KnowledgeBaseListState(rx.State):
         self.new_description = value
 
     @rx.event
-    def set_new_instance_scope(self, value: str) -> None:
-        """Setter for the instance-scope field of the create form."""
-        self.new_instance_scope = value
-
-    @rx.event
     def set_new_chunk_size(self, value: str) -> None:
         """Setter for the chunk-size field of the create form."""
         self.new_chunk_size = value
@@ -124,7 +120,7 @@ class KnowledgeBaseListState(rx.State):
         self.new_chunk_overlap = value
 
     @rx.event
-    async def create_knowledge_base(self):
+    async def create_knowledge_base(self) -> AsyncGenerator[rx.event.EventType, None]:
         """Create a knowledge base from the dialog's fields, then open it.
 
         Opening it straight away is deliberate: an empty knowledge base is useless, and the next
@@ -139,7 +135,7 @@ class KnowledgeBaseListState(rx.State):
         save_dto = SaveKnowledgeBaseDTO(
             name=name,
             description=self.new_description.strip(),
-            instance_scope=self.new_instance_scope.strip() or DEFAULT_INSTANCE_SCOPE,
+            instance_scope=DEFAULT_INSTANCE_SCOPE,
             chunk_size=self._parse_positive_int(self.new_chunk_size, "Chunk size"),
             chunk_overlap=self._parse_positive_int(
                 self.new_chunk_overlap, "Chunk overlap", allow_zero=True
@@ -165,7 +161,9 @@ class KnowledgeBaseListState(rx.State):
     ############################################### DELETE ###############################################
 
     @rx.event(background=True)
-    async def delete_knowledge_base(self, knowledge_base_id: str):
+    async def delete_knowledge_base(
+        self, knowledge_base_id: str
+    ) -> AsyncGenerator[rx.event.EventType, None]:
         """Delete a knowledge base: its chunks, its snapshots and its rows.
 
         A background event because deleting the chunks takes the instance's write lock and rewrites a
@@ -175,25 +173,30 @@ class KnowledgeBaseListState(rx.State):
         """
         service = KnowledgeBaseService()
         async with self:
-            self.deleting_knowledge_base_id = knowledge_base_id
-            main_state = await self.get_state(ReflexMainState)
-            app_state = await self.get_state(KnowledgeBaseAppState)
-            with await main_state.authenticate_user():
-                knowledge_base = service.get_knowledge_base_and_check(knowledge_base_id)
-                name = knowledge_base.name
-                instance_scope = knowledge_base.instance_scope
-                # The scope of *this* knowledge base, not the default: its chunks live nowhere else.
-                # Built inside the lock because it needs ``get_state``, which a background handler's
-                # proxy refuses outside its context manager; used once below, then dropped. Never
-                # kept on the state.
-                engine = await app_state.build_engine(instance_scope, main_state)
+            self.busy_knowledge_base_id = knowledge_base_id
 
+        # Everything after the flag is set lives in the ``try``, including the lookups and the engine:
+        # resolving credentials or reading the row can raise, and a spinner left on a row nothing is
+        # working on would be a lie the user cannot clear.
         try:
+            async with self:
+                main_state = await self.get_state(ReflexMainState)
+                app_state = await self.get_state(KnowledgeBaseAppState)
+                with await main_state.authenticate_user():
+                    knowledge_base = service.get_knowledge_base_and_check(knowledge_base_id)
+                    name = knowledge_base.name
+                    instance_scope = knowledge_base.instance_scope
+                    # The scope of *this* knowledge base, not the default: its chunks live nowhere
+                    # else. Built inside the lock because it needs ``get_state``, which a background
+                    # handler's proxy refuses outside its context manager; used once below, then
+                    # dropped. Never kept on the state.
+                    engine = await app_state.build_engine(instance_scope, main_state)
+
             with await main_state.authenticate_user():
                 service.delete_knowledge_base(knowledge_base_id, engine)
         finally:
             async with self:
-                self.deleting_knowledge_base_id = ""
+                self.busy_knowledge_base_id = ""
 
         async with self:
             await self._reload_knowledge_bases()

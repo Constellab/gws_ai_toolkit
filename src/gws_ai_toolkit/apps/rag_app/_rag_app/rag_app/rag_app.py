@@ -141,6 +141,16 @@ def ai_expert_with_conversation():
     return ai_expert_page_content()
 
 
+# AI Expert page - document-specific chat (new conversation)
+@rx.page(
+    route="/ai-expert/[document_id]",
+    on_load=AiExpertState.load_resource_from_url,
+)
+def ai_expert():
+    """AI Expert page for document-specific chat."""
+    return ai_expert_page_content()
+
+
 # Knowledge bases - list page
 @rx.page(route="/kb/bases", on_load=KnowledgeBaseListState.load_knowledge_bases)
 def knowledge_bases():
@@ -160,13 +170,3 @@ def knowledge_base_detail():
     return rag_page_layout_component(
         content=knowledge_base_detail_component(),
     )
-
-
-# AI Expert page - document-specific chat (new conversation)
-@rx.page(
-    route="/ai-expert/[document_id]",
-    on_load=AiExpertState.load_resource_from_url,
-)
-def ai_expert():
-    """AI Expert page for document-specific chat."""
-    return ai_expert_page_content()
