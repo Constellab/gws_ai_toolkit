@@ -4,7 +4,9 @@ from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_app_service import ChatAppService
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
-from gws_ai_toolkit.models.chat.chat_conversation_search_builder import ChatConversationSearchBuilder
+from gws_ai_toolkit.models.chat.chat_conversation_search_builder import (
+    ChatConversationSearchBuilder,
+)
 from gws_ai_toolkit.models.chat.chat_message_model import ChatMessageModel
 from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
@@ -157,6 +159,7 @@ class ChatConversationService:
         # Convert DTO to model and save
         message_model = message.to_chat_message_model(conversation)
         message_model.user = self._get_current_user()
+        message_model.set_next_sequence()
         message_model.save()
 
         # Create sources if provided (sources should be RagChatSource from the DTO)
@@ -188,6 +191,7 @@ class ChatConversationService:
         # Convert DTO to database model (polymorphic - each subclass handles itself)
         message_model = message.to_chat_message_model(conversation)
         message_model.user = self._get_current_user()
+        message_model.set_next_sequence()
         message_model.save()
 
         # Create sources if provided

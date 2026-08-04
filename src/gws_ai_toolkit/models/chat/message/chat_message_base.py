@@ -57,6 +57,33 @@ class ChatMessageBase(BaseModelDTO):
         """
         return self.role == "user"
 
+    def is_history_only(self) -> bool:
+        """Check whether this message exists only to rebuild the model's message history.
+
+        Some persisted messages are written for the *model*, not for the *user*: tool calls and
+        tool results. Conversation history is client-side, so those rows are what the model sees
+        again when a conversation is restored — but they carry nothing a human should read.
+
+        Every place that builds a visible transcript asks this one polymorphic question instead
+        of hard-coding a list of types to skip, so a new history-only message type only has to
+        override this method.
+
+        :return: True when the message must be skipped when building a visible transcript
+        :rtype: bool
+        """
+        return False
+
+    @classmethod
+    def filter_visible(cls, messages: list["ChatMessageBase"]) -> list["ChatMessageBase"]:
+        """Keep only the messages that belong in a visible transcript.
+
+        :param messages: The messages to filter, in conversation order
+        :type messages: list[ChatMessageBase]
+        :return: The messages to render, in the same order
+        :rtype: list[ChatMessageBase]
+        """
+        return [message for message in messages if not message.is_history_only()]
+
     @staticmethod
     def register_message_type(message_class: type["ChatMessageBase"]) -> type["ChatMessageBase"]:
         """Class decorator to auto-register a ChatMessageBase subclass.

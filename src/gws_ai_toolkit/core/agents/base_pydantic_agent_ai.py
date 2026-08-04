@@ -176,6 +176,26 @@ class BasePydanticAgentAi(ABC, Generic[T, U]):
         """Get the last user query event."""
         return cast(U, self._event_list.last_event(cast(type[T], UserQueryEventBase)))
 
+    def get_message_history(self) -> list[ModelMessage]:
+        """Get the conversation history carried on this agent.
+
+        Returns:
+            list[ModelMessage]: The history the next turn will continue from.
+        """
+        return self._message_history
+
+    def set_message_history(self, message_history: list[ModelMessage]) -> None:
+        """Set the conversation history the next turn continues from.
+
+        This is how a restored conversation hands the agent back what it already retrieved or
+        executed. History is client-side, so without this an agent restored mid-conversation
+        would start from nothing and redo work it had already done.
+
+        Args:
+            message_history: The history to continue from, oldest message first.
+        """
+        self._message_history = list(message_history)
+
     def get_model(self) -> str:
         """Get the ``provider:model`` string of the model used by the agent."""
         return AiModelFactory.model_spec(self._model)

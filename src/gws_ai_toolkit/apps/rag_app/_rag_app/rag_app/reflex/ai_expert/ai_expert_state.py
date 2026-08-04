@@ -103,8 +103,8 @@ class AiExpertState(ConversationChatStateBase, rx.State):
             conversation._external_conversation_id = db_conversation.external_conversation_id
 
             conversation_service = ChatConversationService()
-            conversation.chat_messages = conversation_service.get_messages_of_conversation(
-                conversation_id
+            conversation.restore_messages(
+                conversation_service.get_messages_of_conversation(conversation_id)
             )
 
         self._conversation = conversation

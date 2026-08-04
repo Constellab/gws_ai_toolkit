@@ -24,6 +24,8 @@ from gws_ai_toolkit.models.chat.message.chat_message_table import (
 from gws_ai_toolkit.models.chat.message.chat_message_text import (
     ChatMessageText,
 )
+from gws_ai_toolkit.models.chat.message.chat_message_tool_call import ChatMessageToolCall
+from gws_ai_toolkit.models.chat.message.chat_message_tool_result import ChatMessageToolResult
 from gws_ai_toolkit.models.chat.message.chat_user_message import (
     ChatUserMessageText,
 )
@@ -31,7 +33,6 @@ from gws_ai_toolkit.models.chat.message.chat_user_message_table import (
     ChatUserMessageTable,
     ChatUserMessageTableFront,
 )
-
 
 # Union of all message types including streaming responses
 ChatMessage = (
@@ -46,9 +47,13 @@ ChatMessage = (
     | ChatMessageHint
     | ChatMessageSource
     | ChatMessageStreaming
+    | ChatMessageToolCall
+    | ChatMessageToolResult
 )
 
-# Union of all message types including streaming responses
+# Union of all message types including streaming responses.
+# The tool turn types are deliberately absent: they are history-only, so they never reach the
+# front-end (see ChatMessageBase.is_history_only).
 ChatMessageFront = (
     ChatUserMessageText
     | ChatUserMessageTableFront

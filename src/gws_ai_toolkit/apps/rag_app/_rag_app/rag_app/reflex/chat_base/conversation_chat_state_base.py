@@ -14,7 +14,6 @@ from gws_ai_toolkit.models.chat.message.chat_user_message import (
     ChatUserMessageText,
 )
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
-from gws_core.core.model.model_dto import BaseModelDTO
 from gws_reflex_main import ReflexMainState
 
 
@@ -112,7 +111,9 @@ class ConversationChatStateBase(rx.State, mixin=True):
                 main_state = await self.get_state(ReflexMainState)
                 with await main_state.authenticate_user():
                     conversation.create_conversation(user_message[:60])
-                    self._chat_messages = [msg.to_front_dto() for msg in conversation.chat_messages]
+                    self._chat_messages = [
+                        msg.to_front_dto() for msg in conversation.get_visible_messages()
+                    ]
                 self.is_streaming = True
         except Exception:
             async with self:
@@ -126,6 +127,9 @@ class ConversationChatStateBase(rx.State, mixin=True):
             with await main_state.authenticate_user():
                 # Call conversation and process the AI chat stream
                 for message in conversation.call_conversation(user_query):
+                    if message.is_history_only():
+                        # Written for the model, not for the user (tool calls and their results).
+                        continue
                     if isinstance(message, ChatMessageStreaming):
                         # Update current response message on each yield
                         async with self:
@@ -170,7 +174,9 @@ class ConversationChatStateBase(rx.State, mixin=True):
             conversation_service = ChatConversationService()
             chat_messages = conversation_service.get_messages_of_conversation(conversation_id)
 
-        self._chat_messages = [msg.to_front_dto() for msg in chat_messages]
+        self._chat_messages = [
+            msg.to_front_dto() for msg in ChatMessageBase.filter_visible(chat_messages)
+        ]
         self.current_response_message = None
         self.is_streaming = False
         self._conversation = None

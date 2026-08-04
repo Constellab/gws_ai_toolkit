@@ -148,7 +148,9 @@ class AdminHistoryState(rx.State):
 
                 # Load messages
                 messages = conversation_service.get_messages_of_conversation(conversation_id)
-                self.detail_messages = [msg.to_front_dto() for msg in messages]
+                self.detail_messages = [
+                    msg.to_front_dto() for msg in ChatMessageBase.filter_visible(messages)
+                ]
         finally:
             self.is_loading_messages = False
 

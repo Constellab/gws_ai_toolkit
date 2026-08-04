@@ -38,6 +38,13 @@ class ChatMessageModel(Model):
 
     sources: list["ChatMessageSourceModel"]
 
+    # Position of the message inside its conversation, kept in `data` so no schema change is
+    # needed. `created_at` is a DATETIME with second precision, so the several messages of one
+    # turn — a user prompt, a tool call, its result, the answer — routinely share a timestamp
+    # and their relative order would otherwise be whatever the database happens to return. That
+    # order is what a restored message history replays, so it is recorded rather than assumed.
+    SEQUENCE_DATA_KEY = "_seq"
+
     class Meta:
         table_name = "gws_ai_toolkit_chat_message"
         database = AiToolkitDbManager.get_instance().db
@@ -48,14 +55,42 @@ class ChatMessageModel(Model):
     def get_by_conversation(cls, conversation_id: str) -> list["ChatMessageModel"]:
         """Get messages by conversation ID, ordered by creation date (oldest first).
 
+        Messages sharing a `created_at` second are ordered by their recorded position, so the
+        messages of a single turn always come back in the order they were saved.
+
         :param conversation_id: The ID of the conversation
         :type conversation_id: str
-        :return: ModelSelect query for messages
+        :return: The conversation's messages, oldest first
         :rtype: List[ChatMessage]
         """
-        return list(
+        messages = list(
             cls.select().where(cls.conversation == conversation_id).order_by(cls.created_at.asc())
         )
+        return sorted(messages, key=lambda message: (message.created_at, message.get_sequence()))
+
+    def get_sequence(self) -> int:
+        """Get the position of this message inside its conversation.
+
+        :return: The recorded position, or 0 for a message saved before positions were recorded
+        :rtype: int
+        """
+        return (self.data or {}).get(self.SEQUENCE_DATA_KEY, 0)
+
+    def set_next_sequence(self) -> None:
+        """Record this message's position as the next one in its conversation.
+
+        Called just before saving. Messages of one conversation are saved one at a time, so
+        counting the rows already there yields a monotonic position.
+        """
+        already_saved = (
+            ChatMessageModel.select()
+            .where(ChatMessageModel.conversation == self.conversation)
+            .count()
+        )
+
+        data = dict(self.data or {})
+        data[self.SEQUENCE_DATA_KEY] = already_saved
+        self.data = data
 
     @classmethod
     def build_message(

@@ -91,8 +91,8 @@ class RagChatState(ConversationChatStateBase, rx.State):
 
             # Load existing messages into the conversation object
             conversation_service = ChatConversationService()
-            conversation.chat_messages = conversation_service.get_messages_of_conversation(
-                conversation_id
+            conversation.restore_messages(
+                conversation_service.get_messages_of_conversation(conversation_id)
             )
 
         self._conversation = conversation

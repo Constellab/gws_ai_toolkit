@@ -13,6 +13,8 @@ from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_source import ChatMessageSource
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_text import ChatMessageText
+from gws_ai_toolkit.models.chat.message.chat_message_tool_call import ChatMessageToolCall
+from gws_ai_toolkit.models.chat.message.chat_message_tool_result import ChatMessageToolResult
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageBase
 from gws_ai_toolkit.rag.common.rag_models import RagChatSource
@@ -125,6 +127,92 @@ class BaseChatConversation(ABC, Generic[U]):
     def add_message(self, message: ChatMessageBase) -> None:
         """Add a message to the conversation."""
         self.chat_messages.append(message)
+
+    def get_visible_messages(self) -> list[ChatMessageBase]:
+        """Get the messages that belong in the visible transcript.
+
+        `chat_messages` also holds history-only messages — the tool calls and tool results kept
+        so a restored conversation can rebuild what the model saw. Anything rendering the
+        conversation reads this instead.
+
+        Returns:
+            list[ChatMessageBase]: The messages to render, in conversation order.
+        """
+        return ChatMessageBase.filter_visible(self.chat_messages)
+
+    def save_tool_call(
+        self,
+        tool_name: str,
+        args: dict,
+        tool_call_id: str,
+        external_id: str | None = None,
+    ) -> None:
+        """Record a tool call the model made, so a restored conversation can replay it.
+
+        Recorded as it happens rather than at the end of the run: the rebuilt history replays
+        messages in the order they were saved, and a tool call belongs *before* the answer it
+        led to.
+
+        Args:
+            tool_name: Name of the tool the model called.
+            args: Arguments the model passed.
+            tool_call_id: The provider's call id, pairing this call with its result.
+            external_id: Optional id of the response that made the call.
+        """
+        self.save_message(
+            ChatMessageToolCall(
+                tool_name=tool_name,
+                args=args,
+                tool_call_id=tool_call_id,
+                external_id=external_id,
+            )
+        )
+
+    def save_tool_result(
+        self,
+        tool_name: str,
+        content: str,
+        tool_call_id: str,
+        external_id: str | None = None,
+    ) -> None:
+        """Record what a tool reported back to the model.
+
+        Saved for a failed tool too, carrying the error the model was asked to correct: that is
+        what the model was told, and it keeps every recorded call paired with a result.
+
+        Args:
+            tool_name: Name of the tool that ran.
+            content: What the tool reported back to the model.
+            tool_call_id: The provider's call id, pairing this result with its call.
+            external_id: Optional id of the response that made the call.
+        """
+        self.save_message(
+            ChatMessageToolResult(
+                tool_name=tool_name,
+                content=content,
+                tool_call_id=tool_call_id,
+                external_id=external_id,
+            )
+        )
+
+    def restore_messages(self, messages: list[ChatMessageBase]) -> None:
+        """Restore a conversation's messages, rebuilding what the model already saw.
+
+        Args:
+            messages: The conversation's persisted messages, oldest first.
+        """
+        self.chat_messages = list(messages)
+        self._restore_agent_history(messages)
+
+    def _restore_agent_history(self, messages: list[ChatMessageBase]) -> None:
+        """Hook for subclasses to rebuild their agent's client-side message history.
+
+        Conversations whose agent keeps no history — those talking to a service that holds the
+        conversation on its side — need nothing here.
+
+        Args:
+            messages: The conversation's persisted messages, oldest first.
+        """
 
     def close_current_message(
         self, external_id: str | None = None, sources: list[RagChatSource] | None = None

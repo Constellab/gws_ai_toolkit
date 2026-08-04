@@ -1,11 +1,18 @@
 from collections.abc import Generator
 
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
+    FunctionCallEvent,
+    FunctionErrorEvent,
+    FunctionSuccessEvent,
+)
 from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table.table_agent_ai_events import TableAgentEvent
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent
+from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_error import ChatMessageError
 from gws_ai_toolkit.models.chat.message.chat_message_plotly import ChatMessagePlotly
 from gws_ai_toolkit.models.chat.message.chat_message_table import ChatMessageTable
+from gws_ai_toolkit.models.chat.message.chat_message_tool_call import ChatMessageToolCall
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessage
 from gws_ai_toolkit.models.chat.message.chat_user_message_table import ChatUserMessageTable
 
@@ -14,6 +21,7 @@ from .base_chat_conversation import (
     BaseChatConversationConfig,
     ChatConversationMode,
 )
+from .chat_message_history_mapper import ChatMessageHistoryMapper
 
 
 class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
@@ -39,6 +47,7 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
     table_agent: TableAgentAi
 
     _current_external_response_id: str | None = None
+    _tool_names_by_call_id: dict[str, str]
 
     def __init__(self, config: BaseChatConversationConfig, table_agent: TableAgentAi) -> None:
         super().__init__(
@@ -51,6 +60,7 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
         )
         self.table_agent = table_agent
         self._current_external_response_id = None
+        self._tool_names_by_call_id = {}
 
     def _call_ai_chat(
         self, user_message: ChatUserMessageTable
@@ -92,6 +102,8 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
         Returns:
             list[AllChatMessages]: A list of messages (empty list if no messages to return)
         """
+        self._record_tool_turn(event)
+
         if event.type == "text_delta":
             message = self.build_current_message(
                 event.delta, external_id=self._current_external_response_id
@@ -169,3 +181,72 @@ class AiTableAgentChatConversation(BaseChatConversation[ChatUserMessageTable]):
             return [message] if message else []
 
         return []
+
+    def _record_tool_turn(self, event: TableAgentEvent) -> None:
+        """Persist the tool turns of this conversation's own agent, in stream order.
+
+        Only the orchestrator's turns are recorded. Its sub-agents are created fresh for each
+        tool call and carry their own history, so persisting their calls here would replay one
+        agent's work into another agent's context.
+
+        Args:
+            event: The event being handled.
+        """
+        if getattr(event, "agent_id", None) != self.table_agent.id:
+            return
+
+        if isinstance(event, FunctionCallEvent):
+            self._tool_names_by_call_id[event.call_id] = event.function_name
+            self.save_tool_call(
+                tool_name=event.function_name,
+                args=event.arguments,
+                tool_call_id=event.call_id,
+                external_id=event.response_id,
+            )
+
+        elif isinstance(event, FunctionSuccessEvent):
+            self._save_tool_result_for_call(
+                event.call_id, event.function_response, event.response_id
+            )
+
+        elif isinstance(event, FunctionErrorEvent):
+            # The model was handed this error and asked to correct itself, so it is the result of
+            # that call as far as the history is concerned. Recording it keeps the call paired,
+            # which a run that recovered from a tool error would otherwise leave dangling.
+            self._save_tool_result_for_call(event.call_id, event.message, event.response_id)
+
+    def _save_tool_result_for_call(
+        self, call_id: str, content: str, response_id: str | None
+    ) -> None:
+        """Persist a tool result, resolving the tool name from the call it answers.
+
+        Args:
+            call_id: The call this result answers.
+            content: What the tool reported back to the model.
+            response_id: Id of the response that made the call.
+        """
+        tool_name = self._tool_names_by_call_id.get(call_id)
+        if not tool_name:
+            # A result with no recorded call cannot be paired, and an unpaired result is dropped
+            # on restore anyway.
+            return
+
+        self.save_tool_result(
+            tool_name=tool_name,
+            content=content,
+            tool_call_id=call_id,
+            external_id=response_id,
+        )
+
+    def _restore_agent_history(self, messages: list[ChatMessageBase]) -> None:
+        """Hand the agent back the history rebuilt from the persisted messages.
+
+        Args:
+            messages: The conversation's persisted messages, oldest first.
+        """
+        self.table_agent.set_message_history(ChatMessageHistoryMapper.to_model_messages(messages))
+        self._tool_names_by_call_id = {
+            message.tool_call_id: message.tool_name
+            for message in messages
+            if isinstance(message, ChatMessageToolCall)
+        }
