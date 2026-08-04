@@ -19,6 +19,14 @@ from .reflex.ai_expert.ai_expert_state import AiExpertState
 from .reflex.ai_expert.document_browser_component import document_browser_component
 from .reflex.ai_expert.document_browser_state import DocumentBrowserState
 from .reflex.core.app_config_state import AppConfigState
+from .reflex.knowledge_base.chat.knowledge_base_chat_component import (
+    knowledge_base_chat_component,
+)
+from .reflex.knowledge_base.chat.knowledge_base_chat_state import KnowledgeBaseChatState
+from .reflex.knowledge_base.chats.rag_chat_profile_list_component import (
+    rag_chat_profile_list_component,
+)
+from .reflex.knowledge_base.chats.rag_chat_profile_list_state import RagChatProfileListState
 from .reflex.knowledge_base.knowledge_bases.knowledge_base_detail_component import (
     knowledge_base_detail_component,
 )
@@ -154,6 +162,36 @@ def ai_expert_with_conversation():
 def ai_expert():
     """AI Expert page for document-specific chat."""
     return ai_expert_page_content()
+
+
+# Knowledge-base chat - new conversation
+@rx.page(route="/kb", on_load=KnowledgeBaseChatState.load_new_chat_page)
+def knowledge_base_chat():
+    """Chat against a chat profile, answering from the knowledge bases it is bound to."""
+    return rag_page_layout_component(
+        content=knowledge_base_chat_component(),
+    )
+
+
+# Knowledge-base chat - existing conversation loaded from the URL
+@rx.page(
+    route="/kb/chat/[conversation_id]",
+    on_load=KnowledgeBaseChatState.load_conversation_from_url,
+)
+def knowledge_base_chat_with_conversation():
+    """A persisted knowledge-base conversation, restored from its id."""
+    return rag_page_layout_component(
+        content=knowledge_base_chat_component(),
+    )
+
+
+# Chat profiles - list and edit page
+@rx.page(route="/kb/chats", on_load=RagChatProfileListState.load_page)
+def chat_profiles():
+    """Chat profiles: create one, configure it, and bind the knowledge bases it searches."""
+    return rag_page_layout_component(
+        content=rag_chat_profile_list_component(),
+    )
 
 
 # Knowledge bases - list page

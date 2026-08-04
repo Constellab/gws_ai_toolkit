@@ -10,8 +10,9 @@ def conversation_mode_chip_reactive(mode: rx.Var[str], size: ChipSize = "normal"
     """A reactive version of :func:`conversation_mode_chip` for use with ``rx.foreach``.
 
     Uses ``rx.match`` to dispatch on the reactive *mode* var.
-    Recognised values: ``"rag"`` (tertiary) and
-    ``"ai_expert"`` (secondary).  Unknown values fall back to a plain badge.
+    Recognised values: ``"knowledge_base"`` (tertiary), ``"ai_expert"`` (secondary) and the legacy
+    ``"rag"``, which says so — those conversations were run against retired datasets and can only be
+    read. Unknown values fall back to a plain badge.
 
     :param mode: Reactive var containing the conversation mode string.
     :param size: Chip size — ``"normal"`` or ``"big"``.
@@ -21,8 +22,18 @@ def conversation_mode_chip_reactive(mode: rx.Var[str], size: ChipSize = "normal"
     return rx.match(
         mode,
         (
-            ChatConversationMode.RAG.value,
+            ChatConversationMode.KNOWLEDGE_BASE.value,
             _chip("Chat", "message-circle", color_prefix="tertiary", size=badge_size),
+        ),
+        (
+            ChatConversationMode.RAG.value,
+            rx.badge(
+                rx.icon("archive", size=14),
+                "Retired",
+                variant="soft",
+                size=badge_size,
+                color_scheme="gray",
+            ),
         ),
         (
             ChatConversationMode.AI_EXPERT.value,

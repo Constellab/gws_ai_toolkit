@@ -38,6 +38,7 @@ from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import (
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_storage import DEFAULT_INSTANCE_SCOPE
 from gws_reflex_main import ReflexAppException, ReflexMainState
 
+from ..core.form_parsing import parse_positive_int
 from ..core.knowledge_base_app_state import KnowledgeBaseAppState
 
 KNOWLEDGE_BASES_ROUTE = "/kb/bases"
@@ -136,8 +137,8 @@ class KnowledgeBaseListState(rx.State):
             name=name,
             description=self.new_description.strip(),
             instance_scope=DEFAULT_INSTANCE_SCOPE,
-            chunk_size=self._parse_positive_int(self.new_chunk_size, "Chunk size"),
-            chunk_overlap=self._parse_positive_int(
+            chunk_size=parse_positive_int(self.new_chunk_size, "Chunk size"),
+            chunk_overlap=parse_positive_int(
                 self.new_chunk_overlap, "Chunk overlap", allow_zero=True
             ),
         )
@@ -211,22 +212,3 @@ class KnowledgeBaseListState(rx.State):
         with await main_state.authenticate_user():
             knowledge_bases = KnowledgeBaseService().get_all_knowledge_bases()
         self.knowledge_bases = [knowledge_base.to_dto() for knowledge_base in knowledge_bases]
-
-    @staticmethod
-    def _parse_positive_int(value: str, label: str, allow_zero: bool = False) -> int:
-        """Parse a numeric form field, naming the field when it is not a number.
-
-        :param value: raw text from the form
-        :param label: how the field is named in the error message
-        :param allow_zero: whether zero is a legitimate value (it is, for an overlap)
-        :raises ReflexAppException: if the value is not a whole number, or is out of range
-        """
-        try:
-            parsed = int(str(value).strip())
-        except ValueError:
-            raise ReflexAppException(f"{label} must be a whole number.") from None
-
-        minimum = 0 if allow_zero else 1
-        if parsed < minimum:
-            raise ReflexAppException(f"{label} must be {minimum} or more.")
-        return parsed

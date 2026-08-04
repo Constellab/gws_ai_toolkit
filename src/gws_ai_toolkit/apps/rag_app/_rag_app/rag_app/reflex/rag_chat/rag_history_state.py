@@ -3,17 +3,29 @@ from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatC
 
 from ..ai_expert.ai_expert_state import AiExpertState
 from ..history.history_state import SidebarHistoryListState
+from ..knowledge_base.chat.knowledge_base_chat_state import (
+    KNOWLEDGE_BASE_CHAT_ROUTE,
+    KNOWLEDGE_BASE_CONVERSATION_ROUTE,
+    KnowledgeBaseChatState,
+)
 from .rag_chat_state import RagChatState
 
 # Maps conversation mode to the URL pattern for loading that conversation.
 # The placeholder {id} is replaced with the actual conversation ID.
+#
+# A legacy ``rag`` conversation is routed to the knowledge-base chat page like any other: those rows
+# were run against retired RAGFlow / Dify datasets, so that page reports why they cannot be continued
+# and shows their transcript read-only, rather than reopening a chat nothing can answer for.
 DEFAULT_MODE_ROUTE_MAP: dict[str, str] = {
-    ChatConversationMode.RAG.value: "/chat/{id}",
+    ChatConversationMode.RAG.value: KNOWLEDGE_BASE_CONVERSATION_ROUTE,
+    ChatConversationMode.KNOWLEDGE_BASE.value: KNOWLEDGE_BASE_CONVERSATION_ROUTE,
     ChatConversationMode.AI_EXPERT.value: "/ai-expert/chat/{id}",
 }
 
-# Default route used when the conversation mode is not in the map
-DEFAULT_CONVERSATION_ROUTE = "/chat/{id}"
+# Default route used when the conversation mode is not in the map. The knowledge-base chat is the
+# honest destination for a mode this app has no page for: it reports what the conversation is and
+# leaves its transcript readable, where a chat page would fail on restore.
+DEFAULT_CONVERSATION_ROUTE = KNOWLEDGE_BASE_CONVERSATION_ROUTE
 
 
 class RagHistoryState(SidebarHistoryListState, rx.State):
@@ -56,9 +68,21 @@ class RagHistoryState(SidebarHistoryListState, rx.State):
         - On AI Expert pages with a document selected: creates a new AI Expert
           conversation for the same document.
         - On AI Expert pages without a document: does nothing.
+        - On knowledge-base pages: clears the chat and navigates to /kb, keeping the profile.
         - On RAG chat pages: clears chat and navigates to /.
         """
         current_path = self.router.url.path
+
+        if current_path.startswith(KNOWLEDGE_BASE_CHAT_ROUTE):
+            # Every ``/kb*`` page shares this sidebar — the chat, the profiles and the knowledge-base
+            # manager — so "New Chat" lands on a blank knowledge-base chat from all of them.
+            knowledge_base_chat_state: KnowledgeBaseChatState = await self.get_state(
+                KnowledgeBaseChatState
+            )
+            knowledge_base_chat_state.start_chat_with_profile(
+                knowledge_base_chat_state.selected_profile_id
+            )
+            return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
 
         if current_path.startswith("/ai-expert"):
             ai_expert_state: AiExpertState = await self.get_state(AiExpertState)

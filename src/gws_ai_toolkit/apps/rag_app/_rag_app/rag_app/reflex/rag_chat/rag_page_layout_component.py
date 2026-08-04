@@ -13,6 +13,7 @@ from ..core.conversation_mode_chip_component import (
     conversation_mode_chip_switchable,
 )
 from ..history.chat_history_sidebar_component import chat_history_sidebar_list
+from ..knowledge_base.chats.rag_chat_profile_list_state import CHAT_PROFILES_ROUTE
 from ..knowledge_base.knowledge_bases.knowledge_base_list_state import KNOWLEDGE_BASES_ROUTE
 from .rag_history_state import RagHistoryState
 
@@ -136,13 +137,21 @@ def _sidebar_content() -> rx.Component:
             logo_src="/constellab-logo.svg",
             margin_bottom="1rem",
         ),
-        # New Chat button, then the way into the knowledge-base manager: the pages under
-        # ``/kb/bases`` share this sidebar, so this is what makes them reachable without typing a URL.
+        # New Chat button, then the way into the knowledge-base pages: everything under ``/kb``
+        # shares this sidebar, so these are what make those pages reachable without typing a URL.
         rx.vstack(
             rx.button(
                 rx.icon("plus", size=16),
                 "New Chat",
                 on_click=RagHistoryState.start_new_chat,
+                width="100%",
+                size="2",
+            ),
+            rx.button(
+                rx.icon("message-circle", size=16),
+                "Chat profiles",
+                on_click=rx.redirect(CHAT_PROFILES_ROUTE),
+                variant="soft",
                 width="100%",
                 size="2",
             ),
