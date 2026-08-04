@@ -12,13 +12,8 @@ from gws_ai_toolkit.rag.knowledge_base.knowledge_base_credentials import (
     API_KEY_ENTRY_NAMES,
     resolve_openai_api_key,
 )
-from gws_core import BaseTestCase
-from gws_core.credentials.credentials_service import CredentialsService
-from gws_core.credentials.credentials_type import (
-    CredentialsDataOther,
-    CredentialsDataS3,
-    SaveCredentialsDTO,
-)
+from gws_core import BaseTestCase, CredentialsDataOther, CredentialsDataS3, CredentialsService
+from gws_core.credentials.credentials_type import SaveCredentialsDTO
 
 
 # test_knowledge_base_credentials

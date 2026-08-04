@@ -1,8 +1,6 @@
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
-from gws_ai_toolkit.models.chat.conversation.knowledge_base_chat_config import (
-    KnowledgeBaseChatConfig,
-)
 from gws_ai_toolkit.models.knowledge_base.knowledge_base import KnowledgeBase
+from gws_ai_toolkit.models.knowledge_base.knowledge_base_chat_config import KnowledgeBaseChatConfig
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import SaveKnowledgeBaseDTO
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile import RagChatProfile

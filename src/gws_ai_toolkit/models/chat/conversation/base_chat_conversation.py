@@ -5,8 +5,13 @@ from typing import Generic, TypeVar, cast
 from uuid import uuid4
 
 from attr import dataclass
-from gws_core import UserDTO
+from gws_core import BaseModelDTO, UserDTO
 
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
+    FunctionCallEvent,
+    FunctionErrorEvent,
+    FunctionSuccessEvent,
+)
 from gws_ai_toolkit.models.chat.chat_conversation_dto import SaveChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
@@ -64,6 +69,10 @@ class BaseChatConversation(ABC, Generic[U]):
     chat_messages: list[ChatMessageBase]
     current_response_message: ChatMessageStreaming | None
 
+    # Tool name of every recorded call, keyed by call id: a tool result names the tool it answers,
+    # and only the call carries that name.
+    _tool_names_by_call_id: dict[str, str]
+
     _conversation_id: str | None = None
     _external_conversation_id: str | None = None
 
@@ -80,6 +89,7 @@ class BaseChatConversation(ABC, Generic[U]):
         self.chat_configuration = chat_configuration or {}
         self.chat_messages = []
         self.current_response_message = None
+        self._tool_names_by_call_id = {}
         self._conversation_id = None
         self._conversation_service = ChatConversationService()
 
@@ -195,6 +205,65 @@ class BaseChatConversation(ABC, Generic[U]):
             )
         )
 
+    def record_tool_turn(self, event: BaseModelDTO) -> None:
+        """Persist the tool turn an agent event carries, if it carries one.
+
+        This is the reverse of
+        :class:`~gws_ai_toolkit.models.chat.conversation.chat_message_history_mapper.ChatMessageHistoryMapper`
+        and it has to happen *in stream order*, interleaved with the visible messages of the same
+        turn, which is why the conversation owns it: the rebuilt history replays messages in the
+        order they were saved, and a tool call belongs before the answer it led to.
+
+        Called for every event of a conversation's own agent. Events carrying no tool turn — text
+        deltas, response boundaries, whatever a tool produced — are ignored, so a caller can hand
+        the whole stream over without filtering it first.
+
+        Args:
+            event: The event being handled.
+        """
+        if isinstance(event, FunctionCallEvent):
+            self._tool_names_by_call_id[event.call_id] = event.function_name
+            self.save_tool_call(
+                tool_name=event.function_name,
+                args=event.arguments,
+                tool_call_id=event.call_id,
+                external_id=event.response_id,
+            )
+
+        elif isinstance(event, FunctionSuccessEvent):
+            self._save_tool_result_for_call(
+                event.call_id, event.function_response, event.response_id
+            )
+
+        elif isinstance(event, FunctionErrorEvent):
+            # The model was handed this error and asked to correct itself, so it is the result of
+            # that call as far as the history is concerned. Recording it keeps the call paired,
+            # which a run that recovered from a tool error would otherwise leave dangling.
+            self._save_tool_result_for_call(event.call_id, event.message, event.response_id)
+
+    def _save_tool_result_for_call(
+        self, call_id: str, content: str, response_id: str | None
+    ) -> None:
+        """Persist a tool result, resolving the tool name from the call it answers.
+
+        Args:
+            call_id: The call this result answers.
+            content: What the tool reported back to the model.
+            response_id: Id of the response that made the call.
+        """
+        tool_name = self._tool_names_by_call_id.get(call_id)
+        if not tool_name:
+            # A result with no recorded call cannot be paired, and an unpaired result is dropped
+            # on restore anyway.
+            return
+
+        self.save_tool_result(
+            tool_name=tool_name,
+            content=content,
+            tool_call_id=call_id,
+            external_id=response_id,
+        )
+
     def restore_messages(self, messages: list[ChatMessageBase]) -> None:
         """Restore a conversation's messages, rebuilding what the model already saw.
 
@@ -202,6 +271,11 @@ class BaseChatConversation(ABC, Generic[U]):
             messages: The conversation's persisted messages, oldest first.
         """
         self.chat_messages = list(messages)
+        self._tool_names_by_call_id = {
+            message.tool_call_id: message.tool_name
+            for message in messages
+            if isinstance(message, ChatMessageToolCall)
+        }
         self._restore_agent_history(messages)
 
     def _restore_agent_history(self, messages: list[ChatMessageBase]) -> None:

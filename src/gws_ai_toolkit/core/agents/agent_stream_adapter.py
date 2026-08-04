@@ -165,7 +165,7 @@ class AgentStreamAdapter(Generic[T]):
                 return list(run.result.all_messages()) if run.result else history_before
 
         except UsageLimitExceeded:
-            self._flush_pending_response()
+            self._discard_pending_response()
             self._emit_error(
                 f"Maximum consecutive calls ({max_consecutive_calls}) reached. "
                 "Please rephrase your request."
@@ -174,7 +174,7 @@ class AgentStreamAdapter(Generic[T]):
 
         except UnexpectedModelBehavior:
             # Raised when a tool exhausted its retry budget.
-            self._flush_pending_response()
+            self._discard_pending_response()
             self._emit_error(
                 f"Maximum consecutive errors ({max_consecutive_errors}) reached. "
                 "Please rephrase your request."
@@ -208,6 +208,19 @@ class AgentStreamAdapter(Generic[T]):
             pending_response = self._pending_response
             self._pending_response = None
             self._close_response(*pending_response)
+
+    def _discard_pending_response(self) -> None:
+        """Drop the closing events of a response the run never finished.
+
+        Called on the terminal error paths only. The response awaiting its closing events is one
+        whose tool calls were still being resolved when the run was aborted, so it never became an
+        answer: closing it would hand the consumer a response it persists as a *complete* one,
+        and a truncated answer presented as complete is worse than no answer, because nothing
+        downstream can tell the two apart. Consumers drop the text deltas already emitted when
+        they see the error event that follows.
+        """
+        self._pending_response = None
+        self._current_response_id = ""
 
     async def _stream_model_request(self, node: Any, run: Any) -> tuple[str, str]:
         """Stream one model request, emitting its text deltas.
