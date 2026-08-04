@@ -1,6 +1,7 @@
 import reflex as rx
+from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AI_EXPERT_CHAT_MODES
 
-from .ai_expert_config_state import AI_EXPERT_CHAT_MODES, AiExpertConfigState
+from .ai_expert_config_state import AiExpertConfigState
 
 
 def ai_expert_config_component() -> rx.Component:

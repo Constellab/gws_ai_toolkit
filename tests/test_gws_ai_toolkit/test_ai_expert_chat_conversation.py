@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import Any
 from unittest import TestCase
@@ -22,8 +23,8 @@ class _FakeRagService:
     """Minimal RAG service returning canned chunks and recording the calls it received."""
 
     def __init__(self) -> None:
-        self.get_document_chunks_calls: list[dict] = []
-        self.retrieve_chunks_calls: list[dict] = []
+        self.get_document_chunks_calls: list[dict[str, Any]] = []
+        self.retrieve_chunks_calls: list[dict[str, Any]] = []
 
     def get_document_chunks(self, **kwargs: Any) -> list[SimpleNamespace]:
         self.get_document_chunks_calls.append(kwargs)
@@ -46,7 +47,7 @@ class _FakeStream:
     def __exit__(self, *args: Any) -> None:
         return None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self._events)
 
 
@@ -104,7 +105,7 @@ class TestAiExpertChatConversation(TestCase):
 
         return conversation, rag_service, client
 
-    def _run(self, conversation: AiExpertChatConversation, question: str) -> list:
+    def _run(self, conversation: AiExpertChatConversation, question: str) -> list[Any]:
         return list(conversation.call_conversation(ChatUserMessageText(content=question)))
 
     def test_relevant_chunks_mode(self):
@@ -173,7 +174,7 @@ class TestAiExpertChatConversation(TestCase):
         self._run(conversation, "Follow-up question")
         self.assertEqual(client.responses.stream_kwargs["previous_response_id"], "resp_123")
 
-    def _assert_streamed_answer(self, messages: list) -> None:
+    def _assert_streamed_answer(self, messages: list[Any]) -> None:
         """Check the user message is echoed, deltas stream, and the answer is closed as text."""
         self.assertIsInstance(messages[0], ChatUserMessageText)
 

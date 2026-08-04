@@ -26,6 +26,14 @@ Contains RAG tools :
 
 Other AI tools:
 - Table copilot
+- AI Expert — chat focused on a single indexed document, in two modes: `relevant_chunks` (only the
+  chunks retrieved for your question) and `full_text_chunk` (all chunks of the document).
+
+> **Removed capability (August 2026)** — the AI Expert `full_file` mode is gone. It uploaded the
+> original file and gave the assistant a code interpreter over it, so it could compute on the file
+> and return a generated chart or spreadsheet. Answers are now always grounded in the indexed
+> document text. Configurations still set to `full_file` load as `relevant_chunks`.
+> See `docs/adr/0001-remove-ai-expert-full-file-mode.md`.
 
 ## 📄 Documentation
 

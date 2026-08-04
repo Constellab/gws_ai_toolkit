@@ -1,9 +1,12 @@
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal, get_args
 
 from gws_core import BaseModelDTO, Logger
 from pydantic import field_validator
 
 AiExpertChatMode = Literal["full_text_chunk", "relevant_chunks"]
+
+# Selectable modes, in the order they are displayed in the configuration form
+AI_EXPERT_CHAT_MODES: list[AiExpertChatMode] = list(get_args(AiExpertChatMode))
 
 # Mode removed in August 2026 together with the OpenAI file upload and the hosted code interpreter.
 # Persisted configurations may still carry it, so it is silently mapped to the fallback below.
@@ -36,7 +39,7 @@ class AiExpertChatConfig(BaseModelDTO):
         mode (AiExpertChatMode): Processing mode for document analysis.
             Options: 'full_text_chunk', 'relevant_chunks'
 
-        max_chunks (int): Maximum number of chunks to retrieve in 'relevant_chunks' mode.
+        max_chunks (int): Maximum number of chunks to retrieve, in both modes.
             Range: 1-100, Default: 5
 
         model (str): OpenAI model identifier to use for chat responses.
@@ -58,6 +61,10 @@ class AiExpertChatConfig(BaseModelDTO):
         )
     """
 
+    # The removed mode was the previous default, so it is read on every config load. The fallback
+    # warning is emitted once per process to keep it out of every page load and every chat message.
+    removed_mode_warning_logged: ClassVar[bool] = False
+
     prompt_file_placeholder: str = "[FILE]"
 
     system_prompt: str = """You are an AI expert assistant specialized in analyzing and answering questions about the document "[FILE]".
@@ -77,7 +84,7 @@ The user is asking questions specifically about this document, so focus your res
     # 'relevant_chunks' retrieves only the most relevant chunks based on the user's question
     mode: AiExpertChatMode = "relevant_chunks"
 
-    # Number of chunks to retrieve for relevant_chunks mode (1-100)
+    # Number of chunks to retrieve, in both modes (1-100)
     max_chunks: int = 5
 
     # OpenAI model to use for chat
@@ -95,8 +102,9 @@ The user is asking questions specifically about this document, so focus your res
         """Map the removed 'full_file' mode to the fallback mode instead of failing to load.
 
         Configurations persisted before the removal of the 'full_file' mode must keep loading,
-        so the obsolete value is replaced by the fallback and a warning is logged. Any other
-        unknown value is left untouched and rejected by the regular Literal validation.
+        so the obsolete value is replaced by the fallback and a warning is logged once per
+        process. Any other unknown value is left untouched and rejected by the regular Literal
+        validation.
 
         Args:
             value (Any): Raw mode value coming from the persisted configuration.
@@ -105,10 +113,12 @@ The user is asking questions specifically about this document, so focus your res
             Any: The fallback mode when the removed mode is detected, the value unchanged otherwise.
         """
         if value == REMOVED_AI_EXPERT_CHAT_MODE:
-            Logger.warning(
-                f"AI Expert mode '{REMOVED_AI_EXPERT_CHAT_MODE}' has been removed, "
-                f"falling back to '{REMOVED_AI_EXPERT_CHAT_MODE_FALLBACK}'. "
-                "Update the AI Expert configuration to remove this warning."
-            )
+            if not cls.removed_mode_warning_logged:
+                cls.removed_mode_warning_logged = True
+                Logger.warning(
+                    f"AI Expert mode '{REMOVED_AI_EXPERT_CHAT_MODE}' has been removed, "
+                    f"falling back to '{REMOVED_AI_EXPERT_CHAT_MODE_FALLBACK}'. "
+                    "Update the AI Expert configuration to remove this warning."
+                )
             return REMOVED_AI_EXPERT_CHAT_MODE_FALLBACK
         return value

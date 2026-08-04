@@ -1,17 +1,14 @@
-from typing import cast, get_args
+from typing import cast
 
 import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import (
+    AI_EXPERT_CHAT_MODES,
     AiExpertChatConfig,
-    AiExpertChatMode,
 )
 from gws_core import Logger
 from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
-
-# Selectable modes, in the order they are displayed in the configuration form
-AI_EXPERT_CHAT_MODES: list[str] = list(get_args(AiExpertChatMode))
 
 
 class AiExpertConfigState(rx.State):
@@ -120,17 +117,15 @@ class AiExpertConfigState(rx.State):
             except ValueError:
                 return rx.toast.error("Temperature must be a valid number")
 
-            # Validate max_chunks (used by both modes)
-            new_max_chunks = 5  # default value
-            if new_mode == "relevant_chunks" and not new_max_chunks_str:
-                return rx.toast.error("Chunk count is required for relevant chunks mode")
-            if new_max_chunks_str:
-                try:
-                    new_max_chunks = int(new_max_chunks_str)
-                    if new_max_chunks < 1 or new_max_chunks > 100:
-                        return rx.toast.error("Chunk count must be between 1 and 100")
-                except ValueError:
-                    return rx.toast.error("Chunk count must be a valid number")
+            # Validate max_chunks, required by both modes
+            if not new_max_chunks_str:
+                return rx.toast.error("Chunk count is required")
+            try:
+                new_max_chunks = int(new_max_chunks_str)
+                if new_max_chunks < 1 or new_max_chunks > 100:
+                    return rx.toast.error("Chunk count must be between 1 and 100")
+            except ValueError:
+                return rx.toast.error("Chunk count must be a valid number")
 
             # Get current config
             current_config = await self.get_config()
