@@ -16,7 +16,6 @@ is a single indexed query.
 import reflex as rx
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import (
-    DEFAULT_OPENAI_EMBEDDING_DIMENSIONS,
     DEFAULT_OPENAI_EMBEDDING_MODEL,
     EmbeddingConfig,
     EmbeddingProvider,
@@ -27,10 +26,14 @@ from gws_reflex_main import ReflexMainState
 
 # App params, read the way ``core/app_config_state.py`` reads its own: through
 # ``ReflexMainState.get_params()``, so the generator task and ``dev_config.json`` configure the same
-# keys. All four are optional — the defaults are the ones the engine itself documents.
+# keys. All three are optional — the defaults are the ones the engine itself documents.
+#
+# The vector width is deliberately *not* a param: it follows from the model
+# (``EMBEDDING_NATIVE_DIMENSIONS``), and the only reason to override it is to ask for a truncated
+# vector — a decision that fixes an instance's vector space for good, so it does not belong in a
+# config file where it can be edited by mistake.
 EMBEDDING_PROVIDER_PARAM = "knowledge_base_embedding_provider"
 EMBEDDING_MODEL_PARAM = "knowledge_base_embedding_model"
-EMBEDDING_DIMENSIONS_PARAM = "knowledge_base_embedding_dimensions"
 OPENAI_CREDENTIALS_NAME_PARAM = "knowledge_base_openai_credentials_name"
 
 
@@ -59,7 +62,8 @@ class KnowledgeBaseAppState(rx.State):
 
         :param main_state: the app's main state, passed in rather than fetched with ``get_state`` so
                            this is callable from a background event (see the class docstring)
-        :raises ValueError: if the named credentials do not exist or hold no API key
+        :raises ValueError: if the named credentials do not exist or hold no API key, or if the
+                configured model's vector width is unknown
         """
         params = await main_state.get_params()
 
@@ -67,17 +71,16 @@ class KnowledgeBaseAppState(rx.State):
             params.get(EMBEDDING_PROVIDER_PARAM) or EmbeddingProvider.OPENAI.value
         )
         if provider == EmbeddingProvider.MOCK:
-            # The offline, deterministic configuration. Its dimensions are part of its identity, so
-            # they come from the config class rather than from a param.
+            # The offline, deterministic configuration. Its width is part of its identity, so it
+            # comes from the config class rather than from a param.
             return EmbeddingConfig.mock()
 
+        # No ``dimensions``: it is resolved from the model. An unknown model name therefore raises
+        # here rather than silently indexing at whatever width the provider happens to return.
         return EmbeddingConfig(
             provider=provider,
             model=params.get(EMBEDDING_MODEL_PARAM) or DEFAULT_OPENAI_EMBEDDING_MODEL,
             api_key=resolve_openai_api_key(params.get(OPENAI_CREDENTIALS_NAME_PARAM)),
-            dimensions=int(
-                params.get(EMBEDDING_DIMENSIONS_PARAM) or DEFAULT_OPENAI_EMBEDDING_DIMENSIONS
-            ),
         )
 
     async def build_engine(

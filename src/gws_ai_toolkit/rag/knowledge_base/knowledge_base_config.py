@@ -11,8 +11,10 @@ Three configurations, deliberately separated because they have different lifetim
 """
 
 from enum import Enum
+from typing import Any
 
 from gws_core import BaseModelDTO
+from pydantic import model_validator
 
 # Defaults, as settled in docs/todo/rag_embedded_stack_implementation_plan.md.
 DEFAULT_CHUNK_SIZE = 1024
@@ -20,9 +22,25 @@ DEFAULT_CHUNK_OVERLAP = 100
 DEFAULT_TOP_K = 5
 DEFAULT_RRF_K = 60
 DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
-DEFAULT_OPENAI_EMBEDDING_DIMENSIONS = 1536
 MOCK_EMBEDDING_MODEL = "hashed-bag-of-words"
-MOCK_EMBEDDING_DIMENSIONS = 64
+
+# Native vector width of each embedding model — the number of floats one chunk becomes. Keyed by
+# model, because the width is a property of the model rather than something a caller should have to
+# know: :class:`EmbeddingConfig` resolves it from ``model`` whenever ``dimensions`` is not given.
+# It is therefore not exposed as an app parameter; only the manifest tests set it by hand.
+#
+# The v3 models also accept a *shorter* width than their native one (the vector is truncated,
+# trading retrieval accuracy for storage and speed). That is why ``dimensions`` remains settable in
+# code — but an instance's width is fixed at first index, so choosing one is a deliberate act.
+EMBEDDING_NATIVE_DIMENSIONS: dict[str, int] = {
+    "text-embedding-3-small": 1536,
+    "text-embedding-3-large": 3072,
+    # Legacy, and the one model whose width cannot be shortened at all.
+    "text-embedding-ada-002": 1536,
+    # Wide enough for the hashed buckets to separate the test corpus, and no wider: a 1536-wide
+    # mock would be 24x the arithmetic for no gain.
+    MOCK_EMBEDDING_MODEL: 64,
+}
 
 
 class EmbeddingProvider(str, Enum):
@@ -60,17 +78,56 @@ class EmbeddingConfig(BaseModelDTO):
     with the same width but a different model (``text-embedding-3-large`` truncated to 1536, or a
     ``mock`` ↔ ``openai`` swap) produce vectors that are numerically compatible and semantically
     unrelated. That is the failure the manifest guards against.
+
+    It is nevertheless **not something a caller configures**: omit it and it is resolved from
+    ``model`` through :data:`EMBEDDING_NATIVE_DIMENSIONS`, which is why no app parameter exposes it.
+    Passing one explicitly means asking for a truncated vector, and the manifest then holds whatever
+    was asked for.
     """
 
     provider: EmbeddingProvider = EmbeddingProvider.OPENAI
     model: str = DEFAULT_OPENAI_EMBEDDING_MODEL
     # None means "read it from the credentials or the lab settings at creation time".
     api_key: str | None = None
-    dimensions: int = DEFAULT_OPENAI_EMBEDDING_DIMENSIONS
+    # Always a concrete width after validation — see :meth:`_resolve_dimensions`.
+    dimensions: int
+
+    @model_validator(mode="before")
+    @classmethod
+    def _resolve_dimensions(cls, values: Any) -> Any:
+        """Fill ``dimensions`` from the model whenever the caller did not choose a width.
+
+        Runs *before* validation so the field itself stays a plain ``int``: the manifest row and the
+        arrow schema read a concrete number, and a width resolved once at construction cannot drift
+        afterwards the way a lazily-read provider default could.
+
+        :raises ValueError: for a model whose width is unknown and was not given. Guessing here
+                would produce the one corruption the manifest cannot catch — a wrong width recorded
+                under the right model's name.
+        """
+        if not isinstance(values, dict) or values.get("dimensions") is not None:
+            return values
+
+        model = values.get("model") or DEFAULT_OPENAI_EMBEDDING_MODEL
+        dimensions = EMBEDDING_NATIVE_DIMENSIONS.get(model)
+        if dimensions is None:
+            known = ", ".join(sorted(EMBEDDING_NATIVE_DIMENSIONS))
+            raise ValueError(
+                f"Unknown embedding model '{model}': its vector width cannot be resolved. Add it to "
+                f"EMBEDDING_NATIVE_DIMENSIONS, or pass 'dimensions' explicitly to ask for a "
+                f"truncated vector. Known models: {known}."
+            )
+
+        return {**values, "dimensions": dimensions}
 
     @classmethod
-    def mock(cls, dimensions: int = MOCK_EMBEDDING_DIMENSIONS) -> "EmbeddingConfig":
-        """Build the deterministic offline configuration used by tests."""
+    def mock(cls, dimensions: int | None = None) -> "EmbeddingConfig":
+        """Build the deterministic offline configuration used by tests.
+
+        :param dimensions: override the mock's own width. Only the manifest tests need this: they
+                           prove that a width shared with another model is not mistaken for the
+                           same vector space.
+        """
         return cls(
             provider=EmbeddingProvider.MOCK,
             model=MOCK_EMBEDDING_MODEL,

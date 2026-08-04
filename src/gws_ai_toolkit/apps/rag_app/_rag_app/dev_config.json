@@ -10,7 +10,6 @@
         "rag_provider": "ragflow",
         "knowledge_base_embedding_provider": "openai",
         "knowledge_base_embedding_model": "text-embedding-3-small",
-        "knowledge_base_embedding_dimensions": 1536,
         "knowledge_base_openai_credentials_name": "",
         "resource_sync_mode": "tag",
         "resource_tag_key": "send_to_rag",
