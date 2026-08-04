@@ -38,6 +38,10 @@ Standalone engine that indexes documents and retrieves chunks in-process, with n
 - `document_compatibility.py` - the add-time admission check (supported extension, ≤ 15 MB, rich-text JSON shape), applied to the fetched file whatever source produced it
 - `knowledge_base_storage.py` - disk layout: `instances/<scope>/` (LanceDB + lock + manifest) and `files/<kb_id>/` (snapshots)
 - `knowledge_base_credentials.py` - resolves the OpenAI API key from named credentials, falling back to the lab setting
+- `sources/knowledge_base_source.py` - `KnowledgeBaseDocumentSource` ABC + `KnowledgeBaseDocumentSourceRegistry`: where documents come from, and the content-hash helpers every provider uses for version markers
+- `sources/upload_source.py` - the built-in `upload` provider, whose uploaded bytes *are* the snapshot (so it refuses to be re-fetched)
+
+Persistence for all of this lives in `models/knowledge_base/` (`KnowledgeBase`, `KnowledgeBaseDocument`, `EmbeddingManifestModel`, `KnowledgeBaseService`). The engine itself imports nothing from `models/` and stays usable without a database — `sources/` is the one exception, and only for the `KnowledgeBaseDocumentDTO` that `get_open_action` receives. The service is what adds snapshots, status and leases.
 
 Points that are settled and should not be re-litigated (August 2026 spike):
 
@@ -45,6 +49,9 @@ Points that are settled and should not be re-litigated (August 2026 spike):
 - The engine reads the LanceDB table directly rather than through `LanceDBVectorStore`, because the wrapper returns rank position rescaled to 0..1 instead of the fused score, and nests the metadata under a struct column.
 - Hybrid retrieval fuses vector and full-text results with LanceDB's `RRFReranker` (k = 60) — arithmetic, not a model. Full-text search needs no maintenance step.
 - Every write takes an exclusive `fcntl.flock` on the instance directory, every read a shared one, so any process may write.
+- **Snapshot-on-add**: every document row is created with a snapshot already written, and indexing reads *only* that path. Indexing never contacts a source system, so a deleted resource or an unavailable app breaks neither retrieval nor re-indexing. The costs — bounded storage duplication and staleness until an explicit refresh — are accepted deliberately.
+- **Indexing takes a lease.** Indexing runs in a Reflex background event whose process is killed on idle, so `indexing_started_at` is stamped with the status; an over-age lease is *reported* as `error` ("interrupted, retry") and is reclaimable. Re-indexing deletes the document's chunks first, so reclaiming is always safe.
+- Document sources are a **registry, not an enum**: other bricks register their own provider at brick load and this brick imports none of them — the same inversion `@credentials_type` uses. `source_type` is therefore a plain `CharField`.
 - **V1 indexes documents only**: PDF, MD, TXT, DOCX, HTML and RichText JSON (note content → Markdown). CSV, spreadsheets, data JSON and legacy `.doc` are rejected, each with a message naming the reason. Tabular rejection is a decision, not an omission — row chunks are near-identical in form, so they match everything weakly and degrade retrieval for the documents sharing the index, and the questions asked of a table (count, sum, filter) are the ones vector search cannot answer. If a real need appears, add a column-summary chunk per table before considering row-level indexing.
 - The loader unwraps every reader to plain text and builds the `Document` itself, because readers attach metadata of their own (`PDFReader` adds a page label) and only the four known keys are excluded from the embedded and LLM text.
 

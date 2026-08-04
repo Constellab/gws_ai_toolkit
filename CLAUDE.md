@@ -12,7 +12,7 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
 - `src/gws_ai_toolkit/` - Main RAG implementations
   - `apps/` - Reflex applications and their generator tasks (`rag_app/`, `ai_table_standalone_app/`, `full_app/`)
   - `rag/` - RAG services and integrations (Dify, RagFlow) under `rag/common/`, `rag/dify/`, `rag/ragflow/`
-  - `models/` - Peewee persistence models (chat conversations/messages/sources, users)
+  - `models/` - Peewee persistence models (chat conversations/messages/sources, users, knowledge bases). Tables auto-create at brick load, so every model must be imported from `src/gws_ai_toolkit/__init__.py` — a model nothing imports is a table that is never created.
   - `services/` - Service layer
   - `tasks/` - Task implementations
   - `stats/` - Tools to perform statistical analysis and generate visualizations

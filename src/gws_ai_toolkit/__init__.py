@@ -76,6 +76,19 @@ from .models.chat.message.chat_message_types import (
 from .models.chat.message.chat_user_message import (
     ChatUserMessageText,
 )
+
+# Importing the knowledge-base models is what registers their tables: gws_core discovers tables by
+# walking Model subclasses, so a model nothing imports is a table that is never created.
+from .models.knowledge_base.embedding_manifest_model import EmbeddingManifestModel
+from .models.knowledge_base.knowledge_base import KnowledgeBase
+from .models.knowledge_base.knowledge_base_document import KnowledgeBaseDocument
+from .models.knowledge_base.knowledge_base_dto import (
+    DocumentIndexStatus,
+    KnowledgeBaseDocumentDTO,
+    KnowledgeBaseDTO,
+    SaveKnowledgeBaseDTO,
+)
+from .models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from .rag.common.base_rag_app_service import BaseRagAppService
 from .rag.common.base_rag_service import BaseRagService
 from .rag.common.datahub_rag_app_service import DatahubRagAppService
@@ -127,6 +140,19 @@ from .rag.dify.dify_class import (
 from .rag.dify.dify_send_file_to_knownledge_base import DifySendFileToKnownledgeBase
 from .rag.dify.dify_service import DifyService
 from .rag.dify.rag_dify_service import RagDifyService
+
+# The document-source seam is a cross-brick extension point: another brick registers its own
+# provider at load time and must be able to reach these with a top-level import.
+from .rag.knowledge_base.sources.knowledge_base_source import (
+    DocumentSourceOperationNotSupportedError,
+    KnowledgeBaseDocumentSource,
+    KnowledgeBaseDocumentSourceRegistry,
+    SourceDocumentCandidate,
+    SourceFetchResult,
+    SourceOpenAction,
+    SourceOpenActionType,
+    UnknownDocumentSourceError,
+)
 from .rag.ragflow.rag_ragflow_service import RagRagFlowService
 from .rag.ragflow.ragflow_class import (
     RagflowAskStreamResponse,
@@ -304,6 +330,24 @@ __all__ = [
     "ChatMessageSource",
     "ChatMessageSourceFront",
     "RagChatSourceFront",
+    # Models > knowledge base
+    "KnowledgeBase",
+    "KnowledgeBaseDocument",
+    "KnowledgeBaseService",
+    "EmbeddingManifestModel",
+    "KnowledgeBaseDTO",
+    "KnowledgeBaseDocumentDTO",
+    "SaveKnowledgeBaseDTO",
+    "DocumentIndexStatus",
+    # Rag > knowledge base document sources
+    "KnowledgeBaseDocumentSource",
+    "KnowledgeBaseDocumentSourceRegistry",
+    "SourceFetchResult",
+    "SourceDocumentCandidate",
+    "SourceOpenAction",
+    "SourceOpenActionType",
+    "UnknownDocumentSourceError",
+    "DocumentSourceOperationNotSupportedError",
     # Stats
     "AiTableStatsBase",
     "AiTableStats",
