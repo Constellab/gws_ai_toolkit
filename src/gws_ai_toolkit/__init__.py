@@ -89,6 +89,12 @@ from .models.knowledge_base.knowledge_base_dto import (
     SaveKnowledgeBaseDTO,
 )
 from .models.knowledge_base.knowledge_base_service import KnowledgeBaseService
+from .models.knowledge_base.rag_chat_profile import RagChatProfile
+from .models.knowledge_base.rag_chat_profile_dto import (
+    RagChatProfileDTO,
+    SaveRagChatProfileDTO,
+)
+from .models.knowledge_base.rag_chat_profile_service import RagChatProfileService
 from .rag.common.base_rag_app_service import BaseRagAppService
 from .rag.common.base_rag_service import BaseRagService
 from .rag.common.datahub_rag_app_service import DatahubRagAppService
@@ -339,6 +345,11 @@ __all__ = [
     "KnowledgeBaseDocumentDTO",
     "SaveKnowledgeBaseDTO",
     "DocumentIndexStatus",
+    # Models > chat profile
+    "RagChatProfile",
+    "RagChatProfileService",
+    "RagChatProfileDTO",
+    "SaveRagChatProfileDTO",
     # Rag > knowledge base document sources
     "KnowledgeBaseDocumentSource",
     "KnowledgeBaseDocumentSourceRegistry",
