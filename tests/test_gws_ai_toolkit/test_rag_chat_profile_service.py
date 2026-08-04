@@ -1,4 +1,7 @@
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
+from gws_ai_toolkit.models.chat.conversation.knowledge_base_chat_config import (
+    KnowledgeBaseChatConfig,
+)
 from gws_ai_toolkit.models.knowledge_base.knowledge_base import KnowledgeBase
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import SaveKnowledgeBaseDTO
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
@@ -228,6 +231,42 @@ class TestRagChatProfileService(BaseTestCase):
         self.assertEqual(dto.top_k, profile.top_k)
         self.assertIsNone(dto.score_threshold)
         self.assertEqual(dto.knowledge_base_ids, [knowledge_base.id])
+
+    ############################################### CHAT CONFIGURATION ###############################################
+
+    def test_from_profile_carries_the_settings_a_run_needs(self):
+        """A profile row becomes the value the chat loop runs on, row left behind."""
+        knowledge_base = self._create_knowledge_base()
+        profile = self.service.create_profile(
+            SaveRagChatProfileDTO(
+                name="Tuned",
+                system_prompt="Search first.",
+                model="openai:gpt-4.1",
+                top_k=3,
+                score_threshold=0.02,
+                knowledge_base_ids=[knowledge_base.id],
+            )
+        )
+
+        chat_config = KnowledgeBaseChatConfig.from_profile(profile)
+
+        self.assertEqual(chat_config.chat_profile_id, profile.id)
+        self.assertEqual(chat_config.system_prompt, "Search first.")
+        self.assertEqual(chat_config.model, "openai:gpt-4.1")
+        self.assertEqual(chat_config.top_k, 3)
+        self.assertEqual(chat_config.score_threshold, 0.02)
+        self.assertEqual(chat_config.knowledge_base_ids, [knowledge_base.id])
+
+    def test_from_profile_resolves_the_binding_before_the_chat_uses_it(self):
+        """The chat searches what still exists, without every caller remembering to filter."""
+        kept = self._create_knowledge_base("Kept")
+        deleted = self._create_knowledge_base("Deleted")
+        profile = self._create_profile(knowledge_base_ids=[kept.id, deleted.id])
+        KnowledgeBase.delete().where(KnowledgeBase.id == deleted.id).execute()
+
+        chat_config = KnowledgeBaseChatConfig.from_profile(profile)
+
+        self.assertEqual(chat_config.knowledge_base_ids, [kept.id])
 
     ############################################### CONVERSATION MODE ###############################################
 
