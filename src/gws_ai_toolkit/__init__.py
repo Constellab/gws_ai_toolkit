@@ -84,9 +84,13 @@ from .models.knowledge_base.knowledge_base import KnowledgeBase
 from .models.knowledge_base.knowledge_base_document import KnowledgeBaseDocument
 from .models.knowledge_base.knowledge_base_dto import (
     DocumentIndexStatus,
+    ImportedDocumentDTO,
+    ImportReport,
+    ImportSkipReason,
     KnowledgeBaseDocumentDTO,
     KnowledgeBaseDTO,
     SaveKnowledgeBaseDTO,
+    SkippedDocumentDTO,
 )
 from .models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from .models.knowledge_base.rag_chat_profile import RagChatProfile
@@ -150,6 +154,7 @@ from .rag.dify.rag_dify_service import RagDifyService
 # The document-source seam is a cross-brick extension point: another brick registers its own
 # provider at load time and must be able to reach these with a top-level import.
 from .rag.knowledge_base.sources.knowledge_base_source import (
+    DOCUMENT_REJECTION_ERRORS,
     DocumentSourceOperationNotSupportedError,
     KnowledgeBaseDocumentSource,
     KnowledgeBaseDocumentSourceRegistry,
@@ -158,6 +163,14 @@ from .rag.knowledge_base.sources.knowledge_base_source import (
     SourceOpenAction,
     SourceOpenActionType,
     UnknownDocumentSourceError,
+)
+
+# Imported for its side effect as much as for the name: importing the module is what registers the
+# ``resource`` provider, and nothing else in the brick imports it (the knowledge-base layer addresses
+# providers by source type, never by class).
+from .rag.knowledge_base.sources.resource_source import (
+    RESOURCE_SOURCE_TYPE,
+    ResourceDocumentSource,
 )
 from .rag.ragflow.rag_ragflow_service import RagRagFlowService
 from .rag.ragflow.ragflow_class import (
@@ -345,6 +358,10 @@ __all__ = [
     "KnowledgeBaseDocumentDTO",
     "SaveKnowledgeBaseDTO",
     "DocumentIndexStatus",
+    "ImportReport",
+    "ImportedDocumentDTO",
+    "SkippedDocumentDTO",
+    "ImportSkipReason",
     # Models > chat profile
     "RagChatProfile",
     "RagChatProfileService",
@@ -359,6 +376,9 @@ __all__ = [
     "SourceOpenActionType",
     "UnknownDocumentSourceError",
     "DocumentSourceOperationNotSupportedError",
+    "DOCUMENT_REJECTION_ERRORS",
+    "ResourceDocumentSource",
+    "RESOURCE_SOURCE_TYPE",
     # Stats
     "AiTableStatsBase",
     "AiTableStats",

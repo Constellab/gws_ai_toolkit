@@ -14,6 +14,7 @@ from gws_ai_toolkit.models.knowledge_base.knowledge_base_document import (
 )
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
     DocumentIndexStatus,
+    ImportSkipReason,
     KnowledgeBaseDocumentDTO,
     KnowledgeBaseDTO,
     SaveKnowledgeBaseDTO,
@@ -124,7 +125,12 @@ class FakeDocumentSource(KnowledgeBaseDocumentSource):
     def get_open_action(self, document: KnowledgeBaseDocumentDTO) -> SourceOpenAction | None:
         return SourceOpenAction.external_link(f"{self.share_url}{document.source_id}")
 
-    def list_documents(self, sync_config: dict) -> list[SourceDocumentCandidate]:
+    def list_documents(self, criteria: dict) -> list[SourceDocumentCandidate]:
+        """Every document in the fake source system, ignoring the criterion.
+
+        A real provider filters on the criterion; what matters for the service is that the criterion
+        travels through unchanged and ends up in ``source_metadata``, which the tests assert.
+        """
         return [
             SourceDocumentCandidate(source_id=name, filename=name)
             for name in sorted(os.listdir(self.root_dir))
@@ -495,8 +501,10 @@ class TestKnowledgeBaseService(BaseTestCase):
         new_content = MARKDOWN_CONTENT + "\nA variant calling step was added.\n"
         self.fake_source.write_source_document("protocol.md", new_content)
 
-        refreshed = self.service.refresh_document(document.id)
+        refresh = self.service.refresh_document(document.id)
+        refreshed = refresh.document
 
+        self.assertTrue(refresh.content_changed)
         self.assertNotEqual(refreshed.source_version, original_version)
         self.assertEqual(
             refreshed.source_version, compute_bytes_content_hash(new_content.encode("utf-8"))
@@ -504,6 +512,46 @@ class TestKnowledgeBaseService(BaseTestCase):
         self.assertEqual(refreshed.index_status, DocumentIndexStatus.PENDING.value)
         with open(refreshed.snapshot_path, encoding="utf-8") as snapshot:
             self.assertEqual(snapshot.read(), new_content)
+
+    def test_refreshing_an_unchanged_document_costs_no_reindexing(self):
+        """The version marker is a content hash, so a save that changed nothing changes nothing.
+
+        This is what keeps staying current cheap: the caller reads ``content_changed`` and skips the
+        embedding call, and the row is left ``done`` rather than being queued as pending work that
+        would re-embed identical text.
+        """
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        document = self.service.add_document(knowledge_base.id, FAKE_SOURCE_TYPE, "protocol.md")
+        indexed = self.service.index_document(document.id, self._build_engine())
+
+        # Saved again in the source system with the exact same content.
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        refresh = self.service.refresh_document(document.id)
+
+        self.assertFalse(refresh.content_changed)
+        self.assertEqual(refresh.document.source_version, indexed.source_version)
+        self.assertEqual(refresh.document.index_status, DocumentIndexStatus.DONE.value)
+        self.assertEqual(refresh.document.chunk_count, indexed.chunk_count)
+        self.assertIsNotNone(refresh.document.indexed_at)
+        # And it is the persisted row that says so, not just the instance in hand.
+        self.assertEqual(
+            self.service.get_document_and_check(document.id).index_status,
+            DocumentIndexStatus.DONE.value,
+        )
+
+    def test_an_unchanged_refresh_keeps_a_failed_documents_error(self):
+        """An error is the last attempt's verdict, and an unchanged refresh did not attempt again."""
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        document = self.service.add_document(knowledge_base.id, FAKE_SOURCE_TYPE, "protocol.md")
+        self.service._fail_indexing(document, "embedding provider refused")
+
+        refresh = self.service.refresh_document(document.id)
+
+        self.assertFalse(refresh.content_changed)
+        self.assertEqual(refresh.document.index_status, DocumentIndexStatus.ERROR.value)
+        self.assertEqual(refresh.document.error_message, "embedding provider refused")
 
     def test_a_refreshed_document_keeps_answering_with_its_old_chunks_until_reindexed(self):
         """A refresh replaces the snapshot only; the index still holds the previous content."""
@@ -514,7 +562,7 @@ class TestKnowledgeBaseService(BaseTestCase):
         indexed = self.service.index_document(document.id, engine)
 
         self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT + "\nNew step.\n")
-        refreshed = self.service.refresh_document(document.id)
+        refreshed = self.service.refresh_document(document.id).document
 
         self.assertEqual(refreshed.index_status, DocumentIndexStatus.PENDING.value)
         # Not zeroed: the chunks are the previous snapshot's and still serve queries.
@@ -531,7 +579,7 @@ class TestKnowledgeBaseService(BaseTestCase):
         # The same source id is now reported under a new file name.
         self.fake_source.reported_filename = "protocol_v2.md"
 
-        refreshed = self.service.refresh_document(document.id)
+        refreshed = self.service.refresh_document(document.id).document
 
         self.assertEqual(refreshed.filename, "protocol_v2.md")
         self.assertNotEqual(refreshed.snapshot_path, original_snapshot_path)
@@ -546,6 +594,162 @@ class TestKnowledgeBaseService(BaseTestCase):
             self.service.refresh_document(document.id)
 
         self.assertIn("snapshot", str(context.exception))
+
+    ############################################### BULK IMPORT ###############################################
+
+    def test_import_adds_snapshots_and_indexes_every_candidate(self):
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        self.fake_source.write_source_document("handover.md", MARKDOWN_CONTENT + "\nHandover.\n")
+        engine = self._build_engine()
+
+        report = self.service.import_documents(
+            knowledge_base_id=knowledge_base.id,
+            source_type=FAKE_SOURCE_TYPE,
+            criteria={"tag_key": "kb", "tag_value": "protocols"},
+            engine=engine,
+        )
+
+        self.assertEqual(len(report.added), 2)
+        self.assertEqual(report.skipped, [])
+        self.assertEqual(
+            sorted(added.filename for added in report.added), ["handover.md", "protocol.md"]
+        )
+        # Added, snapshotted and indexed — one action, all three.
+        for added in report.added:
+            self.assertEqual(added.index_status, DocumentIndexStatus.DONE.value)
+            document = self.service.get_document_and_check(added.document_id)
+            self.assertTrue(os.path.isfile(document.snapshot_path))
+            self.assertGreater(document.chunk_count, 0)
+        self.assertGreater(engine.count_chunks(knowledge_base.id), 0)
+
+    def test_every_imported_row_records_the_criterion_it_came_from(self):
+        """``imported_from`` is what tells an imported document from a hand-picked one."""
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        criteria = {"tag_key": "kb", "tag_value": "protocols"}
+
+        report = self.service.import_documents(
+            knowledge_base.id, FAKE_SOURCE_TYPE, criteria, self._build_engine()
+        )
+
+        document = self.service.get_document_and_check(report.added[0].document_id)
+        self.assertEqual(document.source_metadata, {"imported_from": criteria})
+
+    def test_importing_the_same_criterion_twice_adds_nothing_and_reports_the_duplicates(self):
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        criteria = {"tag_key": "kb", "tag_value": "protocols"}
+        engine = self._build_engine()
+
+        first = self.service.import_documents(knowledge_base.id, FAKE_SOURCE_TYPE, criteria, engine)
+        second = self.service.import_documents(knowledge_base.id, FAKE_SOURCE_TYPE, criteria, engine)
+
+        self.assertEqual(len(first.added), 1)
+        self.assertEqual(second.added, [])
+        self.assertEqual(len(second.skipped), 1)
+        self.assertEqual(second.skipped[0].reason, ImportSkipReason.ALREADY_PRESENT)
+        self.assertEqual(second.skipped[0].source_id, "protocol.md")
+        # And the knowledge base holds one document, not two.
+        self.assertEqual(len(self.service.get_documents(knowledge_base.id)), 1)
+
+    def test_an_incompatible_candidate_is_skipped_with_the_reason(self):
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        self.fake_source.write_source_document("measurements.csv", "a,b\n1,2\n")
+
+        report = self.service.import_documents(
+            knowledge_base.id, FAKE_SOURCE_TYPE, {"tag_key": "kb"}, self._build_engine()
+        )
+
+        self.assertEqual([added.filename for added in report.added], ["protocol.md"])
+        self.assertEqual(len(report.skipped), 1)
+        skipped = report.skipped[0]
+        self.assertEqual(skipped.filename, "measurements.csv")
+        self.assertEqual(skipped.reason, ImportSkipReason.NOT_INDEXABLE)
+        # Never a silent drop: the message says why, in the words the user gets everywhere else.
+        self.assertIn("tabular", skipped.message)
+
+    def test_an_oversized_candidate_is_skipped_with_the_reason(self):
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document(
+            "huge.md", "x" * (MAX_DOCUMENT_SIZE_MB * 1024 * 1024 + 1)
+        )
+
+        report = self.service.import_documents(
+            knowledge_base.id, FAKE_SOURCE_TYPE, {"tag_key": "kb"}, self._build_engine()
+        )
+
+        self.assertEqual(report.added, [])
+        self.assertEqual(report.skipped[0].reason, ImportSkipReason.NOT_INDEXABLE)
+        self.assertIn("15 MB", report.skipped[0].message)
+
+    def test_a_candidate_the_source_cannot_produce_is_skipped_rather_than_aborting_the_import(self):
+        """One unreachable document must not abandon the others."""
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        self.fake_source.write_source_document("gone.md", MARKDOWN_CONTENT)
+        # Listed by the source, then missing when the fetch reaches for it.
+        os.remove(os.path.join(self.fake_source.root_dir, "gone.md"))
+        self.fake_source.write_source_document("gone.md", MARKDOWN_CONTENT)
+        os.chmod(os.path.join(self.fake_source.root_dir, "gone.md"), 0o000)
+
+        try:
+            report = self.service.import_documents(
+                knowledge_base.id, FAKE_SOURCE_TYPE, {"tag_key": "kb"}, self._build_engine()
+            )
+        finally:
+            os.chmod(os.path.join(self.fake_source.root_dir, "gone.md"), 0o644)
+
+        self.assertEqual([added.filename for added in report.added], ["protocol.md"])
+        self.assertEqual([skipped.filename for skipped in report.skipped], ["gone.md"])
+        self.assertEqual(report.skipped[0].reason, ImportSkipReason.FAILED)
+
+    def test_an_import_never_deletes_whatever_the_criterion_now_matches(self):
+        """Reconciliation is a later feature; an import is a bulk add and nothing else."""
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
+        engine = self._build_engine()
+        first = self.service.import_documents(
+            knowledge_base.id, FAKE_SOURCE_TYPE, {"tag_key": "kb"}, engine
+        )
+        document_id = first.added[0].document_id
+        chunk_count = engine.count_chunks(knowledge_base.id)
+
+        # The document leaves the criterion entirely, and a different one appears.
+        self.fake_source.delete_source_document("protocol.md")
+        self.fake_source.write_source_document("handover.md", MARKDOWN_CONTENT)
+        second = self.service.import_documents(
+            knowledge_base.id, FAKE_SOURCE_TYPE, {"tag_key": "kb"}, engine
+        )
+
+        self.assertEqual([added.filename for added in second.added], ["handover.md"])
+        # The document that left is untouched: row, snapshot and chunks.
+        kept = self.service.get_document_and_check(document_id)
+        self.assertTrue(os.path.isfile(kept.snapshot_path))
+        self.assertEqual(kept.index_status, DocumentIndexStatus.DONE.value)
+        self.assertGreater(engine.count_chunks(knowledge_base.id), chunk_count)
+
+    def test_importing_from_a_source_that_cannot_be_enumerated_says_so(self):
+        knowledge_base = self._create_knowledge_base()
+
+        with self.assertRaises(DocumentSourceOperationNotSupportedError):
+            self.service.import_documents(
+                knowledge_base.id, UPLOAD_SOURCE_TYPE, {}, self._build_engine()
+            )
+
+    def test_a_document_that_fails_to_index_is_reported_as_added_but_not_indexed(self):
+        """The row is there and the chunks are not, and the report has to say both."""
+        knowledge_base = self._create_knowledge_base()
+        self.fake_source.write_source_document("empty.md", "   \n  \n")
+
+        report = self.service.import_documents(
+            knowledge_base.id, FAKE_SOURCE_TYPE, {"tag_key": "kb"}, self._build_engine()
+        )
+
+        self.assertEqual(len(report.added), 1)
+        self.assertEqual(report.added[0].index_status, DocumentIndexStatus.ERROR.value)
+        self.assertEqual(report.skipped, [])
 
     ############################################### DELETION ###############################################
 

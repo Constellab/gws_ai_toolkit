@@ -14,9 +14,14 @@ It owns three things the models and the engine deliberately do not:
 Every mutation runs inside a transaction, and the service talks to source systems only through
 ``KnowledgeBaseDocumentSourceRegistry``. Callers are handed rows, as in ``models/chat/``; the DTO
 boundary for Reflex states is ``to_dto()`` on those rows.
+
+:meth:`KnowledgeBaseService.import_documents` is the same idea applied in bulk, and it knows about no
+provider in particular: anything implementing ``list_documents`` can be imported from. It is a bulk
+**add**, not a subscription — nothing here deletes, and nothing is written back to the source system.
 """
 
 import os
+from typing import NamedTuple
 
 from gws_core import BaseModelDTO, DateHelper, FileHelper, Logger, Settings
 
@@ -30,14 +35,20 @@ from gws_ai_toolkit.models.knowledge_base.knowledge_base_document import (
 )
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
     DocumentIndexStatus,
+    ImportedDocumentDTO,
+    ImportReport,
+    ImportSkipReason,
     SaveKnowledgeBaseDTO,
+    SkippedDocumentDTO,
 )
 from gws_ai_toolkit.rag.knowledge_base.document_compatibility import DocumentCompatibility
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import EmbeddingConfig
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_engine import KnowledgeBaseEngine
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_storage import KnowledgeBaseStorage
 from gws_ai_toolkit.rag.knowledge_base.sources.knowledge_base_source import (
+    DOCUMENT_REJECTION_ERRORS,
     KnowledgeBaseDocumentSourceRegistry,
+    SourceDocumentCandidate,
     SourceOpenAction,
     compute_bytes_content_hash,
     compute_file_content_hash,
@@ -59,6 +70,19 @@ class DocumentSnapshot(BaseModelDTO):
     snapshot_path: str
     size: int
     source_version: str
+
+
+class DocumentRefresh(NamedTuple):
+    """What a refresh found: the document row, and whether its content actually changed.
+
+    ``content_changed`` is what makes a refresh cheap. The version marker is a content hash, so a
+    save that changed nothing produces the same hash — and a caller that re-indexes unconditionally
+    would pay for embedding an identical document. The flag is returned rather than inferred from the
+    row because the row cannot tell the two cases apart afterwards.
+    """
+
+    document: KnowledgeBaseDocument
+    content_changed: bool
 
 
 class KnowledgeBaseService:
@@ -258,12 +282,16 @@ class KnowledgeBaseService:
             # The fetched copy is ours to clean up, per the SourceFetchResult contract.
             FileHelper.delete_file(fetched.path)
 
-    def refresh_document(self, document_id: str) -> KnowledgeBaseDocument:
-        """Re-fetch a document from its source, replace its snapshot, and mark it ``pending`` again.
+    def refresh_document(self, document_id: str) -> DocumentRefresh:
+        """Re-fetch a document from its source and replace its snapshot.
 
-        The version marker is recomputed, so a source that changed nothing produces a new snapshot
-        with the same hash — which is how a caller can skip re-indexing it.
+        The version marker is recomputed from the fetched bytes, and **only a document whose hash
+        moved is queued for re-indexing**: a note someone opened and saved without editing produces
+        the same hash, and re-embedding it would cost real money for an identical index. The
+        snapshot, the file name and the size are updated either way, so a rename in the source system
+        is still followed.
 
+        :return: the document row and whether its content changed
         :raises NotFoundException: if the document does not exist
         :raises UnknownDocumentSourceError: if no provider is registered for its source type
         :raises DocumentSourceOperationNotSupportedError: for a source that cannot be re-fetched,
@@ -277,6 +305,7 @@ class KnowledgeBaseService:
         fetched = source.fetch_file(document.source_id, document.source_metadata)
         try:
             previous_snapshot_path = document.snapshot_path
+            previous_source_version = document.source_version
             snapshot = self._admit_and_snapshot(
                 knowledge_base_id=document.knowledge_base_id,
                 document_id=document.id,
@@ -285,15 +314,108 @@ class KnowledgeBaseService:
                 version_marker=fetched.version_marker,
             )
 
-            document = self._save_refreshed_document(document, fetched.filename, snapshot)
+            content_changed = snapshot.source_version != previous_source_version
+            document = self._save_refreshed_document(
+                document, fetched.filename, snapshot, content_changed
+            )
 
             # A renamed source file changes the snapshot path; the old file is then dead weight.
             if previous_snapshot_path != snapshot.snapshot_path:
                 FileHelper.delete_file(previous_snapshot_path)
 
-            return document
+            return DocumentRefresh(document=document, content_changed=content_changed)
         finally:
             FileHelper.delete_file(fetched.path)
+
+    ############################################### DOCUMENTS: BULK IMPORT ###############################################
+
+    def import_documents(
+        self,
+        knowledge_base_id: str,
+        source_type: str,
+        criteria: dict,
+        engine: KnowledgeBaseEngine,
+    ) -> ImportReport:
+        """Add, snapshot and index every candidate a source offers for a criterion.
+
+        Provider-agnostic: any source implementing ``list_documents`` gets bulk import for free. The
+        whole of the reconciliation logic is the ``source_id`` dedupe below, which is cheap because
+        ``source_id`` is on the row.
+
+        **An import only ever adds.** A document whose source no longer matches the criterion is left
+        alone — deleting it would make editing a criterion a destructive operation, which is a feature
+        with its own confirmation semantics rather than a side effect of importing.
+
+        Every candidate ends up in the report, added or skipped with a reason. That is the point of
+        returning a report instead of a count: a tag matching fifty resources of which eight are
+        incompatible reads as a clean success otherwise.
+
+        :param knowledge_base_id: knowledge base to import into
+        :param source_type: registered source to enumerate
+        :param criteria: provider-specific criterion, also stamped into ``source_metadata``
+        :param engine: engine of the knowledge base's instance scope, used to index each document
+        :raises NotFoundException: if the knowledge base does not exist
+        :raises UnknownDocumentSourceError: if no provider is registered for ``source_type``
+        :raises DocumentSourceOperationNotSupportedError: if the provider cannot be enumerated
+        """
+        knowledge_base = self.get_knowledge_base_and_check(knowledge_base_id)
+        source = KnowledgeBaseDocumentSourceRegistry.get(source_type)
+
+        candidates = source.list_documents(criteria)
+        known_source_ids = {
+            document.source_id
+            for document in self.get_documents(knowledge_base.id)
+            if document.source_id
+        }
+
+        report = ImportReport()
+        for candidate in candidates:
+            if candidate.source_id in known_source_ids:
+                report.skipped.append(
+                    self._skipped(
+                        candidate,
+                        ImportSkipReason.ALREADY_PRESENT,
+                        "Already in this knowledge base. Refresh it to pick up a newer version.",
+                    )
+                )
+                continue
+
+            # Recorded before the add so that a source listing the same id twice cannot add it twice.
+            known_source_ids.add(candidate.source_id)
+
+            try:
+                document = self.add_document(
+                    knowledge_base_id=knowledge_base.id,
+                    source_type=source_type,
+                    source_id=candidate.source_id,
+                    source_metadata=self._build_import_metadata(candidate, criteria),
+                )
+            except DOCUMENT_REJECTION_ERRORS as err:
+                # The reason is written for a user — which format, how big, why the source refused.
+                report.skipped.append(
+                    self._skipped(candidate, ImportSkipReason.NOT_INDEXABLE, str(err))
+                )
+                continue
+            except Exception as err:
+                # One unreachable resource must not abandon the other forty-nine. Unlike a rejection
+                # this is a server-side problem, so it is logged with its stack trace as well.
+                Logger.log_exception_stack_trace(err)
+                report.skipped.append(self._skipped(candidate, ImportSkipReason.FAILED, str(err)))
+                continue
+
+            # Indexing records its own failure on the row instead of raising, so a document that
+            # could not be embedded is reported as added-but-not-indexed rather than lost.
+            indexed = self.index_document(document.id, engine)
+            report.added.append(
+                ImportedDocumentDTO(
+                    document_id=indexed.id,
+                    source_id=candidate.source_id,
+                    filename=indexed.filename,
+                    index_status=indexed.index_status,
+                )
+            )
+
+        return report
 
     ############################################### DOCUMENTS: INDEX ###############################################
 
@@ -407,6 +529,29 @@ class KnowledgeBaseService:
         knowledge_base.sync_source_type = knowledge_base_dto.sync_source_type
         knowledge_base.sync_config = knowledge_base_dto.sync_config
 
+    @staticmethod
+    def _build_import_metadata(candidate: SourceDocumentCandidate, criteria: dict) -> dict:
+        """The ``source_metadata`` an imported row carries: the provider's extras plus the criterion.
+
+        ``imported_from`` is what tells an imported document from a hand-picked one. Without it a
+        reconciliation pass could not work out which documents are in its scope and which it must
+        never touch — one dict key now, no schema change later. The criterion is stored as the
+        provider defined it, so this stays true whatever a future provider imports by.
+        """
+        return {**(candidate.source_metadata or {}), "imported_from": dict(criteria or {})}
+
+    @staticmethod
+    def _skipped(
+        candidate: SourceDocumentCandidate, reason: ImportSkipReason, message: str
+    ) -> SkippedDocumentDTO:
+        """One line of an import report's skip list."""
+        return SkippedDocumentDTO(
+            source_id=candidate.source_id,
+            filename=candidate.filename,
+            reason=reason,
+            message=message,
+        )
+
     def _add_document_from_file(
         self,
         knowledge_base: KnowledgeBase,
@@ -512,20 +657,26 @@ class KnowledgeBaseService:
         document: KnowledgeBaseDocument,
         filename: str,
         snapshot: DocumentSnapshot,
+        content_changed: bool,
     ) -> KnowledgeBaseDocument:
-        """Point a document at its new snapshot and queue it for re-indexing.
+        """Point a document at its new snapshot, queueing it for re-indexing only if it changed.
 
         ``chunk_count`` and ``indexed_at`` are left alone on purpose: the chunks in the index are
         still the previous snapshot's, and they keep answering queries until the re-index runs.
         Zeroing them would report a document as unindexed while it is still retrievable.
+
+        When the content did not change the indexing status is left exactly as it was — a ``done``
+        document stays ``done``, and a document that failed to index keeps its error rather than
+        quietly reading as pending work that nothing is doing.
         """
         document.source_version = snapshot.source_version
         document.snapshot_path = snapshot.snapshot_path
         document.filename = filename
         document.size = snapshot.size
-        document.index_status = DocumentIndexStatus.PENDING.value
-        document.indexing_started_at = None
-        document.error_message = None
+        if content_changed:
+            document.index_status = DocumentIndexStatus.PENDING.value
+            document.indexing_started_at = None
+            document.error_message = None
         document.save()
         return document
 

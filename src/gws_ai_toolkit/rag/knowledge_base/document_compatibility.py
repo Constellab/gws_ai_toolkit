@@ -52,15 +52,19 @@ class DocumentCompatibility:
         if not os.path.isfile(path):
             raise FileNotFoundError(f"Document file '{path}' does not exist")
 
-        cls._check_size_is_within_cap(os.path.getsize(path), filename)
+        cls.check_size_is_within_cap(os.path.getsize(path), filename)
 
         if extension in RICH_TEXT_EXTENSIONS:
             # Called for the rejection it may raise; the parsed rich text is the loader's business.
             DocumentLoader.read_rich_text(path)
 
     @classmethod
-    def _check_size_is_within_cap(cls, size_bytes: int, filename: str) -> None:
+    def check_size_is_within_cap(cls, size_bytes: int, filename: str) -> None:
         """Raise if a document is above the cap, naming its size and the cap.
+
+        Public because a provider that knows a document's size before producing it can refuse it for
+        free: copying a 400 MB resource in order to reject it for size is pointless work, and the
+        cap has to be the same number on both paths.
 
         :raises DocumentTooLargeError: if the size is above :data:`MAX_DOCUMENT_SIZE_MB`
         """

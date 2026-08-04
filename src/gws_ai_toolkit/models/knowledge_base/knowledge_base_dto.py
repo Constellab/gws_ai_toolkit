@@ -58,6 +58,51 @@ class SaveKnowledgeBaseDTO(BaseModelDTO):
     sync_config: dict | None = None
 
 
+class ImportSkipReason(str, Enum):
+    """Why a candidate was not imported.
+
+    Three reasons, because they call for three different reactions: nothing to do, change the
+    document, or look at the logs.
+    """
+
+    ALREADY_PRESENT = "already_present"
+    NOT_INDEXABLE = "not_indexable"
+    FAILED = "failed"
+
+
+class ImportedDocumentDTO(BaseModelDTO):
+    """One document a bulk import added.
+
+    ``index_status`` is carried so that a document that was added but failed to index is not reported
+    as a plain success — the row is there, its chunks are not.
+    """
+
+    document_id: str
+    source_id: str
+    filename: str
+    index_status: str
+
+
+class SkippedDocumentDTO(BaseModelDTO):
+    """One candidate a bulk import did not add, and why.
+
+    The message is the whole point: a tag matching fifty resources of which eight are incompatible
+    must not read as a clean success.
+    """
+
+    source_id: str
+    filename: str
+    reason: ImportSkipReason
+    message: str
+
+
+class ImportReport(BaseModelDTO):
+    """What a bulk import did — every candidate ends up in exactly one of the two lists."""
+
+    added: list[ImportedDocumentDTO] = []
+    skipped: list[SkippedDocumentDTO] = []
+
+
 class KnowledgeBaseDocumentDTO(ModelDTO):
     """A document as the UI and the HTTP layer see it.
 

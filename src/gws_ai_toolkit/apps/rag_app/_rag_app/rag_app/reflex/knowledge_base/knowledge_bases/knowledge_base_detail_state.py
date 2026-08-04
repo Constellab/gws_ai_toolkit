@@ -40,6 +40,13 @@ from ..core.knowledge_base_errors import DOCUMENT_REJECTION_ERRORS
 # same name on every state, which is also why no state here may declare a var called this.
 KNOWLEDGE_BASE_ID_ROUTE_ARG = "knowledge_base_id"
 
+# What a caller is told when this page's single indexing slot is already taken. Shared with the
+# add-document dialog, whose bulk import takes the same slot.
+INDEXING_IN_PROGRESS_MESSAGE = (
+    "An indexing run is already in progress for this knowledge base. Wait for it to finish, then try "
+    "again."
+)
+
 
 class KnowledgeBaseDetailState(rx.State):
     """One knowledge base, its documents, and the per-document operations.
@@ -184,6 +191,10 @@ class KnowledgeBaseDetailState(rx.State):
         A source that cannot be re-fetched — an upload, whose bytes *are* its snapshot — says so, and
         that message is shown rather than swallowed: it tells the user to upload the new version
         instead.
+
+        **A document whose content did not change is not re-indexed.** The version marker is a content
+        hash, so a note someone opened and saved without editing comes back identical, and the honest
+        answer is to say nothing changed rather than to pay for embedding the same text again.
         """
         async with self:
             self.busy_document_id = document_id
@@ -195,19 +206,26 @@ class KnowledgeBaseDetailState(rx.State):
             service = KnowledgeBaseService()
             with await main_state.authenticate_user():
                 try:
-                    document = service.refresh_document(document_id)
+                    refresh = service.refresh_document(document_id)
                 except DOCUMENT_REJECTION_ERRORS as err:
                     # Every one of these carries a message written for a user: an upload cannot be
                     # re-fetched, a provider is no longer installed, the new version is of a format
                     # or a size that cannot be indexed.
                     raise ReflexAppException(str(err)) from err
-            filename = document.filename
+            filename = refresh.document.filename
         finally:
             async with self:
                 self.busy_document_id = ""
 
         async with self:
             await self._reload_documents()
+
+        if not refresh.content_changed:
+            yield rx.toast.info(
+                f"'{filename}' is unchanged in its source, so nothing was re-indexed.",
+                duration=6000,
+            )
+            return
 
         yield rx.toast.success(f"'{filename}' re-fetched from its source, re-indexing it.")
 
@@ -262,6 +280,33 @@ class KnowledgeBaseDetailState(rx.State):
         """
         return self._loaded_knowledge_base_id
 
+    def try_begin_indexing_run(self) -> bool:
+        """Claim this page's single indexing slot, or report that it is taken.
+
+        Not an event: the caller is either this state or the add-document dialog, and both call it
+        from the backend while holding their own state lock. The slot exists so two runs cannot index
+        the same document concurrently and race on its lease — a bulk import indexes as it adds, so it
+        has to take the same slot as the pending sweep.
+
+        :return: True if the caller now owns the slot and must release it when done
+        """
+        if self.is_indexing:
+            return False
+        self.is_indexing = True
+        return True
+
+    def end_indexing_run(self) -> None:
+        """Release this page's indexing slot. Always call it in a ``finally``."""
+        self.is_indexing = False
+
+    async def reload_documents(self) -> None:
+        """Re-read the document table, for a sibling state that has just changed it.
+
+        The bulk import lives on the add-document dialog's state, so it needs a way to refresh this
+        table that is not an event: a background handler must not chain a sibling event.
+        """
+        await self._reload_documents()
+
     async def _index_documents(self, document_ids: list[str] | None) -> None:
         """Index documents one at a time, refreshing the table after each.
 
@@ -276,18 +321,14 @@ class KnowledgeBaseDetailState(rx.State):
             knowledge_base_id = self._loaded_knowledge_base_id
             if not knowledge_base_id:
                 return
-            if self.is_indexing:
+            if not self.try_begin_indexing_run():
                 if document_ids is None:
                     # The pending sweep. The run already going re-reads the pending documents after
                     # every pass, so whatever triggered this is in its work list already. Refusing
                     # here would leave a freshly uploaded document ``pending`` with nothing to retry
                     # it — the row would never reach ``done`` without a manual re-index.
                     return
-                raise ReflexAppException(
-                    "An indexing run is already in progress for this knowledge base. Wait for it to "
-                    "finish, then try again."
-                )
-            self.is_indexing = True
+                raise ReflexAppException(INDEXING_IN_PROGRESS_MESSAGE)
 
         # From here on the flag is set, so everything — including resolving the embedding
         # configuration, which can raise on missing credentials or a manifest mismatch — has to sit
@@ -326,7 +367,7 @@ class KnowledgeBaseDetailState(rx.State):
                         await self._index_batch(pending_ids, service, engine)
         finally:
             async with self:
-                self.is_indexing = False
+                self.end_indexing_run()
 
     async def _index_batch(
         self, document_ids: list[str], service: KnowledgeBaseService, engine: KnowledgeBaseEngine

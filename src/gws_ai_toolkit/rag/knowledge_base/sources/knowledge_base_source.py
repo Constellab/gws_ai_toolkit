@@ -23,6 +23,8 @@ from enum import Enum
 from gws_core import BaseModelDTO
 
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import KnowledgeBaseDocumentDTO
+from gws_ai_toolkit.rag.knowledge_base.document_compatibility import DocumentTooLargeError
+from gws_ai_toolkit.rag.knowledge_base.document_loader import UnsupportedDocumentFormatError
 
 _HASH_READ_CHUNK_SIZE = 1024 * 1024
 
@@ -85,6 +87,20 @@ class DocumentSourceOperationNotSupportedError(Exception):
     """Raised when a provider cannot do what was asked of it (re-fetch, enumerate)."""
 
 
+# The document failures that are a user's problem rather than a bug: the format is not indexable, the
+# file is over the cap, the provider is no longer installed, or the source cannot produce the
+# document. Every one carries a message written for a user, so each call site turns it into a reported
+# skip instead of a stack trace. Listed here — where two of the four are defined, and which every
+# caller already imports — so that a new failure mode is added once rather than in the bulk import,
+# the add form, the upload loop and the refresh action.
+DOCUMENT_REJECTION_ERRORS = (
+    UnsupportedDocumentFormatError,
+    DocumentTooLargeError,
+    UnknownDocumentSourceError,
+    DocumentSourceOperationNotSupportedError,
+)
+
+
 def compute_bytes_content_hash(content: bytes) -> str:
     """Version marker of a document held in memory."""
     return hashlib.sha256(content).hexdigest()
@@ -133,14 +149,18 @@ class KnowledgeBaseDocumentSource(ABC):
         """How the chat UI opens this document. Defaults to downloading the snapshot."""
         return SourceOpenAction.download_snapshot()
 
-    def list_documents(self, sync_config: dict) -> list[SourceDocumentCandidate]:
-        """Enumerate the documents in scope for a bulk sync.
+    def list_documents(self, criteria: dict) -> list[SourceDocumentCandidate]:
+        """Enumerate the documents a bulk import should consider.
 
-        :raises DocumentSourceOperationNotSupportedError: unless the provider supports sync
+        ``criteria`` is provider-specific and used once, by the import that was asked for — it is not
+        a subscription stored anywhere. Its keys are also what the service stamps into
+        ``source_metadata["imported_from"]``, so keep them small and descriptive.
+
+        :raises DocumentSourceOperationNotSupportedError: unless the provider supports enumeration
         """
         raise DocumentSourceOperationNotSupportedError(
-            f"The '{self.source_type}' document source cannot be enumerated, so a knowledge base "
-            "cannot sync from it."
+            f"The '{self.source_type}' document source cannot be enumerated, so documents cannot be "
+            "imported from it in bulk."
         )
 
     @classmethod

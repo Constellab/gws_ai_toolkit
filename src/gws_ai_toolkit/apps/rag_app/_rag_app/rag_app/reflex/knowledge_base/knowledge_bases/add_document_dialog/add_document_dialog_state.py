@@ -14,6 +14,16 @@ happened" reads as success.
 This is the one place in this feature where a broad ``except`` is right. A user can drop ten files at
 once, and one unsupported format must not abandon the other nine — so each file is admitted or
 rejected on its own, and every rejection keeps its message.
+
+**Import by tag is the second mode of the same dialog**, offered for the ``resource`` provider. It is
+the one place in this app that names a provider besides ``upload``, and it has to: a criterion is
+provider-specific, and "tag key / tag value" is a form only the lab-resource provider can be asked to
+fill. The select above it is still built from the registry, so a brick's own provider still appears —
+it simply gets the single-document form until someone writes its criterion form.
+
+Its report is a **dialog, not a toast**. Reporting skips matters more here than on a single add: a tag
+matching fifty resources of which eight are incompatible must not read as a clean success, and fifty
+lines is not something a toast can carry.
 """
 
 import json
@@ -21,18 +31,31 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import reflex as rx
+from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
+    ImportedDocumentDTO,
+    SkippedDocumentDTO,
+)
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from gws_ai_toolkit.rag.knowledge_base.document_compatibility import MAX_DOCUMENT_SIZE_MB
 from gws_ai_toolkit.rag.knowledge_base.document_loader import SUPPORTED_EXTENSIONS
 from gws_ai_toolkit.rag.knowledge_base.sources.knowledge_base_source import (
     KnowledgeBaseDocumentSourceRegistry,
 )
+from gws_ai_toolkit.rag.knowledge_base.sources.resource_source import (
+    RESOURCE_SOURCE_TYPE,
+    TAG_KEY_CRITERION,
+    TAG_VALUE_CRITERION,
+)
 from gws_ai_toolkit.rag.knowledge_base.sources.upload_source import UPLOAD_SOURCE_TYPE
 from gws_core import Logger
 from gws_reflex_main import ReflexAppException, ReflexMainState
 
+from ...core.knowledge_base_app_state import KnowledgeBaseAppState
 from ...core.knowledge_base_errors import DOCUMENT_REJECTION_ERRORS
-from ..knowledge_base_detail_state import KnowledgeBaseDetailState
+from ..knowledge_base_detail_state import (
+    INDEXING_IN_PROGRESS_MESSAGE,
+    KnowledgeBaseDetailState,
+)
 
 # Id of the ``rx.upload`` zone. Reflex keys the selected-file list by it, so clearing the zone after an
 # upload needs the same string.
@@ -43,9 +66,13 @@ ACCEPTED_EXTENSIONS_LABEL = ", ".join(sorted(SUPPORTED_EXTENSIONS))
 
 MAX_UPLOAD_FILES = 10
 
+# The two shapes the dialog can take for a source that is not an upload.
+ADD_MODE_SINGLE = "single"
+ADD_MODE_TAG = "tag"
+
 
 class AddDocumentDialogState(rx.State):
-    """The add-document dialog: pick a source, then upload bytes or name a source document."""
+    """The add-document dialog: pick a source, then upload bytes, name a document, or import a tag."""
 
     dialog_open: bool = False
 
@@ -58,12 +85,25 @@ class AddDocumentDialogState(rx.State):
     source_id: str = ""
     source_metadata_json: str = ""
 
+    # Which form a non-upload source shows: one document, or every resource carrying a tag.
+    add_mode: str = ADD_MODE_SINGLE
+    tag_key: str = ""
+    tag_value: str = ""
+
     is_uploading: bool = False
     is_adding: bool = False
+    is_importing: bool = False
 
     # One line per file that was refused, each carrying the reason. Cleared when the dialog opens, so
     # what is on screen always belongs to the attempt the user just made.
     rejections: list[str] = []
+
+    # The last import's outcome, held as two plain lists rather than one optional report var: a
+    # ``rx.foreach`` over a nested attribute of a possibly-None var is fragile, and the dialog only
+    # ever renders the two lists side by side.
+    imported_documents: list[ImportedDocumentDTO] = []
+    skipped_documents: list[SkippedDocumentDTO] = []
+    import_report_open: bool = False
 
     ############################################### DERIVED ###############################################
 
@@ -77,6 +117,18 @@ class AddDocumentDialogState(rx.State):
         return self.selected_source_type == UPLOAD_SOURCE_TYPE
 
     @rx.var
+    def supports_tag_import(self) -> bool:
+        """True when the selected source can be imported from by tag."""
+        return self.selected_source_type == RESOURCE_SOURCE_TYPE
+
+    @rx.var
+    def is_tag_import_mode(self) -> bool:
+        """True when the dialog is showing the import-by-tag form."""
+        return (
+            self.selected_source_type == RESOURCE_SOURCE_TYPE and self.add_mode == ADD_MODE_TAG
+        )
+
+    @rx.var
     def has_rejections(self) -> bool:
         """True when the last attempt refused at least one document."""
         return len(self.rejections) > 0
@@ -85,6 +137,23 @@ class AddDocumentDialogState(rx.State):
     def accepted_formats_label(self) -> str:
         """The formats and size cap, as one line for the drop zone."""
         return f"{ACCEPTED_EXTENSIONS_LABEL} — up to {MAX_DOCUMENT_SIZE_MB} MB"
+
+    @rx.var
+    def import_summary(self) -> str:
+        """The one line that has to be honest: how many were added, how many were not."""
+        added = len(self.imported_documents)
+        skipped = len(self.skipped_documents)
+        return f"{added} document(s) added, {skipped} skipped."
+
+    @rx.var
+    def has_imported_documents(self) -> bool:
+        """True when the last import added at least one document."""
+        return len(self.imported_documents) > 0
+
+    @rx.var
+    def has_skipped_documents(self) -> bool:
+        """True when the last import skipped at least one candidate."""
+        return len(self.skipped_documents) > 0
 
     ############################################### DIALOG ###############################################
 
@@ -111,9 +180,28 @@ class AddDocumentDialogState(rx.State):
         self.dialog_open = False
 
     @rx.event
+    def close_import_report(self) -> None:
+        """Close the import report."""
+        self.import_report_open = False
+
+    @rx.event
     def set_selected_source_type(self, value: str) -> None:
         """Setter for the source-type select."""
         self.selected_source_type = value
+        self.rejections = []
+        # A source that cannot be imported by tag must not be left showing the tag form.
+        if value != RESOURCE_SOURCE_TYPE:
+            self.add_mode = ADD_MODE_SINGLE
+
+    @rx.event
+    def set_add_mode(self, value: str | list[str]) -> None:
+        """Setter for the single-document / import-by-tag switch.
+
+        The union is the segmented control's own signature: it is multi-select capable, so it types
+        its ``on_change`` value as one item or a list. This one is single-select, so a list means the
+        first item.
+        """
+        self.add_mode = value[0] if isinstance(value, list) else value
         self.rejections = []
 
     @rx.event
@@ -125,6 +213,16 @@ class AddDocumentDialogState(rx.State):
     def set_source_metadata_json(self, value: str) -> None:
         """Setter for the optional provider-metadata field."""
         self.source_metadata_json = value
+
+    @rx.event
+    def set_tag_key(self, value: str) -> None:
+        """Setter for the import tag key."""
+        self.tag_key = value
+
+    @rx.event
+    def set_tag_value(self, value: str) -> None:
+        """Setter for the import tag value."""
+        self.tag_value = value
 
     ############################################### UPLOAD ###############################################
 
@@ -241,7 +339,88 @@ class AddDocumentDialogState(rx.State):
         yield KnowledgeBaseDetailState.refresh_documents
         yield KnowledgeBaseDetailState.index_pending_documents
 
+    ############################################### IMPORT BY TAG ###############################################
+
+    @rx.event(background=True)
+    async def import_by_tag(self) -> AsyncGenerator[rx.event.EventType, None]:
+        """Add, snapshot and index every compatible resource carrying a tag.
+
+        A background event because it is unbounded work: fifty resources means fifty fetches and fifty
+        embedding runs, and the foreground event loop must stay free while it happens.
+
+        It takes the detail page's indexing slot for the whole run. The service indexes each document
+        as it adds it, so without the slot a pending sweep started by the page could pick the same
+        document up and the two runs would race on its lease.
+
+        Nothing is deleted, whatever the tag now matches — see
+        :meth:`KnowledgeBaseService.import_documents`.
+        """
+        async with self:
+            # Inside the lock, like every read of a var in a background handler.
+            criteria = self._build_tag_criteria()
+            main_state = await self.get_state(ReflexMainState)
+            app_state = await self.get_state(KnowledgeBaseAppState)
+            detail_state = await self.get_state(KnowledgeBaseDetailState)
+            knowledge_base_id = detail_state.get_loaded_knowledge_base_id()
+            if not knowledge_base_id:
+                raise ReflexAppException("Open a knowledge base before importing documents into it.")
+            if not detail_state.try_begin_indexing_run():
+                raise ReflexAppException(INDEXING_IN_PROGRESS_MESSAGE)
+
+            self.is_importing = True
+            self.rejections = []
+            try:
+                # Inside the slot, so a failure to resolve the embedding configuration or to read the
+                # knowledge base releases it instead of leaving the page indexing for good.
+                with await main_state.authenticate_user():
+                    knowledge_base = KnowledgeBaseService().get_knowledge_base_and_check(
+                        knowledge_base_id
+                    )
+                engine = await app_state.build_engine(knowledge_base.instance_scope, main_state)
+            except Exception:
+                self.is_importing = False
+                detail_state.end_indexing_run()
+                raise
+
+        try:
+            service = KnowledgeBaseService()
+            with await main_state.authenticate_user():
+                report = service.import_documents(
+                    knowledge_base_id=knowledge_base_id,
+                    source_type=RESOURCE_SOURCE_TYPE,
+                    criteria=criteria,
+                    engine=engine,
+                )
+        finally:
+            async with self:
+                self.is_importing = False
+                detail_state = await self.get_state(KnowledgeBaseDetailState)
+                detail_state.end_indexing_run()
+                await detail_state.reload_documents()
+
+        async with self:
+            self.imported_documents = report.added
+            self.skipped_documents = report.skipped
+            # The report replaces the form: everything the user has to read is in it, including the
+            # skips, and a report behind an open dialog is a report nobody reads.
+            self.dialog_open = False
+            self.import_report_open = True
+
     ############################################### INTERNALS ###############################################
+
+    def _build_tag_criteria(self) -> dict:
+        """The criterion the import runs on, from the two tag fields.
+
+        :raises ReflexAppException: if no tag key was given — importing with no criterion would make
+                every resource in the lab a candidate
+        """
+        tag_key = self.tag_key.strip()
+        if not tag_key:
+            raise ReflexAppException("The tag key is required.")
+
+        # An empty value matches every value of that key, which is the useful default for a tag used
+        # as a flag rather than as a field.
+        return {TAG_KEY_CRITERION: tag_key, TAG_VALUE_CRITERION: self.tag_value.strip()}
 
     async def _get_knowledge_base_id(self) -> str:
         """The knowledge base the dialog is adding to, read from the detail page's state.
