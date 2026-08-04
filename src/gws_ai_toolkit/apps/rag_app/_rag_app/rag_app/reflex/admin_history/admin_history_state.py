@@ -4,17 +4,20 @@ from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_dto import AdminChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import (
+    LEGACY_RESOURCE_ID_CONFIG_KEY,
     AiExpertChatConversation,
 )
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
+from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from gws_ai_toolkit.models.user.user import User
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_core import ResourceModel, UserDTO
 from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
+from ..knowledge_base.core.document_open_action import build_open_document_event_for_id
 
 
 class AdminHistoryState(rx.State):
@@ -40,6 +43,10 @@ class AdminHistoryState(rx.State):
     selected_conversation_user: str = ""
     selected_conversation_mode: str = ""
     selected_document_name: str = ""
+    # Knowledge-base document of an AI Expert conversation. Empty for a conversation persisted before
+    # the embedded knowledge-base stack, which named a lab resource instead — see
+    # ``selected_resource_id``.
+    selected_document_id: str = ""
     selected_resource_id: str = ""
     detail_messages: list[ChatMessageFront] = []
     is_loading_messages: bool = False
@@ -119,6 +126,7 @@ class AdminHistoryState(rx.State):
         self.is_loading_messages = True
         self.selected_conversation_mode = ""
         self.selected_document_name = ""
+        self.selected_document_id = ""
         self.selected_resource_id = ""
 
         try:
@@ -135,16 +143,9 @@ class AdminHistoryState(rx.State):
                 )
                 self.selected_conversation_mode = admin_dto.mode
 
-                # For AI Expert conversations, resolve the document name/resource id
+                # For AI Expert conversations, resolve the document being discussed
                 if admin_dto.mode == ChatConversationMode.AI_EXPERT.value:
-                    resource_id = conversation.configuration.get(
-                        AiExpertChatConversation.RESOURCE_ID_CONFIG_KEY
-                    )
-                    if resource_id:
-                        resource_model = ResourceModel.get_by_id(resource_id)
-                        if resource_model:
-                            self.selected_resource_id = resource_id
-                            self.selected_document_name = resource_model.name
+                    self._load_ai_expert_document(conversation)
 
                 # Load messages
                 messages = conversation_service.get_messages_of_conversation(conversation_id)
@@ -153,6 +154,33 @@ class AdminHistoryState(rx.State):
                 ]
         finally:
             self.is_loading_messages = False
+
+    def _load_ai_expert_document(self, conversation: ChatConversation) -> None:
+        """Name the document an AI Expert conversation was about, whichever stack recorded it.
+
+        Both keys are read because history outlives a migration: a conversation run on the embedded
+        knowledge-base stack names a ``document_id``, while one run before it names the
+        ``resource_id`` of a lab resource. An admin page whose whole purpose is reading old
+        conversations must keep showing the older ones.
+
+        :param conversation: the conversation being opened
+        """
+        document_id = conversation.configuration.get(
+            AiExpertChatConversation.DOCUMENT_ID_CONFIG_KEY
+        )
+        if document_id:
+            document = KnowledgeBaseService().get_document(document_id)
+            if document:
+                self.selected_document_id = document_id
+                self.selected_document_name = document.filename
+            return
+
+        resource_id = conversation.configuration.get(LEGACY_RESOURCE_ID_CONFIG_KEY)
+        if resource_id:
+            resource_model = ResourceModel.get_by_id(resource_id)
+            if resource_model:
+                self.selected_resource_id = resource_id
+                self.selected_document_name = resource_model.name
 
     @rx.event
     def open_ai_expert(self, rag_document_id: str):
@@ -183,13 +211,24 @@ class AdminHistoryState(rx.State):
             return rx.redirect(public_link, is_external=True)
         return None
 
+    @rx.var
+    def can_open_selected_document(self) -> bool:
+        """Whether the selected AI Expert conversation's document can still be opened."""
+        return bool(self.selected_document_id or self.selected_resource_id)
+
     @rx.event
     async def open_selected_document(self):
-        """Open the document associated with the currently selected AI Expert conversation."""
+        """Open the document of the currently selected AI Expert conversation."""
+        main_state = await self.get_state(ReflexMainState)
+
+        if self.selected_document_id:
+            with await main_state.authenticate_user():
+                return build_open_document_event_for_id(self.selected_document_id)
+
         if not self.selected_resource_id:
             return None
 
-        main_state = await self.get_state(ReflexMainState)
+        # The legacy path: an AI Expert conversation run against a lab resource.
         with await main_state.authenticate_user():
             public_link = Utils.generate_temp_share_resource_link(self.selected_resource_id)
 

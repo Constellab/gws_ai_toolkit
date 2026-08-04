@@ -112,12 +112,14 @@ The main Reflex-based RAG application providing user interface and interaction l
 
 - **AI Expert** (`reflex/ai_expert/`)
   - `ai_expert_component.py` - AI expert interface
-  - `ai_expert_state.py` - AI expert state management
+  - `ai_expert_state.py` - AI expert state management, over one `KnowledgeBaseDocument`
   - `ai_expert_config_component.py` - AI expert configuration
+  - `document_browser_component.py` / `document_browser_state.py` - picking the document to chat about
 
 ### Routes
 - `/` - Main chat page and entry point of the Reflex app
 - `/history` - History page to view and browse past conversations
-- `/ai-expert/:resourceId` - Chat with AI expert using specific document resources
+- `/ai-expert/:documentId` - Chat with AI expert about one knowledge-base document (the id is a
+  `KnowledgeBaseDocument`, which is also the `document_id` of its chunks)
 - `/resource` - Resource management and knowledge base synchronization
 - `/config` - Application configuration page

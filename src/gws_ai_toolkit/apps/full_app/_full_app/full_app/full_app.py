@@ -36,7 +36,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_source import (
     ChatMessageSourceFront,
     RagChatSourceFront,
 )
-from gws_reflex_main import main_component, register_gws_reflex_app
+from gws_reflex_main import ReflexDownloadService, main_component, register_gws_reflex_app
 
 from .associated_resources_component import (
     associated_resources_dialog,
@@ -51,6 +51,10 @@ RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 # Theme is configured via RadixThemesPlugin in rxconfig.py (App(theme=...) is
 # deprecated), so the app is created without an explicit theme here.
 app = register_gws_reflex_app(rx.App())
+
+# Serves knowledge-base document snapshots over HTTP: a 15 MB file pushed through the websocket event
+# channel would freeze the UI while it travels. Required by ``build_open_document_event``.
+app.api_transformer = ReflexDownloadService.build_api()
 
 
 def custom_source_menu_items(source: RagChatSourceFront, state: ConversationChatStateBase):
@@ -197,7 +201,7 @@ def ai_expert_with_conversation():
 # AI Expert page - document-specific chat (new conversation)
 @rx.page(
     route="/ai-expert/[document_id]",
-    on_load=[AiExpertState.load_resource_from_url, AssociatedResourcesState.load_from_expert_state],
+    on_load=[AiExpertState.load_document_from_url, AssociatedResourcesState.load_from_expert_state],
 )
 def ai_expert():
     """AI Expert page for document-specific chat."""

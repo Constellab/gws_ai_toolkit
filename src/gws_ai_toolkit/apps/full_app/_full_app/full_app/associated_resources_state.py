@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 import reflex as rx
-from gws_ai_toolkit._app.ai_rag import AiExpertState
 from gws_ai_toolkit.core.utils import Utils
 from gws_ai_toolkit.rag.common.rag_resource import RagResource
 from gws_core import (
@@ -44,14 +43,17 @@ class AssociatedResourcesState(rx.State):
 
     @rx.event(background=True)  # type: ignore
     async def load_from_expert_state(self) -> None:
-        async with self:
-            expert_state = await self.get_state(AiExpertState)
-            resource_model = await expert_state.get_current_resource_model()
+        """Load the resources associated with the document AI Expert is open on.
 
-        if not resource_model:
-            return
+        Empty for now, and deliberately so: AI Expert now chats about a ``KnowledgeBaseDocument``,
+        and the only document source is ``upload`` — a file, with no lab resource behind it. This
+        panel is keyed on a lab resource (it reads its ``study`` tag), so it has nothing to show until
+        the ``resource`` document source lands and a document can name the resource it came from.
 
-        await self._load_for_resource(resource_model.id)
+        It still clears itself: navigating from one AI Expert document to another must not leave the
+        previous document's associated resources on screen.
+        """
+        await self._load_for_resource(None)
 
     @rx.event(background=True)  # type: ignore
     async def open_associated_resources_dialog(self, source_id: str) -> None:

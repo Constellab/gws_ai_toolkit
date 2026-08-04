@@ -118,7 +118,7 @@ class RagChatState(ConversationChatStateBase, rx.State):
 
         Reads conversation_id from the URL parameter and loads the
         conversation into the chat state. Follows the same pattern as
-        AiExpertState.load_resource_from_url.
+        AiExpertState.load_conversation_from_url.
         """
         conversation_id = self.conversation_id if hasattr(self, "conversation_id") else None
 

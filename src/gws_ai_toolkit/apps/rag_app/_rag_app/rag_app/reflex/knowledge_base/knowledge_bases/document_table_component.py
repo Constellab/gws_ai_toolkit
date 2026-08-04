@@ -150,13 +150,14 @@ def _error_tooltip(document: KnowledgeBaseDocumentDTO) -> rx.Component:
 
 
 def _row_actions(document: KnowledgeBaseDocumentDTO) -> rx.Component:
-    """Re-index, refresh and delete, for one document.
+    """Ask AI Expert, re-index, refresh and delete, for one document.
 
     The two indexing actions are disabled while a run owns the page: a second run on the same
     document would race on its lease, and a disabled button says so better than an error toast.
     """
     is_busy = KnowledgeBaseDetailState.busy_document_id == document.id
     return rx.hstack(
+        _ai_expert_action(document),
         rx.tooltip(
             rx.button(
                 rx.icon("refresh-cw", size=14),
@@ -182,6 +183,26 @@ def _row_actions(document: KnowledgeBaseDocumentDTO) -> rx.Component:
         _delete_document_dialog(document),
         spacing="1",
         justify="end",
+    )
+
+
+def _ai_expert_action(document: KnowledgeBaseDocumentDTO) -> rx.Component:
+    """Open AI Expert on this document — a chat about it alone.
+
+    Offered only once the document is indexed: ``relevant_chunks`` retrieves from its chunks, and a
+    document with none would answer every question with "this document does not cover it".
+    """
+    return rx.cond(
+        document.index_status == DocumentIndexStatus.DONE.value,
+        rx.tooltip(
+            rx.button(
+                rx.icon("messages-square", size=14),
+                variant="ghost",
+                size="1",
+                on_click=rx.redirect(f"/ai-expert/{document.id}"),
+            ),
+            content="Chat about this document with AI Expert",
+        ),
     )
 
 

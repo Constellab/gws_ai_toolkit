@@ -1,5 +1,6 @@
 import reflex as rx
 from gws_reflex_main import (
+    ReflexDownloadService,
     register_gws_reflex_app,
 )
 
@@ -43,6 +44,10 @@ RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 # Theme is configured via RadixThemesPlugin in rxconfig.py (App(theme=...) is
 # deprecated), so the app is created without an explicit theme here.
 app = register_gws_reflex_app(rx.App())
+
+# Serves knowledge-base document snapshots over HTTP: a 15 MB file pushed through the websocket event
+# channel would freeze the UI while it travels. Required by ``build_open_document_event``.
+app.api_transformer = ReflexDownloadService.build_api()
 
 
 @rx.page(route="/")
@@ -144,7 +149,7 @@ def ai_expert_with_conversation():
 # AI Expert page - document-specific chat (new conversation)
 @rx.page(
     route="/ai-expert/[document_id]",
-    on_load=AiExpertState.load_resource_from_url,
+    on_load=AiExpertState.load_document_from_url,
 )
 def ai_expert():
     """AI Expert page for document-specific chat."""

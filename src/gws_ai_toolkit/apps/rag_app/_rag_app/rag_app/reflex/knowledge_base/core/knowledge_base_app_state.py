@@ -14,6 +14,10 @@ is a single indexed query.
 """
 
 import reflex as rx
+from gws_ai_toolkit.models.knowledge_base.knowledge_base_retriever import (
+    EngineKnowledgeBaseRetriever,
+    KnowledgeBaseRetriever,
+)
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import (
     DEFAULT_OPENAI_EMBEDDING_MODEL,
@@ -82,6 +86,34 @@ class KnowledgeBaseAppState(rx.State):
             model=params.get(EMBEDDING_MODEL_PARAM) or DEFAULT_OPENAI_EMBEDDING_MODEL,
             api_key=resolve_openai_api_key(params.get(OPENAI_CREDENTIALS_NAME_PARAM)),
         )
+
+    async def build_retriever(self, main_state: ReflexMainState) -> KnowledgeBaseRetriever:
+        """The retrieval seam a chat searches through.
+
+        Unlike an engine, this is safe to hand to a conversation that gets pickled: it holds the
+        embedding configuration and builds an engine per call, across whichever instances the
+        profile's knowledge bases live in.
+
+        :param main_state: the app's main state, for the same reason as in
+                           :meth:`get_embedding_config`
+        :raises ValueError: if the embedding configuration cannot be resolved
+        """
+        return EngineKnowledgeBaseRetriever(await self.get_embedding_config(main_state))
+
+    async def get_chat_api_key(self, main_state: ReflexMainState) -> str:
+        """The API key a chat model runs with.
+
+        The same credentials entry as the embedding: one lab, one OpenAI account, and a chat that
+        answers from an index embedded with another key's account would be a configuration nobody
+        could reason about. Resolved per call, never held on state — it is a secret, and a state is
+        serialised.
+
+        :param main_state: the app's main state, passed in rather than fetched with ``get_state`` so
+                           this is callable from a background event (see the class docstring)
+        :raises ValueError: if the named credentials do not exist or hold no API key
+        """
+        params = await main_state.get_params()
+        return resolve_openai_api_key(params.get(OPENAI_CREDENTIALS_NAME_PARAM))
 
     async def build_engine(
         self, instance_scope: str, main_state: ReflexMainState

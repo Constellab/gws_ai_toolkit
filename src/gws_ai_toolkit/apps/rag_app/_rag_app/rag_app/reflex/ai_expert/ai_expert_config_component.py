@@ -63,12 +63,12 @@ def ai_expert_config_component() -> rx.Component:
                     ),
                     rx.vstack(
                         rx.text(
-                            "• full_text_chunk: Document content (all chunks) is converted to text and integrated into the chat prompt. Fast and efficient for text-based analysis.",
+                            "• full_text_chunk: The document's whole text, read from the stored file, is integrated into the chat prompt. Exact text, but a document too large for the model's context window will fail.",
                             size="2",
                             color="gray",
                         ),
                         rx.text(
-                            "• relevant_chunks: Only the most relevant chunks based on your question are retrieved and used. More targeted and efficient.",
+                            "• relevant_chunks: Only the passages of the document matching your question are retrieved and used. Targeted, and the only mode suited to large documents.",
                             size="2",
                             color="gray",
                         ),
@@ -86,7 +86,10 @@ def ai_expert_config_component() -> rx.Component:
                         width="100%",
                     ),
                     rx.vstack(
-                        rx.text("Max number of chunks (1-100):", color="gray"),
+                        rx.text(
+                            "Max number of passages retrieved per question, in relevant_chunks mode (1-100):",
+                            color="gray",
+                        ),
                         rx.input(
                             placeholder="5",
                             name="max_chunks",
@@ -104,9 +107,11 @@ def ai_expert_config_component() -> rx.Component:
                         width="100%",
                     ),
                     rx.heading("Model Configuration", size="4", margin_top="4"),
-                    rx.text("OpenAI model to use for AI responses:", color="gray"),
+                    rx.text(
+                        "Model to use for AI responses, as a 'provider:model' string:", color="gray"
+                    ),
                     rx.input(
-                        placeholder="Enter model name (e.g., gpt-4o, gpt-4o-mini)...",
+                        placeholder="Enter provider:model (e.g., openai:gpt-4o, openai:gpt-4o-mini)...",
                         name="model",
                         default_value=AiExpertConfigState.model,
                         width="100%",

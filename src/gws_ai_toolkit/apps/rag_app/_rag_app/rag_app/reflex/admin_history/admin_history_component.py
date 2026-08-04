@@ -144,7 +144,7 @@ def _ai_expert_document_info() -> rx.Component:
                 ),
             ),
             rx.cond(
-                AdminHistoryState.selected_resource_id,
+                AdminHistoryState.can_open_selected_document,
                 rx.button(
                     rx.icon("eye", size=14),
                     "View document",

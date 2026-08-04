@@ -75,6 +75,7 @@ class StubRetriever(KnowledgeBaseRetriever):
         knowledge_base_ids: list[str],
         top_k: int = 5,
         score_threshold: float | None = None,
+        document_ids: list[str] | None = None,
     ) -> list[RetrievedChunk]:
         self.calls.append(
             {
@@ -82,6 +83,7 @@ class StubRetriever(KnowledgeBaseRetriever):
                 "knowledge_base_ids": knowledge_base_ids,
                 "top_k": top_k,
                 "score_threshold": score_threshold,
+                "document_ids": document_ids,
             }
         )
         if self.error:

@@ -117,7 +117,8 @@ class AiExpertConfigState(rx.State):
             except ValueError:
                 return rx.toast.error("Temperature must be a valid number")
 
-            # Validate max_chunks, required by both modes
+            # Validate max_chunks. Only 'relevant_chunks' retrieves, but the value is always stored:
+            # a mode switch must not have to re-enter it.
             if not new_max_chunks_str:
                 return rx.toast.error("Chunk count is required")
             try:

@@ -22,8 +22,10 @@ class AiExpertChatConfig(BaseModelDTO):
     BaseModelDTO to provide serialization and validation capabilities.
 
     The AI Expert supports different processing modes:
-        - full_text_chunk: Document content (all chunks) converted to text and integrated in prompt
-        - relevant_chunks: Only most relevant chunks retrieved based on user question
+        - full_text_chunk: The document's whole text, read from its stored snapshot, is integrated
+          in the prompt. Exact text, but a document larger than the model's context window fails.
+        - relevant_chunks: Only the passages of that document matching the user's question are
+          retrieved, through the knowledge-base engine, and integrated in the prompt.
 
     The former 'full_file' mode (original file uploaded to OpenAI with code interpreter access)
     has been removed. A persisted configuration still carrying it loads as 'relevant_chunks'
@@ -39,11 +41,12 @@ class AiExpertChatConfig(BaseModelDTO):
         mode (AiExpertChatMode): Processing mode for document analysis.
             Options: 'full_text_chunk', 'relevant_chunks'
 
-        max_chunks (int): Maximum number of chunks to retrieve, in both modes.
+        max_chunks (int): Maximum number of passages retrieved per question, in 'relevant_chunks'
+            mode only — 'full_text_chunk' reads the whole snapshot and retrieves nothing.
             Range: 1-100, Default: 5
 
-        model (str): OpenAI model identifier to use for chat responses.
-            Default: 'gpt-4o'
+        model (str): Model to use for chat responses, as a pydantic-ai 'provider:model' string.
+            Default: 'openai:gpt-4o'. A bare model name still loads, read as an OpenAI model.
 
         temperature (float): AI model temperature controlling response randomness.
             Range: 0.0 (focused) to 2.0 (creative), Default: 0.7
@@ -55,7 +58,7 @@ class AiExpertChatConfig(BaseModelDTO):
         config = AiExpertConfig(
             mode='relevant_chunks',
             max_chunks=10,
-            model='gpt-4o-mini',
+            model='openai:gpt-4o-mini',
             temperature=0.5,
             placeholder_text="Ask me anything about the document..."
         )
@@ -80,15 +83,15 @@ When answering questions:
 The user is asking questions specifically about this document, so focus your responses on the document's content and context."""
 
     # Mode for the call to AI
-    # 'full_text_chunk' basic chat call where the document content (all chunks as text) is integrated in the prompt
-    # 'relevant_chunks' retrieves only the most relevant chunks based on the user's question
+    # 'full_text_chunk' the document's whole text, read from its snapshot, is integrated in the prompt
+    # 'relevant_chunks' retrieves only the passages of that document matching the user's question
     mode: AiExpertChatMode = "relevant_chunks"
 
-    # Number of chunks to retrieve, in both modes (1-100)
+    # Number of passages to retrieve per question, 'relevant_chunks' mode only (1-100)
     max_chunks: int = 5
 
-    # OpenAI model to use for chat
-    model: str = "gpt-4o"
+    # Model to use for chat, as a pydantic-ai "provider:model" string (e.g. "openai:gpt-4o").
+    model: str = "openai:gpt-4o"
 
     # Temperature for the AI model (0.0 to 2.0)
     temperature: float = 0.7

@@ -1,6 +1,8 @@
 """Turns a file on disk into llama-index documents carrying the chunk metadata.
 
-This is the one place that knows about file formats. V1 indexes **documents only**: PDF, Markdown,
+This is the one place that knows about file formats — :meth:`DocumentLoader.load_text` is that
+knowledge on its own, for the callers that want a document's text rather than its chunks (AI Expert's
+``full_text_chunk`` mode reading a snapshot). V1 indexes **documents only**: PDF, Markdown,
 plain text, DOCX, HTML, plus RichText JSON (note content, converted to Markdown by the same rules
 ``RagResource`` applies). CSV, spreadsheets, data JSON and the legacy ``.doc`` format are rejected,
 each with a message naming the reason — see :data:`REJECTED_EXTENSION_REASONS`.
@@ -108,6 +110,39 @@ class DocumentLoader:
     """Reads a document and attaches the chunk metadata to it."""
 
     @classmethod
+    def load_text(cls, path: str, filename: str) -> str:
+        """Read a file and return its text, whichever reader its format needs.
+
+        The text half of :meth:`load`, exposed on its own because a chunk is not always what a
+        caller wants: AI Expert's ``full_text_chunk`` mode reads a document's snapshot through this,
+        getting the exact text indexing saw with no chunk-boundary artefacts and no engine call.
+
+        :param path: path of the file to read (the snapshot, never the source system)
+        :param filename: original file name; it decides the reader, and it is what an error names
+        :raises UnsupportedDocumentFormatError: if the format is not indexable
+        :raises EmptyDocumentError: if the file yields no text
+        :raises FileNotFoundError: if the file does not exist
+        """
+        if not os.path.isfile(path):
+            raise FileNotFoundError(f"Document file '{path}' does not exist")
+
+        extension = cls.get_extension(filename) or cls.get_extension(path)
+        cls.check_extension_is_supported(extension)
+
+        text = cls._extract_text(path, extension)
+        if not text.strip():
+            # Empty is refused rather than returned, on both paths. Indexing would otherwise record
+            # zero chunks as a success, leaving a document that reports "done" and can never be
+            # retrieved; a reader would otherwise put an empty document in front of a model and let
+            # it answer from nothing. A scanned PDF is the case that gets here.
+            raise EmptyDocumentError(
+                f"No text could be extracted from '{filename}'. A scanned or image-only document "
+                f"has to be converted to text (OCR) before it can be used."
+            )
+
+        return text
+
+    @classmethod
     def load(
         cls,
         path: str,
@@ -127,20 +162,7 @@ class DocumentLoader:
         :raises EmptyDocumentError: if the file yields no text
         :raises FileNotFoundError: if the file does not exist
         """
-        if not os.path.isfile(path):
-            raise FileNotFoundError(f"Document file '{path}' does not exist")
-
-        extension = cls.get_extension(filename) or cls.get_extension(path)
-        cls.check_extension_is_supported(extension)
-
-        text = cls._extract_text(path, extension)
-        if not text.strip():
-            # Zero chunks would otherwise be indexed as a success, leaving a document that reports
-            # "done" and can never be retrieved. A scanned PDF is the case that gets here.
-            raise EmptyDocumentError(
-                f"Cannot index '{filename}': no text could be extracted from it. A scanned or "
-                f"image-only document has to be converted to text (OCR) before it can be indexed."
-            )
+        text = cls.load_text(path, filename)
 
         metadata = {
             METADATA_KNOWLEDGE_BASE_ID: knowledge_base_id,

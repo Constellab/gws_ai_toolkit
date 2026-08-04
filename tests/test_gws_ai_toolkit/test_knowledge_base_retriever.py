@@ -72,14 +72,21 @@ class TestKnowledgeBaseRetriever(BaseTestCase):
         knowledge_base = self.service.create_knowledge_base(
             SaveKnowledgeBaseDTO(name=name, instance_scope=instance_scope)
         )
+        self._add_indexed_document(knowledge_base, content, filename)
+        return knowledge_base
+
+    def _add_indexed_document(
+        self, knowledge_base: KnowledgeBase, content: str, filename: str
+    ) -> KnowledgeBaseDocument:
+        """One more indexed document in an existing knowledge base."""
         document = self.service.add_uploaded_document(
             knowledge_base.id, filename, content.encode("utf-8")
         )
         engine = KnowledgeBaseService.build_engine(
-            instance_scope=instance_scope, embedding_config=EmbeddingConfig.mock()
+            instance_scope=knowledge_base.instance_scope, embedding_config=EmbeddingConfig.mock()
         )
         self.service.index_document(document.id, engine)
-        return knowledge_base
+        return document
 
     ############################################### TESTS ###############################################
 
@@ -179,6 +186,57 @@ class TestKnowledgeBaseRetriever(BaseTestCase):
             if type(value).__name__ == "KnowledgeBaseEngine"
         ]
         self.assertEqual(held, [])
+
+    def test_document_ids_narrow_the_search_to_one_document(self):
+        """AI Expert's ``relevant_chunks`` mode: the answer may only quote the document it opened."""
+        knowledge_base = self._create_indexed_knowledge_base(
+            "Protocols", ALIGNMENT_CONTENT, "pipeline.md"
+        )
+        safety_document = self._add_indexed_document(knowledge_base, SAFETY_CONTENT, "safety.md")
+        retriever = self._build_retriever()
+
+        # Unfiltered, the alignment document answers this query.
+        self.assertIn(
+            "pipeline.md",
+            {chunk.filename for chunk in retriever.retrieve("alignment reads", [knowledge_base.id])},
+        )
+
+        chunks = retriever.retrieve(
+            query="alignment reads",
+            knowledge_base_ids=[knowledge_base.id],
+            document_ids=[safety_document.id],
+        )
+
+        self.assertEqual({chunk.document_id for chunk in chunks}, {safety_document.id})
+
+    def test_an_empty_document_filter_retrieves_nothing(self):
+        """Explicitly narrowing to no document means nothing, as an empty binding does."""
+        knowledge_base = self._create_indexed_knowledge_base(
+            "Protocols", ALIGNMENT_CONTENT, "pipeline.md"
+        )
+
+        self.assertEqual(
+            self._build_retriever().retrieve(
+                "alignment step", [knowledge_base.id], document_ids=[]
+            ),
+            [],
+        )
+
+    def test_a_document_of_another_knowledge_base_is_still_out_of_scope(self):
+        """The document filter narrows *within* the binding rather than replacing it."""
+        alignment = self._create_indexed_knowledge_base(
+            "Protocols", ALIGNMENT_CONTENT, "pipeline.md"
+        )
+        safety = self._create_indexed_knowledge_base("Safety", SAFETY_CONTENT, "safety.md")
+        safety_document_id = self.service.get_documents(safety.id)[0].id
+
+        chunks = self._build_retriever().retrieve(
+            query="gloves and goggles",
+            knowledge_base_ids=[alignment.id],
+            document_ids=[safety_document_id],
+        )
+
+        self.assertEqual(chunks, [])
 
     def test_the_score_threshold_reaches_the_engine(self):
         """A threshold above every fused score drops everything, which is how it is proved applied."""

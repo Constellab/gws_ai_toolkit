@@ -34,6 +34,7 @@ class KnowledgeBaseRetriever(ABC):
         knowledge_base_ids: list[str],
         top_k: int = DEFAULT_TOP_K,
         score_threshold: float | None = None,
+        document_ids: list[str] | None = None,
     ) -> list[RetrievedChunk]:
         """The chunks most relevant to a query, within the given knowledge bases.
 
@@ -42,6 +43,10 @@ class KnowledgeBaseRetriever(ABC):
                                    rather than everything
         :param top_k: maximum number of chunks to return
         :param score_threshold: drop chunks scoring below this, in the retrieval mode's own scale
+        :param document_ids: narrow the search to these documents — AI Expert's ``relevant_chunks``
+                             mode searches the one document a conversation is about. ``None`` means
+                             every document of those knowledge bases; an explicitly empty list means
+                             nothing, for the same reason an empty binding does
         :return: the retrieved chunks, best first
         """
 
@@ -64,6 +69,7 @@ class EngineKnowledgeBaseRetriever(KnowledgeBaseRetriever):
         knowledge_base_ids: list[str],
         top_k: int = DEFAULT_TOP_K,
         score_threshold: float | None = None,
+        document_ids: list[str] | None = None,
     ) -> list[RetrievedChunk]:
         """Search every instance holding one of these knowledge bases, and merge the results.
 
@@ -77,6 +83,10 @@ class EngineKnowledgeBaseRetriever(KnowledgeBaseRetriever):
         they are while every instance runs the same retrieval mode — the case today, since mode is
         an engine-level choice. V1 ships a single scope, so this stays a correctness guard rather
         than a hot path.
+
+        ``document_ids`` is passed straight down to every engine searched: it narrows *within* the
+        knowledge bases rather than replacing their filter, so a document id belonging to another
+        knowledge base still returns nothing.
 
         :raises EmbeddingManifestMismatchError: if an instance was indexed with another embedding
         """
@@ -95,6 +105,7 @@ class EngineKnowledgeBaseRetriever(KnowledgeBaseRetriever):
                     knowledge_base_ids=scope_ids,
                     top_k=top_k,
                     score_threshold=score_threshold,
+                    document_ids=document_ids,
                 )
             )
 

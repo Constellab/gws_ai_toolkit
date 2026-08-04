@@ -62,13 +62,12 @@ class RagHistoryState(SidebarHistoryListState, rx.State):
 
         if current_path.startswith("/ai-expert"):
             ai_expert_state: AiExpertState = await self.get_state(AiExpertState)
-            resource = ai_expert_state._rag_resource
-            if not resource:
+            document = ai_expert_state.get_current_document()
+            if not document:
                 return
 
             ai_expert_state.clear_chat()
-            resource_id = resource.get_id()
-            return rx.redirect(f"/ai-expert/{resource_id}")
+            return rx.redirect(f"/ai-expert/{document.document_id}")
 
         rag_chat_state: RagChatState = await self.get_state(RagChatState)
         rag_chat_state.clear_chat()

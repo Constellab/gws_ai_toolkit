@@ -20,6 +20,7 @@ from typing import Any
 
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
+from pydantic_ai.settings import ModelSettings
 
 # Agent kinds, identified by the tools the agent exposes.
 ORCHESTRATOR = "orchestrator"
@@ -120,11 +121,15 @@ class SingleAgentScriptedModel:
         turns: One entry per model request; see :data:`ScriptedAnswer`.
         tool_names_seen: The tools the agent exposed on each request.
         messages_seen: The history handed to the model on each request.
+        instructions_seen: The instructions handed to the model on each request.
+        model_settings_seen: The model settings of each request, temperature included.
     """
 
     turns: list[ScriptedAnswer]
     tool_names_seen: list[list[str]] = field(default_factory=list)
     messages_seen: list[list[ModelMessage]] = field(default_factory=list)
+    instructions_seen: list[str | None] = field(default_factory=list)
+    model_settings_seen: list[ModelSettings | None] = field(default_factory=list)
 
     def build(self) -> FunctionModel:
         """The pydantic-ai model replaying this script."""
@@ -145,6 +150,8 @@ class SingleAgentScriptedModel:
         """
         self.tool_names_seen.append(sorted(tool.name for tool in info.function_tools))
         self.messages_seen.append(list(messages))
+        self.instructions_seen.append(info.instructions)
+        self.model_settings_seen.append(info.model_settings)
 
         index = sum(1 for message in messages if isinstance(message, ModelResponse))
         assert index < len(self.turns), f"No scripted turn {index} (script has {len(self.turns)})"
