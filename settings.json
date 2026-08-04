@@ -21,6 +21,18 @@
                         "version": "0.22.1"
                     },
                     {
+                        "name": "llama-index-core",
+                        "version": "0.14.23"
+                    },
+                    {
+                        "name": "llama-index-embeddings-openai",
+                        "version": "0.6.0"
+                    },
+                    {
+                        "name": "lancedb",
+                        "version": "0.36.0"
+                    },
+                    {
                         "name": "reflex-resizable-panels",
                         "version": "0.0.1"
                     },

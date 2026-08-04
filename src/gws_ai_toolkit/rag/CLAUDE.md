@@ -8,6 +8,7 @@ This RAG folder contains the core RAG (Retrieval Augmented Generation) implement
 
 ## Directory Structure
 - `common/` - Shared base classes, utilities, and common infrastructure for all RAG services
+- `knowledge_base/` - Embedded knowledge-base engine (LlamaIndex readers + LanceDB store), no external RAG platform
 - `dify/` - Dify platform integration and API wrapper services
 - `ragflow/` - RagFlow platform integration and SDK wrapper services
 - `rag_app/_rag_app/` - Main standalone Reflex-based RAG application with chat interface
@@ -23,6 +24,26 @@ This RAG folder contains the core RAG (Retrieval Augmented Generation) implement
 - `rag_resource.py` - RAG resource management and operations
 - `datahub_rag_app_service.py` - DataHub integration for RAG app services
 - `tag_rag_app_service.py` - Tag-based RAG app service implementation
+
+### Embedded Knowledge Base (`knowledge_base/`)
+
+Standalone engine that indexes documents and retrieves chunks in-process, with no external RAG platform. It replaces the Dify / RagFlow services (see `docs/todo/rag_embedded_stack_implementation_plan.md`).
+
+- `knowledge_base_engine.py` - `KnowledgeBaseEngine`: `index_document`, `delete_document`, `delete_knowledge_base`, `retrieve`, `count_chunks`
+- `knowledge_base_config.py` - `EmbeddingConfig` (instance-level), `ChunkConfig` (per knowledge base), `RetrievalConfig` (per query)
+- `knowledge_base_models.py` - `RetrievedChunk`, converted to the existing `RagChatSource`
+- `embedding_factory.py` - OpenAI embeddings, plus the deterministic offline mock the tests run on
+- `embedding_manifest.py` - the guard that refuses to read or write an instance indexed with another embedding
+- `document_loader.py` - file to llama-index `Document` + chunk metadata (txt / md today)
+- `knowledge_base_storage.py` - disk layout: `instances/<scope>/` (LanceDB + lock + manifest) and `files/<kb_id>/` (snapshots)
+- `knowledge_base_credentials.py` - resolves the OpenAI API key from named credentials, falling back to the lab setting
+
+Points that are settled and should not be re-litigated (August 2026 spike):
+
+- One instance = one directory = one vector space; knowledge bases inside it are separated **only** by a pushed-down `knowledge_base_id` filter, which is why `test_knowledge_base_engine.py` keeps a permanent isolation test.
+- The engine reads the LanceDB table directly rather than through `LanceDBVectorStore`, because the wrapper returns rank position rescaled to 0..1 instead of the fused score, and nests the metadata under a struct column.
+- Hybrid retrieval fuses vector and full-text results with LanceDB's `RRFReranker` (k = 60) — arithmetic, not a model. Full-text search needs no maintenance step.
+- Every write takes an exclusive `fcntl.flock` on the instance directory, every read a shared one, so any process may write.
 
 ### Service Architecture Pattern
 All RAG services implement the `BaseRagService` abstract class with these key methods:

@@ -1,0 +1,2 @@
+Sample metadata is imported from the laboratory information system.
+Each sample carries a barcode, a collection date and a storage location.
