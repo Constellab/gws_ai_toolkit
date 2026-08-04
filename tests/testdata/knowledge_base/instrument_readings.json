@@ -1,0 +1,14 @@
+{
+  "readings": [
+    {
+      "sample_id": "S-001",
+      "concentration_ng_ul": 42.5,
+      "verdict": "PASS"
+    },
+    {
+      "sample_id": "S-002",
+      "concentration_ng_ul": 8.1,
+      "verdict": "FAIL"
+    }
+  ]
+}

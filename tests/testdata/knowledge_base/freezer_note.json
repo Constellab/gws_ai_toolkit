@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "editorVersion": "2.31.0",
+  "blocks": [
+    {
+      "id": "7uPhAdAbv9",
+      "type": "header",
+      "data": {
+        "text": "Freezer transfer note",
+        "level": 2
+      }
+    },
+    {
+      "id": "bZ8kyMDUMb",
+      "type": "paragraph",
+      "data": {
+        "text": "Aliquots leave the cryostorage freezer on dry ice and reach the shipping desk within ten minutes."
+      }
+    },
+    {
+      "id": "pBqtfddzMm",
+      "type": "paragraph",
+      "data": {
+        "text": "Rack twelve holds the reserved aliquots and must not be opened without the study coordinator."
+      }
+    }
+  ]
+}

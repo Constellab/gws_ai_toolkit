@@ -156,6 +156,56 @@ class TestKnowledgeBaseEngine(TestCase):
         self.assertEqual(first_count, second_count)
         self.assertEqual(engine.count_chunks(), first_count)
 
+    def test_indexed_pdf_is_retrievable(self):
+        engine = self._build_engine()
+
+        chunk_count = engine.index_document(
+            self._testdata_path("assay_report.pdf"), KB_A, "doc_pdf", "assay_report.pdf"
+        )
+
+        self.assertGreater(chunk_count, 0)
+        chunks = engine.retrieve("cluster density acceptance threshold", [KB_A])
+        self.assertTrue(chunks)
+        self.assertEqual(chunks[0].document_id, "doc_pdf")
+        self.assertIn("cluster density", " ".join(chunk.content for chunk in chunks))
+
+    def test_indexed_docx_is_retrievable(self):
+        engine = self._build_engine()
+
+        engine.index_document(
+            self._testdata_path("culture_sop.docx"), KB_A, "doc_docx", "culture_sop.docx"
+        )
+
+        chunks = engine.retrieve("thaw the vial water bath", [KB_A])
+        self.assertTrue(chunks)
+        self.assertIn("thirty-seven degrees Celsius", " ".join(chunk.content for chunk in chunks))
+
+    def test_indexed_html_is_retrievable_without_its_markup(self):
+        engine = self._build_engine()
+
+        engine.index_document(
+            self._testdata_path("changelog.html"), KB_A, "doc_html", "changelog.html"
+        )
+
+        chunks = engine.retrieve("incremental export content hash", [KB_A])
+        self.assertTrue(chunks)
+        stored_text = " ".join(chunk.content for chunk in chunks)
+        self.assertIn("incremental export driven by a content hash", stored_text)
+        self.assertNotIn("<p>", stored_text)
+
+    def test_indexed_rich_text_note_is_retrievable_as_markdown(self):
+        engine = self._build_engine()
+
+        engine.index_document(
+            self._testdata_path("freezer_note.json"), KB_A, "doc_note", "freezer_note.json"
+        )
+
+        chunks = engine.retrieve("how do aliquots leave the cryostorage freezer?", [KB_A])
+        self.assertTrue(chunks)
+        stored_text = " ".join(chunk.content for chunk in chunks)
+        self.assertIn("dry ice", stored_text)
+        self.assertNotIn("editorVersion", stored_text)
+
     def test_rejected_extension_names_what_is_supported(self):
         engine = self._build_engine()
 
@@ -167,6 +217,27 @@ class TestKnowledgeBaseEngine(TestCase):
         message = str(context.exception)
         self.assertIn(".csv", message)
         self.assertIn(".md", message)
+        self.assertEqual(engine.count_chunks(), 0)
+
+    def test_no_rejected_format_ever_reaches_the_index(self):
+        """The loader refuses before any row is written, so a rejection leaves nothing behind."""
+        engine = self._build_engine()
+
+        rejected_filenames = (
+            "measurements.csv",
+            "measurements.xlsx",
+            "instrument_readings.json",
+            "legacy_report.doc",
+        )
+        for filename in rejected_filenames:
+            with (
+                self.subTest(filename=filename),
+                self.assertRaises(UnsupportedDocumentFormatError),
+            ):
+                engine.index_document(
+                    self._testdata_path(filename), KB_A, "doc_rejected", filename
+                )
+
         self.assertEqual(engine.count_chunks(), 0)
 
     def test_chunk_metadata_is_carried_but_kept_out_of_the_text(self):

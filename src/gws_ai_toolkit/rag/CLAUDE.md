@@ -34,7 +34,8 @@ Standalone engine that indexes documents and retrieves chunks in-process, with n
 - `knowledge_base_models.py` - `RetrievedChunk`, converted to the existing `RagChatSource`
 - `embedding_factory.py` - OpenAI embeddings, plus the deterministic offline mock the tests run on
 - `embedding_manifest.py` - the guard that refuses to read or write an instance indexed with another embedding
-- `document_loader.py` - file to llama-index `Document` + chunk metadata (txt / md today)
+- `document_loader.py` - file to llama-index `Document` + chunk metadata; the only place that knows about file formats
+- `document_compatibility.py` - the add-time admission check (supported extension, ≤ 15 MB, rich-text JSON shape), applied to the fetched file whatever source produced it
 - `knowledge_base_storage.py` - disk layout: `instances/<scope>/` (LanceDB + lock + manifest) and `files/<kb_id>/` (snapshots)
 - `knowledge_base_credentials.py` - resolves the OpenAI API key from named credentials, falling back to the lab setting
 
@@ -44,6 +45,8 @@ Points that are settled and should not be re-litigated (August 2026 spike):
 - The engine reads the LanceDB table directly rather than through `LanceDBVectorStore`, because the wrapper returns rank position rescaled to 0..1 instead of the fused score, and nests the metadata under a struct column.
 - Hybrid retrieval fuses vector and full-text results with LanceDB's `RRFReranker` (k = 60) — arithmetic, not a model. Full-text search needs no maintenance step.
 - Every write takes an exclusive `fcntl.flock` on the instance directory, every read a shared one, so any process may write.
+- **V1 indexes documents only**: PDF, MD, TXT, DOCX, HTML and RichText JSON (note content → Markdown). CSV, spreadsheets, data JSON and legacy `.doc` are rejected, each with a message naming the reason. Tabular rejection is a decision, not an omission — row chunks are near-identical in form, so they match everything weakly and degrade retrieval for the documents sharing the index, and the questions asked of a table (count, sum, filter) are the ones vector search cannot answer. If a real need appears, add a column-summary chunk per table before considering row-level indexing.
+- The loader unwraps every reader to plain text and builds the `Document` itself, because readers attach metadata of their own (`PDFReader` adds a page label) and only the four known keys are excluded from the embedded and LLM text.
 
 ### Service Architecture Pattern
 All RAG services implement the `BaseRagService` abstract class with these key methods:

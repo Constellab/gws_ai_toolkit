@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "richText": {
+    "version": 2,
+    "editorVersion": "2.31.0",
+    "blocks": [
+      {
+        "id": "MZckxcTfVx",
+        "type": "header",
+        "data": {
+          "text": "Instrument calibration log",
+          "level": 2
+        }
+      },
+      {
+        "id": "T8xyzAmg8f",
+        "type": "paragraph",
+        "data": {
+          "text": "The spectrophotometer was recalibrated against the blank buffer after the lamp replacement."
+        }
+      }
+    ]
+  },
+  "modifications": null
+}

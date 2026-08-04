@@ -29,6 +29,18 @@
                         "version": "0.6.0"
                     },
                     {
+                        "name": "llama-index-readers-file",
+                        "version": "0.6.0"
+                    },
+                    {
+                        "name": "docx2txt",
+                        "version": "0.9"
+                    },
+                    {
+                        "name": "beautifulsoup4",
+                        "version": "4.14.2"
+                    },
+                    {
                         "name": "lancedb",
                         "version": "0.36.0"
                     },

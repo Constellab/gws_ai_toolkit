@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Analysis platform changelog</title>
+    <style>
+      body { font-family: sans-serif; }
+      .note { color: #555; }
+    </style>
+    <script>
+      const releaseCount = 3;
+      console.log("changelog loaded", releaseCount);
+    </script>
+  </head>
+  <body>
+    <h1>Analysis platform changelog</h1>
+    <p>
+      Release 2.4 replaces the nightly batch export with an incremental export driven by a
+      content hash, so an unchanged dataset is no longer re-exported.
+    </p>
+    <ul>
+      <li>The plate reader importer now accepts multi-well layouts.</li>
+      <li>The audit trail records the operator who released a batch.</li>
+    </ul>
+    <p class="note">Known limitation: the archive browser still paginates by day.</p>
+  </body>
+</html>
