@@ -101,7 +101,7 @@ def knowledge_base_chat_header_component() -> rx.Component:
                 variant="ghost",
                 size="2",
                 cursor="pointer",
-                color="var(--gray-11)",
+                color_scheme="gray",
                 on_click=rx.redirect(CHAT_PROFILES_ROUTE),
             ),
             content="Chat profiles",

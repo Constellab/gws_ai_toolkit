@@ -108,6 +108,23 @@ class KnowledgeBaseChatFactory:
 
     ############################################### RESTORE ###############################################
 
+    @classmethod
+    def get_restorable_profile_id(cls, conversation_id: str) -> str:
+        """The profile a persisted conversation can be reopened on.
+
+        A classmethod, and free of every dependency a built factory carries — no retriever, no API
+        key — because a caller has to be able to ask *"can this be continued?"* before resolving
+        chat credentials. A lab whose credentials are misconfigured must still be told that a retired
+        conversation is retired, rather than being handed a credentials error about a conversation
+        that was never going to open.
+
+        :param conversation_id: the conversation being examined
+        :raises NotFoundException: if the conversation does not exist
+        :raises KnowledgeBaseChatUnavailableError: if it cannot be continued — see the module
+                docstring for the four ways that happens
+        """
+        return cls._get_restorable_profile_id(ChatConversation.get_by_id_and_check(conversation_id))
+
     def restore_conversation(self, conversation_id: str) -> KnowledgeBaseChatConversation:
         """Reopen a persisted conversation, ready to continue.
 

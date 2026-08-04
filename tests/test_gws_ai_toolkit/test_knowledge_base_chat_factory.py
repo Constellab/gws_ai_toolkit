@@ -257,6 +257,31 @@ class TestKnowledgeBaseChatFactory(BaseTestCase):
         self.assertEqual(len(conversation.get_visible_messages()), 2)
         self.assertEqual(len(conversation.knowledge_agent.get_message_history()), 4)
 
+    def test_whether_a_conversation_can_be_reopened_is_answerable_without_credentials(self):
+        """The check must not need a built factory, so a misconfigured lab still gets the reason.
+
+        Building a factory resolves the chat API key. If the mode check came after that, a lab whose
+        credentials are wrong would answer a retired conversation with a credentials error instead of
+        saying the engine is retired — so this is a classmethod taking neither retriever nor key.
+        """
+        profile = self._create_profile()
+        continuable = self._create_conversation_row(
+            mode=ChatConversationMode.KNOWLEDGE_BASE.value,
+            configuration={
+                KnowledgeBaseChatConversation.CHAT_PROFILE_ID_CONFIG_KEY: profile.id
+            },
+        )
+        legacy = self._create_conversation_row(
+            mode=ChatConversationMode.RAG.value, configuration={}
+        )
+
+        self.assertEqual(
+            KnowledgeBaseChatFactory.get_restorable_profile_id(continuable.id), profile.id
+        )
+        with self.assertRaises(KnowledgeBaseChatUnavailableError) as raised:
+            KnowledgeBaseChatFactory.get_restorable_profile_id(legacy.id)
+        self.assertEqual(str(raised.exception), LEGACY_CONVERSATION_MODE_MESSAGE)
+
     def test_restoring_a_legacy_rag_conversation_says_the_engine_is_retired(self):
         """Those rows point at datasets that no longer exist; the reason is what the user gets."""
         row = self._create_conversation_row(

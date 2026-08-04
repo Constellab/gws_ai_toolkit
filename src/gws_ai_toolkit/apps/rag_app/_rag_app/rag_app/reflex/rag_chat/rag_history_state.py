@@ -79,9 +79,7 @@ class RagHistoryState(SidebarHistoryListState, rx.State):
             knowledge_base_chat_state: KnowledgeBaseChatState = await self.get_state(
                 KnowledgeBaseChatState
             )
-            knowledge_base_chat_state.start_chat_with_profile(
-                knowledge_base_chat_state.selected_profile_id
-            )
+            knowledge_base_chat_state.discard_conversation()
             return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
 
         if current_path.startswith("/ai-expert"):

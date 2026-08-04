@@ -7,7 +7,7 @@ is why it is a list of checkboxes rather than a free-text field: an id nobody ca
 
 Two decisions worth naming.
 
-**Create and edit are the same dialog.** ``editing_profile_id`` decides which of the two a save
+**Create and edit are the same dialog.** ``_editing_profile_id`` decides which of the two a save
 performs, so the fields, the validation and the layout cannot drift between the form that creates a
 profile and the form that changes one.
 
@@ -98,12 +98,12 @@ class RagChatProfileListState(rx.State):
 
     _profiles: list[RagChatProfileDTO] = []
 
-    # The edit dialog. Empty ``editing_profile_id`` means "create"; anything else means "update that
+    # The edit dialog. Empty ``_editing_profile_id`` means "create"; anything else means "update that
     # profile". The numeric fields are strings because that is what an ``rx.input`` produces — they
     # are parsed once, on save, where a bad value can be named.
     dialog_open: bool = False
     is_saving: bool = False
-    editing_profile_id: str = ""
+    _editing_profile_id: str = ""
     form_name: str = ""
     form_system_prompt: str = DEFAULT_CHAT_PROFILE_SYSTEM_PROMPT
     form_model: str = DEFAULT_CHAT_PROFILE_MODEL
@@ -163,18 +163,22 @@ class RagChatProfileListState(rx.State):
     @rx.var
     def dialog_title(self) -> str:
         """Title of the dialog, which is the one place create and edit look different."""
-        return "Edit chat profile" if self.editing_profile_id else "New chat profile"
+        return "Edit chat profile" if self._editing_profile_id else "New chat profile"
 
     ############################################### LOAD ###############################################
 
     @rx.event
-    async def load_page(self) -> None:
+    async def load_page(self) -> AsyncGenerator[rx.event.EventType, None]:
         """Load the profiles and the knowledge bases they can bind. Bound to the page's ``on_load``.
 
         Both in one event: the dialog's checkbox list is the knowledge bases, so a page that loaded
         only the profiles would open an edit form that cannot show what the profile is bound to.
         """
         self.is_loading = True
+        # A bare yield flushes the state to the browser. Without it the spinner would never appear:
+        # a foreground event sends one delta, computed after the handler has already finished and
+        # cleared the flag.
+        yield
         try:
             main_state = await self.get_state(ReflexMainState)
             with await main_state.authenticate_user():
@@ -193,7 +197,7 @@ class RagChatProfileListState(rx.State):
     @rx.event
     def open_create_dialog(self) -> None:
         """Open the dialog on a blank form carrying the defaults."""
-        self.editing_profile_id = ""
+        self._editing_profile_id = ""
         self.form_name = ""
         self.form_system_prompt = DEFAULT_CHAT_PROFILE_SYSTEM_PROMPT
         self.form_model = DEFAULT_CHAT_PROFILE_MODEL
@@ -214,7 +218,7 @@ class RagChatProfileListState(rx.State):
         if profile is None:
             raise ReflexAppException("This chat profile is no longer in the list. Refresh the page.")
 
-        self.editing_profile_id = profile.id
+        self._editing_profile_id = profile.id
         self.form_name = profile.name
         self.form_system_prompt = profile.system_prompt
         self.form_model = profile.model
@@ -297,8 +301,11 @@ class RagChatProfileListState(rx.State):
             knowledge_base_ids=list(self.form_knowledge_base_ids),
         )
 
-        profile_id = self.editing_profile_id
+        profile_id = self._editing_profile_id
         self.is_saving = True
+        # Flushed to the browser before the save runs, so the button's spinner is actually seen —
+        # see ``load_page``.
+        yield
         try:
             main_state = await self.get_state(ReflexMainState)
             service = RagChatProfileService()
@@ -345,6 +352,8 @@ class RagChatProfileListState(rx.State):
         caller's: the button that reaches this sits behind an alert dialog.
         """
         self.busy_profile_id = profile_id
+        # Flushed before the delete runs, so the row's own spinner is seen — see ``load_page``.
+        yield
         try:
             main_state = await self.get_state(ReflexMainState)
             service = RagChatProfileService()

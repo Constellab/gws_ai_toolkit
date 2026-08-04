@@ -34,6 +34,7 @@ from gws_ai_toolkit.models.knowledge_base.knowledge_base_chat_factory import (
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_dto import RagChatProfileDTO
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_service import RagChatProfileService
+from gws_core import NotFoundException
 from gws_reflex_main import ReflexAppException, ReflexMainState
 
 from ...chat_base.conversation_chat_state_base import ConversationChatStateBase
@@ -125,12 +126,20 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     async def _restore_conversation(self, conversation_id: str) -> None:
         """Reopen a persisted conversation on the profile its own row records.
 
+        Whether the conversation *can* be reopened is settled before the factory is built, and that
+        order matters: building one resolves the chat credentials, so a lab whose credentials are
+        misconfigured would answer a retired conversation with a credentials error instead of saying
+        the engine is retired.
+
         :raises KnowledgeBaseChatUnavailableError: if it cannot be continued; the caller turns that
                 into the read-only notice rather than an error, because the transcript is still worth
                 reading
         """
-        factory = await self._build_factory()
         main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            KnowledgeBaseChatFactory.get_restorable_profile_id(conversation_id)
+
+        factory = await self._build_factory()
         with await main_state.authenticate_user():
             conversation = factory.restore_conversation(conversation_id)
 
@@ -156,20 +165,21 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     ############################################### PAGE LOAD ###############################################
 
     @rx.event
-    async def load_conversation_from_url(self) -> None:
+    async def load_conversation_from_url(self) -> rx.event.EventType | None:
         """Handle page load for ``/kb/chat/[conversation_id]``.
 
         A conversation that cannot be continued is *shown* rather than refused: its messages are
         already loaded by the time the restore is attempted, so the page becomes a read-only
-        transcript carrying the reason.
+        transcript carrying the reason. An id that matches no conversation at all is different — there
+        is no transcript to show — so that lands back on a blank chat.
         """
         conversation_id = getattr(self, "conversation_id", None)
         if not conversation_id:
-            return
+            return None
 
         # Already viewing this conversation — a reload of the same page must not re-fetch it.
         if self._conversation and self._conversation._conversation_id == conversation_id:
-            return
+            return None
 
         self.read_only_notice = ""
         await self._load_profiles()
@@ -179,16 +189,22 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
             # ``load_conversation`` loaded the messages before restoring failed, so the transcript is
             # on screen; this is what replaces the input.
             self.read_only_notice = str(err)
+        except NotFoundException:
+            # A stale link or a deleted conversation. Nothing to read, so nothing to keep on screen.
+            self.discard_conversation()
+            return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
+        return None
 
     @rx.event
     async def load_new_chat_page(self) -> None:
-        """Handle page load for ``/kb``.
+        """Handle page load for ``/kb``, which always means a new chat.
 
-        ``/kb`` only ever means "a new chat" — a conversation's own URL is ``/kb/chat/<id>`` — so the
-        read-only notice of whatever was on screen before is cleared here. Without this, arriving from
-        a retired conversation (a browser Back, say) would show its notice over a blank chat.
+        A conversation of its own has a URL of its own (``/kb/chat/<id>``), so arriving here means
+        leaving whatever was on screen — the conversation object included, not just the read-only
+        notice. Dropping only the notice would leave the previous transcript rendered and, worse, let
+        the next question be appended to the conversation the user had just navigated away from.
         """
-        self.read_only_notice = ""
+        self.discard_conversation()
         await self._load_profiles()
 
     @rx.event
@@ -202,8 +218,7 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     @rx.event
     async def start_new_chat(self) -> rx.event.EventType:
         """Drop the conversation on screen and go back to a blank chat on the same profile."""
-        self.clear_chat()
-        self.read_only_notice = ""
+        self.discard_conversation()
         return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
 
     @rx.event
@@ -217,23 +232,32 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         if profile_id == self.selected_profile_id and not self.read_only_notice:
             return None
 
-        self.selected_profile_id = profile_id
-        if self._conversation or self._chat_messages or self.read_only_notice:
-            self.clear_chat()
-            self.read_only_notice = ""
-            return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
-        return None
+        had_conversation = bool(self._conversation or self._chat_messages or self.read_only_notice)
+        self.start_chat_with_profile(profile_id)
+        return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE) if had_conversation else None
 
-    def start_chat_with_profile(self, profile_id: str) -> None:
-        """Select a profile and clear whatever was on screen, for a sibling state to call.
+    def discard_conversation(self) -> None:
+        """Leave the conversation on screen, keeping the selected profile.
 
-        Not an event: the chat-profile page reaches this through ``get_state`` and then redirects
-        itself, which is how the *Chat* button on a profile row lands on a blank chat with that
-        profile already selected.
+        The one place the two halves of "nothing is open" are cleared together — the conversation
+        object *and* the read-only notice. Clearing one without the other is what makes a stale
+        transcript answer a new question, or a retired-engine notice hang over a blank chat.
+
+        Not an event: ``RagHistoryState`` reaches it through ``get_state``, and the ``/kb`` page load
+        calls it directly.
         """
-        self.selected_profile_id = profile_id
         self.clear_chat()
         self.read_only_notice = ""
+
+    def start_chat_with_profile(self, profile_id: str) -> None:
+        """Select a profile and leave whatever was on screen.
+
+        Not an event, for the same reason as :meth:`discard_conversation`: the chat-profile page
+        reaches this through ``get_state`` and then redirects itself, which is how the *Chat* button on
+        a profile row lands on a blank chat with that profile already selected.
+        """
+        self.selected_profile_id = profile_id
+        self.discard_conversation()
 
     ############################################### SOURCES ###############################################
 
