@@ -18,6 +18,16 @@ from .reflex.ai_expert.ai_expert_state import AiExpertState
 from .reflex.ai_expert.document_browser_component import document_browser_component
 from .reflex.ai_expert.document_browser_state import DocumentBrowserState
 from .reflex.core.app_config_state import AppConfigState
+from .reflex.knowledge_base.knowledge_bases.knowledge_base_detail_component import (
+    knowledge_base_detail_component,
+)
+from .reflex.knowledge_base.knowledge_bases.knowledge_base_detail_state import (
+    KnowledgeBaseDetailState,
+)
+from .reflex.knowledge_base.knowledge_bases.knowledge_base_list_component import (
+    knowledge_base_list_component,
+)
+from .reflex.knowledge_base.knowledge_bases.knowledge_base_list_state import KnowledgeBaseListState
 from .reflex.rag_chat.config.rag_config_component import rag_config_component
 from .reflex.rag_chat.config.rag_config_state import RagConfigState, RagConfigStateFromParams
 from .reflex.rag_chat.rag_chat_component import rag_chat_component
@@ -129,6 +139,27 @@ def ai_expert_browser():
 def ai_expert_with_conversation():
     """AI Expert page for an existing conversation loaded from URL."""
     return ai_expert_page_content()
+
+
+# Knowledge bases - list page
+@rx.page(route="/kb/bases", on_load=KnowledgeBaseListState.load_knowledge_bases)
+def knowledge_bases():
+    """Knowledge-base manager: list, create and delete knowledge bases."""
+    return rag_page_layout_component(
+        content=knowledge_base_list_component(),
+    )
+
+
+# Knowledge bases - detail page
+@rx.page(
+    route="/kb/bases/[knowledge_base_id]",
+    on_load=KnowledgeBaseDetailState.load_knowledge_base,
+)
+def knowledge_base_detail():
+    """One knowledge base: its documents, their indexing status and the actions on them."""
+    return rag_page_layout_component(
+        content=knowledge_base_detail_component(),
+    )
 
 
 # AI Expert page - document-specific chat (new conversation)

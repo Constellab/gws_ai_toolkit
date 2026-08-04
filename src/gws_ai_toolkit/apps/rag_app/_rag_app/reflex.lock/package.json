@@ -19,6 +19,7 @@
     "react": "19.2.6",
     "react-debounce-input": "3.3.0",
     "react-dom": "19.2.6",
+    "react-dropzone": "15.0.0",
     "react-error-boundary": "6.1.1",
     "react-helmet": "6.1.0",
     "react-markdown": "10.1.0",
