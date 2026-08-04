@@ -17,6 +17,10 @@
                 "source": "https://pypi.python.org/simple",
                 "packages": [
                     {
+                        "name": "pydantic-ai-slim[openai]",
+                        "version": "2.23.0"
+                    },
+                    {
                         "name": "ragflow-sdk",
                         "version": "0.22.1"
                     },

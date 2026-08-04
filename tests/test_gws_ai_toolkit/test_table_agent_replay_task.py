@@ -6,179 +6,227 @@ import unittest
 
 import pandas as pd
 from gws_ai_toolkit.core.agents.table.table_agent_replay_task import TableAgentReplayTask
-from gws_core import ResourceSet, Table, TaskRunner
+from gws_core import (
+    InputSpec,
+    InputSpecs,
+    OutputSpec,
+    OutputSpecs,
+    ResourceList,
+    ResourceSet,
+    Table,
+    TaskRunner,
+)
+
+MAIN_AGENT = "7aa25334-2d6a-4101-8463-3ce9a513c08e"
+TRANSFORM_AGENT = "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e"
+PLOT_AGENT = "cf0eaf88-e9e1-492d-9fa7-319693642617"
+
+MAIN_TRANSFORM_RESPONSE = "resp_main_transform"
+SUB_TRANSFORM_RESPONSE = "resp_sub_transform"
+MAIN_PLOT_RESPONSE = "resp_main_plot"
+SUB_PLOT_RESPONSE = "resp_sub_plot"
 
 
 # test_table_agent_replay_task
 class TestTableAgentReplayTask(unittest.TestCase):
-    """Test suite for TableAgentReplay task"""
+    """Test suite for TableAgentReplay task.
 
-    def test_table_agent_replay_task(self):
-        """Test the TableAgentReplay task with a sample transformation sequence"""
+    Replaying re-executes the recorded tool calls without contacting a model, so this test
+    makes no API call.
+    """
 
-        # These events were generated using test_table_agent_ai.TestTableAgentAiIntegration.test_transform_delegation_add_column
-        # They represent a sequence of operations: rename column, then create scatter plot
-        # Now structured as a list of AgentEventListDTOConv objects
-        conversations = [
+    def _serialized_events(self) -> list[dict]:
+        """Build the recorded event sequence to replay.
+
+        The sequence is a flat list of serialized table agent events: a user query, then for
+        each operation the main agent's function call, the sub-agent it created, the
+        sub-agent's own function call, and the success reported back at the main agent's level.
+
+        Two user queries are recorded, one per operation. The replay only refreshes the tables
+        available to a query between queries, so the plot has to be its own turn to see the
+        table the first turn produced.
+
+        Returns:
+            The serialized events, as the task's config expects them.
+        """
+        return [
             {
-                "user_query": {
-                    "query": "Rename the column 'hello' to 'x_values' and create a scatter plot",
-                    "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                    "table_keys": ["test_data"],
-                    "output_table_names": None,
+                "type": "user_tables",
+                "query": "Rename the column 'hello' to 'x_values'",
+                "agent_id": MAIN_AGENT,
+                "table_keys": ["test_data"],
+                "output_table_names": None,
+            },
+            # --- Turn 1: rename a column, delegated to the transform sub-agent.
+            {
+                "type": "function_call",
+                "response_id": MAIN_TRANSFORM_RESPONSE,
+                "agent_id": MAIN_AGENT,
+                "call_id": "call_main_transform",
+                "function_name": "transform_table",
+                "arguments": {
+                    "table_name": "test_data",
+                    "output_table_name": "test_data_renamed",
+                    "user_request": "Rename the column 'hello' to 'x_values'",
                 },
-                "events": [
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                        "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                        "call_id": "call_tvF42DN3FKG6d5kfFMgBdKrY",
-                        "type": "function_call",
-                        "function_name": "transform_table",
-                        "arguments": {
-                            "table_name": "test_data",
-                            "output_table_name": "test_data_renamed",
-                            "user_request": "Rename the column 'hello' to 'x_values'",
-                        },
-                    },
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                        "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
-                        "type": "create_sub_agent",
-                    },
-                    {
-                        "response_id": "resp_052c1ac9bd89d995006929d01c4e248198ba82174e8b2d0cd8",
-                        "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
-                        "call_id": "call_2LCAO5LksnkgAqog7hQr9IBZ",
-                        "type": "function_call",
-                        "function_name": "transform_dataframe",
-                        "arguments": {
-                            "code": "# Rename the column 'hello' to 'x_values'\ntransformed_df = df.rename(columns={'hello': 'x_values'})",
-                            "transformed_table_name": "test_data_renamed",
-                        },
-                    },
-                    {
-                        "response_id": "resp_052c1ac9bd89d995006929d01c4e248198ba82174e8b2d0cd8",
-                        "agent_id": "eca776ce-5a88-470d-8ccc-40e8ff1a6d5e",
-                        "type": "response_full_text",
-                        "text": "",
-                    },
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                        "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                        "call_id": "call_tvF42DN3FKG6d5kfFMgBdKrY",
-                        "function_response": "Successfully transformed the DataFrame. Continue with next steps if needed.",
-                        "type": "sub_agent_success",
-                    },
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d00f447c8199aa404f9893eee87d",
-                        "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                        "type": "response_full_text",
-                        "text": "",
-                    },
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                        "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                        "call_id": "call_uQgIOtLrHVGVela3HnQ3ppwV",
-                        "type": "function_call",
-                        "function_name": "generate_plot",
-                        "arguments": {
-                            "table_name": "test_data_renamed",
-                            "user_request": "Create a scatter plot with 'x_values' as x-axis and 'y_values' as y-axis.",
-                        },
-                    },
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                        "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
-                        "type": "create_sub_agent",
-                    },
-                    {
-                        "response_id": "resp_0ed3efc4702870bc006929d024cdf8819a806072069d7f1547",
-                        "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
-                        "call_id": "call_taSZGVmktju6CNvDJlePv9AA",
-                        "type": "function_call",
-                        "function_name": "generate_plotly_figure",
-                        "arguments": {
-                            "code": "fig = go.Figure()\nfig.add_trace(go.Scatter(x=df['x_values'], y=df['y_values'], mode='markers', marker=dict(color='blue')))\nfig.update_layout(title='Scatter Plot of x_values vs y_values', xaxis_title='x_values', yaxis_title='y_values')"
-                        },
-                    },
-                    {
-                        "response_id": "resp_0ed3efc4702870bc006929d024cdf8819a806072069d7f1547",
-                        "agent_id": "cf0eaf88-e9e1-492d-9fa7-319693642617",
-                        "type": "response_full_text",
-                        "text": "",
-                    },
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                        "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                        "call_id": "call_uQgIOtLrHVGVela3HnQ3ppwV",
-                        "function_response": "Successfully generated the plot. Continue with next steps if needed.",
-                        "type": "sub_agent_success",
-                    },
-                    {
-                        "response_id": "resp_0995956101a8e8bc006929d0221d788199b5391a02377baa4b",
-                        "agent_id": "7aa25334-2d6a-4101-8463-3ce9a513c08e",
-                        "type": "response_full_text",
-                        "text": "",
-                    },
-                ],
-            }
+            },
+            {
+                "type": "create_sub_agent",
+                "response_id": MAIN_TRANSFORM_RESPONSE,
+                "agent_id": TRANSFORM_AGENT,
+            },
+            {
+                "type": "function_call",
+                "response_id": SUB_TRANSFORM_RESPONSE,
+                "agent_id": TRANSFORM_AGENT,
+                "call_id": "call_sub_transform",
+                "function_name": "transform_dataframe",
+                "arguments": {
+                    "code": (
+                        "# Rename the column 'hello' to 'x_values'\n"
+                        "transformed_df = df.rename(columns={'hello': 'x_values'})"
+                    ),
+                    "transformed_table_name": "test_data_renamed",
+                },
+            },
+            {
+                "type": "response_full_text",
+                "response_id": SUB_TRANSFORM_RESPONSE,
+                "agent_id": TRANSFORM_AGENT,
+                "text": "",
+            },
+            {
+                "type": "sub_agent_success",
+                "response_id": MAIN_TRANSFORM_RESPONSE,
+                "agent_id": MAIN_AGENT,
+                "call_id": "call_main_transform",
+                "function_response": (
+                    "Successfully transformed the DataFrame. Continue with next steps if needed."
+                ),
+            },
+            {
+                "type": "response_full_text",
+                "response_id": MAIN_TRANSFORM_RESPONSE,
+                "agent_id": MAIN_AGENT,
+                "text": "",
+            },
+            # --- Turn 2: plot the table the first turn produced.
+            {
+                "type": "user_tables",
+                "query": "Create a scatter plot of x_values against y_values",
+                "agent_id": MAIN_AGENT,
+                "table_keys": ["test_data_renamed"],
+                "output_table_names": None,
+            },
+            {
+                "type": "function_call",
+                "response_id": MAIN_PLOT_RESPONSE,
+                "agent_id": MAIN_AGENT,
+                "call_id": "call_main_plot",
+                "function_name": "generate_plot",
+                "arguments": {
+                    "table_name": "test_data_renamed",
+                    "user_request": (
+                        "Create a scatter plot with 'x_values' as x-axis and 'y_values' as y-axis."
+                    ),
+                },
+            },
+            {
+                "type": "create_sub_agent",
+                "response_id": MAIN_PLOT_RESPONSE,
+                "agent_id": PLOT_AGENT,
+            },
+            {
+                "type": "function_call",
+                "response_id": SUB_PLOT_RESPONSE,
+                "agent_id": PLOT_AGENT,
+                "call_id": "call_sub_plot",
+                "function_name": "generate_plotly_figure",
+                "arguments": {
+                    "code": (
+                        "fig = go.Figure()\n"
+                        "fig.add_trace(go.Scatter(x=df['x_values'], y=df['y_values'], "
+                        "mode='markers'))"
+                    ),
+                    "plot_name": "Scatter Plot Of X Values Versus Y Values",
+                },
+            },
+            {
+                "type": "response_full_text",
+                "response_id": SUB_PLOT_RESPONSE,
+                "agent_id": PLOT_AGENT,
+                "text": "",
+            },
+            {
+                "type": "sub_agent_success",
+                "response_id": MAIN_PLOT_RESPONSE,
+                "agent_id": MAIN_AGENT,
+                "call_id": "call_main_plot",
+                "function_response": (
+                    "Successfully generated the plot. Continue with next steps if needed."
+                ),
+            },
+            {
+                "type": "response_full_text",
+                "response_id": MAIN_PLOT_RESPONSE,
+                "agent_id": MAIN_AGENT,
+                "text": "",
+            },
         ]
 
-        # Create input dataframe
+    def test_table_agent_replay_task(self):
+        """Replaying a recorded run reproduces its transformed table and its plot."""
         input_df = pd.DataFrame({"hello": [1, 2, 3, 4, 5], "y_values": [2, 4, 1, 8, 6]})
-
-        # Create expected output dataframe (after column rename)
         expected_df = pd.DataFrame({"x_values": [1, 2, 3, 4, 5], "y_values": [2, 4, 1, 8, 6]})
 
-        # Create input ResourceSet with the test table
-        input_resource_set = ResourceSet()
         input_table = Table(input_df)
         input_table.name = "test_data"
-        input_resource_set.add_resource(input_table, unique_name="test_data")
+        resource_list = ResourceList([input_table])
 
-        # Run the task with conversations list
-        # Since chat_messages is a DictParam but we're storing a list,
-        # we just pass the list directly and DictParam will accept it as the raw dict value
         runner = TaskRunner(
             task_type=TableAgentReplayTask,
-            params={"chat_messages": conversations},
-            inputs={"input_resource_set": input_resource_set},
+            inputs={"source": resource_list},
+            params={
+                "serialized_events": self._serialized_events(),
+                "model": "openai:gpt-4o",
+                "temperature": 0.1,
+            },
+            # Needed to make dynamic io work with the task runner.
+            input_specs=InputSpecs({"source": InputSpec(ResourceList)}),
+            output_specs=OutputSpecs({"output_resource_set": OutputSpec(ResourceSet)}),
         )
         outputs = runner.run()
 
-        # Validate outputs
         output_resource_set: ResourceSet = outputs["output_resource_set"]
         self.assertIsInstance(output_resource_set, ResourceSet)
 
-        # Get output resources
         output_resources = output_resource_set.get_resources()
 
-        # We should have only the transformed table (input tables are NOT included in output)
-        self.assertEqual(
-            len(output_resources), 1, "Should have exactly 1 transformed table in output"
-        )
-
-        # Check that the renamed table exists
+        # The transformed table plus the generated plot; the input table is not included.
         self.assertIn(
             "test_data_renamed", output_resources, "Output should contain 'test_data_renamed' table"
         )
-
-        # Verify that the original input table is NOT in the output
         self.assertNotIn(
             "test_data", output_resources, "Input table 'test_data' should NOT be in output"
         )
 
-        # Validate the transformed table
         renamed_table = output_resources["test_data_renamed"]
         self.assertIsInstance(renamed_table, Table)
 
-        # Check the dataframe structure and content
         renamed_df = renamed_table.to_dataframe()
         pd.testing.assert_frame_equal(renamed_df.reset_index(drop=True), expected_df)
 
-        # Verify column names
         self.assertIn("x_values", renamed_df.columns, "Renamed table should have 'x_values' column")
         self.assertNotIn(
             "hello", renamed_df.columns, "Renamed table should not have 'hello' column"
         )
         self.assertIn("y_values", renamed_df.columns, "Renamed table should have 'y_values' column")
+
+        # The replayed plot is produced too, so a saved chat restores its figures as well.
+        self.assertEqual(
+            len(output_resources), 2, "Should have the transformed table and the plot in output"
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

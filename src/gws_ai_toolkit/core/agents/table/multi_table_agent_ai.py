@@ -1,16 +1,21 @@
 import traceback
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 import numpy as np
 import pandas as pd
 from gws_core import BaseModelDTO, Table
 from pydantic import Field
+from pydantic_ai.models import Model
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionCallEvent
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
+    CodeEvent,
+    FunctionCallEvent,
+    FunctionErrorEvent,
+)
 from gws_ai_toolkit.core.agents.code_execution_error import CodeExecutionError
 from gws_ai_toolkit.core.agents.table.table_agent_ai_events import UserQueryMultiTablesEvent
 
-from ..base_function_agent_ai import BaseFunctionAgentAi, FunctionErrorEvent
+from ..base_pydantic_agent_ai import AgentToolSpec, BasePydanticAgentAi
 from .multi_table_agent_ai_events import MultiTableTransformAgentEvent, MultiTableTransformEvent
 
 
@@ -26,14 +31,14 @@ class MultiTableTransformConfig(BaseModelDTO):
 
 
 class MultiTableAgentAi(
-    BaseFunctionAgentAi[MultiTableTransformAgentEvent, UserQueryMultiTablesEvent]
+    BasePydanticAgentAi[MultiTableTransformAgentEvent, UserQueryMultiTablesEvent]
 ):
-    """Multi-table transform agent service for data manipulation using OpenAI"""
+    """Multi-table transform agent service for data manipulation"""
 
     def __init__(
         self,
-        openai_api_key: str,
-        model: str,
+        openai_api_key: str | None,
+        model: str | Model,
         temperature: float,
         skip_success_response: bool = False,
     ):
@@ -41,20 +46,19 @@ class MultiTableAgentAi(
             openai_api_key, model, temperature, skip_success_response=skip_success_response
         )
 
-    def _get_tools(self) -> list[dict]:
-        """Get tools configuration for OpenAI"""
+    def _get_tools(self) -> list[AgentToolSpec]:
+        """Get tools configuration for the agent"""
         return [
-            {
-                "type": "function",
-                "name": "transform_multiple_tables",
-                "description": "Generate Python code that transforms multiple DataFrames. The code should use DataFrame variables that match the input table names and store results in a dictionary named 'result_tables'.",
-                "parameters": MultiTableTransformConfig.model_json_schema(),
-            }
+            AgentToolSpec(
+                name="transform_multiple_tables",
+                description="Generate Python code that transforms multiple DataFrames. The code should use DataFrame variables that match the input table names and store results in a dictionary named 'result_tables'.",
+                parameters=MultiTableTransformConfig.model_json_schema(),
+            )
         ]
 
-    def _handle_function_call(
+    async def _handle_function_call(
         self, function_call_event: FunctionCallEvent, user_query: UserQueryMultiTablesEvent
-    ) -> Generator[MultiTableTransformAgentEvent, None, None]:
+    ) -> AsyncGenerator[MultiTableTransformAgentEvent, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
         response_id = function_call_event.response_id

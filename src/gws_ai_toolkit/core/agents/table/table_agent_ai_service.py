@@ -100,7 +100,7 @@ class TableAgentAiService:
             Exception: If the scenario fails to run or if resources are invalid
 
         Example:
-            >>> agent = TableAgentAi(openai_api_key="key", model="gpt-4o", temperature=0.1)
+            >>> agent = TableAgentAi(openai_api_key="key", model="openai:gpt-4o", temperature=0.1)
             >>> # Add tables and interact with agent
             >>> for event in agent.call_agent(user_query):
             ...     pass
@@ -124,8 +124,8 @@ class TableAgentAiService:
         # Prepare config for the replay task with serialized events
         config: ConfigParamsDict = {
             "serialized_events": [event.to_json_dict() for event in serializable_events],
-            "model": table_agent_ai._model,
-            "temperature": table_agent_ai._temperature,
+            "model": table_agent_ai.get_model(),
+            "temperature": table_agent_ai.get_temperature(),
         }
 
         # Add the TableAgentReplayTask

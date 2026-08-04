@@ -1,10 +1,11 @@
 import traceback
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 import pandas as pd
 import plotly.graph_objects as go
 from gws_core import BaseModelDTO, PlotlyResource, Table
 from pydantic import Field
+from pydantic_ai.models import Model
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
     CodeEvent,
@@ -14,7 +15,7 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
 from gws_ai_toolkit.core.agents.code_execution_error import CodeExecutionError
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent
 
-from ..base_function_agent_ai import BaseFunctionAgentAi
+from ..base_pydantic_agent_ai import AgentToolSpec, BasePydanticAgentAi
 from .plotly_agent_ai_events import PlotGeneratedEvent, PlotlyAgentEvent
 
 
@@ -32,13 +33,13 @@ class PlotlyCodeConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
-    """Standalone plot agent service for data visualization using OpenAI"""
+class PlotlyAgentAi(BasePydanticAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
+    """Standalone plot agent service for data visualization"""
 
     def __init__(
         self,
-        openai_api_key: str,
-        model: str,
+        openai_api_key: str | None,
+        model: str | Model,
         temperature: float,
         skip_success_response: bool = False,
     ):
@@ -46,20 +47,19 @@ class PlotlyAgentAi(BaseFunctionAgentAi[PlotlyAgentEvent, UserQueryTableEvent]):
             openai_api_key, model, temperature, skip_success_response=skip_success_response
         )
 
-    def _get_tools(self) -> list[dict]:
-        """Get tools configuration for OpenAI"""
+    def _get_tools(self) -> list[AgentToolSpec]:
+        """Get tools configuration for the agent"""
         return [
-            {
-                "type": "function",
-                "name": "generate_plotly_figure",
-                "description": "Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object. Also provide a descriptive title for the plot as a short sentence.",
-                "parameters": PlotlyCodeConfig.model_json_schema(),
-            }
+            AgentToolSpec(
+                name="generate_plotly_figure",
+                description="Generate Python code that creates a Plotly figure. The code should use 'df' as the DataFrame variable and return a Plotly Figure object. Also provide a descriptive title for the plot as a short sentence.",
+                parameters=PlotlyCodeConfig.model_json_schema(),
+            )
         ]
 
-    def _handle_function_call(
+    async def _handle_function_call(
         self, function_call_event: FunctionCallEvent, user_query: UserQueryTableEvent
-    ) -> Generator[PlotlyAgentEvent, None, None]:
+    ) -> AsyncGenerator[PlotlyAgentEvent, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
         response_id = function_call_event.response_id

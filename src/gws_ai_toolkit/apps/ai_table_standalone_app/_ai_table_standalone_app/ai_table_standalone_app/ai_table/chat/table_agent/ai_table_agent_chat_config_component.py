@@ -44,11 +44,12 @@ def ai_table_agent_chat_config_component() -> rx.Component:
             rx.vstack(
                 rx.heading("Model Configuration", size="4", margin_top="1em"),
                 rx.text(
-                    "OpenAI model to use for intelligent request routing and function calling:",
+                    "Model to use for intelligent request routing and function calling, "
+                    "as a 'provider:model' string:",
                     color="gray",
                 ),
                 rx.input(
-                    placeholder="Enter model name (e.g., gpt-4o, gpt-4o-mini)...",
+                    placeholder="Enter provider:model (e.g., openai:gpt-4o, openai:gpt-4o-mini)...",
                     name="model",
                     default_value=AiTableAgentChatConfigState.model,
                     width="100%",

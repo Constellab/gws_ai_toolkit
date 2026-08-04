@@ -99,10 +99,11 @@ class TableAgentReplayTask(Task):
     - **Documentation**: Demonstrate multi-step data transformation workflows
 
     ## Notes
-    - Requires a valid OpenAI API key in the environment (OPENAI_API_KEY)
+    - Replaying re-executes the recorded tool calls, so no model is contacted and no API key
+      is required
     - The chat messages must be compatible with the input tables
     - Only transformation events generate output tables (plots are not captured)
-    - The task uses the same model and temperature settings as in the test example (gpt-4o, 0.1)
+    - The model is configured as a "provider:model" string (e.g. openai:gpt-4o)
     """
 
     input_specs: InputSpecs = DynamicInputs(additionnal_port_spec=InputSpec(Table))
@@ -125,10 +126,9 @@ class TableAgentReplayTask(Task):
                 visibility="public",
             ),
             "model": StrParam(
-                default_value="gpt-4o",
+                default_value="openai:gpt-4o",
                 human_name="Model",
-                short_description="OpenAI model to use for replay (e.g., gpt-4o, gpt-4-turbo, gpt-3.5-turbo)",
-                allowed_values=["gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"],
+                short_description="Model to use for replay, as a 'provider:model' string (e.g., openai:gpt-4o)",
             ),
             "temperature": FloatParam(
                 default_value=0.1,
@@ -182,14 +182,12 @@ class TableAgentReplayTask(Task):
         except Exception as e:
             error_msg = f"Failed to parse serialized events: {str(e)}"
             self.log_error_message(error_msg)
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
-        # Get OpenAI API key from environment
-        openai_api_key = os.getenv("OPENAI_API_KEY", "")
-        if not openai_api_key:
-            error_msg = "OPENAI_API_KEY environment variable is not set"
-            self.log_error_message(error_msg)
-            raise ValueError(error_msg)
+        # Replaying re-executes the recorded tool calls and never contacts a model, so a
+        # missing API key is not fatal here. It is still forwarded when present, so that an
+        # agent built from this config stays usable.
+        openai_api_key = os.getenv("OPENAI_API_KEY") or None
 
         # Get model and temperature from config
         model = params.get_value("model")

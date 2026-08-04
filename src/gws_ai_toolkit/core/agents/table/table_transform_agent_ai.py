@@ -1,10 +1,11 @@
 import traceback
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 import numpy as np
 import pandas as pd
 from gws_core import BaseModelDTO, Table
 from pydantic import Field
+from pydantic_ai.models import Model
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
     CodeEvent,
@@ -14,7 +15,7 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
 from gws_ai_toolkit.core.agents.code_execution_error import CodeExecutionError
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableTransformEvent
 
-from ..base_function_agent_ai import BaseFunctionAgentAi
+from ..base_pydantic_agent_ai import AgentToolSpec, BasePydanticAgentAi
 from .table_transform_agent_ai_events import DataFrameTransformAgentEvent, TableTransformEvent
 
 
@@ -34,14 +35,14 @@ class TableTransformConfig(BaseModelDTO):
 
 
 class TableTransformAgentAi(
-    BaseFunctionAgentAi[DataFrameTransformAgentEvent, UserQueryTableTransformEvent]
+    BasePydanticAgentAi[DataFrameTransformAgentEvent, UserQueryTableTransformEvent]
 ):
-    """Standalone DataFrame transform agent service for data manipulation using OpenAI"""
+    """Standalone DataFrame transform agent service for data manipulation"""
 
     def __init__(
         self,
-        openai_api_key: str,
-        model: str,
+        openai_api_key: str | None,
+        model: str | Model,
         temperature: float,
         skip_success_response: bool = False,
     ):
@@ -49,20 +50,19 @@ class TableTransformAgentAi(
             openai_api_key, model, temperature, skip_success_response=skip_success_response
         )
 
-    def _get_tools(self) -> list[dict]:
-        """Get tools configuration for OpenAI"""
+    def _get_tools(self) -> list[AgentToolSpec]:
+        """Get tools configuration for the agent"""
         return [
-            {
-                "type": "function",
-                "name": "transform_dataframe",
-                "description": "Generate Python code that transforms a DataFrame. The code should use 'df' as the input DataFrame variable and assign the result to 'transformed_df'.",
-                "parameters": TableTransformConfig.model_json_schema(),
-            }
+            AgentToolSpec(
+                name="transform_dataframe",
+                description="Generate Python code that transforms a DataFrame. The code should use 'df' as the input DataFrame variable and assign the result to 'transformed_df'.",
+                parameters=TableTransformConfig.model_json_schema(),
+            )
         ]
 
-    def _handle_function_call(
+    async def _handle_function_call(
         self, function_call_event: FunctionCallEvent, user_query: UserQueryTableTransformEvent
-    ) -> Generator[DataFrameTransformAgentEvent, None, None]:
+    ) -> AsyncGenerator[DataFrameTransformAgentEvent, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
         response_id = function_call_event.response_id

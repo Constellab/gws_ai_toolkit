@@ -1,7 +1,8 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 from gws_core import BaseModelDTO, PlotlyResource, Table
 from pydantic import Field
+from pydantic_ai.models import Model
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
     FunctionCallEvent,
@@ -14,7 +15,7 @@ from gws_ai_toolkit.core.agents.table.table_agent_event_base import (
 )
 from gws_ai_toolkit.core.agents.table.table_transform_agent_ai_events import TableTransformEvent
 
-from ..base_function_agent_ai import BaseFunctionAgentAi
+from ..base_pydantic_agent_ai import AgentToolSpec, BasePydanticAgentAi
 from .multi_table_agent_ai import MultiTableAgentAi
 from .multi_table_agent_ai_events import MultiTableTransformEvent
 from .plotly_agent_ai import PlotlyAgentAi
@@ -70,43 +71,40 @@ class MultiTableTransformRequestConfig(BaseModelDTO):
         extra = "forbid"
 
 
-class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEvent]):
+class TableAgentAi(BasePydanticAgentAi[TableAgentEvent, UserQueryMultiTablesEvent]):
     """Main table agent that orchestrates plot and transformation operations using function calling"""
 
     def __init__(
         self,
-        openai_api_key: str,
-        model: str,
+        openai_api_key: str | None,
+        model: str | Model,
         temperature: float,
     ):
         super().__init__(openai_api_key, model, temperature, skip_success_response=False)
 
-    def _get_tools(self) -> list[dict]:
-        """Get tools configuration for OpenAI"""
+    def _get_tools(self) -> list[AgentToolSpec]:
+        """Get tools configuration for the agent"""
         return [
-            {
-                "type": "function",
-                "name": "generate_plot",
-                "description": "Generate data visualizations and charts for a SINGLE table. Use this when the user wants to create plots, graphs, charts, or any visual representation of the data. Note: This function only supports operations on ONE table at a time.",
-                "parameters": PlotRequestConfig.model_json_schema(),
-            },
-            {
-                "type": "function",
-                "name": "transform_table",
-                "description": "Transform, clean, or manipulate a SINGLE table's data. Use this when the user wants to modify the data structure, filter rows, add/remove columns, perform calculations, or any data manipulation tasks. Note: This function only supports operations on ONE table at a time.",
-                "parameters": TransformRequestConfig.model_json_schema(),
-            },
-            {
-                "type": "function",
-                "name": "transform_multiple_tables",
-                "description": "Transform, merge, join, or manipulate MULTIPLE tables together. Use this when the user wants to combine data from multiple tables, perform cross-table operations, merge/join tables, or any operation that requires working with multiple tables simultaneously.",
-                "parameters": MultiTableTransformRequestConfig.model_json_schema(),
-            },
+            AgentToolSpec(
+                name="generate_plot",
+                description="Generate data visualizations and charts for a SINGLE table. Use this when the user wants to create plots, graphs, charts, or any visual representation of the data. Note: This function only supports operations on ONE table at a time.",
+                parameters=PlotRequestConfig.model_json_schema(),
+            ),
+            AgentToolSpec(
+                name="transform_table",
+                description="Transform, clean, or manipulate a SINGLE table's data. Use this when the user wants to modify the data structure, filter rows, add/remove columns, perform calculations, or any data manipulation tasks. Note: This function only supports operations on ONE table at a time.",
+                parameters=TransformRequestConfig.model_json_schema(),
+            ),
+            AgentToolSpec(
+                name="transform_multiple_tables",
+                description="Transform, merge, join, or manipulate MULTIPLE tables together. Use this when the user wants to combine data from multiple tables, perform cross-table operations, merge/join tables, or any operation that requires working with multiple tables simultaneously.",
+                parameters=MultiTableTransformRequestConfig.model_json_schema(),
+            ),
         ]
 
-    def _handle_function_call(
+    async def _handle_function_call(
         self, function_call_event: FunctionCallEvent, user_query: UserQueryMultiTablesEvent
-    ) -> Generator[TableAgentEvent, None, None]:
+    ) -> AsyncGenerator[TableAgentEvent, None]:
         """Handle function call by delegating to appropriate specialized agent"""
 
         function_name = function_call_event.function_name
@@ -128,17 +126,20 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
                 return
 
             if function_name == "generate_plot":
-                yield from self._handle_plot_request(
+                async for event in self._handle_plot_request(
                     user_request, arguments, call_id, response_id, user_query
-                )
+                ):
+                    yield event
             elif function_name == "transform_table":
-                yield from self._handle_transform_request(
+                async for event in self._handle_transform_request(
                     user_request, arguments, call_id, response_id, user_query
-                )
+                ):
+                    yield event
             elif function_name == "transform_multiple_tables":
-                yield from self._handle_multi_table_transform_request(
+                async for event in self._handle_multi_table_transform_request(
                     user_request, arguments, call_id, response_id, user_query
-                )
+                ):
+                    yield event
             else:
                 yield FunctionErrorEvent(
                     message=f"Unknown function: {function_name}",
@@ -154,14 +155,14 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
                 agent_id=self.id,
             )
 
-    def _handle_plot_request(
+    async def _handle_plot_request(
         self,
         sub_user_request: str,
         arguments: dict,
         call_id: str,
         response_id: str,
         user_query: UserQueryMultiTablesEvent,
-    ) -> Generator[TableAgentEvent, None, None]:
+    ) -> AsyncGenerator[TableAgentEvent, None]:
         """Handle plot generation request by creating and delegating to PlotlyAgentAi"""
 
         table_name = arguments.get("table_name", "")
@@ -179,7 +180,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
 
         # Create the plotly agent
         plotly_agent = PlotlyAgentAi(
-            openai_api_key=self._openai_api_key,
+            openai_api_key=self._api_key,
             model=self._model,
             temperature=self._temperature,
             # skip success to avoid double success events because
@@ -191,16 +192,19 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
             query=sub_user_request, table=table, agent_id=plotly_agent.id
         )
 
-        yield from self.call_sub_agent(plotly_agent, sub_query, response_id, call_id, self.id)
+        async for event in self.call_sub_agent(
+            plotly_agent, sub_query, response_id, call_id, self.id
+        ):
+            yield event
 
-    def _handle_transform_request(
+    async def _handle_transform_request(
         self,
         sub_user_request: str,
         arguments: dict,
         call_id: str,
         response_id: str,
         user_query: UserQueryMultiTablesEvent,
-    ) -> Generator[TableAgentEvent, None, None]:
+    ) -> AsyncGenerator[TableAgentEvent, None]:
         """Handle table transformation request by creating and delegating to TableTransformAgentAi"""
 
         table_name = arguments.get("table_name", "")
@@ -228,7 +232,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
 
         # Create the transform agent
         transform_agent = TableTransformAgentAi(
-            openai_api_key=self._openai_api_key,
+            openai_api_key=self._api_key,
             model=self._model,
             temperature=self._temperature,
             # skip success to avoid double success events because
@@ -244,16 +248,19 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
             agent_id=transform_agent.id,
         )
         # Delegate to transform agent and yield events directly
-        yield from self.call_sub_agent(transform_agent, sub_query, response_id, call_id, self.id)
+        async for event in self.call_sub_agent(
+            transform_agent, sub_query, response_id, call_id, self.id
+        ):
+            yield event
 
-    def _handle_multi_table_transform_request(
+    async def _handle_multi_table_transform_request(
         self,
         sub_user_request: str,
         arguments: dict,
         call_id: str,
         response_id: str,
         user_query: UserQueryMultiTablesEvent,
-    ) -> Generator[TableAgentEvent, None, None]:
+    ) -> AsyncGenerator[TableAgentEvent, None]:
         """Handle multi-table transformation request by creating and delegating to MultiTableAgentAi"""
 
         table_names = arguments.get("table_names", [])
@@ -293,7 +300,7 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
 
         # Create the multi-table transform agent
         multi_table_agent = MultiTableAgentAi(
-            openai_api_key=self._openai_api_key,
+            openai_api_key=self._api_key,
             model=self._model,
             temperature=self._temperature,
             # skip success to avoid double success events because
@@ -309,7 +316,10 @@ class TableAgentAi(BaseFunctionAgentAi[TableAgentEvent, UserQueryMultiTablesEven
         )
 
         # Delegate to multi-table agent and yield events directly
-        yield from self.call_sub_agent(multi_table_agent, user_query, response_id, call_id, self.id)
+        async for event in self.call_sub_agent(
+            multi_table_agent, user_query, response_id, call_id, self.id
+        ):
+            yield event
 
     def _get_ai_instruction(self, user_query: UserQueryMultiTablesEvent) -> str:
         """Create prompt for OpenAI with table metadata"""

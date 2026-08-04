@@ -23,8 +23,10 @@ class AiTableAgentChatConfig(BaseModelDTO):
         # Uses default GPT-4o model with 0.7 temperature for balanced creativity/accuracy
     """
 
-    # OpenAI model to use for chat
-    model: str = "gpt-4o"
+    # Model to use for chat, as a "provider:model" string (e.g. "openai:gpt-4o").
+    # A bare model name is read as an OpenAI model, so configurations saved before the
+    # pydantic-ai migration keep loading.
+    model: str = "openai:gpt-4o"
 
     # Temperature for the AI model (0.0 to 2.0)
     # Lower values (0.1-0.3) for more deterministic function calling
