@@ -77,6 +77,18 @@ class RagChatProfile(Model):
         """Every profile, in a stable order for a UI list or a select."""
         return cls.select().order_by(cls.name)
 
+    @classmethod
+    def get_by_publish_token(cls, token: str) -> "RagChatProfile | None":
+        """The profile this publish token belongs to, or None.
+
+        Does not filter on ``is_published``: ``unpublish_profile`` clears ``publish_token`` to
+        ``None``, so a match already implies the profile is published. A caller that wants the
+        invariant checked explicitly (rather than relying on that always holding) should still read
+        ``is_published`` off the returned row — see
+        :class:`~gws_ai_toolkit.api.knowledge_base_api_auth.PublishTokenAuth`.
+        """
+        return cls.get_or_none(cls.publish_token == token)
+
     ############################################### CONFIGURATION ###############################################
 
     def get_retrieval_config(self) -> RetrievalConfig:

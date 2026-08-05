@@ -1,3 +1,7 @@
+# Imported for its side effect: importing the module is what registers the
+# ``POST /brick/gws_ai_toolkit/chat/ask`` route with ``ApiRegistry``, and nothing else in the brick
+# imports it (the route is reached over HTTP, never called directly from Python).
+from .api.knowledge_base_api_controller import knowledge_base_api as knowledge_base_api
 from .apps.rag_app.generate_rag_app import GenerateDatahubRagFlowApp
 from .core.agents.agent_events import (
     BaseFunctionAgentEvent,
