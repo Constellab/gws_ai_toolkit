@@ -9,10 +9,12 @@ happens to show. Both go through
 :class:`~gws_ai_toolkit.models.knowledge_base.knowledge_base_chat_factory.KnowledgeBaseChatFactory`,
 which is also what the future HTTP route uses, so there is one assembly rather than two.
 
-**A conversation that cannot be continued is read, not restored.** A legacy ``rag`` row, a row of
-another mode, a row whose profile was deleted: the messages still load and render, and
-:attr:`read_only_notice` says why the input is gone. That is the difference between "this conversation
-used a retired engine" and a stack trace.
+**A conversation that cannot be continued is read, not restored.** A legacy ``rag`` row goes through
+the generic ``is_legacy_conversation`` path shared by every
+:class:`~gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex.chat_base.conversation_chat_state_base.ConversationChatStateBase`
+subclass. A row of another mode, or one whose profile was deleted, is knowledge-base-specific instead:
+the messages still load and render, and :attr:`read_only_notice` says why the input is gone. Either
+way, that is the difference between "this conversation cannot be continued" and a stack trace.
 
 **A source pill opens through its document's own provider.** A lab resource offers a share link, and
 everything else falls back to the snapshot — the one copy guaranteed to exist. Which of the two, and
@@ -126,6 +128,12 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     async def _restore_conversation(self, conversation_id: str) -> None:
         """Reopen a persisted conversation on the profile its own row records.
 
+        A legacy row is checked first, and generically: `_mark_legacy_if_needed` is what any
+        `ConversationChatStateBase` subclass calls before attempting a mode-specific restore, and
+        the page renders the shared `legacy_conversation_component` for it. What is left below
+        handles the ways a *knowledge-base* restore specifically fails — another mode's row, a row
+        recording no profile, a row whose profile was deleted.
+
         Whether the conversation *can* be reopened is settled before the factory is built, and that
         order matters: building one resolves the chat credentials, so a lab whose credentials are
         misconfigured would answer a retired conversation with a credentials error instead of saying
@@ -135,6 +143,9 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
                 into the read-only notice rather than an error, because the transcript is still worth
                 reading
         """
+        if await self._mark_legacy_if_needed(conversation_id):
+            return
+
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
             KnowledgeBaseChatFactory.get_restorable_profile_id(conversation_id)
