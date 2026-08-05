@@ -1,7 +1,7 @@
 """Authenticating a public chat-API request against a chat profile's publish token.
 
 Publishing is a property of a chat profile, and **the token is the scope** (see
-``docs/todo/knowledge_base_public_api_plan.md`` § Authorisation). There is no caller-supplied
+``docs/done/knowledge_base_public_api_plan.md`` § Authorisation). There is no caller-supplied
 profile or knowledge-base id anywhere in the request — the token is the only thing a caller
 presents, and it resolves to exactly the profile that minted it.
 

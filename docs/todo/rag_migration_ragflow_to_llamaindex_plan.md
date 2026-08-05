@@ -7,7 +7,7 @@
 >   every hand-rolled OpenAI agent loop in this brick moves to pydantic-ai first.
 > - [rag_embedded_stack_implementation_plan.md](rag_embedded_stack_implementation_plan.md) — engine,
 >   data model, UI, sync, and the removal of Dify/RAGFlow.
-> - [knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md) — the HTTP route the
+> - [knowledge_base_public_api_plan.md](../done/knowledge_base_public_api_plan.md) — the HTTP route the
 >   Constellab Community backend calls.
 >
 > **Terminology settled**: the container of indexed documents is a **`KnowledgeBase`** (not
@@ -124,7 +124,7 @@ via Constellab's `DockerService`, and `gws_core`'s `CommunityUserService.ask_rag
 
 So "community-level" is not a different deployment model: it is **one lab that serves external
 callers**, and what it needs is an authenticated HTTP route. Hence
-[knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md). Note also that removing
+[knowledge_base_public_api_plan.md](../done/knowledge_base_public_api_plan.md). Note also that removing
 RAGFlow from this brick does **not** retire that deployment — repointing it is coordinated work in the
 Community codebase.
 
@@ -196,7 +196,7 @@ the gws_core agent it would eventually delegate to does not exist yet.
 
 **Decision: the management app and the in-lab chat are Reflex**, in this brick. Externally, the
 Community website consumes the HTTP route rather than a Reflex page — see
-[knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md). A separate Angular chat, if it
+[knowledge_base_public_api_plan.md](../done/knowledge_base_public_api_plan.md). A separate Angular chat, if it
 happens, would consume the same route.
 
 ### Data model (Peewee, in this brick)

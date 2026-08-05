@@ -2,7 +2,7 @@
 
 Every call to ``/chat/ask`` costs an embedding plus an LLM completion, and the publish token is the
 only thing standing between a leaked credential and an unbounded bill (see
-``docs/todo/knowledge_base_public_api_plan.md`` § Rate limiting). This is deliberately
+``docs/done/knowledge_base_public_api_plan.md`` § Rate limiting). This is deliberately
 unsophisticated: a fixed window, counted in memory.
 
 **In-memory, single-process.** The lab runs one uvicorn worker, so a process-local counter is the

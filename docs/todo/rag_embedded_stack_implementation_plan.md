@@ -3,7 +3,7 @@
 > Rationale and stack choice: [rag_migration_ragflow_to_llamaindex_plan.md](rag_migration_ragflow_to_llamaindex_plan.md).
 > **Blocked on** [pydantic_ai_agent_migration_plan.md](pydantic_ai_agent_migration_plan.md) — the chat
 > loop is built on the migrated agent base, not alongside it.
-> The Community-facing HTTP surface is [knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md).
+> The Community-facing HTTP surface is [knowledge_base_public_api_plan.md](../done/knowledge_base_public_api_plan.md).
 > Rewritten August 2026 after a full review of the earlier draft. Move all four docs to `docs/done/`
 > once implemented.
 > **Step-1 spike run August 2026** — its findings are folded into *Spike results* under §Hybrid
@@ -400,7 +400,7 @@ stamped when the status is set; a row whose lease exceeds the threshold is repor
 | top_k | `IntegerField(default=5)` | |
 | score_threshold | `FloatField(null=True)` | **defined against the RRF `_relevance_score`** (~0.015–0.033 scale, rank-derived), not a cosine similarity. Default `None` |
 | knowledge_base_ids | `JSONField(default=list)` | bound KBs — **becomes the LanceDB `MetadataFilters`** at query time. Soft M2M: validated on save, dangling ids dropped at query time; join table is a follow-up |
-| is_published / publish_token / published_at | | see [knowledge_base_public_api_plan.md](knowledge_base_public_api_plan.md) |
+| is_published / publish_token / published_at | | see [knowledge_base_public_api_plan.md](../done/knowledge_base_public_api_plan.md) |
 
 `*Config` is reserved for non-persisted module DTOs (`AiExpertChatConfig`); a persisted, named,
 user-selectable row is a **profile**. `RagChatConfig` frees up when RAGFlow is deleted — do not

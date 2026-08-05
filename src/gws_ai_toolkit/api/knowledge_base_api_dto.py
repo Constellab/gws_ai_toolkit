@@ -1,7 +1,7 @@
 """The wire contract of ``POST /brick/gws_ai_toolkit/chat/ask``.
 
 Field names match what the Constellab Community backend's existing RAGFlow client already sends
-and expects (see ``docs/todo/knowledge_base_public_api_plan.md`` § Endpoints), so repointing that
+and expects (see ``docs/done/knowledge_base_public_api_plan.md`` § Endpoints), so repointing that
 client at this route is a rename rather than a rewrite.
 """
 
@@ -37,3 +37,41 @@ class KnowledgeBaseAskResponse(BaseModelDTO):
     answer: str
     session_id: str
     references: list[RagChatSource] = []
+
+
+class KnowledgeBaseStreamDeltaEvent(BaseModelDTO):
+    """An ``event: delta`` of ``POST /brick/gws_ai_toolkit/chat/stream`` — one chunk of the answer.
+
+    Deltas arrive in generation order; concatenating every ``content`` in order rebuilds the same
+    text :class:`KnowledgeBaseAskResponse` would have returned as ``answer``.
+
+    Attributes:
+        content: The text to append to the answer built so far.
+    """
+
+    content: str
+
+
+class KnowledgeBaseStreamDoneEvent(BaseModelDTO):
+    """The ``event: done`` closing a successful stream.
+
+    Carries what the deltas could not: the two fields :class:`KnowledgeBaseAskResponse` returns
+    alongside ``answer``, which the deltas already spelled out.
+
+    Attributes:
+        session_id: The conversation's id, as in :class:`KnowledgeBaseAskResponse`.
+        references: The sources the answer was attributed to, as in :class:`KnowledgeBaseAskResponse`.
+    """
+
+    session_id: str
+    references: list[RagChatSource] = []
+
+
+class KnowledgeBaseStreamErrorEvent(BaseModelDTO):
+    """The ``event: error`` closing a failed stream — never a partial answer presented as complete.
+
+    Attributes:
+        error: What went wrong.
+    """
+
+    error: str

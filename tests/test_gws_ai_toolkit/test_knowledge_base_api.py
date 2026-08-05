@@ -1,7 +1,7 @@
-"""Tests for the public chat API: ``POST /brick/gws_ai_toolkit/chat/ask``.
+"""Tests for the public chat API: ``POST /brick/gws_ai_toolkit/chat/ask`` and ``.../chat/stream``.
 
 Two layers, matching the split between the controller and the service (see
-``docs/todo/knowledge_base_public_api_plan.md`` § Verification):
+``docs/done/knowledge_base_public_api_plan.md`` § Verification):
 
 - :class:`TestKnowledgeBaseApiService` drives :class:`KnowledgeBaseApiService` directly, with an
   injected :class:`KnowledgeBaseChatFactory` — the seam :class:`KnowledgeBaseChatFactory` itself
@@ -12,8 +12,12 @@ Two layers, matching the split between the controller and the service (see
   ``TestClient``, with :meth:`KnowledgeBaseApiService._build_factory` patched to the same scripted
   factory — this is what proves the wire contract (status codes, header parsing, JSON field names)
   rather than just the Python-level service.
+
+:func:`_collect_sse_events` and :func:`_parse_sse_frame` turn ``stream``'s raw SSE text back into
+``(event, data)`` pairs, so the streaming tests assert on the same shape the non-streaming ones do.
 """
 
+import json
 import time
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -29,6 +33,9 @@ from gws_ai_toolkit.api.knowledge_base_api_service import (
     CHAT_APP_NAME,
     MAX_MESSAGE_LENGTH,
     MAX_REPLAYED_TURNS,
+    STREAM_EVENT_DELTA,
+    STREAM_EVENT_DONE,
+    STREAM_EVENT_ERROR,
     UNKNOWN_SESSION_MESSAGE,
     KnowledgeBaseApiService,
 )
@@ -162,6 +169,18 @@ def _searching_factory() -> KnowledgeBaseChatFactory:
             turns=[ToolCall(SEARCH_KNOWLEDGE_TOOL_NAME, {"query": "budget"}), "The budget is 42000 euros."]
         ).build(),
     )
+
+
+def _parse_sse_frame(frame: str) -> tuple[str, dict]:
+    """One ``event: <name>\\ndata: <json>`` frame, as ``(name, json)`` — the inverse of the
+    service's own ``_format_sse_event``."""
+    event_line, data_line = frame.strip("\n").split("\n")
+    return event_line.removeprefix("event: "), json.loads(data_line.removeprefix("data: "))
+
+
+def _collect_sse_events(raw: str) -> list[tuple[str, dict]]:
+    """Every frame of a full SSE body (or the joined output of the service's own generator)."""
+    return [_parse_sse_frame(frame) for frame in raw.split("\n\n") if frame]
 
 
 # test_knowledge_base_api
@@ -394,6 +413,157 @@ class TestKnowledgeBaseApiService(BaseTestCase):
 
 
 # test_knowledge_base_api
+class TestKnowledgeBaseApiServiceStream(BaseTestCase):
+    """The SSE counterpart of :class:`TestKnowledgeBaseApiService`, same fixtures and factories."""
+
+    @classmethod
+    def init_before_test(cls):
+        super().init_before_test()
+        AiToolkitUserSyncService().sync_all_users()
+
+    def setUp(self) -> None:
+        super().setUp()
+        RagChatProfile.delete().execute()
+        KnowledgeBase.delete().execute()
+
+        self.profile_service = RagChatProfileService()
+        self.service = KnowledgeBaseApiService()
+
+    def _create_profile(self) -> RagChatProfile:
+        return self.profile_service.create_profile(SaveRagChatProfileDTO(name="Support bot"))
+
+    def _create_conversation_row(self, mode: str, configuration: dict) -> ChatConversation:
+        return ChatConversationService().save_conversation(
+            SaveChatConversationDTO(
+                chat_app_name=CHAT_APP_NAME, configuration=configuration, mode=mode, label="A question"
+            )
+        )
+
+    ############################################### DELTAS AND TERMINAL EVENT ###############################################
+
+    def test_stream_emits_ordered_deltas_then_a_done_event(self):
+        profile = self._create_profile()
+
+        events = list(
+            self.service.stream(
+                profile, KnowledgeBaseAskRequest(message="Hi there"), factory=_plain_text_factory("Hello.")
+            )
+        )
+        parsed = [_parse_sse_frame(event) for event in events]
+
+        self.assertEqual([name for name, _ in parsed[:-1]], [STREAM_EVENT_DELTA] * (len(parsed) - 1))
+        self.assertEqual("".join(data["content"] for _, data in parsed[:-1]), "Hello.")
+
+        done_event, done_data = parsed[-1]
+        self.assertEqual(done_event, STREAM_EVENT_DONE)
+        self.assertEqual(done_data["references"], [])
+        self.assertTrue(done_data["session_id"])
+
+        row = ChatConversation.get_by_id_and_check(done_data["session_id"])
+        self.assertEqual(row.mode, ChatConversationMode.KNOWLEDGE_BASE.value)
+        self.assertEqual(
+            row.configuration[KnowledgeBaseChatConversation.CHAT_PROFILE_ID_CONFIG_KEY], profile.id
+        )
+
+    def test_stream_persists_the_full_answer_despite_streaming_it_in_chunks(self):
+        """The persisted transcript must read the same whether the caller streamed it or not."""
+        profile = self._create_profile()
+
+        events = list(
+            self.service.stream(
+                profile, KnowledgeBaseAskRequest(message="Hi there"), factory=_plain_text_factory("Hello.")
+            )
+        )
+        _, done_data = _parse_sse_frame(events[-1])
+
+        messages = ChatConversationService().get_messages_of_conversation(done_data["session_id"])
+        visible = [message for message in messages if not message.is_history_only()]
+        self.assertEqual(visible[-1].content, "Hello.")
+
+    def test_stream_attributes_the_answer_to_the_retrieved_sources(self):
+        profile = self._create_profile()
+
+        events = list(
+            self.service.stream(
+                profile, KnowledgeBaseAskRequest(message="What is the budget?"), factory=_searching_factory()
+            )
+        )
+        parsed = [_parse_sse_frame(event) for event in events]
+
+        self.assertEqual("".join(data["content"] for name, data in parsed if name == STREAM_EVENT_DELTA),
+                          "The budget is 42000 euros.")
+        _, done_data = parsed[-1]
+        self.assertEqual([source["document_name"] for source in done_data["references"]], ["budget.md"])
+
+    def test_stream_reports_a_failed_run_as_an_error_event_not_as_an_answer(self):
+        """A truncated or missing answer must never be presented as a complete one."""
+        profile = self._create_profile()
+        failing_factory = KnowledgeBaseChatFactory(
+            chat_app_name=CHAT_APP_NAME,
+            retriever=NoopRetriever(),
+            model=SingleAgentScriptedModel(turns=[]).build(),  # no scripted turn -> the run raises
+        )
+
+        events = list(
+            self.service.stream(profile, KnowledgeBaseAskRequest(message="Hi"), factory=failing_factory)
+        )
+
+        self.assertEqual([_parse_sse_frame(event)[0] for event in events], [STREAM_EVENT_ERROR])
+
+    ############################################### SYNCHRONOUS VALIDATION ###############################################
+
+    def test_stream_refuses_an_over_long_message_before_returning_a_stream(self):
+        """The length check runs eagerly: it is a normal 400, not a stream that opens and fails."""
+        profile = self._create_profile()
+
+        with self.assertRaises(BadRequestException):
+            self.service.stream(
+                profile,
+                KnowledgeBaseAskRequest(message="x" * (MAX_MESSAGE_LENGTH + 1)),
+                factory=_plain_text_factory(),
+            )
+
+    def test_stream_refuses_a_session_id_belonging_to_another_profile_before_returning_a_stream(self):
+        owner_profile = self._create_profile()
+        other_profile = self.profile_service.create_profile(SaveRagChatProfileDTO(name="Other bot"))
+        row = self._create_conversation_row(
+            mode=ChatConversationMode.KNOWLEDGE_BASE.value,
+            configuration={KnowledgeBaseChatConversation.CHAT_PROFILE_ID_CONFIG_KEY: other_profile.id},
+        )
+
+        with self.assertRaises(BadRequestException) as raised:
+            self.service.stream(
+                owner_profile,
+                KnowledgeBaseAskRequest(message="Hi", session_id=row.id),
+                factory=_plain_text_factory(),
+            )
+        self.assertEqual(str(raised.exception.detail), UNKNOWN_SESSION_MESSAGE)
+
+    ############################################### SESSION CONTINUATION ###############################################
+
+    def test_stream_continues_a_conversation_started_by_ask(self):
+        """The two routes share one chat loop, so a conversation may switch transport mid-way."""
+        profile = self._create_profile()
+        factory = KnowledgeBaseChatFactory(
+            chat_app_name=CHAT_APP_NAME,
+            retriever=NoopRetriever(),
+            model=SingleAgentScriptedModel(turns=["Hello.", "Still here."]).build(),
+        )
+
+        first = self.service.ask(profile, KnowledgeBaseAskRequest(message="Hi"), factory=factory)
+        events = list(
+            self.service.stream(
+                profile,
+                KnowledgeBaseAskRequest(message="Still there?", session_id=first.session_id),
+                factory=factory,
+            )
+        )
+
+        _, done_data = _parse_sse_frame(events[-1])
+        self.assertEqual(done_data["session_id"], first.session_id)
+
+
+# test_knowledge_base_api
 class TestPublishTokenAuth(BaseTestCase):
     """The bearer-token dependency the route authenticates every request with."""
 
@@ -564,6 +734,147 @@ class TestKnowledgeBaseApiController(BaseTestCase):
             statuses = [
                 self.client.post(
                     "/chat/ask", json={"message": "Hi"}, headers={"Authorization": f"Bearer {token}"}
+                ).status_code
+                for _ in range(31)
+            ]
+
+        self.assertIn(429, statuses)
+
+
+# test_knowledge_base_api
+class TestKnowledgeBaseApiStreamController(BaseTestCase):
+    """``/chat/stream`` end to end — the SSE counterpart of :class:`TestKnowledgeBaseApiController`."""
+
+    @classmethod
+    def init_before_test(cls):
+        super().init_before_test()
+        AiToolkitUserSyncService().sync_all_users()
+
+    def setUp(self) -> None:
+        super().setUp()
+        RagChatProfile.delete().execute()
+        self.profile_service = RagChatProfileService()
+        self.client = TestClient(knowledge_base_api)
+
+    def test_a_valid_token_streams_the_expected_contract(self):
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
+
+        with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=_plain_text_factory("Hello.")):
+            response = self.client.post(
+                "/chat/stream",
+                json={"message": "Hi there"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "text/event-stream; charset=utf-8")
+        events = _collect_sse_events(response.text)
+
+        self.assertEqual([name for name, _ in events[:-1]], [STREAM_EVENT_DELTA] * (len(events) - 1))
+        self.assertEqual("".join(data["content"] for _, data in events[:-1]), "Hello.")
+
+        done_event, done_data = events[-1]
+        self.assertEqual(done_event, STREAM_EVENT_DONE)
+        self.assertEqual(set(done_data.keys()), {"session_id", "references"})
+        self.assertEqual(done_data["references"], [])
+        self.assertTrue(done_data["session_id"])
+
+    def test_a_failed_run_streams_an_error_event_not_a_200_with_no_body(self):
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
+        failing_factory = KnowledgeBaseChatFactory(
+            chat_app_name=CHAT_APP_NAME,
+            retriever=NoopRetriever(),
+            model=SingleAgentScriptedModel(turns=[]).build(),  # no scripted turn -> the run raises
+        )
+
+        with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=failing_factory):
+            response = self.client.post(
+                "/chat/stream",
+                json={"message": "Hi"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        self.assertEqual(response.status_code, 200)  # the failure is reported as a stream event
+        events = _collect_sse_events(response.text)
+        self.assertEqual([name for name, _ in events], [STREAM_EVENT_ERROR])
+
+    def test_a_missing_authorization_header_is_rejected_before_any_streaming(self):
+        response = self.client.post("/chat/stream", json={"message": "Hi there"})
+        self.assertEqual(response.status_code, 403)
+        self.assertNotEqual(response.headers["content-type"], "text/event-stream; charset=utf-8")
+
+    def test_an_unknown_token_is_rejected(self):
+        response = self.client.post(
+            "/chat/stream", json={"message": "Hi there"}, headers={"Authorization": "Bearer does-not-exist"}
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_a_caller_supplied_profile_id_is_ignored(self):
+        """No caller-supplied profile or knowledge-base id is ever accepted — the token is the scope,
+        exactly as on ``/chat/ask``."""
+        profile, token, _admin = _publish_a_profile(self.profile_service)
+        other_profile, _other_token, _other_admin = _publish_a_profile(self.profile_service, "Other bot")
+
+        with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=_plain_text_factory()):
+            response = self.client.post(
+                "/chat/stream",
+                json={
+                    "message": "Hi there",
+                    "chat_profile_id": other_profile.id,
+                    "knowledge_base_id": "some-other-kb",
+                },
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        _, done_data = _collect_sse_events(response.text)[-1]
+        row = ChatConversation.get_by_id_and_check(done_data["session_id"])
+        self.assertEqual(
+            row.configuration[KnowledgeBaseChatConversation.CHAT_PROFILE_ID_CONFIG_KEY], profile.id
+        )
+
+    def test_an_over_long_message_is_rejected_before_any_streaming(self):
+        """Rejected exactly like ``/chat/ask`` — a plain 400, not a 200 opening a stream that fails."""
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
+
+        response = self.client.post(
+            "/chat/stream",
+            json={"message": "x" * (MAX_MESSAGE_LENGTH + 1)},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertNotEqual(response.headers["content-type"], "text/event-stream; charset=utf-8")
+
+    def test_a_session_id_belonging_to_another_profile_is_rejected_before_any_streaming(self):
+        owner_profile, owner_token, _owner_admin = _publish_a_profile(self.profile_service)
+        other_profile, other_token, _other_admin = _publish_a_profile(self.profile_service, "Other bot")
+
+        with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=_plain_text_factory()):
+            other_response = self.client.post(
+                "/chat/stream",
+                json={"message": "Hi"},
+                headers={"Authorization": f"Bearer {other_token}"},
+            )
+            other_session_id = _collect_sse_events(other_response.text)[-1][1]["session_id"]
+
+            response = self.client.post(
+                "/chat/stream",
+                json={"message": "Hi", "session_id": other_session_id},
+                headers={"Authorization": f"Bearer {owner_token}"},
+            )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_exceeding_the_request_cap_returns_429_before_any_streaming(self):
+        """The rate limiter is shared with ``/chat/ask`` (see ``PublishTokenAuth``), so this exercises
+        the same counter through the other transport."""
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
+
+        with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=_plain_text_factory()):
+            statuses = [
+                self.client.post(
+                    "/chat/stream", json={"message": "Hi"}, headers={"Authorization": f"Bearer {token}"}
                 ).status_code
                 for _ in range(31)
             ]
