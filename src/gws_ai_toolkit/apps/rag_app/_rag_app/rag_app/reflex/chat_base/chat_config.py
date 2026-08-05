@@ -5,6 +5,7 @@ import reflex as rx
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 
 from .conversation_chat_state_base import ConversationChatStateBase
+from .source.source_menu_component import CustomSourceMenuButtons
 
 # A custom renderer entry: either a plain callable (uses ChatMessageBase as type),
 # or a (target_type, callable) tuple to cast the message with .to(target_type) first.
@@ -42,6 +43,10 @@ class ChatConfig:
             focus/attachment picker through (e.g. the knowledge-base chat's document-focus "+"
             menu and chips) without the shared widget knowing anything about it.
 
+        source_menu_items (CustomSourceMenuButtons | None): Optional override of the actions
+            offered on a clicked source, used by both the inline source pill and the source
+            detail dialog. Falls back to the shared default (just "Open document") when unset.
+
     Example:
         config = ChatConfig(
             state=MyCustomChatState,
@@ -64,3 +69,5 @@ class ChatConfig:
     custom_chat_messages: dict[str, ChatMessageRenderer] | None = None
 
     composer_extra: Callable[[ConversationChatStateBase], rx.Component] | None = None
+
+    source_menu_items: CustomSourceMenuButtons | None = None

@@ -118,7 +118,7 @@ def chat_messages_list_component(config: ChatConfig) -> rx.Component:
             _streaming_indicator(config.state),
             width="100%",
         ),
-        source_detail_dialog(config.state),
+        source_detail_dialog(config.state, config.source_menu_items),
         plotly_fullscreen_dialog(),
         width="100%",
         flex="1",

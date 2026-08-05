@@ -143,6 +143,15 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         return self.read_only_notice != ""
 
     @rx.var
+    def can_focus_in_chat(self) -> bool:
+        """True when the conversation on screen has a composer to apply added focus to.
+
+        A legacy or read-only conversation renders its transcript — sources included — with no
+        composer at all, so adding focus there would have nothing to apply it to.
+        """
+        return not self.is_legacy_conversation and not self.is_read_only
+
+    @rx.var
     def focus_options(self) -> list[DocumentFocusOption]:
         """Documents the "+" menu offers: focusable, and not focused already."""
         return [
@@ -411,6 +420,56 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         self._focused_document_ids = [
             document_id for document_id in self._focused_document_ids if document_id != document.id
         ]
+
+    @rx.event
+    async def focus_document_in_new_chat(self, document_id: str) -> rx.event.EventType:
+        """Start a brand-new chat, pre-focused on this document alone, from a source citation.
+
+        Same shortcut as the knowledge-base page's "Focus in new chat" row action
+        (:meth:`~.knowledge_bases.knowledge_base_detail_state.KnowledgeBaseDetailState.focus_document_in_new_chat`),
+        except only a document id is known here — a source citation carries no
+        ``knowledge_base_id`` — so it is looked up first.
+
+        :raises ReflexAppException: if the document is no longer in the knowledge base, or no
+                chat profile is bound to its knowledge base
+        """
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            document = KnowledgeBaseService().get_document(document_id)
+        if document is None:
+            raise ReflexAppException(
+                "This document is no longer in the knowledge base, so it cannot be focused."
+            )
+        return await self._start_new_chat_focused_on(document_id, document.knowledge_base_id)
+
+    async def _start_new_chat_focused_on(
+        self, document_id: str, knowledge_base_id: str
+    ) -> rx.event.EventType:
+        """Shared tail of both "Focus in new chat" shortcuts: resolve a profile, start a chat,
+        queue the focus.
+
+        Uses the first chat profile (by name) bound to the document's knowledge base — see
+        :meth:`RagChatProfileService.find_profile_for_knowledge_base`. No profile is created if
+        none matches: binding a knowledge base to a profile is a configuration decision for a
+        person, not something this shortcut should do on their behalf.
+
+        :raises ReflexAppException: if no chat profile is bound to this knowledge base
+        """
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            profile = RagChatProfileService().find_profile_for_knowledge_base(knowledge_base_id)
+        if profile is None:
+            raise ReflexAppException(
+                "No chat profile is bound to this document's knowledge base yet. Create one on "
+                "the chat profiles page first."
+            )
+
+        await self.start_chat_with_profile(profile.id)
+        # Queued rather than applied directly: the redirect below lands on ``/kb``, whose own page
+        # load discards whatever focus is on screen — see ``load_new_chat_page``. Queuing it here
+        # is what survives that.
+        self.queue_pending_focus(document_id)
+        return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
 
     ############################################### SOURCES ###############################################
 

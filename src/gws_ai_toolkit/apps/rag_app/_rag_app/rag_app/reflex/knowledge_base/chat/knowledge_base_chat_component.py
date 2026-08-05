@@ -5,8 +5,8 @@ dialog are the shared ``chat_base`` widget the RAG chat already uses; what this 
 three things specific to a knowledge-base chat:
 
 - a **header** carrying the profile selector, since the profile is what decides how the chat answers;
-- a **source menu** offering only *Open document*, because a source here points at a knowledge-base
-  document (see issue #14);
+- a **source menu** offering *Open document* (issue #14) and, since a source here points at a
+  knowledge-base document, *Focus in chat* / *Focus in new chat* (Document Focus, issue #28);
 - a **legacy view** for a retired-mode row (a legacy ``rag`` conversation) — the shared
   ``chat_base.legacy_conversation_component``, since any other retired mode renders through the
   same one;
@@ -32,6 +32,7 @@ from ...chat_base.legacy_conversation_component import (
     legacy_conversation_component,
     unavailable_conversation_component,
 )
+from ...chat_base.source.source_detail_state import SourceDetailState
 from ...chat_base.source.source_message_component import (
     custom_sources_list_component,
     source_message_component,
@@ -45,7 +46,13 @@ from .knowledge_base_empty_chat_component import knowledge_base_empty_chat_compo
 def knowledge_base_source_menu_items(
     source: RagChatSourceFront, state: ConversationChatStateBase
 ) -> list[rx.Component]:
-    """Actions offered on a source pill: open the document it came from.
+    """Actions offered on a clicked source: open the document it came from, or narrow a chat to it.
+
+    Shared by both the inline source pill and the source detail dialog (see
+    ``ChatConfig.source_menu_items``), so a source is acted on the same way regardless of where it
+    was clicked. "Focus in chat" only renders when the conversation on screen has a composer to
+    apply the added focus to — see :attr:`KnowledgeBaseChatState.can_focus_in_chat`; "Focus in new
+    chat" always renders, since it never depends on the conversation on screen.
 
     :param source: the clicked source
     :param state: the chat state handling the action
@@ -55,6 +62,22 @@ def knowledge_base_source_menu_items(
             rx.icon("external-link", size=16),
             "Open document",
             on_click=lambda: state.open_document(source.document_id),
+        ),
+        rx.cond(
+            KnowledgeBaseChatState.can_focus_in_chat,
+            rx.menu.item(
+                rx.icon("focus", size=16),
+                "Focus in chat",
+                on_click=lambda: [
+                    state.add_document_focus(source.document_id),
+                    SourceDetailState.close_dialog,
+                ],
+            ),
+        ),
+        rx.menu.item(
+            rx.icon("messages-square", size=16),
+            "Focus in new chat",
+            on_click=lambda: state.focus_document_in_new_chat(source.document_id),
         ),
     ]
 
@@ -79,6 +102,7 @@ def knowledge_base_chat_config_factory() -> ChatConfig:
             "user-text": (ChatUserMessageText, user_message_with_focus_chips),
         },
         composer_extra=document_focus_composer,
+        source_menu_items=knowledge_base_source_menu_items,
     )
 
 

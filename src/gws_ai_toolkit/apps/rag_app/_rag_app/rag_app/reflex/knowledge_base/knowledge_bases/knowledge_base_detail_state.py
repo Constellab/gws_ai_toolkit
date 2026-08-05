@@ -30,11 +30,10 @@ from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
     KnowledgeBaseDTO,
 )
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
-from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_service import RagChatProfileService
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_engine import KnowledgeBaseEngine
 from gws_reflex_main import ReflexAppException, ReflexMainState
 
-from ..chat.knowledge_base_chat_state import KNOWLEDGE_BASE_CHAT_ROUTE, KnowledgeBaseChatState
+from ..chat.knowledge_base_chat_state import KnowledgeBaseChatState
 from ..core.knowledge_base_app_state import KnowledgeBaseAppState
 from ..core.knowledge_base_errors import DOCUMENT_REJECTION_ERRORS
 
@@ -294,29 +293,16 @@ class KnowledgeBaseDetailState(rx.State):
     ) -> rx.event.EventType:
         """Start a brand-new chat, pre-focused on this document alone.
 
-        Uses the first chat profile (by name) bound to the document's knowledge base — see
-        :meth:`RagChatProfileService.find_profile_for_knowledge_base`. No profile is created if none
-        matches: binding a knowledge base to a profile is a configuration decision for a person, not
-        something this shortcut should do on their behalf.
+        The profile lookup, chat start and focus queueing are shared with the source-citation
+        shortcut — see
+        :meth:`~..chat.knowledge_base_chat_state.KnowledgeBaseChatState._start_new_chat_focused_on`.
+        This row action already has ``knowledge_base_id`` in hand (it is a field on the document
+        row), unlike that shortcut, which has to look it up from a document id first.
 
         :raises ReflexAppException: if no chat profile is bound to this knowledge base
         """
-        main_state = await self.get_state(ReflexMainState)
-        with await main_state.authenticate_user():
-            profile = RagChatProfileService().find_profile_for_knowledge_base(knowledge_base_id)
-        if profile is None:
-            raise ReflexAppException(
-                "No chat profile is bound to this document's knowledge base yet. Create one on the "
-                "chat profiles page first."
-            )
-
         chat_state = await self.get_state(KnowledgeBaseChatState)
-        await chat_state.start_chat_with_profile(profile.id)
-        # Queued rather than applied directly: the redirect below lands on ``/kb``, whose own page
-        # load discards whatever focus is on screen — see
-        # ``KnowledgeBaseChatState.load_new_chat_page``. Queuing it here is what survives that.
-        chat_state.queue_pending_focus(document_id)
-        return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
+        return await chat_state._start_new_chat_focused_on(document_id, knowledge_base_id)
 
     ############################################### INTERNALS ###############################################
 
