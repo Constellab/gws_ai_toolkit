@@ -3,10 +3,6 @@ from gws_ai_toolkit.core.utils import Utils
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_dto import AdminChatConversationDTO
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
-from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_conversation import (
-    LEGACY_RESOURCE_ID_CONFIG_KEY,
-    AiExpertChatConversation,
-)
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
@@ -18,6 +14,12 @@ from gws_reflex_main import ReflexMainState
 
 from ..core.app_config_state import AppConfigState
 from ..knowledge_base.core.document_open_action import build_open_document_event_for_id
+
+# Keys a retired AI Expert conversation's ``chat_configuration`` carries, naming what it was about.
+# Nothing writes these any more (the class that once declared them, ``AiExpertChatConversation``, is
+# gone — see ADR-0002), but reading an old row is still part of the admin history's job.
+_AI_EXPERT_DOCUMENT_ID_CONFIG_KEY = "document_id"
+_AI_EXPERT_LEGACY_RESOURCE_ID_CONFIG_KEY = "resource_id"
 
 
 class AdminHistoryState(rx.State):
@@ -165,9 +167,7 @@ class AdminHistoryState(rx.State):
 
         :param conversation: the conversation being opened
         """
-        document_id = conversation.configuration.get(
-            AiExpertChatConversation.DOCUMENT_ID_CONFIG_KEY
-        )
+        document_id = conversation.configuration.get(_AI_EXPERT_DOCUMENT_ID_CONFIG_KEY)
         if document_id:
             document = KnowledgeBaseService().get_document(document_id)
             if document:
@@ -175,20 +175,12 @@ class AdminHistoryState(rx.State):
                 self.selected_document_name = document.filename
             return
 
-        resource_id = conversation.configuration.get(LEGACY_RESOURCE_ID_CONFIG_KEY)
+        resource_id = conversation.configuration.get(_AI_EXPERT_LEGACY_RESOURCE_ID_CONFIG_KEY)
         if resource_id:
             resource_model = ResourceModel.get_by_id(resource_id)
             if resource_model:
                 self.selected_resource_id = resource_id
                 self.selected_document_name = resource_model.name
-
-    @rx.event
-    def open_ai_expert(self, rag_document_id: str):
-        """Redirect to the AI Expert page for a document.
-
-        :param rag_document_id: The document ID.
-        """
-        return rx.redirect(f"/ai-expert/{rag_document_id}")
 
     @rx.event
     async def open_document(self, rag_document_id: str):

@@ -99,7 +99,7 @@ def sources_list_component(
 
     Features:
         - Inline pill badges with file-extension color coding
-        - Action menu for each source (AI Expert, Open Document)
+        - Action menu for each source (Open Document)
         - Horizontal flex-wrap layout
         - Conditional display (only shows when sources exist)
 

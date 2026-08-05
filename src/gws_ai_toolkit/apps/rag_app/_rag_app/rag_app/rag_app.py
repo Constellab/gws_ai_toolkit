@@ -10,14 +10,6 @@ from .reflex.admin_history.admin_history_component import (
     admin_history_list_component,
 )
 from .reflex.admin_history.admin_history_state import AdminHistoryState
-from .reflex.ai_expert.ai_expert_config_component import ai_expert_config_component
-from .reflex.ai_expert.ai_expert_config_state import AiExpertConfigState
-from .reflex.ai_expert.ai_expert_page_component import (
-    ai_expert_page_content,
-)
-from .reflex.ai_expert.ai_expert_state import AiExpertState
-from .reflex.ai_expert.document_browser_component import document_browser_component
-from .reflex.ai_expert.document_browser_state import DocumentBrowserState
 from .reflex.core.app_config_state import AppConfigState
 from .reflex.knowledge_base.chat.knowledge_base_chat_component import (
     knowledge_base_chat_component,
@@ -119,49 +111,6 @@ def admin_history_detail():
         admin_history_detail_component(),
         rx.text("Admin History page is not available.", color="red"),
     )
-
-
-# AI Expert configuration page
-@rx.page(route="/config-ai-expert")
-def config_ai_expert_page():
-    """Configuration page for AI Expert settings."""
-    return rx.cond(
-        AiExpertConfigState.show_settings_menu,
-        rag_page_layout_component(content=ai_expert_config_component()),
-        rx.text("Configuration page is not available.", color="red"),
-    )
-
-
-# AI Expert page - document browser (no document selected)
-@rx.page(
-    route="/ai-expert",
-    on_load=DocumentBrowserState.load_documents,
-)
-def ai_expert_browser():
-    """AI Expert page for selecting a document."""
-    return rag_page_layout_component(
-        content=document_browser_component(),
-    )
-
-
-# AI Expert page - existing conversation loaded from URL
-@rx.page(
-    route="/ai-expert/chat/[conversation_id]",
-    on_load=AiExpertState.load_conversation_from_url,
-)
-def ai_expert_with_conversation():
-    """AI Expert page for an existing conversation loaded from URL."""
-    return ai_expert_page_content()
-
-
-# AI Expert page - document-specific chat (new conversation)
-@rx.page(
-    route="/ai-expert/[document_id]",
-    on_load=AiExpertState.load_document_from_url,
-)
-def ai_expert():
-    """AI Expert page for document-specific chat."""
-    return ai_expert_page_content()
 
 
 # Knowledge-base chat - new conversation

@@ -1,12 +1,12 @@
 """The knowledge-base chat window: the shared chat widget, wired to a chat profile.
 
 Almost nothing is drawn here. The message list, the streaming indicator, the input and the source
-dialog are the shared ``chat_base`` widget the RAG chat and the AI Expert already use; what this
-module adds is the three things specific to a knowledge-base chat:
+dialog are the shared ``chat_base`` widget the RAG chat already uses; what this module adds is the
+three things specific to a knowledge-base chat:
 
 - a **header** carrying the profile selector, since the profile is what decides how the chat answers;
 - a **source menu** offering only *Open document*, because a source here points at a knowledge-base
-  document rather than at a lab resource an AI Expert could be opened on (see issue #14);
+  document (see issue #14);
 - a **legacy view** for a retired-mode row (a legacy ``rag`` conversation) — the shared
   ``chat_base.legacy_conversation_component``, since any other retired mode renders through the
   same one;
@@ -46,9 +46,6 @@ def knowledge_base_source_menu_items(
     source: RagChatSourceFront, state: ConversationChatStateBase
 ) -> list[rx.Component]:
     """Actions offered on a source pill: open the document it came from.
-
-    Deliberately shorter than the default menu: *Open AI Expert* is dropped because AI Expert still
-    runs against the retired datasets, so it could not open a knowledge-base document.
 
     :param source: the clicked source
     :param state: the chat state handling the action

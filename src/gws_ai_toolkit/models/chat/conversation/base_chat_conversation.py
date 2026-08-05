@@ -28,10 +28,12 @@ from gws_ai_toolkit.rag.common.rag_models import RagChatSource
 class ChatConversationMode(Enum):
     """What kind of chat a conversation row holds.
 
-    ``RAG`` is **legacy-only**: it belongs to conversations run against the retired RAGFlow / Dify
-    datasets. Those rows stay listable in history, but their configuration points at datasets that no
-    longer exist, so a restore must report :data:`LEGACY_CONVERSATION_MODE_MESSAGE` rather than fail
-    opaquely. The embedded knowledge-base stack uses ``KNOWLEDGE_BASE`` and never reuses ``"rag"``.
+    ``RAG`` and ``AI_EXPERT`` are **legacy-only**: ``RAG`` belongs to conversations run against the
+    retired RAGFlow / Dify datasets, and ``AI_EXPERT`` to conversations run against the retired
+    per-document expert agent (see ADR-0002). Those rows stay listable in history, but their
+    configuration points at engines that no longer exist, so a restore must report
+    :data:`LEGACY_CONVERSATION_MODE_MESSAGE` rather than fail opaquely. The embedded knowledge-base
+    stack uses ``KNOWLEDGE_BASE`` and never reuses ``"rag"`` or ``"ai_expert"``.
     """
 
     RAG = "rag"
@@ -42,7 +44,7 @@ class ChatConversationMode(Enum):
     @property
     def is_legacy(self) -> bool:
         """True for a mode kept only so that existing rows keep parsing."""
-        return self is ChatConversationMode.RAG
+        return self in (ChatConversationMode.RAG, ChatConversationMode.AI_EXPERT)
 
 
 # What to show instead of restoring a conversation whose mode is legacy.

@@ -1,5 +1,4 @@
 import reflex as rx
-from gws_ai_toolkit._app.ai_chat import ConversationChatStateBase
 from gws_reflex_main import dialog_header, loader_section
 
 from .associated_resources_state import AssociatedResourcesState, ResourceDTO
@@ -9,12 +8,12 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
     """Individual resource item with document info and action menu.
 
     Renders a single resource with document name and dropdown menu
-    for actions like opening in AI Expert or viewing the original document.
+    for actions like viewing the original document.
 
     Args:
         resource_name (str): Name of the resource
         resource_id (str): ID of the resource
-        state (CustomAiExpertState): State for handling actions
+        state (AssociatedResourcesState): State for handling actions
 
     Returns:
         rx.Component: Formatted resource item with name and actions menu
@@ -39,17 +38,6 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
             ),
             rx.menu.content(
                 rx.cond(
-                    resource.is_in_rag,
-                    rx.menu.item(
-                        rx.icon("bot", size=16),
-                        "Open AI Expert",
-                        on_click=lambda: AssociatedResourcesState.open_ai_expert_from_resource(
-                            resource.id
-                        ),
-                        cursor="pointer",
-                    ),
-                ),
-                rx.cond(
                     resource.is_table,
                     rx.menu.item(
                         rx.icon("table", size=16),
@@ -73,30 +61,6 @@ def _resource_item(resource: ResourceDTO) -> rx.Component:
         ),
         align_items="center",
         width="100%",
-        overflow="hidden",
-    )
-
-
-def associated_resources_section(_: ConversationChatStateBase) -> rx.Component:
-    """Left sidebar component with associated documents list."""
-    return rx.box(
-        rx.vstack(
-            rx.heading("Associated documents", size="4", margin_bottom="3"),
-            loader_section(
-                content=rx.vstack(
-                    rx.foreach(AssociatedResourcesState.linked_resources_data, _resource_item),
-                    spacing="2",
-                    align="stretch",
-                    width="100%",
-                ),
-                is_loading=AssociatedResourcesState.is_loading,
-            ),
-            spacing="3",
-            width="100%",
-        ),
-        width="250px",
-        min_width="250px",
-        max_width="250px",
         overflow="hidden",
     )
 

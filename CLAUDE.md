@@ -43,7 +43,7 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
     - `chat/chat_state.py` (state management)
 - Use state management effectively to handle application state
 - Keep UI components reusable and maintainable
-- All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import ai_expert_config_component` instead of `from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex import ai_expert_config_component`
+- All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import rag_chat_config_component` instead of `from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex import rag_chat_config_component`
 - Define the attributes, parameters and return types of functions, methods and classes using type hints
 - for the `rx.button` :
   - For primary and secondary button leave color_scheme to default.

@@ -22,11 +22,6 @@ def get_default_source_menu_items(
     """
     return [
         rx.menu.item(
-            rx.icon("bot", size=16),
-            "Open AI Expert",
-            on_click=lambda: state.open_ai_expert(source.document_id),
-        ),
-        rx.menu.item(
             rx.icon("external-link", size=16),
             "Open document",
             on_click=lambda: state.open_document(source.document_id),

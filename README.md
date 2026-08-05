@@ -26,14 +26,14 @@ Contains RAG tools :
 
 Other AI tools:
 - Table copilot
-- AI Expert — chat focused on a single indexed document, in two modes: `relevant_chunks` (only the
-  chunks retrieved for your question) and `full_text_chunk` (all chunks of the document).
+- Knowledge-base chat with Document Focus — scope a conversation to one or a few documents, either
+  via an in-chat picker or by starting a focused chat from a document's row on the knowledge-base
+  page.
 
-> **Removed capability (August 2026)** — the AI Expert `full_file` mode is gone. It uploaded the
-> original file and gave the assistant a code interpreter over it, so it could compute on the file
-> and return a generated chart or spreadsheet. Answers are now always grounded in the indexed
-> document text. Configurations still set to `full_file` load as `relevant_chunks`.
-> See `docs/adr/0001-remove-ai-expert-full-file-mode.md`.
+> **Retired capability (August 2026)** — the standalone AI Expert mode (chat about a single document
+> outside a chat profile) is gone; Document Focus on knowledge-base chat covers the same need.
+> Existing AI Expert conversations remain visible, read-only, in history.
+> See `docs/adr/0002-retire-ai-expert-fold-into-document-focus.md`.
 
 ## 📄 Documentation
 

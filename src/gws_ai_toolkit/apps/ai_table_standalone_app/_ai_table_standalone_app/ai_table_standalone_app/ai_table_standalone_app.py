@@ -83,12 +83,12 @@ def ai_table():
     )
 
 
-# Configuration page - for AI Expert and AI Table configurations
+# Configuration page - for AI Table configurations
 
 
 @rx.page(route="/config")
 def config_page():
-    """Configuration page for AI Expert and AI Table settings."""
+    """Configuration page for AI Table settings."""
     return rx.cond(
         AiTableDataState.show_config_page,
         page_component(

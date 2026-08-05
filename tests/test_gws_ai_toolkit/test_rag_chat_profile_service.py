@@ -301,4 +301,9 @@ class TestRagChatProfileService(BaseTestCase):
         # reused by the embedded stack.
         self.assertEqual(ChatConversationMode("rag"), ChatConversationMode.RAG)
         self.assertTrue(ChatConversationMode.RAG.is_legacy)
-        self.assertFalse(ChatConversationMode.AI_EXPERT.is_legacy)
+
+    def test_the_legacy_ai_expert_mode_still_parses(self):
+        # AI Expert is retired too (see ADR-0002): existing "ai_expert" rows must stay listable in
+        # history, routed through the same generic legacy view as "rag".
+        self.assertEqual(ChatConversationMode("ai_expert"), ChatConversationMode.AI_EXPERT)
+        self.assertTrue(ChatConversationMode.AI_EXPERT.is_legacy)

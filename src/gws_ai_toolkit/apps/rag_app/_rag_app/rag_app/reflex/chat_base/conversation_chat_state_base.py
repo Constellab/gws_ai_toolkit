@@ -238,11 +238,6 @@ class ConversationChatStateBase(rx.State, mixin=True):
         self.is_legacy_conversation = False
 
     @rx.event
-    def open_ai_expert(self, rag_document_id: str):
-        """Redirect the user to the AI Expert page."""
-        return rx.redirect(f"/ai-expert/{rag_document_id}")
-
-    @rx.event
     async def open_document(self, rag_document_id: str):
         """Redirect the user to an external URL."""
 

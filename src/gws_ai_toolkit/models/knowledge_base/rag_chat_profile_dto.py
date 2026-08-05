@@ -5,8 +5,8 @@ knowledge bases *are* the metadata filter a retrieval runs with. Everything else
 system prompt, the model, ``top_k``, ``score_threshold`` — is per-query configuration that touches
 nothing on disk.
 
-Naming: ``*Config`` is reserved for non-persisted module DTOs (``AiExpertChatConfig``); a persisted,
-named, user-selectable row is a **profile**.
+Naming: ``*Config`` is reserved for non-persisted module DTOs (``KnowledgeBaseChatConfig``); a
+persisted, named, user-selectable row is a **profile**.
 """
 
 from gws_core import BaseModelDTO, ModelDTO

@@ -328,13 +328,26 @@ class TestKnowledgeBaseChatFactory(BaseTestCase):
 
     def test_restoring_another_modes_conversation_names_the_mode(self):
         row = self._create_conversation_row(
-            mode=ChatConversationMode.AI_EXPERT.value, configuration={"resource_id": "res-1"}
+            mode=ChatConversationMode.AI_TABLE.value, configuration={}
         )
 
         with self.assertRaises(KnowledgeBaseChatUnavailableError) as raised:
             self.factory.restore_conversation(row.id)
 
-        self.assertIn(ChatConversationMode.AI_EXPERT.value, str(raised.exception))
+        self.assertIn(ChatConversationMode.AI_TABLE.value, str(raised.exception))
+
+    def test_restoring_a_legacy_ai_expert_conversation_says_the_engine_is_retired(self):
+        """AI Expert is retired too (see ADR-0002): its rows report the same retirement message."""
+        row = self._create_conversation_row(
+            mode=ChatConversationMode.AI_EXPERT.value,
+            configuration={"document_id": "doc-1"},
+            messages=[ChatUserMessageText(content="An old question")],
+        )
+
+        with self.assertRaises(KnowledgeBaseChatUnavailableError) as raised:
+            self.factory.restore_conversation(row.id)
+
+        self.assertEqual(str(raised.exception), LEGACY_CONVERSATION_MODE_MESSAGE)
 
     def test_restoring_a_conversation_recording_no_profile_is_reported(self):
         row = self._create_conversation_row(

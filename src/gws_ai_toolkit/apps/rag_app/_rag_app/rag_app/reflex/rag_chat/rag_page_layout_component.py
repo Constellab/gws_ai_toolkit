@@ -8,10 +8,7 @@ from gws_reflex_main import (
 )
 
 from ..admin_history.admin_history_state import AdminHistoryState
-from ..core.conversation_mode_chip_component import (
-    conversation_mode_chip_reactive,
-    conversation_mode_chip_switchable,
-)
+from ..core.conversation_mode_chip_component import conversation_mode_chip_reactive
 from ..history.chat_history_sidebar_component import chat_history_sidebar_list
 from ..knowledge_base.chats.rag_chat_profile_list_state import CHAT_PROFILES_ROUTE
 from ..knowledge_base.knowledge_bases.knowledge_base_list_state import KNOWLEDGE_BASES_ROUTE
@@ -102,7 +99,7 @@ def rag_header_component(
     """
     return rx.hstack(
         left_sidebar_open_button(),
-        conversation_mode_chip_switchable(ChatConversationMode.RAG.value, size="big"),
+        conversation_mode_chip_reactive(ChatConversationMode.RAG.value, size="big"),
         _header_divider(),
         rx.hstack(
             rx.icon("database", size=16, color="var(--gray-9)"),

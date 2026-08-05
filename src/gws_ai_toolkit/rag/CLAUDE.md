@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Folder Overview
 
-This RAG folder contains the core RAG (Retrieval Augmented Generation) implementations and applications within the GWS AI Toolkit. It provides integration with multiple RAG platforms (Dify and RagFlow) and includes standalone Reflex-based applications for chat and AI expert functionality.
+This RAG folder contains the core RAG (Retrieval Augmented Generation) implementations and applications within the GWS AI Toolkit. It provides integration with multiple RAG platforms (Dify and RagFlow) and includes standalone Reflex-based applications for chat functionality.
 
 ## Directory Structure
 - `common/` - Shared base classes, utilities, and common infrastructure for all RAG services
@@ -82,14 +82,11 @@ The main Reflex-based RAG application providing user interface and interaction l
   - `rag_app.py` - Main application entry point and routing configuration
   - `rag_main_state.py` - Root application state management
   - `config_page.py` - Configuration page component
-  - `custom_ai_expert_component.py` - Custom AI expert interface component
-  - `custom_ai_expert_state.py` - AI expert state management
   - `custom_states.py` - Custom state implementations
   - `reflex/` - Reflex framework components and pages
     - `core/` - Core application components and utilities
     - `chat_base/` - Base chat functionality and components
     - `rag_chat/` - RAG-specific chat implementation
-    - `ai_expert/` - AI expert functionality
     - `history/` - Chat history management
     - `read_only_chat/` - Read-only chat interface
 
@@ -113,16 +110,8 @@ The main Reflex-based RAG application providing user interface and interaction l
   - `rag_chat_state.py` - RAG chat state management
   - `config/` - Configuration management components
 
-- **AI Expert** (`reflex/ai_expert/`)
-  - `ai_expert_component.py` - AI expert interface
-  - `ai_expert_state.py` - AI expert state management, over one `KnowledgeBaseDocument`
-  - `ai_expert_config_component.py` - AI expert configuration
-  - `document_browser_component.py` / `document_browser_state.py` - picking the document to chat about
-
 ### Routes
 - `/` - Main chat page and entry point of the Reflex app
 - `/history` - History page to view and browse past conversations
-- `/ai-expert/:documentId` - Chat with AI expert about one knowledge-base document (the id is a
-  `KnowledgeBaseDocument`, which is also the `document_id` of its chunks)
 - `/resource` - Resource management and knowledge base synchronization
 - `/config` - Application configuration page

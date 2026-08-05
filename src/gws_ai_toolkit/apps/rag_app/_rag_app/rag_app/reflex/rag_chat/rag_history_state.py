@@ -1,7 +1,6 @@
 import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 
-from ..ai_expert.ai_expert_state import AiExpertState
 from ..history.history_state import SidebarHistoryListState
 from ..knowledge_base.chat.knowledge_base_chat_state import (
     KNOWLEDGE_BASE_CHAT_ROUTE,
@@ -13,13 +12,12 @@ from .rag_chat_state import RagChatState
 # Maps conversation mode to the URL pattern for loading that conversation.
 # The placeholder {id} is replaced with the actual conversation ID.
 #
-# A legacy ``rag`` conversation is routed to the knowledge-base chat page like any other: those rows
-# were run against retired RAGFlow / Dify datasets, so that page reports why they cannot be continued
-# and shows their transcript read-only, rather than reopening a chat nothing can answer for.
+# A legacy ``rag`` or ``ai_expert`` conversation is routed to the knowledge-base chat page like any
+# other: those rows were run against retired engines, so that page reports why they cannot be
+# continued and shows their transcript read-only, rather than reopening a chat nothing can answer for.
 DEFAULT_MODE_ROUTE_MAP: dict[str, str] = {
     ChatConversationMode.RAG.value: KNOWLEDGE_BASE_CONVERSATION_ROUTE,
     ChatConversationMode.KNOWLEDGE_BASE.value: KNOWLEDGE_BASE_CONVERSATION_ROUTE,
-    ChatConversationMode.AI_EXPERT.value: "/ai-expert/chat/{id}",
 }
 
 # Default route used when the conversation mode is not in the map. The knowledge-base chat is the
@@ -45,8 +43,7 @@ class RagHistoryState(SidebarHistoryListState, rx.State):
     def get_active_conversation_id(self) -> str | None:
         """Extract the active conversation ID from the current URL.
 
-        Looks for ``/chat/<id>`` in the URL path, which matches both
-        ``/chat/[conversation_id]`` and ``/ai-expert/chat/[conversation_id]``.
+        Looks for ``/chat/<id>`` in the URL path, which matches ``/chat/[conversation_id]``.
         """
         return self.conversation_id
 
@@ -65,9 +62,6 @@ class RagHistoryState(SidebarHistoryListState, rx.State):
     async def start_new_chat(self):
         """Start a new chat based on the current page context.
 
-        - On AI Expert pages with a document selected: creates a new AI Expert
-          conversation for the same document.
-        - On AI Expert pages without a document: does nothing.
         - On knowledge-base pages: clears the chat and navigates to /kb, keeping the profile.
         - On RAG chat pages: clears chat and navigates to /.
         """
@@ -81,15 +75,6 @@ class RagHistoryState(SidebarHistoryListState, rx.State):
             )
             knowledge_base_chat_state.discard_conversation()
             return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
-
-        if current_path.startswith("/ai-expert"):
-            ai_expert_state: AiExpertState = await self.get_state(AiExpertState)
-            document = ai_expert_state.get_current_document()
-            if not document:
-                return
-
-            ai_expert_state.clear_chat()
-            return rx.redirect(f"/ai-expert/{document.document_id}")
 
         rag_chat_state: RagChatState = await self.get_state(RagChatState)
         rag_chat_state.clear_chat()

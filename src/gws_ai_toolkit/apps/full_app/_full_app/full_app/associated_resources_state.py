@@ -31,8 +31,8 @@ class ResourceDTO(BaseModelDTO):
 
 
 class AssociatedResourcesState(rx.State):
-    """State to manage the left section of the AI expert page.
-    This load the associated resources of the selected resource.
+    """State backing the associated-resources dialog opened from a chat source's menu.
+    This loads the associated resources of the selected resource.
     """
 
     is_loading: bool = False
@@ -40,20 +40,6 @@ class AssociatedResourcesState(rx.State):
 
     _current_resource_id: str | None = None
     is_dialog_open: bool = False
-
-    @rx.event(background=True)  # type: ignore
-    async def load_from_expert_state(self) -> None:
-        """Load the resources associated with the document AI Expert is open on.
-
-        Empty for now, and deliberately so: AI Expert now chats about a ``KnowledgeBaseDocument``,
-        and the only document source is ``upload`` — a file, with no lab resource behind it. This
-        panel is keyed on a lab resource (it reads its ``study`` tag), so it has nothing to show until
-        the ``resource`` document source lands and a document can name the resource it came from.
-
-        It still clears itself: navigating from one AI Expert document to another must not leave the
-        previous document's associated resources on screen.
-        """
-        await self._load_for_resource(None)
 
     @rx.event(background=True)  # type: ignore
     async def open_associated_resources_dialog(self, source_id: str) -> None:
@@ -142,11 +128,6 @@ class AssociatedResourcesState(rx.State):
             )
             for res in self._linked_resources
         ]
-
-    @rx.event
-    def open_ai_expert_from_resource(self, resource_id: str):
-        """Redirect the user to the AI Expert page for a specific resource."""
-        return rx.redirect(f"/ai-expert/{resource_id}")
 
     @rx.event
     def open_ai_table_from_resource(self, resource_id: str):

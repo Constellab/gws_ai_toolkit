@@ -10,9 +10,9 @@ def conversation_mode_chip_reactive(mode: rx.Var[str], size: ChipSize = "normal"
     """A reactive version of :func:`conversation_mode_chip` for use with ``rx.foreach``.
 
     Uses ``rx.match`` to dispatch on the reactive *mode* var.
-    Recognised values: ``"knowledge_base"`` (tertiary), ``"ai_expert"`` (secondary) and the legacy
-    ``"rag"``, which says so — those conversations were run against retired datasets and can only be
-    read. Unknown values fall back to a plain badge.
+    Recognised values: ``"knowledge_base"`` (tertiary) and the legacy ``"rag"``/``"ai_expert"``,
+    which say so — those conversations were run against retired engines and can only be read.
+    Unknown values fall back to a plain badge.
 
     :param mode: Reactive var containing the conversation mode string.
     :param size: Chip size — ``"normal"`` or ``"big"``.
@@ -27,6 +27,7 @@ def conversation_mode_chip_reactive(mode: rx.Var[str], size: ChipSize = "normal"
         ),
         (
             ChatConversationMode.RAG.value,
+            ChatConversationMode.AI_EXPERT.value,
             rx.badge(
                 rx.icon("archive", size=14),
                 "Retired",
@@ -35,68 +36,7 @@ def conversation_mode_chip_reactive(mode: rx.Var[str], size: ChipSize = "normal"
                 color_scheme="gray",
             ),
         ),
-        (
-            ChatConversationMode.AI_EXPERT.value,
-            _chip("AI Expert", "brain", color_prefix="secondary", size=badge_size),
-        ),
         rx.badge(mode.replace("_", " ").title(), size=badge_size, variant="soft"),
-    )
-
-
-def conversation_mode_chip_switchable(
-    current_mode: str,
-    size: ChipSize = "big",
-) -> rx.Component:
-    """A mode chip with a popover to switch to the other mode.
-
-    When clicked, shows a popover with a button to navigate to the other mode's page.
-
-    :param current_mode: The current conversation mode string (use ChatConversationMode values).
-    :param size: Chip size — ``"normal"`` or ``"big"``.
-    :return: The chip component wrapped in a popover.
-    """
-    badge_size = "3" if size == "big" else "2"
-
-    if current_mode == ChatConversationMode.RAG.value:
-        chip = _chip("Chat", "message-circle", color_prefix="tertiary", size=badge_size)
-        switch_icon = "brain"
-        switch_label = "Switch to AI Expert"
-        switch_href = "/ai-expert"
-    else:
-        chip = _chip("AI Expert", "brain", color_prefix="secondary", size=badge_size)
-        switch_icon = "message-circle"
-        switch_label = "Switch to Chat"
-        switch_href = "/"
-
-    return rx.popover.root(
-        rx.popover.trigger(
-            rx.box(
-                chip,
-                cursor="pointer",
-                _hover={"opacity": "0.8"},
-                transition="opacity 0.15s ease",
-            ),
-        ),
-        rx.popover.content(
-            rx.link(
-                rx.hstack(
-                    rx.icon(switch_icon, size=14),
-                    rx.text(switch_label, size="2", weight="medium"),
-                    align="center",
-                    spacing="2",
-                    padding="4px 8px",
-                    border_radius="6px",
-                    _hover={"background": "var(--gray-3)"},
-                    width="100%",
-                ),
-                href=switch_href,
-                text_decoration="none",
-                color="inherit",
-                width="100%",
-            ),
-            side="bottom",
-            align="start",
-        ),
     )
 
 
