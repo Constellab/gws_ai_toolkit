@@ -23,7 +23,7 @@ from gws_core import (
     task_decorator,
 )
 
-from gws_ai_toolkit.core.agents.agent_events import (
+from gws_ai_toolkit.core.agents.base_function_agent_events import (
     ErrorEvent,
     FunctionErrorEvent,
     UserQueryTextEvent,
@@ -197,10 +197,13 @@ class CondaEnvGeneratorAi(Task):
             existing_env_content=existing_env_content,
         )
 
-        # Create the output File resource
-        output_file = File(f"environment_{env_type}.yml")
-        output_file.write(generated_content)
-        output_file.name = f"environment_{env_type}.yml"
+        # Create the output File resource in a managed temp dir (not the process cwd)
+        file_name = f"environment_{env_type}.yml"
+        file_path = os.path.join(self.create_tmp_dir(), file_name)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(generated_content)
+        output_file = File(file_path)
+        output_file.name = file_name
 
         return {"env_file": output_file}
 
@@ -282,9 +285,11 @@ class PipEnvGeneratorAi(Task):
             existing_env_content=existing_env_content,
         )
 
-        # Create the output File resource
-        output_file = File("Pipfile")
-        output_file.write(generated_content)
+        # Create the output File resource in a managed temp dir (not the process cwd)
+        file_path = os.path.join(self.create_tmp_dir(), "Pipfile")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(generated_content)
+        output_file = File(file_path)
         output_file.name = "Pipfile"
 
         return {"env_file": output_file}
