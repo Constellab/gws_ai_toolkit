@@ -6,9 +6,10 @@ logic of its own — it only has to *say* "interrupted" rather than "error" for 
 offer the retry. A document genuinely being indexed right now still gets a spinner; what must never
 happen is a spinner that spins forever because the run behind it died.
 
-Per-row actions are deliberately three, not one menu: re-index reads the stored snapshot, refresh
-re-fetches from the source system, and they are not interchangeable. An upload cannot be refreshed at
-all, and says so when asked.
+Per-row actions live behind one menu button: re-index reads the stored snapshot, refresh re-fetches
+from the source system, and they are not interchangeable — an upload cannot be refreshed at all, and
+says so when asked. Delete stays behind an ``rx.alert_dialog``, but a controlled one: its trigger is
+now a menu item, and a menu item cannot double as a Radix alert-dialog trigger.
 """
 
 import reflex as rx
@@ -150,38 +151,51 @@ def _error_tooltip(document: KnowledgeBaseDocumentDTO) -> rx.Component:
 
 
 def _row_actions(document: KnowledgeBaseDocumentDTO) -> rx.Component:
-    """Ask AI Expert, re-index, refresh and delete, for one document.
+    """Ask AI Expert, re-index, refresh or delete, for one document — behind one menu button.
 
     The two indexing actions are disabled while a run owns the page: a second run on the same
-    document would race on its lease, and a disabled button says so better than an error toast.
+    document would race on its lease, and a disabled item says so better than an error toast. The
+    trigger shows a spinner in place of the "more" icon while this row is busy, since that feedback
+    would otherwise disappear behind a closed menu.
     """
     is_busy = KnowledgeBaseDetailState.busy_document_id == document.id
     return rx.hstack(
-        _ai_expert_action(document),
-        rx.tooltip(
-            rx.button(
-                rx.icon("refresh-cw", size=14),
-                variant="ghost",
-                size="1",
-                disabled=KnowledgeBaseDetailState.is_indexing,
-                loading=is_busy,
-                on_click=lambda: KnowledgeBaseDetailState.reindex_document(document.id),
+        rx.menu.root(
+            rx.menu.trigger(
+                rx.button(
+                    rx.cond(is_busy, rx.spinner(size="1"), rx.icon("ellipsis-vertical", size=14)),
+                    variant="ghost",
+                    size="1",
+                )
             ),
-            content="Re-index from the stored snapshot",
-        ),
-        rx.tooltip(
-            rx.button(
-                rx.icon("cloud-download", size=14),
-                variant="ghost",
-                size="1",
-                disabled=KnowledgeBaseDetailState.is_indexing,
-                loading=is_busy,
-                on_click=lambda: KnowledgeBaseDetailState.refresh_document_from_source(document.id),
+            rx.menu.content(
+                _ai_expert_action(document),
+                rx.menu.item(
+                    rx.icon("refresh-cw", size=14),
+                    "Re-index from snapshot",
+                    disabled=KnowledgeBaseDetailState.is_indexing,
+                    on_click=lambda: KnowledgeBaseDetailState.reindex_document(document.id),
+                ),
+                rx.menu.item(
+                    rx.icon("cloud-download", size=14),
+                    "Refresh from source",
+                    disabled=KnowledgeBaseDetailState.is_indexing,
+                    on_click=lambda: KnowledgeBaseDetailState.refresh_document_from_source(
+                        document.id
+                    ),
+                ),
+                rx.menu.separator(),
+                rx.menu.item(
+                    rx.icon("trash-2", size=14),
+                    "Delete",
+                    color_scheme="red",
+                    on_click=lambda: KnowledgeBaseDetailState.set_delete_dialog_open(
+                        True, document.id
+                    ),
+                ),
             ),
-            content="Re-fetch from the source, then re-index",
         ),
         _delete_document_dialog(document),
-        spacing="1",
         justify="end",
     )
 
@@ -194,29 +208,21 @@ def _ai_expert_action(document: KnowledgeBaseDocumentDTO) -> rx.Component:
     """
     return rx.cond(
         document.index_status == DocumentIndexStatus.DONE.value,
-        rx.tooltip(
-            rx.button(
-                rx.icon("messages-square", size=14),
-                variant="ghost",
-                size="1",
-                on_click=rx.redirect(f"/ai-expert/{document.id}"),
-            ),
-            content="Chat about this document with AI Expert",
+        rx.menu.item(
+            rx.icon("messages-square", size=14),
+            "Chat about this document",
+            on_click=rx.redirect(f"/ai-expert/{document.id}"),
         ),
     )
 
 
 def _delete_document_dialog(document: KnowledgeBaseDocumentDTO) -> rx.Component:
-    """Delete, behind a confirmation. Destructive, so red and never one click away."""
+    """Delete, behind a confirmation. Destructive, so red and never one click away.
+
+    Controlled rather than trigger-driven: the button that opens it is a menu item, and Radix's
+    alert-dialog trigger cannot wrap a menu item that also has to fire the menu's own selection.
+    """
     return rx.alert_dialog.root(
-        rx.alert_dialog.trigger(
-            rx.button(
-                rx.icon("trash-2", size=14),
-                variant="ghost",
-                size="1",
-                color_scheme="red",
-            )
-        ),
         rx.alert_dialog.content(
             rx.alert_dialog.title("Delete document"),
             rx.alert_dialog.description(
@@ -238,5 +244,9 @@ def _delete_document_dialog(document: KnowledgeBaseDocumentDTO) -> rx.Component:
                 spacing="3",
                 justify="end",
             ),
+        ),
+        open=KnowledgeBaseDetailState.delete_dialog_document_id == document.id,
+        on_open_change=lambda is_open: KnowledgeBaseDetailState.set_delete_dialog_open(
+            is_open, document.id
         ),
     )

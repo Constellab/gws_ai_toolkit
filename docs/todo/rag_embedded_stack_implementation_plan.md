@@ -313,7 +313,7 @@ lab-hosted deployment fronted by the Community backend — see the public-API pl
 
 | Behaviour | Fate |
 |---|---|
-| Tag-driven resource sync (`TagRagAppService.get_all_resources_to_send_to_rag`) | **Reimplemented** as the `resource` provider's `list_documents` (§6) |
+| Tag-driven resource sync (`TagRagAppService.get_all_resources_to_send_to_rag`) | **Partially reimplemented**: the tag search becomes the `resource` provider's `list_documents`, driving a one-shot import (§6). The standing subscription — untag removes, content change re-indexes — is deferred to v2 |
 | Marked-for-deletion workflow (`get_resources_marked_for_deletion`, `is_resource_marked_for_deletion`, `delete_resource_from_rag_and_lab`) | **Reimplemented** (§6). Destructive — deletes from the lab, not only the knowledge base |
 | DataHub / S3 sync (`DatahubRagAppService` + `GenerateDatahubRagFlowApp`) | **Dropped**, no replacement scope |
 | Per-app default chat filters (`get_chat_default_filters`) | **Dropped** — subsumed by the profile → knowledge-base binding |
@@ -354,8 +354,12 @@ EmbeddingManifest                             one row per engine instance
 | instance_scope | `CharField(50, default="default")` | which engine instance holds its chunks (§7) |
 | chunk_size | `IntegerField(default=1024)` | per KB |
 | chunk_overlap | `IntegerField(default=100)` | per KB |
-| sync_source_type | `CharField(50, null=True)` | provider for bulk sync; null = no sync |
-| sync_config | `JSONField(null=True)` | provider-specific scope (resource: `{tag_key, tag_value}`) |
+| sync_source_type | `CharField(50, null=True)` | **reserved for sync v2** — provider for the standing subscription; written by nothing in V1 |
+| sync_config | `JSONField(null=True)` | **reserved for sync v2** — provider-specific scope (resource: `{tag_key, tag_value}`) |
+
+The two `sync_*` columns ship unused: V1 imports by tag as a one-shot action (§6) and takes its criterion
+from the dialog, not from the row. They stay in the schema because they already shipped, and leaving them
+saves a migration when v2 lands.
 
 ### `KnowledgeBaseDocument` — `gws_ai_toolkit_knowledge_base_document`
 
@@ -380,8 +384,8 @@ EmbeddingManifest                             one row per engine instance
 **Snapshot-on-add invariant**: populated for every row via `provider.fetch_file(...)`. Indexing never
 contacts the source, so a deleted resource or an unavailable app breaks neither retrieval nor
 re-indexing. Accepted trade-offs: storage duplication (bounded by the 15 MB cap) and staleness — a
-snapshot updates only on explicit refresh/sync. A source that disappears has its snapshot deleted at
-the next sync (§6 step 3).
+snapshot updates only on explicit refresh. A source that disappears leaves its snapshot in place — a
+V1 import never deletes anything (§6); reaping those rows is sync v2's job.
 
 **Indexing lease.** Indexing runs in a Reflex background event, and that process is killed on idle —
 so without a lease an interrupted run leaves `index_status = "indexing"` forever: a permanent
@@ -431,13 +435,13 @@ rule covers it; a directory restored against a *different* database is caught as
   - `index_document(document_id, engine)` — status transitions + lease; reads only `snapshot_path`;
   - `reclaim_stale_leases()`;
   - `delete_document` (chunks + snapshot + row); `delete_knowledge_base` (chunks + files dir + rows);
-  - `sync_documents(kb_id, engine) -> SyncReport` (§6).
+  - `import_documents(kb_id, source_type, criteria, engine) -> ImportReport` (§6).
 - **`RagChatProfileService`**: CRUD, `get_valid_knowledge_base_ids(profile)`, publish/un-publish.
 
 ### Non-DB DTOs
 
 `EmbeddingConfig`, `ChunkConfig`, `RetrievalConfig`, `RetrievedChunk`, `KnowledgeBaseDTO`,
-`KnowledgeBaseDocumentDTO`, `RagChatProfileDTO` (+ `Save*` inputs), `SyncReport`,
+`KnowledgeBaseDocumentDTO`, `RagChatProfileDTO` (+ `Save*` inputs), `ImportReport`,
 `SourceFetchResult`, `SourceDocumentCandidate`, `SourceOpenAction`. Reflex states consume DTOs, never
 Peewee rows.
 
@@ -468,12 +472,13 @@ destructive.
 - `core/knowledge_base_app_state.py` — shared helpers (build engine for an instance, resolve API key
   from params).
 - `knowledge_bases/` — list (+create/delete); detail with a document table (source-type chip, status
-  chip incl. *interrupted*, chunk count, error tooltip, per-document re-index/refresh/delete, "Sync
-  now" when a sync source is configured); upload component (`rx.upload.root` + `rx.upload_files`,
+  chip incl. *interrupted*, chunk count, error tooltip, per-document re-index/refresh/delete); upload
+  component (`rx.upload.root` + `rx.upload_files`,
   pattern from `ai_table_standalone_app/home_page.py`; background event indexes pending documents);
   add-document dialog (source-type select from the registry; the resource provider contributes a
-  resource picker with compatibility feedback). **Rejected extensions are reported at add time with
-  the reason**, not silently skipped.
+  resource picker with compatibility feedback, plus an **import-by-tag mode** whose report is a dialog
+  — a tag matching fifty resources of which eight are incompatible must not read as a clean success).
+  **Rejected extensions are reported at add time with the reason**, not silently skipped.
 - `chats/` — profile list + edit (prompt, model, top_k, threshold, knowledge-base multi-checkbox,
   publish/un-publish with the token shown once).
 - `chat/` — `KnowledgeBaseChatState(ConversationChatStateBase)`, mirroring the retired
@@ -494,35 +499,55 @@ replacing `GenerateDatahubRagFlowApp`: `chat_app_name`, optional
 `CredentialsParam(CredentialsDataOther)` for the OpenAI key, admin-history/auth flags. Re-export from
 the brick's top-level `__init__.py`.
 
-## 6. Sync and deletion — provider-driven
+## 6. Import and deletion — provider-driven
 
-Sync state lives in `KnowledgeBaseDocument` rows (`source_id` + `source_version`), never in the
-source system. Legacy `rag_document` / `rag_dataset_id` / `rag_sync` bookkeeping tags are **not**
-written.
+**V1 imports by tag as a one-shot action, not a standing subscription.** A knowledge base carries no
+sync configuration; the criterion comes from the dialog and is used once. Membership state lives in
+`KnowledgeBaseDocument` rows (`source_id` + `source_version`), never in the source system — legacy
+`rag_document` / `rag_dataset_id` / `rag_sync` bookkeeping tags are **not** written.
 
-`KnowledgeBaseService.sync_documents(kb_id, engine) -> SyncReport`, valid for any provider
-implementing `list_documents`:
+`KnowledgeBaseService.import_documents(kb_id, source_type, criteria, engine) -> ImportReport`, valid for
+any provider implementing `list_documents`:
 
-1. `provider = registry.get(kb.sync_source_type)`; `candidates = provider.list_documents(kb.sync_config)`.
-2. Per candidate: skip incompatible; **new** `source_id` → `add_document` (snapshot + index);
-   **known** with `candidate.version_marker != document.source_version` → `refresh_document` +
-   re-index; unchanged → skip.
-3. Documents of this `source_type` whose `source_id` is no longer in `candidates` → delete (chunks +
-   snapshot + row).
-4. Return `SyncReport` (added / updated / removed / skipped) → toast or dialog. **Report what was
-   skipped and why** — a silent skip reads as success.
+1. `candidates = provider.list_documents(criteria)`.
+2. Candidate whose `source_id` already has a row in this knowledge base → skip, "already present". This
+   dedupe is the whole of the reconciliation logic, and it is cheap because `source_id` is on the row.
+3. Otherwise `add_document` (fetch + snapshot), then index.
+4. Incompatible format or over the size cap → skip with the reason (the existing service-level check on
+   the fetched file).
+5. Return `ImportReport` (added / skipped-with-reason) → dialog. **Report what was skipped and why** — a
+   silent skip reads as success.
+
+**An import never deletes.** A resource that left the tag keeps its document until someone removes it by
+hand; per-document `refresh_document` covers content changes, and its hash check means a no-op save costs
+no re-embedding.
 
 **The `resource` provider** implements `list_documents` as the tag search salvaged from
 `TagRagAppService.get_all_resources_to_send_to_rag()` (`ResourceSearchBuilder`: tag filter + fs-node
-+ not-archived), with `version_marker` = content hash of the fetched file. Manually added documents
-are never touched by sync.
++ not-archived), with `version_marker` = content hash of the fetched file.
+
+Each imported row stamps its criterion into `source_metadata`
+(`{"imported_from": {"tag_key": ..., "tag_value": ...}}`). Without it an imported document is
+indistinguishable from a hand-picked one, and sync v2 could not tell what is in its scope and what it
+must never touch — one dict key now, no schema change later.
+
+### Why the standing subscription is deferred
+
+Reconciliation (new → add, hash changed → refresh, no longer a candidate → **delete** chunks + snapshot +
+row) needs a persistent scope on the knowledge base, and it makes editing that scope a destructive
+operation: narrowing a tag deletes documents, clearing the source orphans them. That is a feature with its
+own confirmation semantics, and it does not have to land with the provider. V1 gets the same corpus into a
+knowledge base with a bulk add; v2 keeps it current.
 
 ### Marked-for-deletion workflow (reimplemented)
 
 Salvaged from `TagRagAppService`, which is deleted:
 
 - a tag marks a lab resource for deletion;
-- the knowledge-base detail page lists pending deletions for a synced KB;
+- the knowledge-base detail page lists the pending deletions, computed **per document**: for each row
+  with `source_type = "resource"`, does the resource behind its `source_id` carry the marker tag? No sync
+  configuration is involved — the marker is its own tag, unrelated to whatever tag a document was
+  imported by — so this covers hand-picked resource documents too;
 - confirming removes the document from the knowledge base **and deletes the lab resource**.
 
 ⚠️ Destructive and irreversible. Keep it behind an explicit confirmation naming the resource, and
@@ -590,8 +615,9 @@ from the brick directory: `gws server test <file>`.
 2. `test_knowledge_base_service.py` — temp instance dir; upload/index status transitions incl. the
    error path; **stale-lease reclaim**; delete cleanup (chunks + snapshot); profile CRUD + dangling
    ids; a test-only `FakeDocumentSource` proves `add_document` / `refresh_document` /
-   `sync_documents` work against an unregistered-in-production provider; snapshot invariant (indexing
-   still works after the fake source "disappears"); `SyncReport` reports skips.
+   `import_documents` work against an unregistered-in-production provider; snapshot invariant (indexing
+   still works after the fake source "disappears"); `ImportReport` reports skips, and a second import of
+   the same criterion adds nothing.
 3. `test_knowledge_base_chat_conversation.py` — `store_conversation_in_db=False`; `TestModel` /
    `FunctionModel` forcing a `search_knowledge` call; assert the yield sequence user → streaming* →
    `ChatMessageSource` with sources; **restore replays tool turns**; error path.
@@ -622,8 +648,9 @@ sequence.
 3. **Chat loop** — conversation class, credentials helper, conversation tests green.
 4. **UI: knowledge-base manager** — routes, upload + index end to end in the dev app.
 5. **UI: chat profiles + chat window** — full manual loop with restore.
-6. **Resource provider + sync + marked-for-deletion** — verify with a tagged lab resource: sync →
-   query → modify → re-sync updates → mark for deletion → confirm.
+6. **Resource provider + import by tag + marked-for-deletion** — verify with tagged lab resources:
+   import → query → modify → refresh → query → re-import adds nothing → mark for deletion → confirm.
+   Tag-driven sync is a follow-up (v2), not part of this step.
 7. **Remove Dify/RAGFlow** (§2) — after the new stack is proven, so rollback stays possible until
    then. Grep for every deleted symbol; run the full suite. Re-index the corpus from the tagged
    resources.

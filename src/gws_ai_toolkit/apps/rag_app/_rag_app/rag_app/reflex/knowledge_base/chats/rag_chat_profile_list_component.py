@@ -109,8 +109,9 @@ def _profile_row(profile: ChatProfileRow) -> rx.Component:
                     size="1",
                     on_click=lambda: RagChatProfileListState.open_edit_dialog(profile.id),
                 ),
-                _delete_dialog(profile),
+                rx.box(_delete_dialog(profile), margin_left="0.75rem"),
                 spacing="2",
+                align="center",
                 justify="end",
             )
         ),

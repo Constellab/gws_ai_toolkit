@@ -2,14 +2,19 @@
 
 The header carries the facts that decide what a retrieval will return — the instance scope (which
 vector space holds the chunks) and the chunking policy — because they are not editable from here and a
-user needs to know them before wondering why an answer is what it is.
+user needs to know them before wondering why an answer is what it is. Its name and description *are*
+editable from here, behind the same actions menu the list page uses; ``KnowledgeBaseListState`` owns
+that dialog and the delete confirmation, so ``knowledge_base_edit_dialog`` has to be rendered on this
+page too for either to be able to show.
 """
 
 import reflex as rx
 
 from .add_document_dialog.add_document_dialog_component import add_document_button
 from .document_table_component import document_table_component
+from .knowledge_base_actions_menu_component import knowledge_base_actions_menu
 from .knowledge_base_detail_state import KnowledgeBaseDetailState
+from .knowledge_base_list_component import knowledge_base_edit_dialog
 from .knowledge_base_list_state import KNOWLEDGE_BASES_ROUTE
 
 
@@ -29,6 +34,7 @@ def knowledge_base_detail_component() -> rx.Component:
             ),
             _not_found_message(),
         ),
+        knowledge_base_edit_dialog(),
         spacing="4",
         padding="1em",
         width="100%",
@@ -53,6 +59,7 @@ def _header() -> rx.Component:
             rx.heading(KnowledgeBaseDetailState.knowledge_base.name, size="7"),
             rx.spacer(),
             add_document_button(),
+            knowledge_base_actions_menu(KnowledgeBaseDetailState.knowledge_base, icon_size=22),
             align="center",
             width="100%",
         ),

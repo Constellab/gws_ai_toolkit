@@ -70,6 +70,10 @@ class KnowledgeBaseDetailState(rx.State):
     is_indexing: bool = False
     # The document a per-row action is working on, so only its own row shows a spinner.
     busy_document_id: str = ""
+    # The document whose delete-confirmation dialog is open, or "" for none. Controlled rather than
+    # trigger-driven: the button that opens it is a menu item, not a stand-alone button a Radix
+    # alert-dialog trigger can wrap.
+    delete_dialog_document_id: str = ""
 
     ############################################### DERIVED ###############################################
 
@@ -234,6 +238,16 @@ class KnowledgeBaseDetailState(rx.State):
         await self._index_documents([document_id])
 
     ############################################### DELETE ###############################################
+
+    @rx.event
+    def set_delete_dialog_open(self, is_open: bool, document_id: str) -> None:
+        """Open or close one document's delete-confirmation dialog.
+
+        Bound both to the menu item that opens it and to the dialog's own ``on_open_change``, so
+        Radix's own ways of closing it — Escape, an overlay click, the Cancel or Delete button —
+        clear the id the same way opening it set it.
+        """
+        self.delete_dialog_document_id = document_id if is_open else ""
 
     @rx.event(background=True)
     async def delete_document(self, document_id: str) -> AsyncGenerator[rx.event.EventType, None]:

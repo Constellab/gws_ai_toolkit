@@ -1,6 +1,21 @@
-"""State of the knowledge-base list page: list, create, open, delete.
+"""State of the knowledge-base list page: list, create, edit, open, delete.
 
-Two things are worth spelling out.
+A few things are worth spelling out.
+
+**This state also drives the detail page's actions menu.** The edit dialog and the delete confirmation
+declared here are rendered on both ``knowledge_base_list_component`` and ``knowledge_base_detail_component``
+(behind ``knowledge_base_actions_menu``, shared by the two), so a knowledge base can be renamed or
+deleted from wherever it is being looked at. That is why ``open_edit_dialog`` reads the row fresh from
+the service instead of from ``knowledge_bases``: the detail page never populates that list. It is also
+why ``save_knowledge_base`` and ``delete_knowledge_base`` reach into :class:`KnowledgeBaseDetailState` —
+a save patches its cached copy in place so a renamed knowledge base does not look stale on its own
+detail page, and a delete redirects away from it, since there is nothing left there to show.
+
+**Create and edit are the same dialog.** ``_editing_knowledge_base`` decides which of the two a save
+performs. Unlike the chat-profile dialog this mirrors, the edit form does not expose every field a
+knowledge base has — chunking policy and instance scope stay create-only (see below) — so
+``_editing_knowledge_base`` also carries those fields, read straight off the row being edited, so a
+save cannot regress them back to defaults.
 
 **Deleting a knowledge base needs an engine**, because the chunks go first (a row deleted before its
 chunks leaves vectors that retrieval can still return and that nothing points at). The engine is
@@ -17,7 +32,9 @@ A knowledge base is always created in ``DEFAULT_INSTANCE_SCOPE``. The scope deci
 holds the chunks, so a typo in a free-text field would silently create a knowledge base in an instance
 nothing else addresses; choosing another scope belongs to the app's configuration, not to a create
 form. The scope a knowledge base lives in is still *shown*, because it explains what a retrieval can
-reach.
+reach. The chunking policy is likewise create-only: a new chunk size only affects documents indexed
+after the change, so changing it on an existing knowledge base would misleadingly suggest its already
+indexed documents were reprocessed.
 """
 
 from collections.abc import AsyncGenerator
@@ -40,6 +57,7 @@ from gws_reflex_main import ReflexAppException, ReflexMainState
 
 from ..core.form_parsing import parse_positive_int
 from ..core.knowledge_base_app_state import KnowledgeBaseAppState
+from .knowledge_base_detail_state import KnowledgeBaseDetailState
 
 KNOWLEDGE_BASES_ROUTE = "/kb/bases"
 
@@ -55,18 +73,26 @@ class KnowledgeBaseListState(rx.State):
     knowledge_bases: list[KnowledgeBaseDTO] = []
     is_loading: bool = False
 
-    # Create dialog. The numeric fields are kept as strings because that is what an ``rx.input``
-    # produces; they are parsed once, on submit, where a bad value can be named and reported.
-    create_dialog_open: bool = False
-    is_creating: bool = False
-    new_name: str = ""
-    new_description: str = ""
-    new_chunk_size: str = str(DEFAULT_CHUNK_SIZE)
-    new_chunk_overlap: str = str(DEFAULT_CHUNK_OVERLAP)
+    # The edit dialog. A ``None`` ``_editing_knowledge_base`` means "create"; otherwise the dialog is
+    # editing that knowledge base, and its fields the form doesn't expose are read back off it on save.
+    # The numeric fields are kept as strings because that is what an ``rx.input`` produces; they are
+    # parsed once, on submit, where a bad value can be named and reported.
+    dialog_open: bool = False
+    is_saving: bool = False
+    _editing_knowledge_base: KnowledgeBaseDTO | None = None
+    form_name: str = ""
+    form_description: str = ""
+    form_chunk_size: str = str(DEFAULT_CHUNK_SIZE)
+    form_chunk_overlap: str = str(DEFAULT_CHUNK_OVERLAP)
 
     # Id of the knowledge base a row action is working on, so its own row can show the spinner rather
     # than the whole table going busy.
     busy_knowledge_base_id: str = ""
+
+    # The knowledge base whose delete-confirmation dialog is open, or "" for none. Controlled rather
+    # than trigger-driven: the button that opens it is a menu item, not a stand-alone button a Radix
+    # alert-dialog trigger can wrap.
+    delete_dialog_knowledge_base_id: str = ""
 
     ############################################### READ ###############################################
 
@@ -74,6 +100,21 @@ class KnowledgeBaseListState(rx.State):
     def has_knowledge_bases(self) -> bool:
         """True when there is at least one knowledge base to show."""
         return len(self.knowledge_bases) > 0
+
+    @rx.var
+    def dialog_title(self) -> str:
+        """Title of the dialog, which is the one place create and edit look different."""
+        return "Edit knowledge base" if self._editing_knowledge_base else "New knowledge base"
+
+    @rx.var
+    def is_editing_knowledge_base(self) -> bool:
+        """True when the dialog is editing a knowledge base rather than creating one.
+
+        The component needs this as a plain var: ``_editing_knowledge_base`` is backend-only and
+        cannot be read from an ``rx.cond``, but the chunking fields must hide once there is a knowledge
+        base being edited.
+        """
+        return self._editing_knowledge_base is not None
 
     @rx.event
     async def load_knowledge_bases(self) -> None:
@@ -84,82 +125,137 @@ class KnowledgeBaseListState(rx.State):
         finally:
             self.is_loading = False
 
-    ############################################### CREATE ###############################################
+    ############################################### DIALOG ###############################################
 
     @rx.event
     def open_create_dialog(self) -> None:
-        """Open the create dialog on a blank form."""
-        self.new_name = ""
-        self.new_description = ""
-        self.new_chunk_size = str(DEFAULT_CHUNK_SIZE)
-        self.new_chunk_overlap = str(DEFAULT_CHUNK_OVERLAP)
-        self.create_dialog_open = True
+        """Open the dialog on a blank create form."""
+        self._editing_knowledge_base = None
+        self.form_name = ""
+        self.form_description = ""
+        self.form_chunk_size = str(DEFAULT_CHUNK_SIZE)
+        self.form_chunk_overlap = str(DEFAULT_CHUNK_OVERLAP)
+        self.dialog_open = True
 
     @rx.event
-    def close_create_dialog(self) -> None:
-        """Close the create dialog, discarding whatever was typed."""
-        self.create_dialog_open = False
+    async def open_edit_dialog(self, knowledge_base_id: str) -> None:
+        """Open the dialog on an existing knowledge base's name and description.
+
+        Read fresh from the service rather than from ``knowledge_bases``: this also opens from the
+        detail page's actions menu, and that page never loads the list.
+
+        :raises ReflexAppException: if the knowledge base no longer exists
+        """
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            knowledge_base = KnowledgeBaseService().get_knowledge_base(knowledge_base_id)
+        if knowledge_base is None:
+            raise ReflexAppException("This knowledge base no longer exists. Refresh the page.")
+
+        self._editing_knowledge_base = knowledge_base.to_dto()
+        self.form_name = knowledge_base.name
+        self.form_description = knowledge_base.description
+        self.dialog_open = True
 
     @rx.event
-    def set_new_name(self, value: str) -> None:
-        """Setter for the name field of the create form."""
-        self.new_name = value
+    def close_dialog(self) -> None:
+        """Close the dialog, discarding whatever was typed."""
+        self.dialog_open = False
 
     @rx.event
-    def set_new_description(self, value: str) -> None:
-        """Setter for the description field of the create form."""
-        self.new_description = value
+    def set_form_name(self, value: str) -> None:
+        """Setter for the name field."""
+        self.form_name = value
 
     @rx.event
-    def set_new_chunk_size(self, value: str) -> None:
-        """Setter for the chunk-size field of the create form."""
-        self.new_chunk_size = value
+    def set_form_description(self, value: str) -> None:
+        """Setter for the description field."""
+        self.form_description = value
 
     @rx.event
-    def set_new_chunk_overlap(self, value: str) -> None:
-        """Setter for the chunk-overlap field of the create form."""
-        self.new_chunk_overlap = value
+    def set_form_chunk_size(self, value: str) -> None:
+        """Setter for the chunk-size field. Only shown while creating."""
+        self.form_chunk_size = value
 
     @rx.event
-    async def create_knowledge_base(self) -> AsyncGenerator[rx.event.EventType, None]:
-        """Create a knowledge base from the dialog's fields, then open it.
+    def set_form_chunk_overlap(self, value: str) -> None:
+        """Setter for the chunk-overlap field. Only shown while creating."""
+        self.form_chunk_overlap = value
 
-        Opening it straight away is deliberate: an empty knowledge base is useless, and the next
-        thing anyone wants is the add-document button on its detail page.
+    ############################################### SAVE ###############################################
+
+    @rx.event
+    async def save_knowledge_base(self) -> AsyncGenerator[rx.event.EventType, None]:
+        """Create or update the knowledge base the dialog is open on.
+
+        A freshly created knowledge base is opened straight away: it is empty and useless, and the
+        next thing anyone wants is the add-document button on its detail page. An update stays
+        wherever it was opened from — the list reloads its row, and the detail page's own cached copy
+        is patched in place so a renamed knowledge base does not look stale on its own page.
 
         :raises ReflexAppException: if the form is incomplete, or the name is taken
         """
-        name = self.new_name.strip()
+        name = self.form_name.strip()
         if not name:
             raise ReflexAppException("A knowledge base needs a name.")
 
+        editing = self._editing_knowledge_base
         save_dto = SaveKnowledgeBaseDTO(
             name=name,
-            description=self.new_description.strip(),
-            instance_scope=DEFAULT_INSTANCE_SCOPE,
-            chunk_size=parse_positive_int(self.new_chunk_size, "Chunk size"),
-            chunk_overlap=parse_positive_int(
-                self.new_chunk_overlap, "Chunk overlap", allow_zero=True
+            description=self.form_description.strip(),
+            instance_scope=editing.instance_scope if editing else DEFAULT_INSTANCE_SCOPE,
+            chunk_size=(
+                editing.chunk_size
+                if editing
+                else parse_positive_int(self.form_chunk_size, "Chunk size")
             ),
+            chunk_overlap=(
+                editing.chunk_overlap
+                if editing
+                else parse_positive_int(self.form_chunk_overlap, "Chunk overlap", allow_zero=True)
+            ),
+            sync_source_type=editing.sync_source_type if editing else None,
+            sync_config=editing.sync_config if editing else None,
         )
 
-        self.is_creating = True
+        self.is_saving = True
         try:
             main_state = await self.get_state(ReflexMainState)
+            service = KnowledgeBaseService()
             with await main_state.authenticate_user():
                 try:
-                    knowledge_base = KnowledgeBaseService().create_knowledge_base(save_dto)
+                    if editing:
+                        knowledge_base = service.update_knowledge_base(editing.id, save_dto)
+                    else:
+                        knowledge_base = service.create_knowledge_base(save_dto)
                 except KnowledgeBaseNameAlreadyUsedError as err:
                     # The service wrote this message for a user; a toast is where it belongs.
                     raise ReflexAppException(str(err)) from err
         finally:
-            self.is_creating = False
+            self.is_saving = False
 
-        self.create_dialog_open = False
-        yield rx.toast.success(f"Knowledge base '{knowledge_base.name}' created.")
-        yield rx.redirect(f"{KNOWLEDGE_BASES_ROUTE}/{knowledge_base.id}")
+        self.dialog_open = False
+        if editing:
+            await self._reload_knowledge_bases()
+            detail_state = await self.get_state(KnowledgeBaseDetailState)
+            if detail_state.knowledge_base and detail_state.knowledge_base.id == editing.id:
+                detail_state.knowledge_base = knowledge_base.to_dto()
+            yield rx.toast.success(f"Knowledge base '{knowledge_base.name}' updated.")
+        else:
+            yield rx.toast.success(f"Knowledge base '{knowledge_base.name}' created.")
+            yield rx.redirect(f"{KNOWLEDGE_BASES_ROUTE}/{knowledge_base.id}")
 
     ############################################### DELETE ###############################################
+
+    @rx.event
+    def set_delete_dialog_open(self, is_open: bool, knowledge_base_id: str) -> None:
+        """Open or close one knowledge base's delete-confirmation dialog.
+
+        Bound both to the menu item that opens it and to the dialog's own ``on_open_change``, so
+        Radix's own ways of closing it — Escape, an overlay click, the Cancel or Delete button —
+        clear the id the same way opening it set it.
+        """
+        self.delete_dialog_knowledge_base_id = knowledge_base_id if is_open else ""
 
     @rx.event(background=True)
     async def delete_knowledge_base(
@@ -168,7 +264,8 @@ class KnowledgeBaseListState(rx.State):
         """Delete a knowledge base: its chunks, its snapshots and its rows.
 
         A background event because deleting the chunks takes the instance's write lock and rewrites a
-        LanceDB table, which has no business happening inside a foreground event.
+        LanceDB table, which has no business happening inside a foreground event. If its own detail
+        page is open when this runs, that page is left with nothing to show, so it is redirected away.
 
         Confirmation is the caller's: the button that reaches this sits behind an alert dialog.
         """
@@ -201,8 +298,15 @@ class KnowledgeBaseListState(rx.State):
 
         async with self:
             await self._reload_knowledge_bases()
+            detail_state = await self.get_state(KnowledgeBaseDetailState)
+            showing_deleted = (
+                detail_state.knowledge_base is not None
+                and detail_state.knowledge_base.id == knowledge_base_id
+            )
 
         yield rx.toast.success(f"Knowledge base '{name}' deleted.")
+        if showing_deleted:
+            yield rx.redirect(KNOWLEDGE_BASES_ROUTE)
 
     ############################################### INTERNALS ###############################################
 
