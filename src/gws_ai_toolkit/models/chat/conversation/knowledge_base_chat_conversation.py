@@ -91,7 +91,9 @@ class KnowledgeBaseChatConversation(BaseChatConversation[ChatUserMessageText]):
         yield user_message
 
         user_query = UserQueryTextEvent(
-            query=user_message.content, agent_id=self.knowledge_agent.id
+            query=user_message.content,
+            agent_id=self.knowledge_agent.id,
+            focused_document_ids=user_message.focused_document_ids,
         )
 
         try:

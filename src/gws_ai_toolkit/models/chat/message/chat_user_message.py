@@ -58,6 +58,19 @@ class ChatUserMessageText(ChatUserMessageBase):
 
     message_type: str = "user-text"
 
+    # Document Focus (issue #29): narrows KnowledgeBaseAgentAi's search_knowledge tool to these
+    # documents for this message's turn. Empty means unscoped. Rides in ChatMessageModel.data, the
+    # same way tool calls/table attachments do — see ChatMessageToolCall for the pattern.
+    focused_document_ids: list[str] = []
+
+    def fill_from_model(self, chat_message: "ChatMessageModel") -> None:
+        """Fill additional fields from the ChatMessageModel.
+        This is called after the initial creation in from_chat_message_model.
+        """
+        super().fill_from_model(chat_message)
+        data = chat_message.data or {}
+        self.focused_document_ids = data.get("focused_document_ids") or []
+
     def to_chat_message_model(self, conversation: "ChatConversation") -> "ChatMessageModel":
         """Convert DTO to database ChatMessage model.
 
@@ -74,4 +87,5 @@ class ChatUserMessageText(ChatUserMessageBase):
             type_=self.message_type,
             content=self.content,
             external_id=self.external_id,
+            data={"focused_document_ids": self.focused_document_ids},
         )

@@ -27,9 +27,17 @@ from dataclasses import dataclass
 
 import reflex as rx
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
+from gws_ai_toolkit.models.chat.message.chat_user_message import (
+    ChatUserMessageBase,
+    ChatUserMessageText,
+)
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_chat_factory import (
     KnowledgeBaseChatFactory,
     KnowledgeBaseChatUnavailableError,
+)
+from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import (
+    DocumentIndexStatus,
+    KnowledgeBaseDocumentDTO,
 )
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_dto import RagChatProfileDTO
@@ -63,6 +71,19 @@ class ChatProfileOption:
     name: str
 
 
+@dataclass
+class DocumentFocusOption:
+    """One document, as the focus picker's menu and chips show it.
+
+    Attributes:
+        id: The document's id, which is what a search is scoped to.
+        filename: What the menu item and the chip show.
+    """
+
+    id: str
+    filename: str
+
+
 class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     """A chat against a chat profile, streaming an answer with the sources it retrieved.
 
@@ -80,6 +101,12 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     # DTO carries a whole system prompt, and this list would otherwise be pushed to the browser once
     # per profile on every state sync. :attr:`profile_options` is what the UI reads.
     _profiles: list[RagChatProfileDTO] = []
+
+    # Document Focus (issue #29). `_focused_document_ids` is what the next message carries;
+    # `_focusable_documents` is what the "+" menu offers — the selected profile's bound knowledge
+    # bases, refreshed whenever the profile changes (selecting one, restoring a conversation).
+    _focused_document_ids: list[str] = []
+    _focusable_documents: list[KnowledgeBaseDocumentDTO] = []
 
     ############################################### DERIVED ###############################################
 
@@ -105,6 +132,26 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     def is_read_only(self) -> bool:
         """True when the conversation on screen can be read but not continued."""
         return self.read_only_notice != ""
+
+    @rx.var
+    def focus_options(self) -> list[DocumentFocusOption]:
+        """Documents the "+" menu offers: focusable, and not focused already."""
+        return [
+            DocumentFocusOption(id=document.id, filename=document.filename)
+            for document in self._focusable_documents
+            if document.id not in self._focused_document_ids
+        ]
+
+    @rx.var
+    def focused_documents(self) -> list[DocumentFocusOption]:
+        """The currently focused documents, rendered as removable chips."""
+        filenames_by_id = {document.id: document.filename for document in self._focusable_documents}
+        return [
+            DocumentFocusOption(
+                id=document_id, filename=filenames_by_id.get(document_id, document_id)
+            )
+            for document_id in self._focused_document_ids
+        ]
 
     ############################################### CONVERSATION ###############################################
 
@@ -146,6 +193,18 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         self._conversation = conversation
         # The selector follows the conversation, so the header shows what is actually answering.
         self.selected_profile_id = conversation.knowledge_agent.get_chat_profile_id()
+        await self._load_focusable_documents()
+
+    async def build_user_message(self, user_query: str) -> ChatUserMessageBase:
+        """Attach the current focus, if any, to the outgoing message.
+
+        Document Focus (issue #29) rides the message itself rather than the conversation, so the
+        scope that reaches ``KnowledgeBaseAgentAi`` is exactly what was focused when this message
+        was sent — not whatever the picker shows by the time a later turn runs.
+        """
+        return ChatUserMessageText(
+            content=user_query, focused_document_ids=list(self._focused_document_ids)
+        )
 
     async def _after_conversation_updated(self) -> rx.event.EventSpec | None:
         """Refresh the sidebar and put the new conversation's id in the URL."""
@@ -233,8 +292,14 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
             return None
 
         had_conversation = bool(self._conversation or self._chat_messages or self.read_only_notice)
-        self.start_chat_with_profile(profile_id)
+        await self.start_chat_with_profile(profile_id)
         return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE) if had_conversation else None
+
+    @rx.event
+    def clear_chat(self) -> None:
+        """Clear the chat and reset the conversation, dropping any focus set on it."""
+        super().clear_chat()
+        self._focused_document_ids = []
 
     def discard_conversation(self) -> None:
         """Leave the conversation on screen, keeping the selected profile.
@@ -249,7 +314,7 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         self.clear_chat()
         self.read_only_notice = ""
 
-    def start_chat_with_profile(self, profile_id: str) -> None:
+    async def start_chat_with_profile(self, profile_id: str) -> None:
         """Select a profile and leave whatever was on screen.
 
         Not an event, for the same reason as :meth:`discard_conversation`: the chat-profile page
@@ -258,6 +323,22 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         """
         self.selected_profile_id = profile_id
         self.discard_conversation()
+        await self._load_focusable_documents()
+
+    ############################################### DOCUMENT FOCUS ###############################################
+
+    @rx.event
+    def add_document_focus(self, document_id: str) -> None:
+        """Add a document to the focus of the current (or next) message."""
+        if document_id not in self._focused_document_ids:
+            self._focused_document_ids = [*self._focused_document_ids, document_id]
+
+    @rx.event
+    def remove_document_focus(self, document: DocumentFocusOption) -> None:
+        """Remove a document from the current focus."""
+        self._focused_document_ids = [
+            document_id for document_id in self._focused_document_ids if document_id != document.id
+        ]
 
     ############################################### SOURCES ###############################################
 
@@ -320,3 +401,35 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         selectable_ids = [profile.id for profile in self._profiles]
         if self.selected_profile_id not in selectable_ids:
             self.selected_profile_id = selectable_ids[0] if selectable_ids else ""
+
+        await self._load_focusable_documents()
+
+    async def _load_focusable_documents(self) -> None:
+        """Re-read the documents the focus picker offers: the selected profile's bound, indexed
+        knowledge bases.
+
+        Focus only narrows the profile's own scope, never widens it (see ADR-0002), so a document of
+        a knowledge base the profile does not bind must never appear here. Only ``done`` documents
+        are offered — a document still indexing, or one whose indexing failed, has nothing to
+        retrieve from yet.
+        """
+        if not self.selected_profile_id:
+            self._focusable_documents = []
+            return
+
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            profile_service = RagChatProfileService()
+            profile = profile_service.get_profile(self.selected_profile_id)
+            if profile is None:
+                self._focusable_documents = []
+                return
+
+            knowledge_base_ids = profile_service.get_valid_knowledge_base_ids(profile)
+            service = KnowledgeBaseService()
+            self._focusable_documents = [
+                document.to_dto()
+                for knowledge_base_id in knowledge_base_ids
+                for document in service.get_documents(knowledge_base_id)
+                if document.index_status == DocumentIndexStatus.DONE.value
+            ]

@@ -19,6 +19,10 @@ class UserQueryEventBase(BaseModelDTO):
 class UserQueryTextEvent(UserQueryEventBase):
     type: Literal["user_query"] = "user_query"
 
+    # Document Focus (issue #29): documents a tool call should be scoped to for this turn. Only
+    # KnowledgeBaseAgentAi reads it; empty for every other agent sharing this event type.
+    focused_document_ids: list[str] = []
+
 
 class ResponseEvent(BaseModelDTO):
     response_id: str

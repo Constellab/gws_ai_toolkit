@@ -37,6 +37,11 @@ def knowledge_base_empty_chat_component(config: ChatConfig) -> rx.Component:
 
 def _ready_to_chat(config: ChatConfig) -> rx.Component:
     """The profile that will answer, and the input to ask it something."""
+    input_children: list[rx.Component] = []
+    if config.composer_extra:
+        input_children.append(config.composer_extra(config.state))
+    input_children.append(chat_input_component(config))
+
     return rx.vstack(
         rx.text(
             rx.cond(
@@ -50,7 +55,7 @@ def _ready_to_chat(config: ChatConfig) -> rx.Component:
             max_width="380px",
         ),
         rx.box(
-            chat_input_component(config),
+            *input_children,
             width="100%",
             max_width="800px",
             margin="auto",

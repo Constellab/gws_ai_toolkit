@@ -175,6 +175,34 @@ class TestKnowledgeBaseChatConversation(BaseTestCase):
             "profile-1",
         )
 
+    def test_a_focused_message_scopes_retrieval_to_its_documents(self):
+        """Document Focus (issue #29): a message carrying focus narrows every search of its turn."""
+        retriever = StubRetriever(results=[[build_chunk("chunk-1", "About the budget.")]])
+        conversation, _, _ = self._build_conversation(
+            retriever, turns=[search("budget"), "Here it is."]
+        )
+
+        list(
+            conversation.call_conversation(
+                ChatUserMessageText(
+                    content="What is the budget?", focused_document_ids=["doc-1", "doc-2"]
+                )
+            )
+        )
+
+        self.assertEqual(retriever.calls[0]["document_ids"], ["doc-1", "doc-2"])
+
+    def test_an_unfocused_message_searches_without_a_document_filter(self):
+        """No focus set on the message means no ``document_ids`` filter reaches the retriever."""
+        retriever = StubRetriever(results=[[build_chunk("chunk-1", "About the budget.")]])
+        conversation, _, _ = self._build_conversation(
+            retriever, turns=[search("budget"), "Here it is."]
+        )
+
+        list(conversation.call_conversation(ChatUserMessageText(content="What is the budget?")))
+
+        self.assertIsNone(retriever.calls[0]["document_ids"])
+
     def test_retrieval_is_scoped_to_the_profile_and_honours_its_limits(self):
         """The bound knowledge bases, top_k and the threshold all reach the retrieval."""
         retriever = StubRetriever(results=[[build_chunk("chunk-1", "A passage.")]])

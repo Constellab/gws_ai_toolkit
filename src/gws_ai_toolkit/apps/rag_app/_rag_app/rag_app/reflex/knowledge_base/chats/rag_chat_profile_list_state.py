@@ -338,7 +338,7 @@ class RagChatProfileListState(rx.State):
         :param profile_id: the profile to chat with
         """
         chat_state = await self.get_state(KnowledgeBaseChatState)
-        chat_state.start_chat_with_profile(profile_id)
+        await chat_state.start_chat_with_profile(profile_id)
         return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
 
     ############################################### DELETE ###############################################

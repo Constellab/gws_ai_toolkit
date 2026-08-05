@@ -28,6 +28,7 @@ from ...chat_base.source.source_message_component import (
     source_message_component,
 )
 from ..chats.rag_chat_profile_list_state import CHAT_PROFILES_ROUTE
+from .document_focus_component import document_focus_composer
 from .knowledge_base_chat_state import ChatProfileOption, KnowledgeBaseChatState
 from .knowledge_base_empty_chat_component import knowledge_base_empty_chat_component
 
@@ -70,6 +71,7 @@ def knowledge_base_chat_config_factory() -> ChatConfig:
                 ),
             ),
         },
+        composer_extra=document_focus_composer,
     )
 
 

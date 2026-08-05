@@ -20,6 +20,28 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
     Returns:
         rx.Component: Layout with scrollable messages and fixed bottom input
     """
+    fixed_input_children: list[rx.Component] = []
+    if config.composer_extra:
+        fixed_input_children.append(config.composer_extra(config.state))
+    fixed_input_children.append(
+        rx.box(
+            chat_input_component(config, hide_border=True),
+            # disabled styling when streaming
+            background_color=rx.cond(
+                config.state.is_streaming,
+                "var(--gray-2)",
+                "white",
+            ),
+            border_radius="48px",
+            padding_left="12px",
+            padding_right="28px",
+            box_shadow="0 2px 8px rgba(0, 0, 0, 0.1)",
+            max_width="90vw",
+            width="100%",
+            margin="auto",
+        )
+    )
+
     return rx.box(
         rx.vstack(
             chat_messages_list_component(config),
@@ -29,22 +51,7 @@ def _chat_with_messages(config: ChatConfig) -> rx.Component:
         ),
         # Fixed input at bottom
         rx.box(
-            rx.box(
-                chat_input_component(config, hide_border=True),
-                # disabled styling when streaming
-                background_color=rx.cond(
-                    config.state.is_streaming,
-                    "var(--gray-2)",
-                    "white",
-                ),
-                border_radius="48px",
-                padding_left="12px",
-                padding_right="28px",
-                box_shadow="0 2px 8px rgba(0, 0, 0, 0.1)",
-                max_width="90vw",
-                width="100%",
-                margin="auto",
-            ),
+            *fixed_input_children,
             position="absolute",
             bottom="5px",
             left="50%",

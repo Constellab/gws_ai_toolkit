@@ -196,8 +196,11 @@ class KnowledgeBaseAgentAi(BasePydanticAgentAi[KnowledgeBaseAgentEvent, UserQuer
 
         Args:
             function_call_event: The tool call the model made.
-            user_query: The user's question, which retrieval does not depend on — the model's own
-                query is what it searches with.
+            user_query: The user's question. Its query text is not what retrieval searches with —
+                the model's own query is — but its ``focused_document_ids`` is what scopes the
+                search: Document Focus (issue #29) is enforced here, not offered to the model as a
+                choice, so a message with focus set narrows every search of its turn to those
+                documents and a message without it searches unscoped.
 
         Yields:
             The event reporting the passages back to the model, or a tool error the model is asked
@@ -219,6 +222,7 @@ class KnowledgeBaseAgentAi(BasePydanticAgentAi[KnowledgeBaseAgentEvent, UserQuer
             knowledge_base_ids=self.chat_config.knowledge_base_ids,
             top_k=self.chat_config.top_k,
             score_threshold=self.chat_config.score_threshold,
+            document_ids=user_query.focused_document_ids or None,
         )
         self._retrieved_chunks.extend(chunks)
 

@@ -37,6 +37,11 @@ class ChatConfig:
 
         right_section (rx.Component | None): Optional component for right sidebar.
 
+        composer_extra (Callable | None): Optional component rendered directly above the input,
+            in both the empty and the with-messages layout. This is the seam a chat wires a
+            focus/attachment picker through (e.g. the knowledge-base chat's document-focus "+"
+            menu and chips) without the shared widget knowing anything about it.
+
     Example:
         config = ChatConfig(
             state=MyCustomChatState,
@@ -57,3 +62,5 @@ class ChatConfig:
     right_section: Callable[[ConversationChatStateBase], rx.Component] | None = None
 
     custom_chat_messages: dict[str, ChatMessageRenderer] | None = None
+
+    composer_extra: Callable[[ConversationChatStateBase], rx.Component] | None = None
