@@ -1,7 +1,7 @@
 import unittest
 
 import pandas as pd
-from gws_ai_toolkit.core.agents.base_function_agent_events import (
+from gws_ai_toolkit.core.agents.agent_events import (
     CodeEvent,
     ErrorEvent,
     FunctionErrorEvent,

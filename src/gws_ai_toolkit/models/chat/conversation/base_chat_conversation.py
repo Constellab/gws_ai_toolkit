@@ -7,7 +7,7 @@ from uuid import uuid4
 from attr import dataclass
 from gws_core import BaseModelDTO, UserDTO
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import (
+from gws_ai_toolkit.core.agents.agent_events import (
     FunctionCallEvent,
     FunctionErrorEvent,
     FunctionSuccessEvent,
@@ -94,6 +94,16 @@ class BaseChatConversation(ABC, Generic[U]):
         self._tool_names_by_call_id = {}
         self._conversation_id = None
         self._conversation_service = ChatConversationService()
+
+    @property
+    def conversation_id(self) -> str | None:
+        """The id of this conversation's persisted row, or ``None`` before the first message.
+
+        The public counterpart of ``_conversation_id`` for callers outside this package — the HTTP
+        route needs it as the ``session_id`` it hands back, and reaching into a leading-underscore
+        attribute is not a seam an external caller should depend on.
+        """
+        return self._conversation_id
 
     def call_conversation(self, user_message: U) -> Generator[ChatMessage, None, None]:
         """Handle user message and call AI chat service.

@@ -30,6 +30,7 @@ def rag_chat_profile_list_component() -> rx.Component:
             ),
         ),
         _edit_dialog(),
+        _token_dialog(),
         spacing="4",
         padding="1em",
         width="100%",
@@ -72,6 +73,7 @@ def _profile_table() -> rx.Component:
                     rx.table.column_header_cell("Knowledge bases"),
                     rx.table.column_header_cell("Passages"),
                     rx.table.column_header_cell("Threshold"),
+                    rx.table.column_header_cell("Status"),
                     rx.table.column_header_cell(""),
                 )
             ),
@@ -94,6 +96,7 @@ def _profile_row(profile: ChatProfileRow) -> rx.Component:
         rx.table.cell(_knowledge_bases_cell(profile)),
         rx.table.cell(rx.text(profile.top_k_label, size="2", color="var(--gray-11)")),
         rx.table.cell(rx.text(profile.threshold_label, size="2", color="var(--gray-11)")),
+        rx.table.cell(_status_cell(profile)),
         rx.table.cell(
             rx.hstack(
                 rx.button(
@@ -109,6 +112,7 @@ def _profile_row(profile: ChatProfileRow) -> rx.Component:
                     size="1",
                     on_click=lambda: RagChatProfileListState.open_edit_dialog(profile.id),
                 ),
+                _publish_actions(profile),
                 rx.box(_delete_dialog(profile), margin_left="0.75rem"),
                 spacing="2",
                 align="center",
@@ -116,6 +120,23 @@ def _profile_row(profile: ChatProfileRow) -> rx.Component:
             )
         ),
         align="center",
+    )
+
+
+def _status_cell(profile: ChatProfileRow) -> rx.Component:
+    """Whether this profile is published, and since when — the token itself never appears here."""
+    return rx.vstack(
+        rx.cond(
+            profile.is_published,
+            rx.badge("Published", color_scheme="green", variant="soft", size="1"),
+            rx.badge("Not published", color_scheme="gray", variant="soft", size="1"),
+        ),
+        rx.cond(
+            profile.is_published,
+            rx.text(profile.published_label, size="1", color="var(--gray-10)"),
+        ),
+        spacing="1",
+        align="start",
     )
 
 
@@ -149,6 +170,145 @@ def _knowledge_bases_cell(profile: ChatProfileRow) -> rx.Component:
         ),
         spacing="1",
         align="start",
+    )
+
+
+def _publish_actions(profile: ChatProfileRow) -> rx.Component:
+    """Publish, rotate the token, or un-publish — admin-only, since publishing exposes documents.
+
+    The button shown only decides which confirmation opens; the service enforces the admin
+    restriction on its own, so hiding it here is a UX courtesy, not the security boundary.
+    """
+    return rx.cond(
+        RagChatProfileListState.is_admin,
+        rx.cond(
+            profile.is_published,
+            rx.hstack(
+                _publish_dialog(profile, rotate=True),
+                _unpublish_dialog(profile),
+                spacing="2",
+            ),
+            _publish_dialog(profile, rotate=False),
+        ),
+    )
+
+
+def _publish_dialog(profile: ChatProfileRow, *, rotate: bool) -> rx.Component:
+    """Confirm publishing a profile, or rotating an already-published one's token.
+
+    Publishing is the moment the world-readable warning has to land, because it is the moment it
+    becomes true: V1 has no per-document access control, so every knowledge base this profile
+    searches becomes readable by anyone who holds the token minted here.
+    """
+    label = "Rotate token" if rotate else "Publish"
+    icon = "refresh-cw" if rotate else "globe"
+    description = (
+        f"'{profile.name}' is already published. Rotating mints a new token immediately — the "
+        "current one stops working the moment you confirm."
+        if rotate
+        else (
+            f"Publishing '{profile.name}' makes every knowledge base it searches readable by "
+            "anyone who holds its token — this version has no per-document access control. The "
+            "token is shown once, right after you confirm: copy it immediately, and never paste "
+            "it anywhere the documents themselves should not be readable."
+        )
+    )
+    return rx.alert_dialog.root(
+        rx.alert_dialog.trigger(
+            rx.button(
+                rx.icon(icon, size=14),
+                label,
+                variant="soft" if rotate else "solid",
+                size="1",
+                loading=RagChatProfileListState.busy_profile_id == profile.id,
+            )
+        ),
+        rx.alert_dialog.content(
+            rx.alert_dialog.title(label),
+            rx.alert_dialog.description(description, margin_bottom="1rem"),
+            rx.flex(
+                rx.alert_dialog.cancel(rx.button("Cancel", variant="soft")),
+                rx.alert_dialog.action(
+                    rx.button(
+                        label,
+                        on_click=lambda: RagChatProfileListState.publish_profile(profile.id),
+                    ),
+                ),
+                spacing="3",
+                justify="end",
+            ),
+        ),
+    )
+
+
+def _unpublish_dialog(profile: ChatProfileRow) -> rx.Component:
+    """Confirm un-publishing — revokes access for anyone holding the current token immediately."""
+    return rx.alert_dialog.root(
+        rx.alert_dialog.trigger(
+            rx.button(
+                rx.icon("globe-lock", size=14),
+                "Un-publish",
+                variant="soft",
+                color_scheme="red",
+                size="1",
+                loading=RagChatProfileListState.busy_profile_id == profile.id,
+            )
+        ),
+        rx.alert_dialog.content(
+            rx.alert_dialog.title("Un-publish chat profile"),
+            rx.alert_dialog.description(
+                f"Anyone holding the current token for '{profile.name}' loses access immediately. "
+                "The profile itself is kept, and can be published again later with a new token.",
+                margin_bottom="1rem",
+            ),
+            rx.flex(
+                rx.alert_dialog.cancel(rx.button("Cancel", variant="soft")),
+                rx.alert_dialog.action(
+                    rx.button(
+                        "Un-publish",
+                        color_scheme="red",
+                        on_click=lambda: RagChatProfileListState.unpublish_profile(profile.id),
+                    ),
+                ),
+                spacing="3",
+                justify="end",
+            ),
+        ),
+    )
+
+
+def _token_dialog() -> rx.Component:
+    """The token just minted by a publish or a rotation, shown exactly once.
+
+    Closing this dialog does not revoke anything — the profile stays published — it only stops the
+    token from being displayed again, which is why "Done" is its only way out.
+    """
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.title(f"'{RagChatProfileListState.minted_token_profile_name}' is published"),
+            rx.vstack(
+                rx.text(
+                    "Anyone who holds this token can read everything this profile's bound "
+                    "knowledge bases contain — there is no per-document access control in this "
+                    "version. Copy it now: it will not be shown again.",
+                    size="2",
+                    color="var(--gray-11)",
+                ),
+                rx.code_block(RagChatProfileListState.minted_token, can_copy=True, width="100%"),
+                spacing="3",
+                width="100%",
+            ),
+            rx.hstack(
+                rx.spacer(),
+                rx.button("Done", on_click=RagChatProfileListState.close_token_dialog),
+                width="100%",
+                margin_top="1rem",
+            ),
+            on_interact_outside=RagChatProfileListState.close_token_dialog,
+            on_escape_key_down=RagChatProfileListState.close_token_dialog,
+            max_width="32rem",
+        ),
+        open=RagChatProfileListState.token_dialog_open,
     )
 
 

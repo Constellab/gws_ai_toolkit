@@ -118,9 +118,14 @@ profile or the request is rejected. **Do not** let a token read another profile'
 
 ### Conversation ownership
 
-`ChatConversation.user` is a non-null FK. External callers have no lab user, so published profiles
-attribute conversations to a dedicated technical user created at publish time. This keeps history
-listable and deletable per profile without weakening the token scope.
+`ChatConversation.user` is a non-null FK. External callers have no lab user. **V1 decision (see
+#20): attribute external conversations to the existing system user
+(`User.get_and_check_sysuser()`)** rather than minting a dedicated technical user per profile —
+`ChatConversation.user` is a plain FK, not `ModelWithUser`, so this is a direct assignment under
+`AuthenticateUser(sysuser)`, no new user creation or lifecycle to manage. A dedicated per-profile
+technical user is a possible follow-up if per-profile history ever needs to be isolated from other
+sysuser-attributed activity (scheduled jobs, share-link access, etc. also run as sysuser); not
+needed to ship V1.
 
 ## Rate limiting and abuse
 
@@ -155,9 +160,6 @@ team; it is the one part of this refactor that cannot land unilaterally.
 
 ## Open items
 
-- **Who may publish?** There is no permission model, so as specified any lab user with app access
-  could publish a knowledge base to the world. Restricting publish to lab admins is the intended
-  answer and needs confirming against `UserGroup` (a flat SYSUSER < ADMIN < USER hierarchy).
 - **Token transport to Community**: how the token reaches the Community backend's configuration, and
   who rotates it.
 - Whether the Community website needs multiple published profiles (product docs vs developer docs)

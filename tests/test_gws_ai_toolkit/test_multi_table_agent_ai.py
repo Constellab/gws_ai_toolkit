@@ -1,7 +1,7 @@
 import unittest
 
 import pandas as pd
-from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.agent_events import CodeEvent, FunctionErrorEvent
 from gws_ai_toolkit.core.agents.table.multi_table_agent_ai import MultiTableAgentAi
 from gws_ai_toolkit.core.agents.table.multi_table_agent_ai_events import MultiTableTransformEvent
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent

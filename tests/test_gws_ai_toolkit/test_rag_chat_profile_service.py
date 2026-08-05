@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import ChatConversationMode
 from gws_ai_toolkit.models.knowledge_base.knowledge_base import KnowledgeBase
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_chat_config import KnowledgeBaseChatConfig
@@ -15,8 +17,12 @@ from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_service import (
     RagChatProfileService,
     UnknownKnowledgeBaseError,
 )
+from gws_ai_toolkit.models.user.user import User as LocalUser
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import DEFAULT_TOP_K
-from gws_core import BaseTestCase
+from gws_core import BaseTestCase, CurrentUserService, StringHelper, UserGroup
+from gws_core import User as GwsCoreUser
+from gws_core.core.exception.exceptions.not_found_exception import NotFoundException
+from gws_core.core.exception.exceptions.unauthorized_exception import UnauthorizedException
 
 
 # test_rag_chat_profile_service.py
@@ -53,6 +59,53 @@ class TestRagChatProfileService(BaseTestCase):
             SaveRagChatProfileDTO(name=name, knowledge_base_ids=knowledge_base_ids or [])
         )
 
+    def _create_admin_user(self) -> GwsCoreUser:
+        return self._create_user(UserGroup.ADMIN)
+
+    def _create_regular_user(self) -> GwsCoreUser:
+        return self._create_user(UserGroup.USER)
+
+    @staticmethod
+    def _create_user(group: UserGroup) -> GwsCoreUser:
+        """A gws_core user, mirrored into the brick's own local ``User`` table.
+
+        The mirror normally happens through an async ``user.created`` event (see
+        ``AiToolkitUserSyncService``), which does not run synchronously in a test. ``published_by``
+        is a foreign key into that local table, so a test authenticating as a freshly created user
+        must save the mirror itself rather than rely on the event.
+
+        The email is generated rather than fixed: ``BaseTestCase`` truncates tables once per class,
+        not per test method, so every test in this file sharing one hardcoded address would collide
+        on the column's unique constraint from the second test onward.
+        """
+        email = f"{StringHelper.generate_uuid()}@gencovery.com"
+        user = GwsCoreUser(email=email, first_name="Test", last_name="User", group=group).save()
+        # force_insert: the mirror is built with the gws_core user's id already set, so peewee's
+        # default pk-present-means-update heuristic would silently update zero rows instead of
+        # inserting one.
+        LocalUser.from_gws_core_user(user).save(force_insert=True)
+        return user
+
+    @contextmanager
+    def _authenticated_as(self, user: GwsCoreUser):
+        """Run the ``with`` block as ``user``, restoring whoever was current before.
+
+        ``BaseTestCase`` authenticates the sysuser once for the whole test class (not per test
+        method), and the test-context auth loader is a plain process-global, not something reset
+        between tests. ``AuthenticateUser`` is a no-op when a user is already authenticated, so it
+        cannot be used to switch here — this restores the previous user explicitly instead of
+        leaving the auth context on whichever user a test last set.
+        """
+        previous = CurrentUserService.get_current_user()
+        CurrentUserService.set_auth_user(user)
+        try:
+            yield
+        finally:
+            if previous is not None:
+                CurrentUserService.set_auth_user(previous)
+            else:
+                CurrentUserService.clear_auth_context()
+
     ############################################### CRUD ###############################################
 
     def test_create_profile_applies_the_defaults(self):
@@ -69,17 +122,19 @@ class TestRagChatProfileService(BaseTestCase):
         self.assertEqual(profile.system_prompt, DEFAULT_CHAT_PROFILE_SYSTEM_PROMPT)
 
     def test_a_new_profile_is_not_published_and_holds_no_token(self):
-        """The publication columns exist from day one; the workflow that fills them does not.
+        """A profile created through the service is never published, and never mints a token.
 
-        Asserted so the "reserved column" story stays true: a profile created through the service is
-        never published, creating one never mints a token, and a token cannot leak through the DTO.
+        Asserted so a token cannot leak through the DTO, whatever the profile's publication state.
         """
         profile = self._create_profile()
 
         self.assertFalse(profile.is_published)
         self.assertIsNone(profile.publish_token)
         self.assertIsNone(profile.published_at)
-        self.assertNotIn("publish_token", profile.to_dto().to_json_dict())
+        dto_json = profile.to_dto().to_json_dict()
+        self.assertNotIn("publish_token", dto_json)
+        self.assertFalse(dto_json["is_published"])
+        self.assertIsNone(dto_json["published_at"])
 
     def test_default_system_prompt_instructs_tool_use_and_the_users_language(self):
         prompt = DEFAULT_CHAT_PROFILE_SYSTEM_PROMPT.lower()
@@ -147,6 +202,121 @@ class TestRagChatProfileService(BaseTestCase):
         self.service.delete_profile(profile.id)
 
         self.assertIsNone(self.service.get_profile(profile.id))
+
+    ############################################### PUBLISH / UNPUBLISH ###############################################
+
+    def test_publish_profile_creates_the_local_user_mirror_if_missing(self):
+        """publish_profile must not depend on the async mirror event having already run.
+
+        Unlike ``_create_user``, this admin has no local ``User`` row at all: it proves
+        ``publish_profile`` creates the mirror itself rather than assuming
+        ``AiToolkitUserSyncService`` already did (that event is dispatched asynchronously by
+        gws_core, so it can easily lose the race against a user publishing right after their
+        account is created).
+        """
+        profile = self._create_profile()
+        admin = GwsCoreUser(
+            email=f"{StringHelper.generate_uuid()}@gencovery.com",
+            first_name="Test",
+            last_name="User",
+            group=UserGroup.ADMIN,
+        ).save()
+
+        with self._authenticated_as(admin):
+            self.service.publish_profile(profile.id)
+
+        reloaded = self.service.get_profile_and_check(profile.id)
+        self.assertEqual(reloaded.published_by.email, admin.email)
+
+    def test_publish_profile_mints_a_token_and_records_who(self):
+        profile = self._create_profile()
+        admin = self._create_admin_user()
+
+        with self._authenticated_as(admin):
+            token = self.service.publish_profile(profile.id)
+
+        self.assertTrue(token)
+        reloaded = self.service.get_profile_and_check(profile.id)
+        self.assertTrue(reloaded.is_published)
+        self.assertEqual(reloaded.publish_token, token)
+        self.assertIsNotNone(reloaded.published_at)
+        self.assertEqual(reloaded.published_by.email, admin.email)
+
+    def test_publish_profile_never_exposes_the_token_through_the_dto(self):
+        profile = self._create_profile()
+        admin = self._create_admin_user()
+
+        with self._authenticated_as(admin):
+            self.service.publish_profile(profile.id)
+
+        dto_json = self.service.get_profile_and_check(profile.id).to_dto().to_json_dict()
+        self.assertNotIn("publish_token", dto_json)
+        self.assertTrue(dto_json["is_published"])
+        self.assertEqual(dto_json["published_by_email"], admin.email)
+
+    def test_republishing_rotates_the_token(self):
+        profile = self._create_profile()
+        admin = self._create_admin_user()
+
+        with self._authenticated_as(admin):
+            first_token = self.service.publish_profile(profile.id)
+            second_token = self.service.publish_profile(profile.id)
+
+        self.assertNotEqual(first_token, second_token)
+        reloaded = self.service.get_profile_and_check(profile.id)
+        self.assertEqual(reloaded.publish_token, second_token)
+        self.assertTrue(reloaded.is_published)
+
+    def test_unpublish_clears_the_token_and_keeps_publish_history(self):
+        profile = self._create_profile()
+        admin = self._create_admin_user()
+
+        with self._authenticated_as(admin):
+            self.service.publish_profile(profile.id)
+            self.service.unpublish_profile(profile.id)
+
+        reloaded = self.service.get_profile_and_check(profile.id)
+        self.assertFalse(reloaded.is_published)
+        self.assertIsNone(reloaded.publish_token)
+        # The last publication is kept as a record, not erased by un-publishing.
+        self.assertIsNotNone(reloaded.published_at)
+        self.assertEqual(reloaded.published_by.email, admin.email)
+
+    def test_publish_profile_refuses_a_non_admin(self):
+        profile = self._create_profile()
+        regular_user = self._create_regular_user()
+
+        with self._authenticated_as(regular_user), self.assertRaises(UnauthorizedException):
+            self.service.publish_profile(profile.id)
+
+        self.assertFalse(self.service.get_profile_and_check(profile.id).is_published)
+
+    def test_publish_profile_refuses_the_sysuser(self):
+        # BaseTestCase authenticates the sysuser by default: publishing must not be reachable from
+        # an automated/system context any more than from a plain user.
+        profile = self._create_profile()
+
+        with self.assertRaises(UnauthorizedException):
+            self.service.publish_profile(profile.id)
+
+    def test_unpublish_profile_refuses_a_non_admin(self):
+        profile = self._create_profile()
+        admin = self._create_admin_user()
+        regular_user = self._create_regular_user()
+
+        with self._authenticated_as(admin):
+            self.service.publish_profile(profile.id)
+
+        with self._authenticated_as(regular_user), self.assertRaises(UnauthorizedException):
+            self.service.unpublish_profile(profile.id)
+
+        self.assertTrue(self.service.get_profile_and_check(profile.id).is_published)
+
+    def test_publish_profile_refuses_an_unknown_profile(self):
+        admin = self._create_admin_user()
+
+        with self._authenticated_as(admin), self.assertRaises(NotFoundException):
+            self.service.publish_profile("does-not-exist")
 
     ############################################### BOUND KNOWLEDGE BASES ###############################################
 

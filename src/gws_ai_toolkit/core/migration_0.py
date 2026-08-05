@@ -3,6 +3,7 @@ from gws_core import BrickMigration, SqlMigrator, Version, brick_migration
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_message_source_model import ChatMessageSourceModel
+from gws_ai_toolkit.models.knowledge_base.rag_chat_profile import RagChatProfile
 
 
 @brick_migration(
@@ -73,3 +74,17 @@ class Migration020(BrickMigration):
         ChatConversation.update(mode="ai_table").where(
             ChatConversation.mode == "ai_table_unified"
         ).execute()
+
+
+@brick_migration(
+    "0.4.2",
+    short_description="Add published_by to chat profiles, for publish/un-publish attribution",
+    db_manager=AiToolkitDbManager.get_instance(),
+)
+class Migration042(BrickMigration):
+    @classmethod
+    def migrate(cls, sql_migrator: SqlMigrator, from_version: Version, to_version: Version) -> None:
+        """Add the column recording who last published a chat profile."""
+
+        sql_migrator.add_column_if_not_exists(RagChatProfile, RagChatProfile.published_by)
+        sql_migrator.migrate()

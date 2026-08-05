@@ -13,12 +13,14 @@ Mutations run inside a transaction and callers are handed rows, as in ``models/c
 boundary for Reflex states is ``to_dto()`` on those rows.
 """
 
-from gws_core import Logger
+from gws_core import CurrentUserService, DateHelper, Logger, StringHelper
+from gws_core import User as GwsCoreUser
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.knowledge_base.knowledge_base import KnowledgeBase
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile import RagChatProfile
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_dto import SaveRagChatProfileDTO
+from gws_ai_toolkit.models.user.user import User
 
 
 class RagChatProfileNameAlreadyUsedError(Exception):
@@ -112,6 +114,83 @@ class RagChatProfileService:
         profile = self.get_profile_and_check(profile_id)
         profile.delete_instance()
 
+    ############################################### PUBLISH ###############################################
+
+    @AiToolkitDbManager.transaction()
+    def publish_profile(self, profile_id: str) -> str:
+        """Publish a chat profile, minting a bearer token that scopes external access to it.
+
+        Publishing (or re-publishing an already-published profile) always mints a fresh token,
+        rotating out whatever token existed before: the old one stops authenticating the moment
+        this returns, since it is no longer the value stored on the row.
+
+        V1 has no per-document access filtering, so the bound knowledge bases become world-readable
+        to anyone holding the returned token. The caller is responsible for showing that warning and
+        the token itself to the admin performing this — the token is returned here once and is never
+        written to a log or recoverable afterwards in cleartext.
+
+        :raises NotFoundException: if the profile does not exist
+        :raises UnauthorizedException: if the caller is not a lab admin
+        :return: the newly minted token
+        """
+        CurrentUserService.check_is_admin()
+        profile = self.get_profile_and_check(profile_id)
+        current_user = CurrentUserService.get_and_check_current_user()
+
+        token = self._generate_publish_token()
+        profile.is_published = True
+        profile.publish_token = token
+        profile.published_at = DateHelper.now_utc()
+        profile.published_by = self._get_or_create_local_user(current_user)
+        profile.save()
+
+        Logger.info(
+            f"Chat profile '{profile.name}' ({profile.id}) published by {current_user.email}."
+        )
+        return token
+
+    @AiToolkitDbManager.transaction()
+    def unpublish_profile(self, profile_id: str) -> None:
+        """Un-publish a chat profile, clearing its token and revoking external access immediately.
+
+        ``published_at``/``published_by`` are left as-is: they record the last time the profile was
+        published rather than being reset to "never published".
+
+        :raises NotFoundException: if the profile does not exist
+        :raises UnauthorizedException: if the caller is not a lab admin
+        """
+        CurrentUserService.check_is_admin()
+        profile = self.get_profile_and_check(profile_id)
+        current_user = CurrentUserService.get_and_check_current_user()
+
+        profile.is_published = False
+        profile.publish_token = None
+        profile.save()
+
+        Logger.info(
+            f"Chat profile '{profile.name}' ({profile.id}) unpublished by {current_user.email}."
+        )
+
+    @staticmethod
+    def _generate_publish_token() -> str:
+        """A fresh, unguessable bearer token, in the same shape as :class:`~gws_core.ShareLink`'s."""
+        return StringHelper.generate_uuid() + "_" + str(DateHelper.now_utc_as_milliseconds())
+
+    @staticmethod
+    def _get_or_create_local_user(gws_core_user: GwsCoreUser) -> User:
+        """The local mirror of ``gws_core_user`` that ``published_by`` can point a foreign key at.
+
+        The mirror is normally created by ``AiToolkitUserSyncService`` off a ``user.created``
+        event, which gws_core dispatches asynchronously — so a user publishing immediately after
+        their own account is created can race ahead of their own mirror row and hit the foreign
+        key constraint. Publishing is rare enough that a row lookup here is cheap insurance against
+        that gap, rather than something worth open-coding into the sync service itself.
+        """
+        local_user = User.get_or_none(User.id == gws_core_user.id)
+        if local_user is not None:
+            return local_user
+        return User.from_gws_core_user(gws_core_user).save(force_insert=True)
+
     ############################################### BINDING ###############################################
 
     def get_valid_knowledge_base_ids(self, profile: RagChatProfile) -> list[str]:
@@ -202,8 +281,8 @@ class RagChatProfileService:
     ) -> None:
         """Copy the editable fields of a save DTO onto a row, without saving it.
 
-        The publication columns are not among them: publishing is an explicit action of its own, not a
-        side effect of editing a profile, and its workflow is separate work.
+        The publication columns are not among them: publishing is an explicit action of its own (see
+        :meth:`publish_profile`), not a side effect of editing a profile.
         """
         profile.name = profile_dto.name
         profile.system_prompt = profile_dto.system_prompt
