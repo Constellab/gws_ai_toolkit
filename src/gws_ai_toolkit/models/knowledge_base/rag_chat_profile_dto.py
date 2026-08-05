@@ -9,6 +9,8 @@ Naming: ``*Config`` is reserved for non-persisted module DTOs (``AiExpertChatCon
 named, user-selectable row is a **profile**.
 """
 
+from datetime import datetime
+
 from gws_core import BaseModelDTO, ModelDTO
 
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import DEFAULT_TOP_K
@@ -37,8 +39,9 @@ class RagChatProfileDTO(ModelDTO):
     screen has to show what was configured, and the drop happens at query time (see
     :meth:`~.rag_chat_profile_service.RagChatProfileService.get_valid_knowledge_base_ids`).
 
-    The row's publication columns are deliberately absent: the publish workflow is separate work, and
-    ``publish_token`` is a credential that must never travel to a Reflex state.
+    ``publish_token`` is deliberately absent: it is a credential that must never travel to a Reflex
+    state or a log. The other publication fields are not secrets, so a configuration screen can show
+    whether a profile is published, since when, and by whom.
     """
 
     name: str
@@ -47,6 +50,9 @@ class RagChatProfileDTO(ModelDTO):
     top_k: int
     score_threshold: float | None = None
     knowledge_base_ids: list[str]
+    is_published: bool = False
+    published_at: datetime | None = None
+    published_by_email: str | None = None
 
 
 class SaveRagChatProfileDTO(BaseModelDTO):

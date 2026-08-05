@@ -14,7 +14,15 @@ since disappeared are dropped at query time rather than raising. See
 from datetime import datetime
 
 from gws_core import JSONField, Model, NullableDateTimeUTC
-from peewee import BooleanField, CharField, FloatField, IntegerField, ModelSelect, TextField
+from peewee import (
+    BooleanField,
+    CharField,
+    FloatField,
+    ForeignKeyField,
+    IntegerField,
+    ModelSelect,
+    TextField,
+)
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_dto import (
@@ -22,6 +30,7 @@ from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_dto import (
     DEFAULT_CHAT_PROFILE_SYSTEM_PROMPT,
     RagChatProfileDTO,
 )
+from gws_ai_toolkit.models.user.user import User
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import DEFAULT_TOP_K, RetrievalConfig
 
 
@@ -41,19 +50,22 @@ class RagChatProfile(Model):
     # Bound knowledge bases: this list *is* the retrieval metadata filter. Soft many-to-many.
     knowledge_base_ids: list[str] = JSONField(default=list)
 
-    # Publication columns, reserved for the public chat API (knowledge_base_public_api_plan.md).
+    # Publication columns for the public chat API (knowledge_base_public_api_plan.md).
     #
-    # They exist from day one on purpose: tables auto-create at brick load and there is no migration
-    # step, so adding a column later means an out-of-band schema change on every lab that already has
-    # this table. The **workflow is deliberately not implemented here** — minting and revoking a
-    # token, and the route that authenticates it, are separate work. Nothing reads these columns yet,
-    # and a profile is created unpublished, with no token.
+    # Publishing mints ``publish_token`` and un-publishing clears it, via
+    # :meth:`~.rag_chat_profile_service.RagChatProfileService.publish_profile` /
+    # ``unpublish_profile``. The route that authenticates external callers against this token is
+    # separate work; here, the token *is* the scope, because V1 has no per-document access
+    # filtering — every chunk carries ``access_scope = "*"``.
     #
     # ``publish_token`` is a credential: it must never reach a Reflex state or a log, which is why it
-    # is absent from :class:`~.rag_chat_profile_dto.RagChatProfileDTO`.
+    # is absent from :class:`~.rag_chat_profile_dto.RagChatProfileDTO`. ``published_by`` is not a
+    # credential and only records who last published the profile — kept after an un-publish as the
+    # record of the last time it was reachable, rather than cleared.
     is_published: bool = BooleanField(default=False)
     publish_token: str | None = CharField(max_length=64, null=True, unique=True, index=True)
     published_at: datetime | None = NullableDateTimeUTC()
+    published_by: "User | None" = ForeignKeyField(User, backref="+", null=True)
 
     class Meta:
         table_name = "gws_ai_toolkit_rag_chat_profile"
@@ -95,7 +107,11 @@ class RagChatProfile(Model):
     ############################################### DTO ###############################################
 
     def to_dto(self) -> RagChatProfileDTO:
-        """Convert to the DTO handed to Reflex states and HTTP responses."""
+        """Convert to the DTO handed to Reflex states and HTTP responses.
+
+        ``publish_token`` never appears here — see the field's own comment. The other publication
+        columns are not secrets, so a configuration screen can show whether a profile is published.
+        """
         return RagChatProfileDTO(
             id=self.id,
             name=self.name,
@@ -104,6 +120,9 @@ class RagChatProfile(Model):
             top_k=self.top_k,
             score_threshold=self.score_threshold,
             knowledge_base_ids=self.get_knowledge_base_ids(),
+            is_published=self.is_published,
+            published_at=self.published_at,
+            published_by_email=self.published_by.email if self.published_by else None,
             created_at=self.created_at,
             last_modified_at=self.last_modified_at,
         )

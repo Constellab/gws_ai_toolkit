@@ -72,6 +72,10 @@ class ChatProfileRow:
         knowledge_base_names: Names of the bound knowledge bases that still exist, in bound order.
         is_unbound: True when the profile binds no knowledge base at all.
         has_dangling_bindings: True when it binds an id whose knowledge base no longer exists.
+        is_published: True when this profile's bound knowledge bases are reachable through a
+            publish token by anyone holding it.
+        published_label: Human-readable "since when, by whom" for a published profile, empty
+            otherwise.
     """
 
     id: str
@@ -82,6 +86,8 @@ class ChatProfileRow:
     knowledge_base_names: list[str] = field(default_factory=list)
     is_unbound: bool = False
     has_dangling_bindings: bool = False
+    is_published: bool = False
+    published_label: str = ""
 
 
 class RagChatProfileListState(rx.State):
@@ -114,7 +120,24 @@ class RagChatProfileListState(rx.State):
     # The profile a row action is working on, so its own row shows the spinner rather than the table.
     busy_profile_id: str = ""
 
+    # The just-minted token dialog. The token is shown here exactly once — it is not re-derivable
+    # from the profile afterwards, so this state is the only place it ever exists in the browser.
+    token_dialog_open: bool = False
+    minted_token: str = ""
+    minted_token_profile_name: str = ""
+
     ############################################### DERIVED ###############################################
+
+    @rx.var
+    async def is_admin(self) -> bool:
+        """Whether the current user may publish or un-publish a profile.
+
+        Publishing exposes a lab's knowledge bases to anyone holding the token, so the action is
+        admin-only. The service enforces this too — this var only decides whether the button shows.
+        """
+        main_state = await self.get_state(ReflexMainState)
+        user = await main_state.get_current_user()
+        return user is not None and user.is_admin
 
     @rx.var
     def profile_rows(self) -> list[ChatProfileRow]:
@@ -142,6 +165,8 @@ class RagChatProfileListState(rx.State):
                 has_dangling_bindings=any(
                     bound_id not in names_by_id for bound_id in profile.knowledge_base_ids
                 ),
+                is_published=profile.is_published,
+                published_label=self._published_label(profile),
             )
             for profile in self._profiles
         ]
@@ -341,6 +366,63 @@ class RagChatProfileListState(rx.State):
         chat_state.start_chat_with_profile(profile_id)
         return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
 
+    ############################################### PUBLISH ###############################################
+
+    @rx.event
+    async def publish_profile(self, profile_id: str) -> AsyncGenerator[rx.event.EventType, None]:
+        """Publish (or re-publish, rotating the token) a chat profile.
+
+        The service restricts this to lab admins and mints a fresh token every time, so calling this
+        on an already-published profile revokes its previous token as a side effect. The minted
+        token is shown exactly once, in the dialog this opens — confirmation of the consequences
+        happens in the caller, before this event fires.
+        """
+        self.busy_profile_id = profile_id
+        # Flushed before the publish runs, so the row's own spinner is seen — see ``load_page``.
+        yield
+        name = next((item.name for item in self._profiles if item.id == profile_id), "")
+        try:
+            main_state = await self.get_state(ReflexMainState)
+            service = RagChatProfileService()
+            with await main_state.authenticate_user():
+                token = service.publish_profile(profile_id)
+        finally:
+            self.busy_profile_id = ""
+
+        await self._reload_profiles()
+        self.minted_token = token
+        self.minted_token_profile_name = name
+        self.token_dialog_open = True
+
+    @rx.event
+    async def unpublish_profile(self, profile_id: str) -> AsyncGenerator[rx.event.EventType, None]:
+        """Un-publish a chat profile, revoking access for anyone holding its token immediately."""
+        self.busy_profile_id = profile_id
+        # Flushed before the un-publish runs, so the row's own spinner is seen — see ``load_page``.
+        yield
+        name = next((item.name for item in self._profiles if item.id == profile_id), "")
+        try:
+            main_state = await self.get_state(ReflexMainState)
+            service = RagChatProfileService()
+            with await main_state.authenticate_user():
+                service.unpublish_profile(profile_id)
+        finally:
+            self.busy_profile_id = ""
+
+        await self._reload_profiles()
+        yield rx.toast.success(f"Chat profile '{name}' unpublished. Its previous token no longer works.")
+
+    @rx.event
+    def close_token_dialog(self) -> None:
+        """Close the just-minted-token dialog, discarding it from the browser's state.
+
+        The token was shown exactly once, in that dialog. Closing it does not revoke anything — the
+        profile stays published — it only stops the token from being displayed again.
+        """
+        self.token_dialog_open = False
+        self.minted_token = ""
+        self.minted_token_profile_name = ""
+
     ############################################### DELETE ###############################################
 
     @rx.event
@@ -367,6 +449,17 @@ class RagChatProfileListState(rx.State):
         yield rx.toast.success(f"Chat profile '{name}' deleted.")
 
     ############################################### INTERNALS ###############################################
+
+    @staticmethod
+    def _published_label(profile: RagChatProfileDTO) -> str:
+        """"Since when, by whom" for a published profile, or "" when it is not published."""
+        if not profile.is_published or profile.published_at is None:
+            return ""
+
+        since = profile.published_at.strftime("%Y-%m-%d")
+        if profile.published_by_email:
+            return f"Since {since} by {profile.published_by_email}"
+        return f"Since {since}"
 
     async def _reload_profiles(self) -> None:
         """Re-read the profile list. Callable from the backend, unlike the events above."""
