@@ -14,7 +14,7 @@ import threading
 import time
 
 from fastapi import status
-from gws_core.core.exception.exceptions.base_http_exception import BaseHTTPException
+from gws_core import BaseHTTPException
 
 # Generous enough for a real conversation (a question every few seconds), tight enough that a
 # leaked token cannot run up an unbounded bill before someone notices.

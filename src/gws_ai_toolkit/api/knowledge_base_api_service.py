@@ -19,11 +19,8 @@ What is specific to this boundary, kept out of the factory and the conversation:
 """
 
 from fastapi import status
-from gws_core import AuthenticateUser
+from gws_core import AuthenticateUser, BadRequestException, BaseHTTPException, NotFoundException
 from gws_core import User as GwsCoreUser
-from gws_core.core.exception.exceptions.bad_request_exception import BadRequestException
-from gws_core.core.exception.exceptions.base_http_exception import BaseHTTPException
-from gws_core.core.exception.exceptions.not_found_exception import NotFoundException
 
 from gws_ai_toolkit.models.chat.conversation.knowledge_base_chat_conversation import (
     KnowledgeBaseChatConversation,

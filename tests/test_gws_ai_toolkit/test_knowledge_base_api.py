@@ -52,9 +52,15 @@ from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_dto import SaveRagCha
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_service import RagChatProfileService
 from gws_ai_toolkit.models.user.user_sync_service import AiToolkitUserSyncService
 from gws_ai_toolkit.rag.knowledge_base.knowledge_base_models import RetrievedChunk
-from gws_core import BaseTestCase, CurrentUserService, StringHelper, User, UserGroup
-from gws_core.core.exception.exceptions.bad_request_exception import BadRequestException
-from gws_core.core.exception.exceptions.base_http_exception import BaseHTTPException
+from gws_core import (
+    BadRequestException,
+    BaseHTTPException,
+    BaseTestCase,
+    CurrentUserService,
+    StringHelper,
+    User,
+    UserGroup,
+)
 from starlette.requests import Request
 from starlette.testclient import TestClient
 
@@ -124,6 +130,27 @@ def _plain_text_factory(answer: str = "Hello.") -> KnowledgeBaseChatFactory:
         retriever=NoopRetriever(),
         model=SingleAgentScriptedModel(turns=[answer]).build(),
     )
+
+
+def _publish_a_profile(
+    profile_service: RagChatProfileService, name: str = "Support bot"
+) -> tuple[RagChatProfile, str, User]:
+    """Create and publish a profile, returning it, its token, and the admin who published it.
+
+    Shared by every test class below that needs a live publish token: publishing requires an
+    authenticated admin, so building one is more than a one-liner and duplicating it per class
+    would be the same shape three times over.
+    """
+    profile = profile_service.create_profile(SaveRagChatProfileDTO(name=name))
+    admin = User(
+        email=f"{StringHelper.generate_uuid()}@gencovery.com",
+        first_name="A",
+        last_name="B",
+        group=UserGroup.ADMIN,
+    ).save()
+    with _authenticated_as(admin):
+        token = profile_service.publish_profile(profile.id)
+    return profile_service.get_profile_and_check(profile.id), token, admin
 
 
 def _searching_factory() -> KnowledgeBaseChatFactory:
@@ -385,19 +412,8 @@ class TestPublishTokenAuth(BaseTestCase):
         headers = [(b"authorization", value.encode())] if value is not None else []
         return Request(scope={"type": "http", "headers": headers})
 
-    def _create_admin(self) -> User:
-        email = f"{StringHelper.generate_uuid()}@gencovery.com"
-        return User(email=email, first_name="A", last_name="B", group=UserGroup.ADMIN).save()
-
-    def _publish_a_profile(self) -> tuple[RagChatProfile, str, User]:
-        profile = self.profile_service.create_profile(SaveRagChatProfileDTO(name="Support bot"))
-        admin = self._create_admin()
-        with _authenticated_as(admin):
-            token = self.profile_service.publish_profile(profile.id)
-        return self.profile_service.get_profile_and_check(profile.id), token, admin
-
     def test_check_auth_resolves_the_profile_of_a_valid_token(self):
-        profile, token, _admin = self._publish_a_profile()
+        profile, token, _admin = _publish_a_profile(self.profile_service)
 
         resolved = PublishTokenAuth.check_auth(self._request_with_header(f"Bearer {token}"))
 
@@ -409,7 +425,7 @@ class TestPublishTokenAuth(BaseTestCase):
         self.assertEqual(raised.exception.detail, INVALID_TOKEN_MESSAGE)
 
     def test_check_auth_rejects_a_malformed_scheme(self):
-        _profile, token, _admin = self._publish_a_profile()
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
         with self.assertRaises(BaseHTTPException) as raised:
             PublishTokenAuth.check_auth(self._request_with_header(f"Basic {token}"))
         self.assertEqual(raised.exception.detail, INVALID_TOKEN_MESSAGE)
@@ -420,7 +436,7 @@ class TestPublishTokenAuth(BaseTestCase):
         self.assertEqual(raised.exception.detail, INVALID_TOKEN_MESSAGE)
 
     def test_check_auth_rejects_an_unpublished_profiles_former_token(self):
-        profile, token, admin = self._publish_a_profile()
+        profile, token, admin = _publish_a_profile(self.profile_service)
 
         with _authenticated_as(admin):
             self.profile_service.unpublish_profile(profile.id)
@@ -481,20 +497,8 @@ class TestKnowledgeBaseApiController(BaseTestCase):
         self.profile_service = RagChatProfileService()
         self.client = TestClient(knowledge_base_api)
 
-    def _publish_a_profile(self, name: str = "Support bot") -> tuple[RagChatProfile, str]:
-        profile = self.profile_service.create_profile(SaveRagChatProfileDTO(name=name))
-        admin = User(
-            email=f"{StringHelper.generate_uuid()}@gencovery.com",
-            first_name="A",
-            last_name="B",
-            group=UserGroup.ADMIN,
-        ).save()
-        with _authenticated_as(admin):
-            token = self.profile_service.publish_profile(profile.id)
-        return self.profile_service.get_profile_and_check(profile.id), token
-
     def test_a_valid_token_answers_with_the_expected_contract(self):
-        _profile, token = self._publish_a_profile()
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
 
         with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=_plain_text_factory("Hello.")):
             response = self.client.post(
@@ -522,8 +526,8 @@ class TestKnowledgeBaseApiController(BaseTestCase):
 
     def test_a_caller_supplied_profile_id_is_ignored(self):
         """No caller-supplied profile or knowledge-base id is ever accepted — the token is the scope."""
-        profile, token = self._publish_a_profile()
-        other_profile, _other_token = self._publish_a_profile("Other bot")
+        profile, token, _admin = _publish_a_profile(self.profile_service)
+        other_profile, _other_token, _other_admin = _publish_a_profile(self.profile_service, "Other bot")
 
         with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=_plain_text_factory()):
             response = self.client.post(
@@ -543,7 +547,7 @@ class TestKnowledgeBaseApiController(BaseTestCase):
         )
 
     def test_an_over_long_message_is_rejected(self):
-        _profile, token = self._publish_a_profile()
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
 
         response = self.client.post(
             "/chat/ask",
@@ -554,7 +558,7 @@ class TestKnowledgeBaseApiController(BaseTestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_exceeding_the_request_cap_returns_429(self):
-        _profile, token = self._publish_a_profile()
+        _profile, token, _admin = _publish_a_profile(self.profile_service)
 
         with patch.object(KnowledgeBaseApiService, "_build_factory", return_value=_plain_text_factory()):
             statuses = [

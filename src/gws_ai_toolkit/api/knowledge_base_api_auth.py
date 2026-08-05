@@ -13,7 +13,7 @@ to learn from.
 
 from fastapi import Request
 from fastapi.security.utils import get_authorization_scheme_param
-from gws_core.core.exception.exceptions.forbidden_exception import ForbiddenException
+from gws_core import ForbiddenException
 
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile import RagChatProfile
 
