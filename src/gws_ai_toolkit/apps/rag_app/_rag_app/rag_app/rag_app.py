@@ -11,6 +11,7 @@ from .reflex.admin_history.admin_history_component import (
 )
 from .reflex.admin_history.admin_history_state import AdminHistoryState
 from .reflex.core.app_config_state import AppConfigState
+from .reflex.core.rag_page_layout_component import rag_page_layout_component
 from .reflex.knowledge_base.chat.knowledge_base_chat_component import (
     knowledge_base_chat_component,
 )
@@ -29,16 +30,8 @@ from .reflex.knowledge_base.knowledge_bases.knowledge_base_list_component import
     knowledge_base_list_component,
 )
 from .reflex.knowledge_base.knowledge_bases.knowledge_base_list_state import KnowledgeBaseListState
-from .reflex.rag_chat.config.rag_config_component import rag_config_component
-from .reflex.rag_chat.config.rag_config_state import RagConfigState, RagConfigStateFromParams
-from .reflex.rag_chat.rag_chat_component import rag_chat_component
-from .reflex.rag_chat.rag_chat_config_component import rag_chat_config_component
-from .reflex.rag_chat.rag_chat_config_state import RagChatConfigState
-from .reflex.rag_chat.rag_chat_state import RagChatState
-from .reflex.rag_chat.rag_page_layout_component import rag_page_layout_component
 
 AppConfigState.set_config_state_class_type(CustomAppConfigState)
-RagConfigState.set_rag_config_state_class_type(RagConfigStateFromParams)
 
 
 # Theme is configured via RadixThemesPlugin in rxconfig.py (App(theme=...) is
@@ -48,44 +41,6 @@ app = register_gws_reflex_app(rx.App())
 # Serves knowledge-base document snapshots over HTTP: a 15 MB file pushed through the websocket event
 # channel would freeze the UI while it travels. Required by ``build_open_document_event``.
 app.api_transformer = ReflexDownloadService.build_api()
-
-
-@rx.page(route="/")
-def index():
-    """Main chat page with sidebar (new conversation)."""
-    return rag_page_layout_component(
-        content=rag_chat_component(),
-    )
-
-
-@rx.page(route="/chat/[conversation_id]", on_load=RagChatState.load_conversation_from_url)
-def chat_with_conversation():
-    """Chat page for an existing conversation loaded from URL."""
-    return rag_page_layout_component(
-        content=rag_chat_component(),
-    )
-
-
-# Resource page - for resource and sync management
-@rx.page(route="/rag-config")
-def rag_config():
-    """Resource page for managing RAG resources and sync."""
-    return rx.cond(
-        RagChatConfigState.show_settings_menu,
-        rag_page_layout_component(content=rag_config_component()),
-        rx.text("RAG Config page is not available.", color="red"),
-    )
-
-
-# RAG Chat configuration page
-@rx.page(route="/config-rag")
-def config_rag_page():
-    """Configuration page for RAG Chat settings."""
-    return rx.cond(
-        RagChatConfigState.show_settings_menu,
-        rag_page_layout_component(content=rag_chat_config_component()),
-        rx.text("Configuration page is not available.", color="red"),
-    )
 
 
 # Admin history - list page

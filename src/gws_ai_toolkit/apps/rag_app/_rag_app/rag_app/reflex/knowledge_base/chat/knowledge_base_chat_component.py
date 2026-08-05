@@ -16,6 +16,8 @@ three things specific to a knowledge-base chat:
   a conversation nothing can answer for.
 """
 
+from collections.abc import Callable
+
 import reflex as rx
 from gws_ai_toolkit.models.chat.message.chat_message_source import (
     ChatMessageSourceFront,
@@ -59,12 +61,20 @@ def knowledge_base_source_menu_items(
     ]
 
 
-def knowledge_base_chat_config_factory() -> ChatConfig:
+def knowledge_base_chat_config_factory(
+    source_menu_items_builder: Callable[
+        [RagChatSourceFront, ConversationChatStateBase], list[rx.Component]
+    ] = knowledge_base_source_menu_items,
+) -> ChatConfig:
     """The chat configuration of the knowledge-base window.
 
+    :param source_menu_items_builder: overrides the actions offered on a source pill. Defaults to
+        the plain "Open document" action; an app that wants to add its own (e.g. full_app's
+        "Associated resources") builds on top of :func:`knowledge_base_source_menu_items` rather
+        than replacing it outright.
     :return: the configuration handed to the shared chat widget
     """
-    sources_component_builder = custom_sources_list_component(knowledge_base_source_menu_items)
+    sources_component_builder = custom_sources_list_component(source_menu_items_builder)
 
     return ChatConfig(
         state=KnowledgeBaseChatState,

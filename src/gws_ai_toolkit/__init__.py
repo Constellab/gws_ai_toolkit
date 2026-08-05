@@ -2,7 +2,7 @@
 # ``POST /brick/gws_ai_toolkit/chat/ask`` route with ``ApiRegistry``, and nothing else in the brick
 # imports it (the route is reached over HTTP, never called directly from Python).
 from .api.knowledge_base_api_controller import knowledge_base_api as knowledge_base_api
-from .apps.rag_app.generate_rag_app import GenerateDatahubRagFlowApp
+from .apps.rag_app.generate_knowledge_base_app import GenerateKnowledgeBaseApp
 from .core.agents.agent_events import (
     BaseFunctionAgentEvent,
     CodeEvent,
@@ -102,57 +102,11 @@ from .models.knowledge_base.rag_chat_profile_dto import (
     SaveRagChatProfileDTO,
 )
 from .models.knowledge_base.rag_chat_profile_service import RagChatProfileService
-from .rag.common.base_rag_app_service import BaseRagAppService
-from .rag.common.base_rag_service import BaseRagService
-from .rag.common.datahub_rag_app_service import DatahubRagAppService
-from .rag.common.rag_app_service_factory import RagAppServiceFactory
-from .rag.common.rag_enums import (
-    RAG_COMMON_MAX_FILE_SIZE_MB,
-    RAG_COMMON_SUPPORTED_EXTENSIONS,
-    RagDocumentStatus,
-    RagProvider,
-    RagResourceSyncMode,
-    RagSearchMethod,
-)
 from .rag.common.rag_models import (
-    RagChatEndStreamResponse,
     RagChatSource,
     RagChatSourceChunk,
-    RagChatStreamResponse,
-    RagChunk,
-    RagCredentials,
-    RagDocument,
 )
 from .rag.common.rag_resource import RagResource
-from .rag.common.rag_service_factory import RagServiceFactory
-from .rag.common.tag_rag_app_service import TagRagAppService
-from .rag.dify.dify_class import (
-    DifyChunkDocument,
-    DifyChunkRecord,
-    DifyChunksResponse,
-    DifyCreateDatasetMetadataRequest,
-    DifyCreateDatasetMetadataResponse,
-    DifyDatasetDocument,
-    DifyDocumentChunk,
-    DifyDocumentChunksResponse,
-    DifyGetDatasetMetadataResponse,
-    DifyGetDatasetMetadataResponseMetadata,
-    DifyGetDocumentsResponse,
-    DifyMetadata,
-    DifySegment,
-    DifySendDocumentOptions,
-    DifySendDocumentResponse,
-    DifySendEndMessageStreamResponse,
-    DifySendMessageSource,
-    DifySendMessageStreamResponse,
-    DifyUpdateDocumentOptions,
-    DifyUpdateDocumentsMetadataRequest,
-    DifyUploadFile,
-    DifyUploadFileResponse,
-)
-from .rag.dify.dify_send_file_to_knownledge_base import DifySendFileToKnownledgeBase
-from .rag.dify.dify_service import DifyService
-from .rag.dify.rag_dify_service import RagDifyService
 
 # The document-source seam is a cross-brick extension point: another brick registers its own
 # provider at load time and must be able to reach these with a top-level import.
@@ -175,19 +129,6 @@ from .rag.knowledge_base.sources.resource_source import (
     RESOURCE_SOURCE_TYPE,
     ResourceDocumentSource,
 )
-from .rag.ragflow.rag_ragflow_service import RagRagFlowService
-from .rag.ragflow.ragflow_class import (
-    RagflowAskStreamResponse,
-    RagFlowCreateChatRequest,
-    RagFlowCreateDatasetRequest,
-    RagFlowCreateSessionRequest,
-    RagFlowUpdateChatRequest,
-    RagFlowUpdateDatasetRequest,
-    RagFlowUpdateDocumentOptions,
-)
-from .rag.ragflow.ragflow_send_file_to_dataset import RagFlowSendFileToDataset
-from .rag.ragflow.ragflow_service import RagFlowService
-from .rag.ragflow.ragflow_start_docker_compose import RagflowStartDockerCompose
 from .stats.ai_table_relation_stats import AiTableRelationStats
 from .stats.ai_table_stats_base import AiTableStatsBase
 from .stats.ai_table_stats_class import AiTableStats
@@ -231,64 +172,11 @@ __all__ = [
     "Utils",
     "BrickDocumentationDTO",
     # Apps
-    "GenerateDatahubRagFlowApp",
+    "GenerateKnowledgeBaseApp",
     # Rag
-    "BaseRagService",
-    "BaseRagAppService",
-    "DatahubRagAppService",
-    "TagRagAppService",
-    "RagAppServiceFactory",
-    "RagServiceFactory",
     "RagResource",
-    "RagDocument",
-    "RagChunk",
-    "RagChatStreamResponse",
     "RagChatSourceChunk",
     "RagChatSource",
-    "RagChatEndStreamResponse",
-    "RagCredentials",
-    "RagDocumentStatus",
-    "RagProvider",
-    "RagResourceSyncMode",
-    "RagSearchMethod",
-    "RAG_COMMON_SUPPORTED_EXTENSIONS",
-    "RAG_COMMON_MAX_FILE_SIZE_MB",
-    "DifyService",
-    "RagDifyService",
-    "DifySendFileToKnownledgeBase",
-    "DifyUpdateDocumentOptions",
-    "DifySendDocumentOptions",
-    "DifyDatasetDocument",
-    "DifySendDocumentResponse",
-    "DifyGetDocumentsResponse",
-    "DifySendMessageSource",
-    "DifySendMessageStreamResponse",
-    "DifySendEndMessageStreamResponse",
-    "DifyChunkDocument",
-    "DifySegment",
-    "DifyChunkRecord",
-    "DifyChunksResponse",
-    "DifyDocumentChunk",
-    "DifyDocumentChunksResponse",
-    "DifyUploadFile",
-    "DifyUploadFileResponse",
-    "DifyMetadata",
-    "DifyCreateDatasetMetadataRequest",
-    "DifyCreateDatasetMetadataResponse",
-    "DifyUpdateDocumentsMetadataRequest",
-    "DifyGetDatasetMetadataResponseMetadata",
-    "DifyGetDatasetMetadataResponse",
-    "RagFlowService",
-    "RagRagFlowService",
-    "RagFlowSendFileToDataset",
-    "RagflowStartDockerCompose",
-    "RagFlowUpdateDocumentOptions",
-    "RagFlowCreateDatasetRequest",
-    "RagFlowUpdateDatasetRequest",
-    "RagFlowCreateChatRequest",
-    "RagFlowUpdateChatRequest",
-    "RagFlowCreateSessionRequest",
-    "RagflowAskStreamResponse",
     # Agents
     "AgentStreamAdapter",
     "AgentToolSpec",
