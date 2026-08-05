@@ -13,7 +13,7 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import UserQueryTextEvent
+from gws_ai_toolkit.core.agents.agent_events import UserQueryTextEvent
 from gws_ai_toolkit.models.chat.conversation.ai_expert_agent_ai import AiExpertAgentAi
 from gws_ai_toolkit.models.chat.conversation.ai_expert_chat_config import AiExpertChatConfig
 from gws_ai_toolkit.models.chat.conversation.ai_expert_document import AiExpertDocument

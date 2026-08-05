@@ -7,7 +7,7 @@ from uuid import uuid4
 from attr import dataclass
 from gws_core import BaseModelDTO, UserDTO
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import (
+from gws_ai_toolkit.core.agents.agent_events import (
     FunctionCallEvent,
     FunctionErrorEvent,
     FunctionSuccessEvent,

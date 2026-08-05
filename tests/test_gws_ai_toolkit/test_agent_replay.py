@@ -2,7 +2,7 @@ import os
 import unittest
 
 import pandas as pd
-from gws_ai_toolkit.core.agents.base_function_agent_events import BaseFunctionWithSubAgentEvent
+from gws_ai_toolkit.core.agents.agent_events import BaseFunctionWithSubAgentEvent
 from gws_ai_toolkit.core.agents.table.table_agent_ai import TableAgentAi
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryMultiTablesEvent
 from gws_ai_toolkit.core.agents.table.table_transform_agent_ai_events import TableTransformEvent

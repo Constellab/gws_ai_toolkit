@@ -44,7 +44,7 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.usage import UsageLimits
 
-from .base_function_agent_events import (
+from .agent_events import (
     ErrorEvent,
     FunctionCallEvent,
     FunctionSuccessEvent,

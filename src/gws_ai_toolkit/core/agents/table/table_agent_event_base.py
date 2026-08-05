@@ -2,7 +2,7 @@ from typing import Literal
 
 from gws_core import BaseModelDTO, Table
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import UserQueryEventBase
+from gws_ai_toolkit.core.agents.agent_events import UserQueryEventBase
 
 # ============================================================================
 # SERIALIZABLE VERSIONS (No Table objects)

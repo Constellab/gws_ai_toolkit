@@ -3,7 +3,7 @@ from typing import Generic, TypeVar
 from gws_core import BaseModelDTO
 from pydantic import TypeAdapter
 
-from ..base_function_agent_events import (
+from ..agent_events import (
     BaseFunctionWithSubAgentEvent,
     CreateSubAgent,
     ResponseCompletedEvent,

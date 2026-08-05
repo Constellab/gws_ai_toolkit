@@ -7,7 +7,7 @@ from gws_core import BaseModelDTO, Table
 from pydantic import Field
 from pydantic_ai.models import Model
 
-from gws_ai_toolkit.core.agents.base_function_agent_events import (
+from gws_ai_toolkit.core.agents.agent_events import (
     CodeEvent,
     FunctionCallEvent,
     FunctionErrorEvent,

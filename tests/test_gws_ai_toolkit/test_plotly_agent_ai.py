@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 import plotly.graph_objects as go
-from gws_ai_toolkit.core.agents.base_function_agent_events import CodeEvent, FunctionErrorEvent
+from gws_ai_toolkit.core.agents.agent_events import CodeEvent, FunctionErrorEvent
 from gws_ai_toolkit.core.agents.table.plotly_agent_ai import PlotlyAgentAi
 from gws_ai_toolkit.core.agents.table.plotly_agent_ai_events import PlotGeneratedEvent
 from gws_ai_toolkit.core.agents.table.table_agent_event_base import UserQueryTableEvent

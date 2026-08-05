@@ -1,6 +1,6 @@
 """Base class for the brick's AI agents, running on pydantic-ai.
 
-Replaces the hand-written OpenAI Responses loop of ``BaseFunctionAgentAi`` while keeping the
+Replaces the brick's former hand-written OpenAI Responses loop while keeping the
 public surface subclasses and callers rely on: ``call_agent()`` is still a synchronous
 generator of the same events, ``replay_events()`` still replays a serialised run without
 calling a model, and the emitted event sequence is unchanged.
@@ -24,9 +24,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.tools import Tool
 
-from .agent_stream_adapter import AgentStreamAdapter
-from .ai_model_factory import AiModelFactory
-from .base_function_agent_events import (
+from .agent_events import (
     CreateSubAgent,
     FunctionCallEvent,
     FunctionErrorEvent,
@@ -34,6 +32,8 @@ from .base_function_agent_events import (
     SubAgentSuccess,
     UserQueryEventBase,
 )
+from .agent_stream_adapter import AgentStreamAdapter
+from .ai_model_factory import AiModelFactory
 from .sync_event_bridge import ProducerFactory, SyncEventBridge
 from .table.agent_event_list import AgentEventList
 
