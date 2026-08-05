@@ -23,8 +23,6 @@ from gws_core import (
     TagOriginType,
 )
 
-from .rag_enums import RAG_COMMON_MAX_FILE_SIZE_MB, RAG_COMMON_SUPPORTED_EXTENSIONS
-
 
 class RagResource:
     """
@@ -37,8 +35,8 @@ class RagResource:
     _tmp_dir: str | None = None
 
     # Common constants
-    SUPPORTED_FILE_EXTENSIONS = RAG_COMMON_SUPPORTED_EXTENSIONS
-    MAX_FILE_SIZE_MB = RAG_COMMON_MAX_FILE_SIZE_MB
+    SUPPORTED_FILE_EXTENSIONS = ["txt", "pdf", "docx", "doc", "md", "json"]
+    MAX_FILE_SIZE_MB = 15
 
     # Tag keys specific to RagFlow
     RAG_DOC_TAG_KEY = "rag_document"

@@ -91,6 +91,11 @@ class KnowledgeBaseDocument(Model):
         )
 
     @classmethod
+    def get_by_source(cls, source_type: str, source_id: str) -> ModelSelect:
+        """Every document, in any knowledge base, imported from this source."""
+        return cls.select().where((cls.source_type == source_type) & (cls.source_id == source_id))
+
+    @classmethod
     def get_with_stale_lease(
         cls, lease_timeout_seconds: int = DEFAULT_INDEXING_LEASE_TIMEOUT_SECONDS
     ) -> ModelSelect:

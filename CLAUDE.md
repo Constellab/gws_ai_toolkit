@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provides AI-driven tools for data analysis and visualization in the life sciences. It depends on the `gws_core` brick (see `settings.json` for the current version) and includes RAG (Retrieval Augmented Generation) implementations for Dify and RagFlow platforms, plus a standalone Reflex-based RAG application.
+GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provides AI-driven tools for data analysis and visualization in the life sciences. It depends on the `gws_core` brick (see `settings.json` for the current version) and includes an embedded knowledge-base RAG stack (LlamaIndex + LanceDB), plus a standalone Reflex-based RAG application.
 
 ## Architecture
 
 ### Directory Structure
 - `src/gws_ai_toolkit/` - Main RAG implementations
   - `apps/` - Reflex applications and their generator tasks (`rag_app/`, `ai_table_standalone_app/`, `full_app/`)
-  - `rag/` - RAG services and integrations (Dify, RagFlow) under `rag/common/`, `rag/dify/`, `rag/ragflow/`
+  - `rag/` - Embedded knowledge-base RAG stack under `rag/common/` (kept `RagResource`, `RagChatSource`) and `rag/knowledge_base/` (engine, document sources)
   - `models/` - Peewee persistence models (chat conversations/messages/sources, users, knowledge bases). Tables auto-create at brick load, so every model must be imported from `src/gws_ai_toolkit/__init__.py` — a model nothing imports is a table that is never created.
   - `services/` - Service layer
   - `tasks/` - Task implementations
@@ -33,7 +33,7 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
 
 ### Dependencies
 - `gws_core` - Core Constellab functionality including BaseModelDTO, credentials, external API services; also provides `reflex` (the web framework used by the apps). Current pinned version: see `settings.json`
-- Brick-specific pip packages (see `settings.json`): `ragflow-sdk`, `reflex-resizable-panels`, `scikit-posthocs`
+- Brick-specific pip packages (see `settings.json`): `lancedb`, `llama-index-core`, `reflex-resizable-panels`, `scikit-posthocs`
 
 ### Development best practises
 - Follow a modular architecture for components and pages
@@ -43,7 +43,7 @@ GWS AI Toolkit is a Constellab brick (library) developed by Gencovery that provi
     - `chat/chat_state.py` (state management)
 - Use state management effectively to handle application state
 - Keep UI components reusable and maintainable
-- All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import rag_chat_config_component` instead of `from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex import rag_chat_config_component`
+- All the import from the rag_app that reference another file in the rag_app MUST be relative imports. Ex: `from .reflex import knowledge_base_chat_component` instead of `from gws_ai_toolkit.apps.rag_app._rag_app.rag_app.reflex import knowledge_base_chat_component`
 - Define the attributes, parameters and return types of functions, methods and classes using type hints
 - for the `rx.button` :
   - For primary and secondary button leave color_scheme to default.

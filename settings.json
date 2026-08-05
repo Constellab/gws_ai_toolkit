@@ -21,10 +21,6 @@
                         "version": "2.23.0"
                     },
                     {
-                        "name": "ragflow-sdk",
-                        "version": "0.22.1"
-                    },
-                    {
                         "name": "llama-index-core",
                         "version": "0.14.23"
                     },

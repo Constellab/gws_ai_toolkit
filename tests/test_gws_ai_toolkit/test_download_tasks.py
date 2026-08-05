@@ -1,8 +1,6 @@
 import os
 import tempfile
-import unittest
 
-from gws_ai_toolkit import DownloadBricksDocumentation
 from gws_ai_toolkit.core.community_dto import (
     BrickDocumentationDTO,
     BrickTechnicalDocumentationDTO,
@@ -11,9 +9,7 @@ from gws_ai_toolkit.core.community_dto import (
 from gws_ai_toolkit.services.community_resource_files_manager_service import (
     CommunityResourceFilesManagerService,
 )
-from gws_ai_toolkit.tasks.download_community_stories import DownloadCommunityStories
-from gws_ai_toolkit.tasks.push_resources_to_ragflow import PushResourcesToRagFlow
-from gws_core import BaseTestCase, File, JSONDict, Tag
+from gws_core import BaseTestCase, File, Tag
 
 
 class TestDownloadBricksDocumentation(BaseTestCase):
@@ -259,28 +255,3 @@ class TestDownloadCommunityStories(BaseTestCase):
             # Clean up temporary file
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
-
-
-class TestPushResourcesToRagFlow(BaseTestCase):
-    """
-    Test the PushResourcesToRagFlow task.
-
-    Tests verify that the task has the correct input/output specifications.
-    """
-
-    def test_task_has_optional_download_result_input(self):
-        """
-        Test that PushResourcesToRagFlow has an optional input for download result.
-        """
-        # Verify that the task has input_specs defined
-        self.assertIsNotNone(PushResourcesToRagFlow.input_specs)
-
-        # Verify that the input_specs contains the download_result input
-        self.assertIn("download_result", PushResourcesToRagFlow.input_specs._specs)
-
-        # Verify that the download_result input is optional
-        download_result_spec = PushResourcesToRagFlow.input_specs._specs["download_result"]
-        self.assertTrue(download_result_spec.optional)
-
-        # Verify that the download_result input is of type JSONDict
-        self.assertIn(JSONDict, download_result_spec.resource_types)

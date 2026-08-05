@@ -4,26 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Folder Overview
 
-This RAG folder contains the core RAG (Retrieval Augmented Generation) implementations and applications within the GWS AI Toolkit. It provides integration with multiple RAG platforms (Dify and RagFlow) and includes standalone Reflex-based applications for chat functionality.
+This RAG folder contains the embedded knowledge-base (Retrieval Augmented Generation) stack within
+the GWS AI Toolkit, plus the standalone Reflex-based chat application that exposes it. The earlier
+Dify and RagFlow platform integrations, and the `BaseRagService` abstraction that served them, were
+removed once this stack replaced them (August 2026) — see
+`docs/done/rag_embedded_stack_implementation_plan.md` §2.
 
 ## Directory Structure
-- `common/` - Shared base classes, utilities, and common infrastructure for all RAG services
+- `common/` - `RagResource` (lab-resource compatibility rules, RichText→Markdown conversion) and the
+  kept `RagChatSource` / `RagChatSourceChunk` DTOs (persisted, drive the source-pill UI and chunk dialog)
 - `knowledge_base/` - Embedded knowledge-base engine (LlamaIndex readers + LanceDB store), no external RAG platform
-- `dify/` - Dify platform integration and API wrapper services
-- `ragflow/` - RagFlow platform integration and SDK wrapper services
 - `rag_app/_rag_app/` - Main standalone Reflex-based RAG application with chat interface
 - `my_new_app/_my_new_app/` - Template/example Reflex application structure
 
 ### Common RAG Infrastructure (`common/`)
-- `base_rag_service.py` - Abstract base class defining the common interface for all RAG services
-- `base_rag_app_service.py` - Abstract base class for RAG application services
-- `rag_models.py` - Shared data models (RagDocument, RagChunk, RagChatStreamResponse, etc.)
-- `rag_service_factory.py` - Factory pattern for creating RAG service instances
-- `rag_app_service_factory.py` - Factory pattern for creating RAG app service instances
-- `rag_enums.py` - Common enumerations used across RAG services
-- `rag_resource.py` - RAG resource management and operations
-- `datahub_rag_app_service.py` - DataHub integration for RAG app services
-- `tag_rag_app_service.py` - Tag-based RAG app service implementation
+- `rag_models.py` - `RagChatSource` / `RagChatSourceChunk`, persisted by `ChatMessageSourceModel`
+- `rag_resource.py` - Lab-resource wrapper: compatibility rules, RichText JSON → Markdown, the
+  legacy `rag_document` / `rag_dataset_id` / `rag_sync` tag keys still read for old-data compatibility
 
 ### Embedded Knowledge Base (`knowledge_base/`)
 
@@ -58,60 +55,36 @@ Points that are settled and should not be re-litigated (August 2026 spike):
 - **V1 indexes documents only**: PDF, MD, TXT, DOCX, HTML and RichText JSON (note content → Markdown). CSV, spreadsheets, data JSON and legacy `.doc` are rejected, each with a message naming the reason. Tabular rejection is a decision, not an omission — row chunks are near-identical in form, so they match everything weakly and degrade retrieval for the documents sharing the index, and the questions asked of a table (count, sum, filter) are the ones vector search cannot answer. If a real need appears, add a column-summary chunk per table before considering row-level indexing.
 - The loader unwraps every reader to plain text and builds the `Document` itself, because readers attach metadata of their own (`PDFReader` adds a page label) and only the four known keys are excluded from the embedded and LLM text.
 
-### Service Architecture Pattern
-All RAG services implement the `BaseRagService` abstract class with these key methods:
-
-### Dify Integration (`dify/`)
-- `dify_service.py` - Direct Dify API implementation with HTTP requests
-- `rag_dify_service.py` - Wrapper implementing BaseRagService interface
-- `dify_class.py` - Data models and DTOs for Dify API responses
-- `dify_send_file_to_knownledge_base.py` - File upload operations to Dify knowledge base
-
-### RagFlow Integration (`ragflow/`)
-- `ragflow_service.py` - Direct RagFlow SDK wrapper implementation
-- `rag_ragflow_service.py` - Wrapper implementing BaseRagService interface
-- `ragflow_class.py` - Data models using ragflow-sdk types
-- `ragflow_send_file_to_dataset.py` - File upload operations to RagFlow datasets
-
 ## RAG Application (`rag_app/_rag_app/`)
 
-The main Reflex-based RAG application providing user interface and interaction layer for RAG services.
+The main Reflex-based RAG application: a knowledge-base manager, chat profiles bound to knowledge
+bases, and the chat window itself. `apps/full_app/` embeds the same components (see its own
+`full_app.py`) alongside AI Table and admin history.
 
 ### Application Structure
 - `rag_app/` - Main application module
   - `rag_app.py` - Main application entry point and routing configuration
-  - `rag_main_state.py` - Root application state management
-  - `config_page.py` - Configuration page component
   - `custom_states.py` - Custom state implementations
   - `reflex/` - Reflex framework components and pages
-    - `core/` - Core application components and utilities
-    - `chat_base/` - Base chat functionality and components
-    - `rag_chat/` - RAG-specific chat implementation
-    - `history/` - Chat history management
-    - `read_only_chat/` - Read-only chat interface
+    - `core/` - Shared, app-wide infrastructure: `app_config_state.py`, the mode chip component, the
+      shared `rag_page_layout_component.py` (sidebar + history list, used by every route below) and
+      `rag_history_state.py` (sidebar history, mode-based routing to a conversation's page)
+    - `chat_base/` - Chat-mode-agnostic widget: message list, input, source pills and their dialog,
+      the legacy/read-only conversation views
+    - `history/` - The generic sidebar history state and list component `chat_base`/`core` build on
+    - `admin_history/` - Admin-only page listing every user's conversations, read-only
+    - `knowledge_base/` - The knowledge-base UI: `chat/` (chat window, document focus), `chats/`
+      (chat-profile CRUD, publish/un-publish), `knowledge_bases/` (list, detail, document table,
+      add-document dialog), `core/` (`KnowledgeBaseAppState` and friends)
 
-### Component Architecture
-- **Core Components** (`reflex/core/`)
-  - `app_config_state.py` - Application configuration management
-  - `nav_bar_component.py` - Navigation bar component
-  - `page_component.py` - Base page layout component
-  - `utils.py` - Utility functions
+### Routes (`rag_app.py`)
+- `/kb` - Knowledge-base chat, new conversation
+- `/kb/chat/[conversation_id]` - A persisted knowledge-base conversation, restored from its id
+- `/kb/chats` - Chat profiles: create, configure, bind knowledge bases, publish
+- `/kb/bases` - Knowledge-base manager: list, create, delete
+- `/kb/bases/[knowledge_base_id]` - One knowledge base: documents, indexing status, actions
+- `/admin-history`, `/admin-history/[conversation_id]` - Admin-only conversation browser
 
-- **Chat Base** (`reflex/chat_base/`)
-  - `chat_component.py` - Main chat interface component
-  - `chat_state_base.py` - Base chat state management
-  - `chat_message_class.py` - Chat message data models
-  - `chat_input_component.py` - Chat input interface
-  - `messages_list_component.py` - Message display component
-  - `sources_list_component.py` - Source reference component
-
-- **RAG Chat** (`reflex/rag_chat/`)
-  - `rag_chat_component.py` - RAG-specific chat interface
-  - `rag_chat_state.py` - RAG chat state management
-  - `config/` - Configuration management components
-
-### Routes
-- `/` - Main chat page and entry point of the Reflex app
-- `/history` - History page to view and browse past conversations
-- `/resource` - Resource management and knowledge base synchronization
-- `/config` - Application configuration page
+`full_app.py` (`apps/full_app/`) mounts the same knowledge-base routes plus `/` and
+`/chat/[conversation_id]` as aliases of `/kb` and `/kb/chat/[conversation_id]` (so the app's plain
+launch URL still lands on the chat), `/config-ai-table`, and the AI Table page.

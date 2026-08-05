@@ -7,7 +7,6 @@ from ..knowledge_base.chat.knowledge_base_chat_state import (
     KNOWLEDGE_BASE_CONVERSATION_ROUTE,
     KnowledgeBaseChatState,
 )
-from .rag_chat_state import RagChatState
 
 # Maps conversation mode to the URL pattern for loading that conversation.
 # The placeholder {id} is replaced with the actual conversation ID.
@@ -60,23 +59,13 @@ class RagHistoryState(SidebarHistoryListState, rx.State):
 
     @rx.event
     async def start_new_chat(self):
-        """Start a new chat based on the current page context.
+        """Start a new chat: clear the knowledge-base chat and navigate to it.
 
-        - On knowledge-base pages: clears the chat and navigates to /kb, keeping the profile.
-        - On RAG chat pages: clears chat and navigates to /.
+        Every page wrapped by ``rag_page_layout_component`` is a knowledge-base page, so "New Chat"
+        always means the same thing regardless of which one it was clicked from.
         """
-        current_path = self.router.url.path
-
-        if current_path.startswith(KNOWLEDGE_BASE_CHAT_ROUTE):
-            # Every ``/kb*`` page shares this sidebar — the chat, the profiles and the knowledge-base
-            # manager — so "New Chat" lands on a blank knowledge-base chat from all of them.
-            knowledge_base_chat_state: KnowledgeBaseChatState = await self.get_state(
-                KnowledgeBaseChatState
-            )
-            knowledge_base_chat_state.discard_conversation()
-            return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)
-
-        rag_chat_state: RagChatState = await self.get_state(RagChatState)
-        rag_chat_state.clear_chat()
-
-        return rx.redirect("/")
+        knowledge_base_chat_state: KnowledgeBaseChatState = await self.get_state(
+            KnowledgeBaseChatState
+        )
+        knowledge_base_chat_state.discard_conversation()
+        return rx.redirect(KNOWLEDGE_BASE_CHAT_ROUTE)

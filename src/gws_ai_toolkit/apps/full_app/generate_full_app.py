@@ -1,6 +1,6 @@
 from typing import cast
 
-from gws_ai_toolkit.apps.rag_app.generate_rag_app import GenerateDatahubRagFlowApp
+from gws_ai_toolkit.apps.rag_app.generate_knowledge_base_app import GenerateKnowledgeBaseApp
 from gws_core import (
     AppConfig,
     AppType,
@@ -31,23 +31,22 @@ class FullAppAppConfig(AppConfig):
 @task_decorator(
     "GenerateFullApp",
     human_name="Generate Constellab search with Analytics",
-    short_description="Generate the Constellab Search app using Ragflow with the Analytics plugin",
+    short_description="Generate the Constellab Search app with the Analytics plugin",
     style=ReflexResource.copy_style(),
 )
 class GenerateFullApp(Task):
     """
-    Task that generates the Constellab Search app with the Analytics plugin, using RAGFlow as the RAG engine.
+    Task that generates the Constellab Search app with the Analytics plugin, on the embedded
+    knowledge-base stack.
 
-    This app extends the base search app by allowing table resources (Excel, CSV, TSV, etc.) to be associated
-    with the file resources sent to the RAG knowledge base. Associated resources are linked through a shared
-    tag with the key ``"study"``: resources that share the same ``study`` tag value are considered part of the
-    same study and will appear as associated resources in the app interface.
+    This app extends the base search app by allowing table resources (Excel, CSV, TSV, etc.) to be
+    associated with the file resources indexed in the knowledge base. Associated resources are linked
+    through a shared tag with the key ``"study"``: resources that share the same ``study`` tag value
+    are considered part of the same study and will appear as associated resources in the app
+    interface.
 
-    Configuration (inherited from ``GenerateDatahubRagFlowApp``):
-        - ``resource_tag_key``: The tag key used to select which resources are synced with the RAG platform.
-          Only resources carrying a tag with this key (and matching value) will be indexed.
-        - ``resource_tag_value``: The tag value that must be paired with ``resource_tag_key`` for a resource
-          to be synced with the RAG platform.
+    Configuration: see ``GenerateKnowledgeBaseApp``, whose config specs and generation logic this
+    task reuses as-is.
     """
 
     input_specs = InputSpecs(
@@ -63,7 +62,7 @@ class GenerateFullApp(Task):
 
     config_specs = ConfigSpecs(
         {
-            **GenerateDatahubRagFlowApp.config_specs.specs,
+            **GenerateKnowledgeBaseApp.config_specs.specs,
         }
     )
 
@@ -72,11 +71,13 @@ class GenerateFullApp(Task):
 
         reflex_resource = ReflexResource()
 
-        GenerateDatahubRagFlowApp.configure_reflex_resource(reflex_resource, params)
+        reflex_resource = GenerateKnowledgeBaseApp.configure_reflex_resource(
+            reflex_resource, params
+        )
 
         # add the config file to the reflex resource and set the configuration file path
         app_config_file: File = cast(File, inputs["app_config"])
-        reflex_resource = GenerateDatahubRagFlowApp.set_configuration_file_path(
+        reflex_resource = GenerateKnowledgeBaseApp.set_configuration_file_path(
             reflex_resource, app_config_file
         )
 

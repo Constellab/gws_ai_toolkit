@@ -2,7 +2,9 @@ from dataclasses import dataclass
 
 import reflex as rx
 from gws_ai_toolkit.core.utils import Utils
-from gws_ai_toolkit.rag.common.rag_resource import RagResource
+from gws_ai_toolkit.models.knowledge_base.knowledge_base_document import KnowledgeBaseDocument
+from gws_ai_toolkit.models.knowledge_base.knowledge_base_service import KnowledgeBaseService
+from gws_ai_toolkit.rag.knowledge_base.sources.resource_source import RESOURCE_SOURCE_TYPE
 from gws_core import (
     BaseModelDTO,
     EntityTagList,
@@ -42,15 +44,25 @@ class AssociatedResourcesState(rx.State):
     is_dialog_open: bool = False
 
     @rx.event(background=True)  # type: ignore
-    async def open_associated_resources_dialog(self, source_id: str) -> None:
-        """Load linked resources based on a RAG source document ID."""
+    async def open_associated_resources_dialog(self, document_id: str) -> None:
+        """Load linked resources based on a chat source's knowledge-base document id."""
 
         async with self:
             self.is_dialog_open = True
 
-        rag_resource = RagResource.from_document_or_resource_id_and_check(source_id)
+        await self._load_for_resource(self._resolve_resource_id(document_id))
 
-        await self._load_for_resource(rag_resource.get_id())
+    @staticmethod
+    def _resolve_resource_id(document_id: str) -> str | None:
+        """The lab resource behind a knowledge-base document, if it was imported from one.
+
+        A document uploaded directly (not through the ``resource`` provider) has no lab resource
+        behind it, so there is nothing to show associated resources for.
+        """
+        document = KnowledgeBaseService().get_document(document_id)
+        if document is None or document.source_type != RESOURCE_SOURCE_TYPE:
+            return None
+        return document.source_id
 
     async def _load_for_resource(self, resource_id: str | None):
         if self.is_loading:
@@ -96,13 +108,13 @@ class AssociatedResourcesState(rx.State):
 
                 if resource_type and issubclass(resource_type, File):
                     is_file = True
-                    rag_resource = RagResource(resource_model)
-                    is_in_rag = rag_resource.is_synced_with_rag()
+                    is_in_rag = KnowledgeBaseDocument.get_by_source(
+                        RESOURCE_SOURCE_TYPE, resource_model.get_id()
+                    ).exists()
 
                 if not is_file and not is_table:
                     continue
 
-                rag_resource = RagResource(resource_model)
                 linked_resources.append(
                     FullResourceDTO(
                         is_in_rag=is_in_rag,
