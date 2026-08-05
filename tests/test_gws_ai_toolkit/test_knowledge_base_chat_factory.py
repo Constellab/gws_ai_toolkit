@@ -227,6 +227,37 @@ class TestKnowledgeBaseChatFactory(BaseTestCase):
             ["user-text", "text"],
         )
 
+    def test_restore_conversation_round_trips_each_messages_focused_document_ids(self):
+        """Document Focus (issue #31) rides each message, so restore must give each one back its own
+        list rather than one shared focus for the whole conversation."""
+        profile = self._create_profile()
+        row = self._create_conversation_row(
+            mode=ChatConversationMode.KNOWLEDGE_BASE.value,
+            configuration={
+                KnowledgeBaseChatConversation.CHAT_PROFILE_ID_CONFIG_KEY: profile.id
+            },
+            messages=[
+                ChatUserMessageText(content="Q1", focused_document_ids=["doc-1"]),
+                ChatMessageText(content="A1"),
+                ChatUserMessageText(content="Q2", focused_document_ids=["doc-2", "doc-3"]),
+                ChatMessageText(content="A2"),
+                ChatUserMessageText(content="Q3"),
+                ChatMessageText(content="A3"),
+            ],
+        )
+
+        conversation = self.factory.restore_conversation(row.id)
+
+        user_messages = [
+            message
+            for message in conversation.get_visible_messages()
+            if message.message_type == "user-text"
+        ]
+        self.assertEqual(
+            [message.focused_document_ids for message in user_messages],
+            [["doc-1"], ["doc-2", "doc-3"], []],
+        )
+
     def test_restore_conversation_replays_its_tool_turns_into_the_model_history(self):
         """The model is handed back what it already retrieved, not just what the reader saw."""
         profile = self._create_profile()

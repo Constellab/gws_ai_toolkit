@@ -17,6 +17,7 @@ from gws_ai_toolkit.models.chat.message.chat_message_source import (
     ChatMessageSourceFront,
     RagChatSourceFront,
 )
+from gws_ai_toolkit.models.chat.message.chat_user_message import ChatUserMessageText
 from gws_reflex_main import left_sidebar_open_button
 
 from ...chat_base.chat_component import chat_component
@@ -28,7 +29,7 @@ from ...chat_base.source.source_message_component import (
     source_message_component,
 )
 from ..chats.rag_chat_profile_list_state import CHAT_PROFILES_ROUTE
-from .document_focus_component import document_focus_composer
+from .document_focus_component import document_focus_composer, user_message_with_focus_chips
 from .knowledge_base_chat_state import ChatProfileOption, KnowledgeBaseChatState
 from .knowledge_base_empty_chat_component import knowledge_base_empty_chat_component
 
@@ -70,6 +71,7 @@ def knowledge_base_chat_config_factory() -> ChatConfig:
                     message, KnowledgeBaseChatState, sources_component_builder
                 ),
             ),
+            "user-text": (ChatUserMessageText, user_message_with_focus_chips),
         },
         composer_extra=document_focus_composer,
     )

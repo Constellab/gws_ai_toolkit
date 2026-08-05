@@ -145,13 +145,24 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     @rx.var
     def focused_documents(self) -> list[DocumentFocusOption]:
         """The currently focused documents, rendered as removable chips."""
-        filenames_by_id = {document.id: document.filename for document in self._focusable_documents}
+        filenames_by_id = self.document_filenames_by_id
         return [
             DocumentFocusOption(
                 id=document_id, filename=filenames_by_id.get(document_id, document_id)
             )
             for document_id in self._focused_document_ids
         ]
+
+    @rx.var
+    def document_filenames_by_id(self) -> dict[str, str]:
+        """Filename of every focusable document, by id.
+
+        The lookup a historical message's read-only focus chips render against: a message only
+        carries document ids (see :class:`ChatUserMessageText`), and this is the same set of
+        documents that could have been focused on it, since focus never reaches outside the
+        conversation's bound profile.
+        """
+        return {document.id: document.filename for document in self._focusable_documents}
 
     ############################################### CONVERSATION ###############################################
 
@@ -182,9 +193,10 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
                 into the read-only notice rather than an error, because the transcript is still worth
                 reading
         """
-        # Whatever focus was picked on the conversation being left — sent or not — belongs to that
-        # conversation, not to whichever one is restored next.
-        self._focused_document_ids = []
+        # The composer's default follows the conversation being opened, not whatever was picked on
+        # the one being left. ``load_conversation`` has already refreshed ``_chat_messages`` for this
+        # conversation by the time this runs, so its last user message is what to hydrate from.
+        self._focused_document_ids = self._focus_of_last_user_message()
 
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
@@ -330,6 +342,15 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         await self._load_focusable_documents()
 
     ############################################### DOCUMENT FOCUS ###############################################
+
+    def _focus_of_last_user_message(self) -> list[str]:
+        """The focus the composer should default to: whatever the conversation's own last message
+        carried, so restoring a conversation re-hydrates the sticky default rather than resetting it.
+        """
+        for message in reversed(self._chat_messages):
+            if isinstance(message, ChatUserMessageText):
+                return list(message.focused_document_ids)
+        return []
 
     @rx.event
     def add_document_focus(self, document_id: str) -> None:
