@@ -123,7 +123,9 @@ class KnowledgeBaseChatFactory:
         :raises KnowledgeBaseChatUnavailableError: if it cannot be continued — see the module
                 docstring for the four ways that happens
         """
-        return cls._get_restorable_profile_id(ChatConversation.get_by_id_and_check(conversation_id))
+        return cls.get_restorable_profile_id_from_row(
+            ChatConversation.get_by_id_and_check(conversation_id)
+        )
 
     def restore_conversation(self, conversation_id: str) -> KnowledgeBaseChatConversation:
         """Reopen a persisted conversation, ready to continue.
@@ -138,7 +140,7 @@ class KnowledgeBaseChatFactory:
                 docstring for the four ways that happens
         """
         row = ChatConversation.get_by_id_and_check(conversation_id)
-        chat_profile_id = self._get_restorable_profile_id(row)
+        chat_profile_id = self.get_restorable_profile_id_from_row(row)
 
         conversation = self.build_conversation(chat_profile_id)
         conversation._conversation_id = conversation_id
@@ -148,30 +150,15 @@ class KnowledgeBaseChatFactory:
         )
         return conversation
 
-    ############################################### INTERNALS ###############################################
-
-    def _get_chat_config(self, chat_profile_id: str) -> KnowledgeBaseChatConfig:
-        """The configuration a run against this profile searches and answers with.
-
-        :raises KnowledgeBaseChatUnavailableError: if no profile is named, or none exists with that id
-        """
-        if not chat_profile_id:
-            raise KnowledgeBaseChatUnavailableError(
-                "No chat profile selected. Pick one before asking a question."
-            )
-
-        profile = RagChatProfileService().get_profile(chat_profile_id)
-        if profile is None:
-            raise KnowledgeBaseChatUnavailableError(
-                f"The chat profile '{chat_profile_id}' no longer exists."
-            )
-
-        return KnowledgeBaseChatConfig.from_profile(profile)
-
     @staticmethod
-    def _get_restorable_profile_id(row: ChatConversation) -> str:
-        """The profile a persisted conversation is to be reopened on.
+    def get_restorable_profile_id_from_row(row: ChatConversation) -> str:
+        """The profile a persisted conversation is to be reopened on, from its already-fetched row.
 
+        The row-taking half of :meth:`get_restorable_profile_id`, for a caller that already fetched
+        the row for another reason (checking `ChatConversationMode.is_legacy` generically, say) and
+        would otherwise fetch it a second time.
+
+        :param row: the conversation's row
         :raises KnowledgeBaseChatUnavailableError: if the row is of another mode, or records no
                 profile
         """
@@ -193,3 +180,23 @@ class KnowledgeBaseChatFactory:
                 "This conversation records no chat profile, so it cannot be continued."
             )
         return str(chat_profile_id)
+
+    ############################################### INTERNALS ###############################################
+
+    def _get_chat_config(self, chat_profile_id: str) -> KnowledgeBaseChatConfig:
+        """The configuration a run against this profile searches and answers with.
+
+        :raises KnowledgeBaseChatUnavailableError: if no profile is named, or none exists with that id
+        """
+        if not chat_profile_id:
+            raise KnowledgeBaseChatUnavailableError(
+                "No chat profile selected. Pick one before asking a question."
+            )
+
+        profile = RagChatProfileService().get_profile(chat_profile_id)
+        if profile is None:
+            raise KnowledgeBaseChatUnavailableError(
+                f"The chat profile '{chat_profile_id}' no longer exists."
+            )
+
+        return KnowledgeBaseChatConfig.from_profile(profile)

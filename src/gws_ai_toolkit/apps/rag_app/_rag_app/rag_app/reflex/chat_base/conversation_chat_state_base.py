@@ -4,8 +4,12 @@ from typing import Any
 import reflex as rx
 from anyio import sleep
 from gws_ai_toolkit.core.utils import Utils
+from gws_ai_toolkit.models.chat.chat_conversation import ChatConversation
 from gws_ai_toolkit.models.chat.chat_conversation_service import ChatConversationService
-from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import BaseChatConversation
+from gws_ai_toolkit.models.chat.conversation.base_chat_conversation import (
+    BaseChatConversation,
+    ChatConversationMode,
+)
 from gws_ai_toolkit.models.chat.message.chat_message_base import ChatMessageBase
 from gws_ai_toolkit.models.chat.message.chat_message_streaming import ChatMessageStreaming
 from gws_ai_toolkit.models.chat.message.chat_message_types import ChatMessageFront
@@ -49,6 +53,11 @@ class ConversationChatStateBase(rx.State, mixin=True):
     is_streaming: bool = False
     current_response_message: ChatMessageFront | None = None
     _chat_messages: list[ChatMessageBase] = []
+
+    # True once a loaded conversation's mode has been found to be `is_legacy`. Subclasses that
+    # restore through a mode-specific path check this via `_mark_legacy_if_needed` before building
+    # anything, and the page renders `legacy_conversation_component` instead of the live chat.
+    is_legacy_conversation: bool = False
 
     # UI Configuration
     placeholder_text: str = "Ask something..."
@@ -196,6 +205,29 @@ class ConversationChatStateBase(rx.State, mixin=True):
             "Subclasses must implement _restore_conversation to restore conversation state"
         )
 
+    async def _mark_legacy_if_needed(self, conversation_id: str) -> ChatConversation:
+        """Fetch the loaded conversation's row and record whether its mode is retired.
+
+        A `_restore_conversation` override that builds a mode-specific conversation object calls
+        this first, then checks `is_legacy_conversation`: a retired mode has nothing left to
+        restore into, so the caller should return immediately and let `legacy_conversation_component`
+        render the transcript already loaded by `load_conversation` instead of attempting a restore
+        built for a live mode. The row is returned so a caller that keeps going (mode is not legacy)
+        can reuse it instead of fetching it again.
+
+        Args:
+            conversation_id: The ID of the conversation being restored.
+
+        Returns:
+            ChatConversation: The conversation's row.
+        """
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            row = ChatConversation.get_by_id_and_check(conversation_id)
+
+        self.is_legacy_conversation = ChatConversationMode(row.mode).is_legacy
+        return row
+
     @rx.event
     def clear_chat(self) -> None:
         """Clear the chat and reset the conversation."""
@@ -203,6 +235,7 @@ class ConversationChatStateBase(rx.State, mixin=True):
         self._chat_messages = []
         self.current_response_message = None
         self.is_streaming = False
+        self.is_legacy_conversation = False
 
     @rx.event
     def open_ai_expert(self, rag_document_id: str):
