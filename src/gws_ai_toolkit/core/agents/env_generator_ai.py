@@ -70,7 +70,7 @@ def _generate_env_file(
     # Create the EnvAgentAi (only generate, don't install)
     agent = EnvAgentAi(
         openai_api_key=api_key,
-        model="gpt-4",
+        model="openai:gpt-4",
         temperature=0.7,
         env_type=env_type,
         existing_env_content=existing_env_content,

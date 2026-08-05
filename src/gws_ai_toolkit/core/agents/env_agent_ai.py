@@ -1,7 +1,7 @@
 import os
 import sys
 import tempfile
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import Any, Literal
 
 from gws_core import (
@@ -12,6 +12,7 @@ from gws_core import (
     PipShellProxy,
 )
 from pydantic import Field
+from pydantic_ai.models import Model
 
 from gws_ai_toolkit.core.agents.base_function_agent_events import (
     FunctionCallEvent,
@@ -19,7 +20,7 @@ from gws_ai_toolkit.core.agents.base_function_agent_events import (
     UserQueryTextEvent,
 )
 
-from .base_function_agent_ai import BaseFunctionAgentAi
+from .base_pydantic_agent_ai import AgentToolSpec, BasePydanticAgentAi
 from .env_agent_ai_events import (
     EnvAgentAiEvent,
     EnvFileGeneratedEvent,
@@ -53,7 +54,7 @@ class PipenvEnvConfig(BaseModelDTO):
         extra = "forbid"  # Prevent additional properties
 
 
-class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
+class EnvAgentAi(BasePydanticAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
     """AI agent for generating and installing conda/mamba/pipenv environment files
 
     This agent helps users create working conda/mamba environment files or Pipfiles and
@@ -65,8 +66,8 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
 
     def __init__(
         self,
-        openai_api_key: str,
-        model: str,
+        openai_api_key: str | None,
+        model: str | Model,
         temperature: float,
         env_type: Literal["conda", "mamba", "pipenv"] = "conda",
         existing_env_content: str | None = None,
@@ -75,12 +76,13 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
         """Initialize the EnvAgentAi
 
         Args:
-            openai_client: OpenAI client instance
-            model: Model name to use
+            openai_api_key: API key for the configured provider, or None to let the provider
+                read it from the environment.
+            model: A ``provider:model`` string (``openai:gpt-4o``), or a pydantic-ai ``Model``
+                instance, which is how tests inject ``TestModel`` / ``FunctionModel``.
             temperature: Temperature for generation
             env_type: Type of environment manager to use ("conda", "mamba", or "pipenv")
             existing_env_content: Optional existing environment file content (YAML for conda/mamba, Pipfile content for pipenv) that has installation problems
-            message_dispatcher: Optional message dispatcher for logging
             skip_success_response: Whether to skip success response
         """
         super().__init__(
@@ -89,8 +91,8 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
         self._existing_env_content = existing_env_content
         self._env_type = env_type
 
-    def _get_tools(self) -> list[dict]:
-        """Get tools configuration for OpenAI"""
+    def _get_tools(self) -> list[AgentToolSpec]:
+        """Get tools configuration for the agent"""
         if self._env_type == "pipenv":
             function_name = "generate_pipenv_file"
             # Get current Python version
@@ -103,17 +105,16 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
             schema = CondaMambaEnvConfig.model_json_schema()
 
         return [
-            {
-                "type": "function",
-                "name": function_name,
-                "description": description,
-                "parameters": schema,
-            }
+            AgentToolSpec(
+                name=function_name,
+                description=description,
+                parameters=schema,
+            )
         ]
 
-    def _handle_function_call(
+    async def _handle_function_call(
         self, function_call_event: FunctionCallEvent, user_query: UserQueryTextEvent
-    ) -> Generator[EnvAgentAiEvent, None, None]:
+    ) -> AsyncGenerator[EnvAgentAiEvent, None]:
         """Handle function call event"""
         call_id = function_call_event.call_id
         response_id = function_call_event.response_id
@@ -132,7 +133,8 @@ class EnvAgentAi(BaseFunctionAgentAi[EnvAgentAiEvent, UserQueryTextEvent]):
             )
 
             # attempt to install the environment
-            yield from self._install_environment(env_file_content, call_id, response_id)
+            for event in self._install_environment(env_file_content, call_id, response_id):
+                yield event
 
             return
 
