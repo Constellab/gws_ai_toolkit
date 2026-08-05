@@ -26,8 +26,11 @@ from gws_reflex_main import left_sidebar_open_button
 from ...chat_base.chat_component import chat_component
 from ...chat_base.chat_config import ChatConfig
 from ...chat_base.conversation_chat_state_base import ConversationChatStateBase
-from ...chat_base.legacy_conversation_component import legacy_conversation_component
-from ...chat_base.messages_list_component import chat_messages_list_component
+from ...chat_base.legacy_conversation_component import (
+    conversation_notice,
+    legacy_conversation_component,
+    unavailable_conversation_component,
+)
 from ...chat_base.source.source_message_component import (
     custom_sources_list_component,
     source_message_component,
@@ -148,39 +151,16 @@ def _profile_select_item(profile: ChatProfileOption) -> rx.Component:
 
 def _read_only_transcript(config: ChatConfig) -> rx.Component:
     """A conversation that can be read but not continued, and the reason why."""
-    return rx.box(
-        rx.box(knowledge_base_chat_header_component(), padding_bottom="1em"),
-        _read_only_notice(),
-        chat_messages_list_component(config),
-        width="100%",
-        max_width="800px",
-        margin="0 auto",
-        display="flex",
-        flex_direction="column",
-        flex="1",
-        min_height="0",
-        overflow_y="auto",
-    )
+    return unavailable_conversation_component(config, _read_only_notice())
 
 
 def _read_only_notice() -> rx.Component:
     """Why this conversation has no input, said in the words the restore path reported."""
-    return rx.hstack(
-        rx.icon("info", size=16, color="var(--gray-11)", flex_shrink="0"),
-        rx.vstack(
+    return conversation_notice(
+        [
             rx.text(KnowledgeBaseChatState.read_only_notice, size="2"),
             _start_new_chat_button(),
-            spacing="2",
-            align="start",
-        ),
-        align="start",
-        spacing="2",
-        padding="12px",
-        border_radius="8px",
-        background="var(--gray-3)",
-        border_left="4px solid var(--gray-8)",
-        width="100%",
-        margin_bottom="1em",
+        ]
     )
 
 

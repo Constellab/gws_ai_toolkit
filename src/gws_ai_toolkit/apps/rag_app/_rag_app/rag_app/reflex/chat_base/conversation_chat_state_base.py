@@ -205,26 +205,28 @@ class ConversationChatStateBase(rx.State, mixin=True):
             "Subclasses must implement _restore_conversation to restore conversation state"
         )
 
-    async def _mark_legacy_if_needed(self, conversation_id: str) -> bool:
-        """Check whether the loaded conversation's mode is retired, and record it if so.
+    async def _mark_legacy_if_needed(self, conversation_id: str) -> ChatConversation:
+        """Fetch the loaded conversation's row and record whether its mode is retired.
 
         A `_restore_conversation` override that builds a mode-specific conversation object calls
-        this first: a retired mode has nothing left to restore into, so the caller should return
-        immediately and let `legacy_conversation_component` render the transcript already loaded
-        by `load_conversation` instead of attempting a restore built for a live mode.
+        this first, then checks `is_legacy_conversation`: a retired mode has nothing left to
+        restore into, so the caller should return immediately and let `legacy_conversation_component`
+        render the transcript already loaded by `load_conversation` instead of attempting a restore
+        built for a live mode. The row is returned so a caller that keeps going (mode is not legacy)
+        can reuse it instead of fetching it again.
 
         Args:
             conversation_id: The ID of the conversation being restored.
 
         Returns:
-            bool: True if the conversation's mode is legacy (`is_legacy_conversation` is now set).
+            ChatConversation: The conversation's row.
         """
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
             row = ChatConversation.get_by_id_and_check(conversation_id)
 
         self.is_legacy_conversation = ChatConversationMode(row.mode).is_legacy
-        return self.is_legacy_conversation
+        return row
 
     @rx.event
     def clear_chat(self) -> None:

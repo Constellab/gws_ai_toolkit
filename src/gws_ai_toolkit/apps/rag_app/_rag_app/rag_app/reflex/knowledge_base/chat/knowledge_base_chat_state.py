@@ -143,12 +143,13 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
                 into the read-only notice rather than an error, because the transcript is still worth
                 reading
         """
-        if await self._mark_legacy_if_needed(conversation_id):
+        row = await self._mark_legacy_if_needed(conversation_id)
+        if self.is_legacy_conversation:
             return
 
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
-            KnowledgeBaseChatFactory.get_restorable_profile_id(conversation_id)
+            KnowledgeBaseChatFactory.get_restorable_profile_id_from_row(row)
 
         factory = await self._build_factory()
         with await main_state.authenticate_user():
