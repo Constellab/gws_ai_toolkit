@@ -124,9 +124,7 @@ class AddDocumentDialogState(rx.State):
     @rx.var
     def is_tag_import_mode(self) -> bool:
         """True when the dialog is showing the import-by-tag form."""
-        return (
-            self.selected_source_type == RESOURCE_SOURCE_TYPE and self.add_mode == ADD_MODE_TAG
-        )
+        return self.supports_tag_import and self.add_mode == ADD_MODE_TAG
 
     @rx.var
     def has_rejections(self) -> bool:
@@ -171,6 +169,9 @@ class AddDocumentDialogState(rx.State):
             )
         self.source_id = ""
         self.source_metadata_json = ""
+        self.add_mode = ADD_MODE_SINGLE
+        self.tag_key = ""
+        self.tag_value = ""
         self.rejections = []
         self.dialog_open = True
 
@@ -342,7 +343,7 @@ class AddDocumentDialogState(rx.State):
     ############################################### IMPORT BY TAG ###############################################
 
     @rx.event(background=True)
-    async def import_by_tag(self) -> AsyncGenerator[rx.event.EventType, None]:
+    async def import_by_tag(self) -> None:
         """Add, snapshot and index every compatible resource carrying a tag.
 
         A background event because it is unbounded work: fifty resources means fifty fetches and fifty
@@ -360,10 +361,8 @@ class AddDocumentDialogState(rx.State):
             criteria = self._build_tag_criteria()
             main_state = await self.get_state(ReflexMainState)
             app_state = await self.get_state(KnowledgeBaseAppState)
+            knowledge_base_id = await self._get_knowledge_base_id()
             detail_state = await self.get_state(KnowledgeBaseDetailState)
-            knowledge_base_id = detail_state.get_loaded_knowledge_base_id()
-            if not knowledge_base_id:
-                raise ReflexAppException("Open a knowledge base before importing documents into it.")
             if not detail_state.try_begin_indexing_run():
                 raise ReflexAppException(INDEXING_IN_PROGRESS_MESSAGE)
 

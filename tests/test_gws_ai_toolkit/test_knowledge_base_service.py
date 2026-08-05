@@ -545,13 +545,17 @@ class TestKnowledgeBaseService(BaseTestCase):
         knowledge_base = self._create_knowledge_base()
         self.fake_source.write_source_document("protocol.md", MARKDOWN_CONTENT)
         document = self.service.add_document(knowledge_base.id, FAKE_SOURCE_TYPE, "protocol.md")
-        self.service._fail_indexing(document, "embedding provider refused")
+
+        # The snapshot disappearing is the honest version of "indexing failed", as in
+        # test_indexing_error_path_records_the_message_and_leaves_the_row_in_error.
+        os.remove(document.snapshot_path)
+        failed = self.service.index_document(document.id, self._build_engine())
 
         refresh = self.service.refresh_document(document.id)
 
         self.assertFalse(refresh.content_changed)
         self.assertEqual(refresh.document.index_status, DocumentIndexStatus.ERROR.value)
-        self.assertEqual(refresh.document.error_message, "embedding provider refused")
+        self.assertEqual(refresh.document.error_message, failed.error_message)
 
     def test_a_refreshed_document_keeps_answering_with_its_old_chunks_until_reindexed(self):
         """A refresh replaces the snapshot only; the index still holds the previous content."""

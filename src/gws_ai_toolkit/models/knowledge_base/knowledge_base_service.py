@@ -365,14 +365,14 @@ class KnowledgeBaseService:
         known_source_ids = {
             document.source_id
             for document in self.get_documents(knowledge_base.id)
-            if document.source_id
+            if document.source_id and document.source_type == source_type
         }
 
         report = ImportReport()
         for candidate in candidates:
             if candidate.source_id in known_source_ids:
                 report.skipped.append(
-                    self._skipped(
+                    self._build_skipped_document(
                         candidate,
                         ImportSkipReason.ALREADY_PRESENT,
                         "Already in this knowledge base. Refresh it to pick up a newer version.",
@@ -393,14 +393,16 @@ class KnowledgeBaseService:
             except DOCUMENT_REJECTION_ERRORS as err:
                 # The reason is written for a user — which format, how big, why the source refused.
                 report.skipped.append(
-                    self._skipped(candidate, ImportSkipReason.NOT_INDEXABLE, str(err))
+                    self._build_skipped_document(candidate, ImportSkipReason.NOT_INDEXABLE, str(err))
                 )
                 continue
             except Exception as err:
                 # One unreachable resource must not abandon the other forty-nine. Unlike a rejection
                 # this is a server-side problem, so it is logged with its stack trace as well.
                 Logger.log_exception_stack_trace(err)
-                report.skipped.append(self._skipped(candidate, ImportSkipReason.FAILED, str(err)))
+                report.skipped.append(
+                    self._build_skipped_document(candidate, ImportSkipReason.FAILED, str(err))
+                )
                 continue
 
             # Indexing records its own failure on the row instead of raising, so a document that
@@ -537,11 +539,21 @@ class KnowledgeBaseService:
         reconciliation pass could not work out which documents are in its scope and which it must
         never touch — one dict key now, no schema change later. The criterion is stored as the
         provider defined it, so this stays true whatever a future provider imports by.
+
+        The service's ``imported_from`` is authoritative: a provider is not expected to set it, but if
+        one does, its value is displaced and logged rather than silently lost — a reconciliation pass
+        (issue #27) reads this key and must see the criterion the import actually ran on.
         """
-        return {**(candidate.source_metadata or {}), "imported_from": dict(criteria or {})}
+        source_metadata = dict(candidate.source_metadata or {})
+        if "imported_from" in source_metadata:
+            Logger.warning(
+                f"Source '{candidate.source_id}' returned its own 'imported_from' metadata; "
+                "it is displaced by the import criterion."
+            )
+        return {**source_metadata, "imported_from": dict(criteria or {})}
 
     @staticmethod
-    def _skipped(
+    def _build_skipped_document(
         candidate: SourceDocumentCandidate, reason: ImportSkipReason, message: str
     ) -> SkippedDocumentDTO:
         """One line of an import report's skip list."""
