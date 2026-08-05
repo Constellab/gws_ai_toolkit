@@ -205,6 +205,29 @@ class TestRagChatProfileService(BaseTestCase):
 
     ############################################### PUBLISH / UNPUBLISH ###############################################
 
+    def test_publish_profile_creates_the_local_user_mirror_if_missing(self):
+        """publish_profile must not depend on the async mirror event having already run.
+
+        Unlike ``_create_user``, this admin has no local ``User`` row at all: it proves
+        ``publish_profile`` creates the mirror itself rather than assuming
+        ``AiToolkitUserSyncService`` already did (that event is dispatched asynchronously by
+        gws_core, so it can easily lose the race against a user publishing right after their
+        account is created).
+        """
+        profile = self._create_profile()
+        admin = GwsCoreUser(
+            email=f"{StringHelper.generate_uuid()}@gencovery.com",
+            first_name="Test",
+            last_name="User",
+            group=UserGroup.ADMIN,
+        ).save()
+
+        with self._authenticated_as(admin):
+            self.service.publish_profile(profile.id)
+
+        reloaded = self.service.get_profile_and_check(profile.id)
+        self.assertEqual(reloaded.published_by.email, admin.email)
+
     def test_publish_profile_mints_a_token_and_records_who(self):
         profile = self._create_profile()
         admin = self._create_admin_user()

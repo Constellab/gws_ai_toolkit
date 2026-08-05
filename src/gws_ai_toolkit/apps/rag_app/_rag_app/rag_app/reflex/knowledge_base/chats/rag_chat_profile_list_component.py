@@ -256,8 +256,8 @@ def _unpublish_dialog(profile: ChatProfileRow) -> rx.Component:
         rx.alert_dialog.content(
             rx.alert_dialog.title("Un-publish chat profile"),
             rx.alert_dialog.description(
-                f"Anyone holding '{profile.name}''s current token loses access immediately. The "
-                "profile itself is kept, and can be published again later with a new token.",
+                f"Anyone holding the current token for '{profile.name}' loses access immediately. "
+                "The profile itself is kept, and can be published again later with a new token.",
                 margin_bottom="1rem",
             ),
             rx.flex(

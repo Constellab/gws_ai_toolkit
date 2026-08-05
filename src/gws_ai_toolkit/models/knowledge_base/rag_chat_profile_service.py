@@ -14,6 +14,7 @@ boundary for Reflex states is ``to_dto()`` on those rows.
 """
 
 from gws_core import CurrentUserService, DateHelper, Logger, StringHelper
+from gws_core import User as GwsCoreUser
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.knowledge_base.knowledge_base import KnowledgeBase
@@ -126,7 +127,7 @@ class RagChatProfileService:
         profile.is_published = True
         profile.publish_token = token
         profile.published_at = DateHelper.now_utc()
-        profile.published_by = User.from_gws_core_user(current_user)
+        profile.published_by = self._get_or_create_local_user(current_user)
         profile.save()
 
         Logger.info(
@@ -160,6 +161,21 @@ class RagChatProfileService:
     def _generate_publish_token() -> str:
         """A fresh, unguessable bearer token, in the same shape as :class:`~gws_core.ShareLink`'s."""
         return StringHelper.generate_uuid() + "_" + str(DateHelper.now_utc_as_milliseconds())
+
+    @staticmethod
+    def _get_or_create_local_user(gws_core_user: GwsCoreUser) -> User:
+        """The local mirror of ``gws_core_user`` that ``published_by`` can point a foreign key at.
+
+        The mirror is normally created by ``AiToolkitUserSyncService`` off a ``user.created``
+        event, which gws_core dispatches asynchronously — so a user publishing immediately after
+        their own account is created can race ahead of their own mirror row and hit the foreign
+        key constraint. Publishing is rare enough that a row lookup here is cheap insurance against
+        that gap, rather than something worth open-coding into the sync service itself.
+        """
+        local_user = User.get_or_none(User.id == gws_core_user.id)
+        if local_user is not None:
+            return local_user
+        return User.from_gws_core_user(gws_core_user).save(force_insert=True)
 
     ############################################### BINDING ###############################################
 

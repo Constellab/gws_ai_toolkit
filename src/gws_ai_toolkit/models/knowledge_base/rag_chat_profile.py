@@ -13,16 +13,8 @@ since disappeared are dropped at query time rather than raising. See
 
 from datetime import datetime
 
-from gws_core import JSONField, Model, NullableDateTimeUTC
-from peewee import (
-    BooleanField,
-    CharField,
-    FloatField,
-    ForeignKeyField,
-    IntegerField,
-    ModelSelect,
-    TextField,
-)
+from gws_core import JSONField, Model, NullableDateTimeUTC, NullableForeignKeyField
+from peewee import BooleanField, CharField, FloatField, IntegerField, ModelSelect, TextField
 
 from gws_ai_toolkit.core.ai_toolkit_db_manager import AiToolkitDbManager
 from gws_ai_toolkit.models.knowledge_base.rag_chat_profile_dto import (
@@ -65,7 +57,7 @@ class RagChatProfile(Model):
     is_published: bool = BooleanField(default=False)
     publish_token: str | None = CharField(max_length=64, null=True, unique=True, index=True)
     published_at: datetime | None = NullableDateTimeUTC()
-    published_by: "User | None" = ForeignKeyField(User, backref="+", null=True)
+    published_by = NullableForeignKeyField(User, backref="+")
 
     class Meta:
         table_name = "gws_ai_toolkit_rag_chat_profile"
