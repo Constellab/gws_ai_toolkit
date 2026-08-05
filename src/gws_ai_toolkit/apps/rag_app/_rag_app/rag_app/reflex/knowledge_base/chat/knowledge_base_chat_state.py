@@ -182,6 +182,10 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
                 into the read-only notice rather than an error, because the transcript is still worth
                 reading
         """
+        # Whatever focus was picked on the conversation being left — sent or not — belongs to that
+        # conversation, not to whichever one is restored next.
+        self._focused_document_ids = []
+
         main_state = await self.get_state(ReflexMainState)
         with await main_state.authenticate_user():
             KnowledgeBaseChatFactory.get_restorable_profile_id(conversation_id)
