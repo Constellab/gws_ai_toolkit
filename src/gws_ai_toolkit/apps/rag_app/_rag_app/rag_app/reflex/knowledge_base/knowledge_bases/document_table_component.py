@@ -151,7 +151,7 @@ def _error_tooltip(document: KnowledgeBaseDocumentDTO) -> rx.Component:
 
 
 def _row_actions(document: KnowledgeBaseDocumentDTO) -> rx.Component:
-    """Ask AI Expert, re-index, refresh or delete, for one document — behind one menu button.
+    """Focus a new chat on this document, re-index, refresh or delete — behind one menu button.
 
     The two indexing actions are disabled while a run owns the page: a second run on the same
     document would race on its lease, and a disabled item says so better than an error toast. The
@@ -169,7 +169,7 @@ def _row_actions(document: KnowledgeBaseDocumentDTO) -> rx.Component:
                 )
             ),
             rx.menu.content(
-                _ai_expert_action(document),
+                _focus_new_chat_action(document),
                 rx.menu.item(
                     rx.icon("refresh-cw", size=14),
                     "Re-index from snapshot",
@@ -200,18 +200,21 @@ def _row_actions(document: KnowledgeBaseDocumentDTO) -> rx.Component:
     )
 
 
-def _ai_expert_action(document: KnowledgeBaseDocumentDTO) -> rx.Component:
-    """Open AI Expert on this document — a chat about it alone.
+def _focus_new_chat_action(document: KnowledgeBaseDocumentDTO) -> rx.Component:
+    """Start a new chat pre-focused on this document alone.
 
-    Offered only once the document is indexed: ``relevant_chunks`` retrieves from its chunks, and a
-    document with none would answer every question with "this document does not cover it".
+    Offered only once the document is indexed: focus narrows retrieval to what has already been
+    embedded, and a document with no chunks yet would answer every question with "this document
+    does not cover it".
     """
     return rx.cond(
         document.index_status == DocumentIndexStatus.DONE.value,
         rx.menu.item(
             rx.icon("messages-square", size=14),
-            "Chat about this document",
-            on_click=rx.redirect(f"/ai-expert/{document.id}"),
+            "Focus in new chat",
+            on_click=lambda: KnowledgeBaseDetailState.focus_document_in_new_chat(
+                document.id, document.knowledge_base_id
+            ),
         ),
     )
 

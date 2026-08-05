@@ -108,6 +108,13 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     _focused_document_ids: list[str] = []
     _focusable_documents: list[KnowledgeBaseDocumentDTO] = []
 
+    # A document to focus once the blank ``/kb`` page has finished loading (issue #32's "Focus in
+    # new chat" shortcut). ``load_new_chat_page`` always discards whatever focus was on screen — it
+    # has to, since arriving there otherwise means a fresh chat — so a focus set just before the
+    # redirect that lands on it would be wiped out again a moment later without this. Consumed once,
+    # by ``load_new_chat_page`` itself.
+    _pending_focus_document_id: str = ""
+
     ############################################### DERIVED ###############################################
 
     @rx.var
@@ -278,9 +285,17 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         leaving whatever was on screen — the conversation object included, not just the read-only
         notice. Dropping only the notice would leave the previous transcript rendered and, worse, let
         the next question be appended to the conversation the user had just navigated away from.
+
+        Applies :attr:`_pending_focus_document_id` last, after the discard above has already run —
+        that discard is what the "Focus in new chat" shortcut relies on to land here in the first
+        place, so the focus it set has to survive it rather than run before it.
         """
         self.discard_conversation()
         await self._load_profiles()
+
+        if self._pending_focus_document_id:
+            self.focus_document(self._pending_focus_document_id)
+            self._pending_focus_document_id = ""
 
     @rx.event
     async def on_mount(self) -> None:
@@ -341,6 +356,15 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         self.discard_conversation()
         await self._load_focusable_documents()
 
+    def queue_pending_focus(self, document_id: str) -> None:
+        """Ask the next ``/kb`` page load to focus this document once it has settled.
+
+        Not an event, for the same reason as :meth:`start_chat_with_profile`: the knowledge-base
+        page's "Focus in new chat" action reaches this through ``get_state`` right before its own
+        redirect to ``/kb`` — see :attr:`_pending_focus_document_id`.
+        """
+        self._pending_focus_document_id = document_id
+
     ############################################### DOCUMENT FOCUS ###############################################
 
     def _focus_of_last_user_message(self) -> list[str]:
@@ -355,6 +379,17 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     @rx.event
     def add_document_focus(self, document_id: str) -> None:
         """Add a document to the focus of the current (or next) message."""
+        self.focus_document(document_id)
+
+    def focus_document(self, document_id: str) -> None:
+        """Add a document to the focus of the current (or next) message.
+
+        Not an event, for the same reason as :meth:`start_chat_with_profile`: an ``@rx.event``
+        method called directly (rather than through ``on_click``) only builds an unexecuted
+        ``EventSpec``. This is what :meth:`add_document_focus` delegates to for the "+" menu, and
+        what a sibling state reaches through ``get_state`` — the knowledge-base page's "Focus in new
+        chat" action, and this state's own :meth:`load_new_chat_page`.
+        """
         if document_id not in self._focused_document_ids:
             self._focused_document_ids = [*self._focused_document_ids, document_id]
 

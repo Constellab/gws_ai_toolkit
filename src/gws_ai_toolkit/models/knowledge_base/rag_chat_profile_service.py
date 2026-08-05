@@ -49,6 +49,20 @@ class RagChatProfileService:
         """Every profile, ordered by name."""
         return list(RagChatProfile.get_all_ordered_by_name())
 
+    def find_profile_for_knowledge_base(self, knowledge_base_id: str) -> RagChatProfile | None:
+        """The first profile (by name) bound to this knowledge base, or None if none is.
+
+        Used by the knowledge-base page's "Focus in new chat" shortcut: it needs a profile to start
+        a conversation with, and picking the first by name is a stable, unsurprising choice when more
+        than one profile binds the same knowledge base.
+
+        :param knowledge_base_id: the knowledge base a document belongs to
+        """
+        for profile in self.get_all_profiles():
+            if knowledge_base_id in profile.get_knowledge_base_ids():
+                return profile
+        return None
+
     ############################################### WRITE ###############################################
 
     @AiToolkitDbManager.transaction()

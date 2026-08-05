@@ -204,6 +204,27 @@ class TestRagChatProfileService(BaseTestCase):
 
         self.assertEqual(self.service.get_valid_knowledge_base_ids(profile), [])
 
+    def test_find_profile_for_knowledge_base_returns_the_first_match_by_name(self):
+        knowledge_base = self._create_knowledge_base()
+        self._create_profile("Zebra", knowledge_base_ids=[knowledge_base.id])
+        self._create_profile("Alpha", knowledge_base_ids=[knowledge_base.id])
+
+        found = self.service.find_profile_for_knowledge_base(knowledge_base.id)
+
+        self.assertEqual(found.name, "Alpha")
+
+    def test_find_profile_for_knowledge_base_ignores_profiles_bound_elsewhere(self):
+        bound = self._create_knowledge_base("Bound")
+        other = self._create_knowledge_base("Other")
+        self._create_profile("Support bot", knowledge_base_ids=[other.id])
+
+        self.assertIsNone(self.service.find_profile_for_knowledge_base(bound.id))
+
+    def test_find_profile_for_knowledge_base_of_an_unknown_id_is_none(self):
+        self._create_profile()
+
+        self.assertIsNone(self.service.find_profile_for_knowledge_base("does-not-exist"))
+
     ############################################### RETRIEVAL CONFIG AND DTO ###############################################
 
     def test_get_retrieval_config_carries_the_profiles_retrieval_settings(self):
