@@ -40,6 +40,7 @@ from ...chat_base.source.source_message_component import (
     source_message_component,
 )
 from ..chats.rag_chat_profile_list_state import CHAT_PROFILES_ROUTE
+from ..knowledge_bases.knowledge_base_list_state import KNOWLEDGE_BASES_ROUTE
 from .document_focus_component import document_focus_composer, user_message_with_focus_chips
 from .knowledge_base_chat_state import ChatProfileOption, KnowledgeBaseChatState
 from .knowledge_base_empty_chat_component import knowledge_base_empty_chat_component
@@ -137,26 +138,49 @@ def knowledge_base_chat_component(chat_config: ChatConfig | None = None) -> rx.C
 
 
 def knowledge_base_chat_header_component() -> rx.Component:
-    """Header of the chat: the sidebar toggle, the profile selector, and the way to edit profiles."""
+    """Header of the chat: the sidebar toggle, the profile selector, and the settings menu."""
     return rx.hstack(
         left_sidebar_open_button(),
         rx.icon("database", size=16, color="var(--gray-9)"),
         _profile_selector(),
         rx.spacer(),
-        rx.tooltip(
+        _settings_menu(),
+        align="center",
+        spacing="3",
+        width="100%",
+    )
+
+
+def _settings_menu() -> rx.Component:
+    """The way into the configuration pages.
+
+    Everything under ``/kb`` shares one sidebar, and this menu is what makes the chat-profile and
+    knowledge-base pages reachable without typing a URL.
+    """
+    return rx.menu.root(
+        # No tooltip on the trigger: Radix's ``asChild`` cannot forward the trigger's click and ref
+        # through a ``Tooltip.Root``, so wrapping the button in one leaves the menu unopenable.
+        rx.menu.trigger(
             rx.button(
                 rx.icon("settings", size=16),
                 variant="ghost",
                 size="2",
                 cursor="pointer",
                 color_scheme="gray",
+            )
+        ),
+        rx.menu.content(
+            rx.menu.item(
+                rx.icon("message-circle", size=14),
+                "Chat profiles",
                 on_click=rx.redirect(CHAT_PROFILES_ROUTE),
             ),
-            content="Chat profiles",
+            rx.menu.item(
+                rx.icon("database", size=14),
+                "Knowledge bases",
+                on_click=rx.redirect(KNOWLEDGE_BASES_ROUTE),
+            ),
         ),
-        align="center",
-        spacing="3",
-        width="100%",
     )
 
 

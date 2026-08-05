@@ -73,24 +73,9 @@ def index():
     return _chat_page_content()
 
 
-@rx.page(route="/kb", on_load=KnowledgeBaseChatState.load_new_chat_page)
-def knowledge_base_chat():
-    """Same chat as ``/``, under the URL the shared knowledge-base state redirects to."""
-    return _chat_page_content()
-
-
 @rx.page(route="/chat/[conversation_id]", on_load=KnowledgeBaseChatState.load_conversation_from_url)
 def chat_with_conversation():
     """Chat page for an existing conversation loaded from URL."""
-    return _chat_page_content()
-
-
-@rx.page(
-    route="/kb/chat/[conversation_id]",
-    on_load=KnowledgeBaseChatState.load_conversation_from_url,
-)
-def knowledge_base_chat_with_conversation():
-    """Same conversation page as ``/chat/[conversation_id]``, under the ``/kb`` prefix."""
     return _chat_page_content()
 
 

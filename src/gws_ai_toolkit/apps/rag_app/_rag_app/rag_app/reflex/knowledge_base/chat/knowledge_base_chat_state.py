@@ -54,8 +54,8 @@ from ..core.document_open_action import build_open_document_event
 from ..core.knowledge_base_app_state import KnowledgeBaseAppState
 
 # New chat, and the page a restored conversation's URL is a child of.
-KNOWLEDGE_BASE_CHAT_ROUTE = "/kb"
-KNOWLEDGE_BASE_CONVERSATION_ROUTE = "/kb/chat/{id}"
+KNOWLEDGE_BASE_CHAT_ROUTE = "/"
+KNOWLEDGE_BASE_CONVERSATION_ROUTE = "/chat/{id}"
 
 PLACEHOLDER_TEXT = "Ask a question about your documents..."
 
@@ -110,7 +110,7 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
     _focused_document_ids: list[str] = []
     _focusable_documents: list[KnowledgeBaseDocumentDTO] = []
 
-    # A document to focus once the blank ``/kb`` page has finished loading (issue #32's "Focus in
+    # A document to focus once the blank ``/`` page has finished loading (issue #32's "Focus in
     # new chat" shortcut). ``load_new_chat_page`` always discards whatever focus was on screen — it
     # has to, since arriving there otherwise means a fresh chat — so a focus set just before the
     # redirect that lands on it would be wiped out again a moment later without this. Consumed once,
@@ -269,7 +269,7 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
 
     @rx.event
     async def load_conversation_from_url(self) -> rx.event.EventType | None:
-        """Handle page load for ``/kb/chat/[conversation_id]``.
+        """Handle page load for ``/chat/[conversation_id]``.
 
         A conversation that cannot be continued is *shown* rather than refused: its messages are
         already loaded by the time the restore is attempted, so the page becomes a read-only
@@ -300,9 +300,9 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
 
     @rx.event
     async def load_new_chat_page(self) -> None:
-        """Handle page load for ``/kb``, which always means a new chat.
+        """Handle page load for ``/``, which always means a new chat.
 
-        A conversation of its own has a URL of its own (``/kb/chat/<id>``), so arriving here means
+        A conversation of its own has a URL of its own (``/chat/<id>``), so arriving here means
         leaving whatever was on screen — the conversation object included, not just the read-only
         notice. Dropping only the notice would leave the previous transcript rendered and, worse, let
         the next question be appended to the conversation the user had just navigated away from.
@@ -360,7 +360,7 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         object *and* the read-only notice. Clearing one without the other is what makes a stale
         transcript answer a new question, or a retired-engine notice hang over a blank chat.
 
-        Not an event: ``RagHistoryState`` reaches it through ``get_state``, and the ``/kb`` page load
+        Not an event: ``RagHistoryState`` reaches it through ``get_state``, and the ``/`` page load
         calls it directly.
         """
         self.clear_chat()
@@ -378,11 +378,11 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
         await self._load_focusable_documents()
 
     def queue_pending_focus(self, document_id: str) -> None:
-        """Ask the next ``/kb`` page load to focus this document once it has settled.
+        """Ask the next ``/`` page load to focus this document once it has settled.
 
         Not an event, for the same reason as :meth:`start_chat_with_profile`: the knowledge-base
         page's "Focus in new chat" action reaches this through ``get_state`` right before its own
-        redirect to ``/kb`` — see :attr:`_pending_focus_document_id`.
+        redirect to ``/`` — see :attr:`_pending_focus_document_id`.
         """
         self._pending_focus_document_id = document_id
 
@@ -465,7 +465,7 @@ class KnowledgeBaseChatState(ConversationChatStateBase, rx.State):
             )
 
         await self.start_chat_with_profile(profile.id)
-        # Queued rather than applied directly: the redirect below lands on ``/kb``, whose own page
+        # Queued rather than applied directly: the redirect below lands on ``/``, whose own page
         # load discards whatever focus is on screen — see ``load_new_chat_page``. Queuing it here
         # is what survives that.
         self.queue_pending_focus(document_id)

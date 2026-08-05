@@ -69,7 +69,7 @@ def admin_history_detail():
 
 
 # Knowledge-base chat - new conversation
-@rx.page(route="/kb", on_load=KnowledgeBaseChatState.load_new_chat_page)
+@rx.page(route="/", on_load=KnowledgeBaseChatState.load_new_chat_page)
 def knowledge_base_chat():
     """Chat against a chat profile, answering from the knowledge bases it is bound to."""
     return rag_page_layout_component(
@@ -79,7 +79,7 @@ def knowledge_base_chat():
 
 # Knowledge-base chat - existing conversation loaded from the URL
 @rx.page(
-    route="/kb/chat/[conversation_id]",
+    route="/chat/[conversation_id]",
     on_load=KnowledgeBaseChatState.load_conversation_from_url,
 )
 def knowledge_base_chat_with_conversation():

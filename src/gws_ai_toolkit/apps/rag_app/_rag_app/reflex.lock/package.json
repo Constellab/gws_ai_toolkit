@@ -6,7 +6,6 @@
     "export": "react-router build"
   },
   "dependencies": {
-    "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-dialog": "1.1.15",
     "@radix-ui/react-form": "0.1.8",
     "@radix-ui/themes": "3.3.0",

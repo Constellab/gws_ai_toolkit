@@ -6,8 +6,6 @@ from gws_reflex_main import (
 )
 
 from ..history.chat_history_sidebar_component import chat_history_sidebar_list
-from ..knowledge_base.chats.rag_chat_profile_list_state import CHAT_PROFILES_ROUTE
-from ..knowledge_base.knowledge_bases.knowledge_base_list_state import KNOWLEDGE_BASES_ROUTE
 from .conversation_mode_chip_component import conversation_mode_chip_reactive
 from .rag_history_state import RagHistoryState
 
@@ -47,29 +45,13 @@ def _sidebar_content() -> rx.Component:
             logo_src="/constellab-logo.svg",
             margin_bottom="1rem",
         ),
-        # New Chat button, then the way into the knowledge-base pages: everything under ``/kb``
-        # shares this sidebar, so these are what make those pages reachable without typing a URL.
+        # New Chat button. The knowledge-base pages are reached from the chat header's settings
+        # menu, so the sidebar only carries what starts a conversation.
         rx.vstack(
             rx.button(
                 rx.icon("plus", size=16),
                 "New Chat",
                 on_click=RagHistoryState.start_new_chat,
-                width="100%",
-                size="2",
-            ),
-            rx.button(
-                rx.icon("message-circle", size=16),
-                "Chat profiles",
-                on_click=rx.redirect(CHAT_PROFILES_ROUTE),
-                variant="soft",
-                width="100%",
-                size="2",
-            ),
-            rx.button(
-                rx.icon("database", size=16),
-                "Knowledge bases",
-                on_click=rx.redirect(KNOWLEDGE_BASES_ROUTE),
-                variant="soft",
                 width="100%",
                 size="2",
             ),
