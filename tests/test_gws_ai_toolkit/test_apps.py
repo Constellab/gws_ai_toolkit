@@ -36,7 +36,7 @@ class TestApps(BaseTestCase):
     def test_rag_app(self):
         config_file = self._create_empty_config_file()
 
-        AppTester.test_app_from_task(
+        AppTester.test_app_compiles_from_task(
             test_case=self,
             generate_task_type=GenerateDatahubRagFlowApp,
             app_output_name="streamlit_app",
@@ -54,7 +54,7 @@ class TestApps(BaseTestCase):
     def test_full_app(self):
         config_file = self._create_empty_config_file()
 
-        AppTester.test_app_from_task(
+        AppTester.test_app_compiles_from_task(
             test_case=self,
             generate_task_type=GenerateFullApp,
             app_output_name="streamlit_app",
@@ -72,7 +72,7 @@ class TestApps(BaseTestCase):
     def test_ai_table_standalone_app(self):
         config_file = self._create_empty_config_file()
 
-        AppTester.test_app_from_task(
+        AppTester.test_app_compiles_from_task(
             test_case=self,
             generate_task_type=GenerateAiTableStandaloneApp,
             app_output_name="reflex_app",
