@@ -55,14 +55,21 @@ def custom_source_menu_items(
     return items
 
 
-_kb_chat_config = knowledge_base_chat_config_factory(custom_source_menu_items)
-
-
 def _chat_page_content() -> rx.Component:
-    """The knowledge-base chat, wrapped with the associated-resources dialog it can open."""
+    """The knowledge-base chat, wrapped with the associated-resources dialog it can open.
+
+    The ``ChatConfig`` is rebuilt on every call instead of being shared at module level: it holds a
+    live ``header`` component instance, and the Reflex compiler rewrites the instances it walks. A
+    single instance reused by two pages is compiled twice, and the second compile leaks the header's
+    state ``useContext`` hook into the page module without its imports (``ReferenceError: useContext
+    is not defined`` when that route renders).
+    """
     return rag_page_layout_component(
         content=rx.fragment(
-            knowledge_base_chat_component(_kb_chat_config), associated_resources_dialog()
+            knowledge_base_chat_component(
+                knowledge_base_chat_config_factory(custom_source_menu_items)
+            ),
+            associated_resources_dialog(),
         ),
     )
 
