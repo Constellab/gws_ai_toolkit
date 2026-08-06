@@ -22,7 +22,6 @@ from gws_ai_toolkit.rag.knowledge_base.knowledge_base_config import DEFAULT_TOP_
 from gws_core import BaseTestCase, CurrentUserService, StringHelper, UserGroup
 from gws_core import User as GwsCoreUser
 from gws_core.core.exception.exceptions.not_found_exception import NotFoundException
-from gws_core.core.exception.exceptions.unauthorized_exception import UnauthorizedException
 
 
 # test_rag_chat_profile_service.py
@@ -282,24 +281,35 @@ class TestRagChatProfileService(BaseTestCase):
         self.assertIsNotNone(reloaded.published_at)
         self.assertEqual(reloaded.published_by.email, admin.email)
 
-    def test_publish_profile_refuses_a_non_admin(self):
+    def test_publish_profile_allows_a_non_admin(self):
+        """Publishing is open to any authenticated user, not just lab admins.
+
+        The audit trail is what makes that acceptable, so this asserts ``published_by`` names the
+        regular user rather than only that the call succeeded.
+        """
         profile = self._create_profile()
         regular_user = self._create_regular_user()
 
-        with self._authenticated_as(regular_user), self.assertRaises(UnauthorizedException):
-            self.service.publish_profile(profile.id)
+        with self._authenticated_as(regular_user):
+            token = self.service.publish_profile(profile.id)
 
-        self.assertFalse(self.service.get_profile_and_check(profile.id).is_published)
+        self.assertTrue(token)
+        reloaded = self.service.get_profile_and_check(profile.id)
+        self.assertTrue(reloaded.is_published)
+        self.assertEqual(reloaded.published_by.email, regular_user.email)
 
-    def test_publish_profile_refuses_the_sysuser(self):
-        # BaseTestCase authenticates the sysuser by default: publishing must not be reachable from
-        # an automated/system context any more than from a plain user.
+    def test_publish_profile_allows_the_sysuser(self):
+        # BaseTestCase authenticates the sysuser by default. Publishing carries no group restriction
+        # at all, so a system context reaches it like any other — and is recorded like any other.
         profile = self._create_profile()
 
-        with self.assertRaises(UnauthorizedException):
-            self.service.publish_profile(profile.id)
+        token = self.service.publish_profile(profile.id)
 
-    def test_unpublish_profile_refuses_a_non_admin(self):
+        self.assertTrue(token)
+        self.assertTrue(self.service.get_profile_and_check(profile.id).is_published)
+
+    def test_unpublish_profile_allows_a_non_admin(self):
+        """A non-admin can revoke a token, including one an admin minted."""
         profile = self._create_profile()
         admin = self._create_admin_user()
         regular_user = self._create_regular_user()
@@ -307,10 +317,12 @@ class TestRagChatProfileService(BaseTestCase):
         with self._authenticated_as(admin):
             self.service.publish_profile(profile.id)
 
-        with self._authenticated_as(regular_user), self.assertRaises(UnauthorizedException):
+        with self._authenticated_as(regular_user):
             self.service.unpublish_profile(profile.id)
 
-        self.assertTrue(self.service.get_profile_and_check(profile.id).is_published)
+        reloaded = self.service.get_profile_and_check(profile.id)
+        self.assertFalse(reloaded.is_published)
+        self.assertIsNone(reloaded.publish_token)
 
     def test_publish_profile_refuses_an_unknown_profile(self):
         admin = self._create_admin_user()

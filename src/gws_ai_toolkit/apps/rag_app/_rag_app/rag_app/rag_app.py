@@ -16,6 +16,12 @@ from .reflex.knowledge_base.chat.knowledge_base_chat_component import (
     knowledge_base_chat_component,
 )
 from .reflex.knowledge_base.chat.knowledge_base_chat_state import KnowledgeBaseChatState
+from .reflex.knowledge_base.chats.rag_chat_profile_detail_component import (
+    rag_chat_profile_detail_component,
+)
+from .reflex.knowledge_base.chats.rag_chat_profile_detail_state import (
+    RagChatProfileDetailState,
+)
 from .reflex.knowledge_base.chats.rag_chat_profile_list_component import (
     rag_chat_profile_list_component,
 )
@@ -95,6 +101,18 @@ def chat_profiles():
     """Chat profiles: create one, configure it, and bind the knowledge bases it searches."""
     return rag_page_layout_component(
         content=rag_chat_profile_list_component(),
+    )
+
+
+# Chat profiles - detail page
+@rx.page(
+    route="/kb/chats/[chat_profile_id]",
+    on_load=RagChatProfileDetailState.load_profile,
+)
+def chat_profile_detail():
+    """One chat profile: its prompt, its retrieval settings, what it searches and its publication."""
+    return rag_page_layout_component(
+        content=rag_chat_profile_detail_component(),
     )
 
 

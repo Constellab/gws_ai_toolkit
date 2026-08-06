@@ -1,8 +1,13 @@
-"""The chat-profile page: every profile, with the actions that make one usable.
+"""The chat-profile list page: every profile, with the actions that make one usable.
 
-The row's primary action is *Chat*, because a profile exists to be talked to. Edit is next to it, and
-delete is a red icon button behind an alert dialog — the row itself does nothing destructive on one
-click.
+Clicking a row opens the profile's own page, where the system prompt and the publication warning have
+room to be read. *Chat* stays a button on the row, because a profile exists to be talked to; edit and
+delete live in ``rag_chat_profile_actions``, shared with the detail page's header so the two cannot
+drift.
+
+Publishing is not on this page at all — not on the row, not in its menu. The table says whether a
+profile *is* published, since that is a fact worth scanning a list for, but changing it happens on the
+detail page next to the explanation of what it exposes.
 
 The table says two things a name and a model cannot: a profile bound to no knowledge base retrieves
 nothing, and a profile bound to a knowledge base that has since been deleted searches less than its
@@ -13,11 +18,13 @@ import reflex as rx
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import KnowledgeBaseDTO
 
 from ..core.form_field_component import form_field
-from .rag_chat_profile_list_state import ChatProfileRow, RagChatProfileListState
+from .rag_chat_profile_actions_component import rag_chat_profile_actions
+from .rag_chat_profile_list_state import CHAT_PROFILES_ROUTE, RagChatProfileListState
+from .rag_chat_profile_row import ChatProfileRow
 
 
 def rag_chat_profile_list_component() -> rx.Component:
-    """The chat-profile page."""
+    """The chat-profile list page."""
     return rx.vstack(
         _header(),
         rx.cond(
@@ -29,8 +36,7 @@ def rag_chat_profile_list_component() -> rx.Component:
                 _empty_message(),
             ),
         ),
-        _edit_dialog(),
-        _token_dialog(),
+        rag_chat_profile_edit_dialog(),
         spacing="4",
         padding="1em",
         width="100%",
@@ -89,7 +95,7 @@ def _profile_table() -> rx.Component:
 
 
 def _profile_row(profile: ChatProfileRow) -> rx.Component:
-    """One profile: chat with it, edit it, or delete it."""
+    """One profile: click anywhere on the row to open it, or act on it from the end of the row."""
     return rx.table.row(
         rx.table.cell(rx.text(profile.name, size="2", weight="medium")),
         rx.table.cell(rx.code(profile.model, size="1")),
@@ -97,29 +103,10 @@ def _profile_row(profile: ChatProfileRow) -> rx.Component:
         rx.table.cell(rx.text(profile.top_k_label, size="2", color="var(--gray-11)")),
         rx.table.cell(rx.text(profile.threshold_label, size="2", color="var(--gray-11)")),
         rx.table.cell(_status_cell(profile)),
-        rx.table.cell(
-            rx.hstack(
-                rx.button(
-                    rx.icon("message-circle", size=14),
-                    "Chat",
-                    size="1",
-                    on_click=lambda: RagChatProfileListState.start_chat(profile.id),
-                ),
-                rx.button(
-                    rx.icon("pencil", size=14),
-                    "Edit",
-                    variant="soft",
-                    size="1",
-                    on_click=lambda: RagChatProfileListState.open_edit_dialog(profile.id),
-                ),
-                _publish_actions(profile),
-                rx.box(_delete_dialog(profile), margin_left="0.75rem"),
-                spacing="2",
-                align="center",
-                justify="end",
-            )
-        ),
+        rx.table.cell(rag_chat_profile_actions(profile, icon_size=14)),
         align="center",
+        style={":hover": {"background_color": "var(--gray-3)"}, "cursor": "pointer"},
+        on_click=lambda: rx.redirect(f"{CHAT_PROFILES_ROUTE}/{profile.id}"),
     )
 
 
@@ -173,181 +160,6 @@ def _knowledge_bases_cell(profile: ChatProfileRow) -> rx.Component:
     )
 
 
-def _publish_actions(profile: ChatProfileRow) -> rx.Component:
-    """Publish, rotate the token, or un-publish — admin-only, since publishing exposes documents.
-
-    The button shown only decides which confirmation opens; the service enforces the admin
-    restriction on its own, so hiding it here is a UX courtesy, not the security boundary.
-    """
-    return rx.cond(
-        RagChatProfileListState.is_admin,
-        rx.cond(
-            profile.is_published,
-            rx.hstack(
-                _publish_dialog(profile, rotate=True),
-                _unpublish_dialog(profile),
-                spacing="2",
-            ),
-            _publish_dialog(profile, rotate=False),
-        ),
-    )
-
-
-def _publish_dialog(profile: ChatProfileRow, *, rotate: bool) -> rx.Component:
-    """Confirm publishing a profile, or rotating an already-published one's token.
-
-    Publishing is the moment the world-readable warning has to land, because it is the moment it
-    becomes true: V1 has no per-document access control, so every knowledge base this profile
-    searches becomes readable by anyone who holds the token minted here.
-    """
-    label = "Rotate token" if rotate else "Publish"
-    icon = "refresh-cw" if rotate else "globe"
-    description = (
-        f"'{profile.name}' is already published. Rotating mints a new token immediately — the "
-        "current one stops working the moment you confirm."
-        if rotate
-        else (
-            f"Publishing '{profile.name}' makes every knowledge base it searches readable by "
-            "anyone who holds its token — this version has no per-document access control. The "
-            "token is shown once, right after you confirm: copy it immediately, and never paste "
-            "it anywhere the documents themselves should not be readable."
-        )
-    )
-    return rx.alert_dialog.root(
-        rx.alert_dialog.trigger(
-            rx.button(
-                rx.icon(icon, size=14),
-                label,
-                variant="soft" if rotate else "solid",
-                size="1",
-                loading=RagChatProfileListState.busy_profile_id == profile.id,
-            )
-        ),
-        rx.alert_dialog.content(
-            rx.alert_dialog.title(label),
-            rx.alert_dialog.description(description, margin_bottom="1rem"),
-            rx.flex(
-                rx.alert_dialog.cancel(rx.button("Cancel", variant="soft")),
-                rx.alert_dialog.action(
-                    rx.button(
-                        label,
-                        on_click=lambda: RagChatProfileListState.publish_profile(profile.id),
-                    ),
-                ),
-                spacing="3",
-                justify="end",
-            ),
-        ),
-    )
-
-
-def _unpublish_dialog(profile: ChatProfileRow) -> rx.Component:
-    """Confirm un-publishing — revokes access for anyone holding the current token immediately."""
-    return rx.alert_dialog.root(
-        rx.alert_dialog.trigger(
-            rx.button(
-                rx.icon("globe-lock", size=14),
-                "Un-publish",
-                variant="soft",
-                color_scheme="red",
-                size="1",
-                loading=RagChatProfileListState.busy_profile_id == profile.id,
-            )
-        ),
-        rx.alert_dialog.content(
-            rx.alert_dialog.title("Un-publish chat profile"),
-            rx.alert_dialog.description(
-                f"Anyone holding the current token for '{profile.name}' loses access immediately. "
-                "The profile itself is kept, and can be published again later with a new token.",
-                margin_bottom="1rem",
-            ),
-            rx.flex(
-                rx.alert_dialog.cancel(rx.button("Cancel", variant="soft")),
-                rx.alert_dialog.action(
-                    rx.button(
-                        "Un-publish",
-                        color_scheme="red",
-                        on_click=lambda: RagChatProfileListState.unpublish_profile(profile.id),
-                    ),
-                ),
-                spacing="3",
-                justify="end",
-            ),
-        ),
-    )
-
-
-def _token_dialog() -> rx.Component:
-    """The token just minted by a publish or a rotation, shown exactly once.
-
-    Closing this dialog does not revoke anything — the profile stays published — it only stops the
-    token from being displayed again, which is why "Done" is its only way out.
-    """
-    return rx.dialog.root(
-        rx.dialog.content(
-            rx.dialog.title(f"'{RagChatProfileListState.minted_token_profile_name}' is published"),
-            rx.vstack(
-                rx.text(
-                    "Anyone who holds this token can read everything this profile's bound "
-                    "knowledge bases contain — there is no per-document access control in this "
-                    "version. Copy it now: it will not be shown again.",
-                    size="2",
-                    color="var(--gray-11)",
-                ),
-                rx.code_block(RagChatProfileListState.minted_token, can_copy=True, width="100%"),
-                spacing="3",
-                width="100%",
-            ),
-            rx.hstack(
-                rx.spacer(),
-                rx.button("Done", on_click=RagChatProfileListState.close_token_dialog),
-                width="100%",
-                margin_top="1rem",
-            ),
-            on_interact_outside=RagChatProfileListState.close_token_dialog,
-            on_escape_key_down=RagChatProfileListState.close_token_dialog,
-            max_width="32rem",
-        ),
-        open=RagChatProfileListState.token_dialog_open,
-    )
-
-
-def _delete_dialog(profile: ChatProfileRow) -> rx.Component:
-    """Delete a profile, behind a confirmation saying what survives it."""
-    return rx.alert_dialog.root(
-        rx.alert_dialog.trigger(
-            rx.button(
-                rx.icon("trash-2", size=14),
-                variant="ghost",
-                size="1",
-                color_scheme="red",
-                loading=RagChatProfileListState.busy_profile_id == profile.id,
-            )
-        ),
-        rx.alert_dialog.content(
-            rx.alert_dialog.title("Delete chat profile"),
-            rx.alert_dialog.description(
-                f"'{profile.name}' will be deleted. Its knowledge bases and their documents are "
-                "left untouched, and past conversations stay readable but can no longer be "
-                "continued.",
-                margin_bottom="1rem",
-            ),
-            rx.flex(
-                rx.alert_dialog.cancel(rx.button("Cancel", variant="soft")),
-                rx.alert_dialog.action(
-                    rx.button(
-                        "Delete",
-                        color_scheme="red",
-                        on_click=lambda: RagChatProfileListState.delete_profile(profile.id),
-                    ),
-                ),
-                spacing="3",
-                justify="end",
-            ),
-        ),
-    )
-
-
 def _empty_message() -> rx.Component:
     """What the page says before the first profile exists."""
     return rx.vstack(
@@ -371,8 +183,13 @@ def _empty_message() -> rx.Component:
     )
 
 
-def _edit_dialog() -> rx.Component:
-    """The create / edit form — one dialog, so the two cannot drift apart."""
+def rag_chat_profile_edit_dialog() -> rx.Component:
+    """The create / edit form — one dialog, so the two cannot drift apart.
+
+    Rendered on both the list page and the detail page: ``RagChatProfileListState.open_edit_dialog``
+    is reachable from either, via ``rag_chat_profile_actions``, so the dialog itself has to be present
+    wherever that cluster is.
+    """
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.title(RagChatProfileListState.dialog_title),

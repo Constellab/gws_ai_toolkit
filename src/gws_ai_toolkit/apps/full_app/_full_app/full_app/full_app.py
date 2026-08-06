@@ -5,6 +5,7 @@ from gws_ai_toolkit._app.ai_knowledge_base import (
     KnowledgeBaseChatState,
     KnowledgeBaseDetailState,
     KnowledgeBaseListState,
+    RagChatProfileDetailState,
     RagChatProfileListState,
     admin_history_detail_component,
     admin_history_list_component,
@@ -13,6 +14,7 @@ from gws_ai_toolkit._app.ai_knowledge_base import (
     knowledge_base_detail_component,
     knowledge_base_list_component,
     knowledge_base_source_menu_items,
+    rag_chat_profile_detail_component,
     rag_chat_profile_list_component,
     rag_page_layout_component,
 )
@@ -91,6 +93,16 @@ def chat_with_conversation():
 def chat_profiles():
     """Chat profiles: create one, configure it, and bind the knowledge bases it searches."""
     return rag_page_layout_component(content=rag_chat_profile_list_component())
+
+
+# Chat profiles - detail page
+@rx.page(
+    route="/kb/chats/[chat_profile_id]",
+    on_load=RagChatProfileDetailState.load_profile,
+)
+def chat_profile_detail():
+    """One chat profile: its prompt, its retrieval settings, what it searches and its publication."""
+    return rag_page_layout_component(content=rag_chat_profile_detail_component())
 
 
 # Knowledge bases - list page

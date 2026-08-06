@@ -17,6 +17,12 @@ from ...apps.rag_app._rag_app.rag_app.reflex.knowledge_base.chat.knowledge_base_
 from ...apps.rag_app._rag_app.rag_app.reflex.knowledge_base.chat.knowledge_base_chat_state import (
     KnowledgeBaseChatState,
 )
+from ...apps.rag_app._rag_app.rag_app.reflex.knowledge_base.chats.rag_chat_profile_detail_component import (
+    rag_chat_profile_detail_component,
+)
+from ...apps.rag_app._rag_app.rag_app.reflex.knowledge_base.chats.rag_chat_profile_detail_state import (
+    RagChatProfileDetailState,
+)
 from ...apps.rag_app._rag_app.rag_app.reflex.knowledge_base.chats.rag_chat_profile_list_component import (
     rag_chat_profile_list_component,
 )
@@ -53,6 +59,8 @@ __all__ = [
     # Chat profiles
     "RagChatProfileListState",
     "rag_chat_profile_list_component",
+    "RagChatProfileDetailState",
+    "rag_chat_profile_detail_component",
     # Knowledge bases
     "KnowledgeBaseListState",
     "knowledge_base_list_component",

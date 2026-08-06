@@ -126,14 +126,16 @@ class RagChatProfileService:
 
         V1 has no per-document access filtering, so the bound knowledge bases become world-readable
         to anyone holding the returned token. The caller is responsible for showing that warning and
-        the token itself to the admin performing this — the token is returned here once and is never
+        the token itself to the user performing this — the token is returned here once and is never
         written to a log or recoverable afterwards in cleartext.
 
+        Any authenticated user may publish: the action is not restricted to lab admins. What keeps
+        it accountable is the audit trail rather than a permission — ``published_by`` records who
+        minted the live token, and the log line below records every publication.
+
         :raises NotFoundException: if the profile does not exist
-        :raises UnauthorizedException: if the caller is not a lab admin
         :return: the newly minted token
         """
-        CurrentUserService.check_is_admin()
         profile = self.get_profile_and_check(profile_id)
         current_user = CurrentUserService.get_and_check_current_user()
 
@@ -156,10 +158,11 @@ class RagChatProfileService:
         ``published_at``/``published_by`` are left as-is: they record the last time the profile was
         published rather than being reset to "never published".
 
+        Any authenticated user may un-publish, mirroring :meth:`publish_profile`. Un-publishing only
+        ever narrows access, so it is the safer half of the pair.
+
         :raises NotFoundException: if the profile does not exist
-        :raises UnauthorizedException: if the caller is not a lab admin
         """
-        CurrentUserService.check_is_admin()
         profile = self.get_profile_and_check(profile_id)
         current_user = CurrentUserService.get_and_check_current_user()
 

@@ -10,6 +10,7 @@ page too for either to be able to show.
 
 import reflex as rx
 
+from ..core.summary_item_component import summary_item
 from .add_document_dialog.add_document_dialog_component import add_document_button
 from .document_table_component import document_table_component
 from .knowledge_base_actions_menu_component import knowledge_base_actions_menu
@@ -79,34 +80,15 @@ def _header() -> rx.Component:
 def _summary() -> rx.Component:
     """Documents, chunks, instance scope and chunking policy."""
     return rx.hstack(
-        _summary_item("file-text", KnowledgeBaseDetailState.document_count.to_string(), "documents"),
-        _summary_item("layers", KnowledgeBaseDetailState.total_chunk_count.to_string(), "chunks"),
-        _summary_item(
+        summary_item("file-text", KnowledgeBaseDetailState.document_count.to_string(), "documents"),
+        summary_item("layers", KnowledgeBaseDetailState.total_chunk_count.to_string(), "chunks"),
+        summary_item(
             "database", KnowledgeBaseDetailState.knowledge_base.instance_scope, "instance scope"
         ),
-        _summary_item("scissors", KnowledgeBaseDetailState.chunk_config_label, "chunking"),
+        summary_item("scissors", KnowledgeBaseDetailState.chunk_config_label, "chunking"),
         spacing="5",
         wrap="wrap",
         width="100%",
-    )
-
-
-def _summary_item(icon: str, value: rx.Var[str] | str, label: str) -> rx.Component:
-    """One fact of the summary row.
-
-    :param icon: lucide icon name
-    :param value: the value to show, reactive or literal
-    :param label: what the value means
-    """
-    return rx.hstack(
-        rx.icon(icon, size=16, color="var(--gray-9)"),
-        rx.vstack(
-            rx.text(value, size="2", weight="medium"),
-            rx.text(label, size="1", color="var(--gray-10)"),
-            spacing="0",
-        ),
-        align="center",
-        spacing="2",
     )
 
 

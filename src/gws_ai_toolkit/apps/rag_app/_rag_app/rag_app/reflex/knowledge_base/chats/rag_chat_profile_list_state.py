@@ -1,15 +1,30 @@
-"""State of the chat-profile page: list the profiles, configure one, chat with it.
+"""State of the chat-profile pages: list the profiles, configure one, chat with it.
 
 A chat profile is what turns a pile of knowledge bases into something a user can talk to: the prompt,
 the model, how many passages a search returns, the score a passage has to reach, and — the part that
 does the real work — which knowledge bases are in scope. That binding *is* the retrieval filter, which
 is why it is a list of checkboxes rather than a free-text field: an id nobody can mistype.
 
-Two decisions worth naming.
+Four decisions worth naming.
+
+**This state owns every mutation, from both pages.** Edit and delete are reachable from the list row
+and from the detail header, through ``rag_chat_profile_actions``; publish, rotate and un-publish are
+reachable only from the detail page's Publication section, where there is room to say what publishing
+exposes before it is clicked. The handlers all live here regardless, which is why they read the
+profile fresh from the service instead of from ``_profiles``: the detail page never populates that
+list. It is also why they reach into :class:`RagChatProfileDetailState` — a change patches its cached
+copy in place so a renamed or freshly published profile does not look stale on its own page, and a
+delete redirects away from it, since there is nothing left there to show.
 
 **Create and edit are the same dialog.** ``_editing_profile_id`` decides which of the two a save
 performs, so the fields, the validation and the layout cannot drift between the form that creates a
 profile and the form that changes one.
+
+**The confirmations are controlled, not trigger-driven.** Delete's button is a menu item, and a menu
+item cannot double as the trigger of another Radix primitive (same reason as
+``knowledge_base_actions_menu``); publish's must not close itself, because it hands over to the token
+dialog. So which dialog is open is state — ``action_dialog_profile_id`` plus ``action_dialog_action``,
+read through :func:`is_action_dialog_open` — rather than a wrapped trigger.
 
 **The service's own errors are re-raised as toasts.** ``RagChatProfileNameAlreadyUsedError`` and
 ``UnknownKnowledgeBaseError`` carry messages written for a user (a taken name, a knowledge base
@@ -17,8 +32,8 @@ deleted while the dialog was open), so they become ``ReflexAppException``; every
 the global handler installed by ``register_gws_reflex_app``.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
-from dataclasses import dataclass, field
 
 import reflex as rx
 from gws_ai_toolkit.models.knowledge_base.knowledge_base_dto import KnowledgeBaseDTO
@@ -42,56 +57,30 @@ from ..chat.knowledge_base_chat_state import (
     KnowledgeBaseChatState,
 )
 from ..core.form_parsing import parse_optional_float, parse_positive_int
+from .rag_chat_profile_detail_state import RagChatProfileDetailState
+from .rag_chat_profile_row import ChatProfileRow, build_chat_profile_row
 
 CHAT_PROFILES_ROUTE = "/kb/chats"
 
 # Errors a chat-profile save raises that are the user's to fix, not bugs to log.
 PROFILE_SAVE_ERRORS = (RagChatProfileNameAlreadyUsedError, UnknownKnowledgeBaseError)
 
-# What the table shows for a profile that set no score threshold, which is the default and not a
-# missing value.
-NO_THRESHOLD_LABEL = "—"
+# The three confirmations a page can open. "publish" covers rotating an already-published profile's
+# token too: the two are mutually exclusive on any given profile, and the dialog picks its wording
+# from ``is_published``.
+ACTION_DIALOG_PUBLISH = "publish"
+ACTION_DIALOG_UNPUBLISH = "unpublish"
+ACTION_DIALOG_DELETE = "delete"
 
-
-@dataclass
-class ChatProfileRow:
-    """One row of the profile table, resolved server-side.
-
-    The table needs the *names* of the bound knowledge bases, which the profile only holds ids for, so
-    the join happens here rather than in the browser. Two facts are carried rather than left to be
-    inferred from an empty list, because they mean different things: a profile bound to nothing
-    retrieves nothing, and a profile bound to a knowledge base that has since been deleted searches
-    less than its author configured.
-
-    Attributes:
-        id: The profile's id.
-        name: The profile's name.
-        model: Its ``provider:model`` string.
-        top_k_label: How many passages one search returns.
-        threshold_label: The score a passage must reach, or :data:`NO_THRESHOLD_LABEL`.
-        knowledge_base_names: Names of the bound knowledge bases that still exist, in bound order.
-        is_unbound: True when the profile binds no knowledge base at all.
-        has_dangling_bindings: True when it binds an id whose knowledge base no longer exists.
-        is_published: True when this profile's bound knowledge bases are reachable through a
-            publish token by anyone holding it.
-        published_label: Human-readable "since when, by whom" for a published profile, empty
-            otherwise.
-    """
-
-    id: str
-    name: str
-    model: str
-    top_k_label: str
-    threshold_label: str
-    knowledge_base_names: list[str] = field(default_factory=list)
-    is_unbound: bool = False
-    has_dangling_bindings: bool = False
-    is_published: bool = False
-    published_label: str = ""
+# How long to leave between closing the publish confirmation and opening the token dialog. Radix
+# holds a scroll lock and ``pointer-events: none`` on the body for as long as a modal is mounted, and
+# releases it on unmount; a modal that mounts before that cleanup runs inherits the lock and leaves
+# the whole app unclickable. Long enough for the close transition to finish.
+MODAL_HANDOVER_DELAY_SECONDS = 0.35
 
 
 class RagChatProfileListState(rx.State):
-    """The chat profiles of this lab, and the create / edit / delete actions on them.
+    """The chat profiles of this lab, and the create / edit / publish / delete actions on them.
 
     The profiles themselves stay on a backend var: the dialog reads them server-side, and a system
     prompt is a paragraph that has no business being pushed to the browser once per profile per event.
@@ -120,6 +109,11 @@ class RagChatProfileListState(rx.State):
     # The profile a row action is working on, so its own row shows the spinner rather than the table.
     busy_profile_id: str = ""
 
+    # Which confirmation is open, and on which profile. Both empty means none — see the module
+    # docstring for why this is state rather than a Radix trigger.
+    action_dialog_profile_id: str = ""
+    action_dialog_action: str = ""
+
     # The just-minted token dialog. The token is shown here exactly once — it is not re-derivable
     # from the profile afterwards, so this state is the only place it ever exists in the browser.
     token_dialog_open: bool = False
@@ -129,46 +123,10 @@ class RagChatProfileListState(rx.State):
     ############################################### DERIVED ###############################################
 
     @rx.var
-    async def is_admin(self) -> bool:
-        """Whether the current user may publish or un-publish a profile.
-
-        Publishing exposes a lab's knowledge bases to anyone holding the token, so the action is
-        admin-only. The service enforces this too — this var only decides whether the button shows.
-        """
-        main_state = await self.get_state(ReflexMainState)
-        user = await main_state.get_current_user()
-        return user is not None and user.is_admin
-
-    @rx.var
     def profile_rows(self) -> list[ChatProfileRow]:
         """The profiles as the table shows them, with their bindings resolved to names."""
-        names_by_id = {
-            knowledge_base.id: knowledge_base.name for knowledge_base in self.knowledge_bases
-        }
         return [
-            ChatProfileRow(
-                id=profile.id,
-                name=profile.name,
-                model=profile.model,
-                top_k_label=str(profile.top_k),
-                threshold_label=(
-                    NO_THRESHOLD_LABEL
-                    if profile.score_threshold is None
-                    else str(profile.score_threshold)
-                ),
-                knowledge_base_names=[
-                    names_by_id[bound_id]
-                    for bound_id in profile.knowledge_base_ids
-                    if bound_id in names_by_id
-                ],
-                is_unbound=not profile.knowledge_base_ids,
-                has_dangling_bindings=any(
-                    bound_id not in names_by_id for bound_id in profile.knowledge_base_ids
-                ),
-                is_published=profile.is_published,
-                published_label=self._published_label(profile),
-            )
-            for profile in self._profiles
+            build_chat_profile_row(profile, self.knowledge_bases) for profile in self._profiles
         ]
 
     @rx.var
@@ -221,7 +179,10 @@ class RagChatProfileListState(rx.State):
 
     @rx.event
     def open_create_dialog(self) -> None:
-        """Open the dialog on a blank form carrying the defaults."""
+        """Open the dialog on a blank form carrying the defaults.
+
+        Only reachable from the list page, which loaded the knowledge bases the checkbox list needs.
+        """
         self._editing_profile_id = ""
         self.form_name = ""
         self.form_system_prompt = DEFAULT_CHAT_PROFILE_SYSTEM_PROMPT
@@ -232,32 +193,61 @@ class RagChatProfileListState(rx.State):
         self.dialog_open = True
 
     @rx.event
-    def open_edit_dialog(self, profile_id: str) -> None:
+    async def open_edit_dialog(self, profile_id: str) -> None:
         """Open the dialog on an existing profile's current configuration.
+
+        Read fresh from the service rather than from ``_profiles``: this also opens from the detail
+        page's actions menu, and that page never loads the list.
 
         The bindings are shown exactly as stored, including an id whose knowledge base has since been
         deleted: a configuration screen has to show what was configured. Such an id simply has no
         checkbox to appear in, and re-saving the form drops it.
-        """
-        profile = next((item for item in self._profiles if item.id == profile_id), None)
-        if profile is None:
-            raise ReflexAppException("This chat profile is no longer in the list. Refresh the page.")
 
-        self._editing_profile_id = profile.id
-        self.form_name = profile.name
-        self.form_system_prompt = profile.system_prompt
-        self.form_model = profile.model
-        self.form_top_k = str(profile.top_k)
+        :param profile_id: the profile to edit
+        :raises ReflexAppException: if the profile no longer exists
+        """
+        main_state = await self.get_state(ReflexMainState)
+        with await main_state.authenticate_user():
+            profile = RagChatProfileService().get_profile(profile_id)
+            if profile is None:
+                raise ReflexAppException("This chat profile no longer exists. Refresh the page.")
+            profile_dto = profile.to_dto()
+            self.knowledge_bases = [
+                knowledge_base.to_dto()
+                for knowledge_base in KnowledgeBaseService().get_all_knowledge_bases()
+            ]
+
+        self._editing_profile_id = profile_dto.id
+        self.form_name = profile_dto.name
+        self.form_system_prompt = profile_dto.system_prompt
+        self.form_model = profile_dto.model
+        self.form_top_k = str(profile_dto.top_k)
         self.form_score_threshold = (
-            "" if profile.score_threshold is None else str(profile.score_threshold)
+            "" if profile_dto.score_threshold is None else str(profile_dto.score_threshold)
         )
-        self.form_knowledge_base_ids = list(profile.knowledge_base_ids)
+        self.form_knowledge_base_ids = list(profile_dto.knowledge_base_ids)
         self.dialog_open = True
 
     @rx.event
     def close_dialog(self) -> None:
         """Close the dialog, discarding whatever was typed."""
         self.dialog_open = False
+
+    @rx.event
+    def set_action_dialog_open(self, is_open: bool, action: str, profile_id: str) -> None:
+        """Open or close one profile's confirmation dialog.
+
+        Bound both to the menu item that opens it and to the dialog's own ``on_open_change``, so
+        Radix's own ways of closing it — Escape, an overlay click, the Cancel or the action button —
+        clear it the same way opening it set it.
+
+        :param is_open: whether the dialog is being opened or closed
+        :param action: one of :data:`ACTION_DIALOG_PUBLISH`, :data:`ACTION_DIALOG_UNPUBLISH`,
+                       :data:`ACTION_DIALOG_DELETE`
+        :param profile_id: the profile the dialog acts on
+        """
+        self.action_dialog_profile_id = profile_id if is_open else ""
+        self.action_dialog_action = action if is_open else ""
 
     @rx.event
     def set_form_name(self, value: str) -> None:
@@ -306,6 +296,9 @@ class RagChatProfileListState(rx.State):
     async def save_profile(self) -> AsyncGenerator[rx.event.EventType, None]:
         """Create or update the profile the dialog is open on.
 
+        An update patches the detail page's cached copy in place, so a profile renamed from its own
+        page does not sit there showing its old configuration.
+
         :raises ReflexAppException: if the form is incomplete or holds a value that cannot be parsed,
                 or if the service refuses the save (taken name, unknown knowledge base)
         """
@@ -337,17 +330,20 @@ class RagChatProfileListState(rx.State):
             with await main_state.authenticate_user():
                 try:
                     if profile_id:
-                        service.update_profile(profile_id, save_dto)
+                        saved = service.update_profile(profile_id, save_dto)
                     else:
-                        service.create_profile(save_dto)
+                        saved = service.create_profile(save_dto)
                 except PROFILE_SAVE_ERRORS as err:
                     # Both messages were written for a user; a toast is where they belong.
                     raise ReflexAppException(str(err)) from err
+                saved_dto = saved.to_dto()
         finally:
             self.is_saving = False
 
         self.dialog_open = False
         await self._reload_profiles()
+        if profile_id:
+            await self._sync_detail_state(profile_id, saved_dto)
         yield rx.toast.success(f"Chat profile '{name}' saved.")
 
     ############################################### CHAT ###############################################
@@ -372,45 +368,71 @@ class RagChatProfileListState(rx.State):
     async def publish_profile(self, profile_id: str) -> AsyncGenerator[rx.event.EventType, None]:
         """Publish (or re-publish, rotating the token) a chat profile.
 
-        The service restricts this to lab admins and mints a fresh token every time, so calling this
+        Open to any authenticated user. The service mints a fresh token every time, so calling this
         on an already-published profile revokes its previous token as a side effect. The minted
         token is shown exactly once, in the dialog this opens — confirmation of the consequences
         happens in the caller, before this event fires.
+
+        This is the one handler that hands one modal over to another, and the order is load-bearing:
+        the confirmation is closed and *flushed* first, so Radix has unmounted it and released the
+        body scroll lock before the token dialog mounts. Doing both in one delta leaves the app with
+        ``pointer-events: none`` on the body and nothing clickable — see ``_publish_dialog`` in
+        ``rag_chat_profile_detail_component``, which is why the confirm button does not close itself.
+
+        :param profile_id: the profile to publish
         """
+        self.action_dialog_profile_id = ""
+        self.action_dialog_action = ""
         self.busy_profile_id = profile_id
-        # Flushed before the publish runs, so the row's own spinner is seen — see ``load_page``.
+        # Flushed before the publish runs, so the confirmation is gone and the row's own spinner is
+        # seen — see ``load_page``.
         yield
-        name = next((item.name for item in self._profiles if item.id == profile_id), "")
         try:
             main_state = await self.get_state(ReflexMainState)
             service = RagChatProfileService()
             with await main_state.authenticate_user():
                 token = service.publish_profile(profile_id)
+                # Re-read rather than trusting a cached row: ``publish_profile`` returns the token,
+                # and this page may never have loaded the list at all.
+                published = service.get_profile_and_check(profile_id).to_dto()
         finally:
             self.busy_profile_id = ""
 
         await self._reload_profiles()
+        await self._sync_detail_state(profile_id, published)
+
+        # The publish itself is fast, so the confirmation may still be running its close transition.
+        # Radix releases the body scroll lock on unmount, and a modal mounting before that cleanup
+        # inherits the lock — so wait it out rather than race it.
+        await asyncio.sleep(MODAL_HANDOVER_DELAY_SECONDS)
+
         self.minted_token = token
-        self.minted_token_profile_name = name
+        self.minted_token_profile_name = published.name
         self.token_dialog_open = True
 
     @rx.event
     async def unpublish_profile(self, profile_id: str) -> AsyncGenerator[rx.event.EventType, None]:
-        """Un-publish a chat profile, revoking access for anyone holding its token immediately."""
+        """Un-publish a chat profile, revoking access for anyone holding its token immediately.
+
+        :param profile_id: the profile to un-publish
+        """
         self.busy_profile_id = profile_id
-        # Flushed before the un-publish runs, so the row's own spinner is seen — see ``load_page``.
+        # Flushed before the un-publish runs, so the button's spinner is seen — see ``load_page``.
         yield
-        name = next((item.name for item in self._profiles if item.id == profile_id), "")
         try:
             main_state = await self.get_state(ReflexMainState)
             service = RagChatProfileService()
             with await main_state.authenticate_user():
                 service.unpublish_profile(profile_id)
+                unpublished = service.get_profile_and_check(profile_id).to_dto()
         finally:
             self.busy_profile_id = ""
 
         await self._reload_profiles()
-        yield rx.toast.success(f"Chat profile '{name}' unpublished. Its previous token no longer works.")
+        await self._sync_detail_state(profile_id, unpublished)
+        yield rx.toast.success(
+            f"Chat profile '{unpublished.name}' unpublished. Its previous token no longer works."
+        )
 
     @rx.event
     def close_token_dialog(self) -> None:
@@ -430,8 +452,12 @@ class RagChatProfileListState(rx.State):
         """Delete a chat profile.
 
         Conversations started from it are left alone — their profile id becomes a dangling reference
-        the restore path reports — so this deletes a configuration, not a history. Confirmation is the
-        caller's: the button that reaches this sits behind an alert dialog.
+        the restore path reports — so this deletes a configuration, not a history. If its own detail
+        page is open when this runs, that page is left with nothing to show, so it is redirected away.
+
+        Confirmation is the caller's: the button that reaches this sits behind an alert dialog.
+
+        :param profile_id: the profile to delete
         """
         self.busy_profile_id = profile_id
         # Flushed before the delete runs, so the row's own spinner is seen — see ``load_page``.
@@ -446,20 +472,24 @@ class RagChatProfileListState(rx.State):
             self.busy_profile_id = ""
 
         await self._reload_profiles()
+        was_showing_deleted = await self._sync_detail_state(profile_id, None)
         yield rx.toast.success(f"Chat profile '{name}' deleted.")
+        if was_showing_deleted:
+            yield rx.redirect(CHAT_PROFILES_ROUTE)
 
     ############################################### INTERNALS ###############################################
 
-    @staticmethod
-    def _published_label(profile: RagChatProfileDTO) -> str:
-        """"Since when, by whom" for a published profile, or "" when it is not published."""
-        if not profile.is_published or profile.published_at is None:
-            return ""
+    async def _sync_detail_state(
+        self, profile_id: str, profile: RagChatProfileDTO | None
+    ) -> bool:
+        """Patch the detail page's cached profile after a change made from either page.
 
-        since = profile.published_at.strftime("%Y-%m-%d")
-        if profile.published_by_email:
-            return f"Since {since} by {profile.published_by_email}"
-        return f"Since {since}"
+        :param profile_id: the profile that changed
+        :param profile: its new state, or ``None`` when it was deleted
+        :return: True if the detail page was showing that profile
+        """
+        detail_state = await self.get_state(RagChatProfileDetailState)
+        return detail_state.apply_profile_change(profile_id, profile)
 
     async def _reload_profiles(self) -> None:
         """Re-read the profile list. Callable from the backend, unlike the events above."""
@@ -468,3 +498,19 @@ class RagChatProfileListState(rx.State):
             self._profiles = [
                 profile.to_dto() for profile in RagChatProfileService().get_all_profiles()
             ]
+
+
+def is_action_dialog_open(profile_id: rx.Var[str] | str, action: str) -> rx.Var[bool]:
+    """Whether the confirmation currently open is this profile's dialog for that action.
+
+    Lives next to the two vars it reads rather than in one of the components: the confirmations are
+    spread across the shared action cluster (delete) and the detail page's Publication section
+    (publish, un-publish), and both have to agree on what "open" means.
+
+    :param profile_id: the profile the dialog would act on
+    :param action: one of :data:`ACTION_DIALOG_PUBLISH`, :data:`ACTION_DIALOG_UNPUBLISH`,
+                   :data:`ACTION_DIALOG_DELETE`
+    """
+    return (RagChatProfileListState.action_dialog_profile_id == profile_id) & (
+        RagChatProfileListState.action_dialog_action == action
+    )
